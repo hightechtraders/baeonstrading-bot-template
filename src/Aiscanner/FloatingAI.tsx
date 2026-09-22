@@ -10,9 +10,8 @@ export const FloatingAI = () => {
   const toggleModal = () => {
     setIsOpen((prev) => {
       const nextState = !prev;
-      if (nextState && strategies.length > 0) {
-        const topId = strategies[0].id ?? 0;
-        setExpandedId(topId);
+      if (nextState) {
+        setExpandedId(null); // Keep all cards collapsed on open
       }
       return nextState;
     });
