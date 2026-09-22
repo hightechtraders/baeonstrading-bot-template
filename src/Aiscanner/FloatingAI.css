@@ -64,9 +64,9 @@
 
 /* Modal Window */
 .scanner-modal {
-  position: absolute;
-  bottom: 70px;
-  right: 0;
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
   width: 400px;
   max-height: 600px;
   background-color: #1e1e2e;
@@ -77,6 +77,19 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  z-index: 10000;
+  animation: modalSlideUp 0.2s ease-out;
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Header */
