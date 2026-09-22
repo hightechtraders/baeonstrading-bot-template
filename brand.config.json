@@ -7,7 +7,6 @@
         "staging": "baeonstrading-bot-template.vercel.app",
         "production": "baeonstrading-bot-template.vercel.app"
     },
-    "domain_name": "baeonstrading-bot-template.vercel.app",
     "platform": {
         "name": "Baeons Trading Bot",
         "description": "A whole new trading experience on a powerful yet easy to use platform.",
@@ -30,10 +29,6 @@
         "oauth_redirect_uri_staging": "https://baeonstrading-bot-template.vercel.app",
         "oauth_redirect_uri_production": "https://baeonstrading-bot-template.vercel.app",
         "oauth_app_id": "34t7y3xkywoxWNnZuZFaB"
-    },
-    "auth2_url": {
-        "production": "https://oauth.deriv.com/oauth2/",
-        "staging": "https://staging-oauth.deriv.com/oauth2/"
     },
     "derivws": {
         "staging": "https://staging-api.derivws.com",
