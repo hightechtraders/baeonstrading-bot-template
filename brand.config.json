@@ -1,99 +1,70 @@
 {
-    "brand_name": "Baeons Trading",
-    "brand_domain": "baeonstrading-bot-template.vercel.app",
+    "brand_name": "Trading Platform",
+    "brand_logo": "brand/platform-logo.svg",
+    "brand_logo_dark": "brand/platform-logo.svg",
+    "brand_domain": "deriv.com",
     "brand_hostname": {
-        "staging": "baeonstrading-bot-template.vercel.app",
-        "production": "baeonstrading-bot-template.vercel.app"
-    },
-    "domain_name": "baeonstrading-bot-template.vercel.app",
-    "colors": {
-        "primary": "#3b82f6",
-        "secondary": "#64748b",
-        "tertiary": "#8b5cf6",
-        "success": "#10b981",
-        "danger": "#ef4444",
-        "warning": "#f59e0b",
-        "info": "#0ea5e9",
-        "neutral": "#6b7280",
-        "black": "#0f172a",
-        "white": "#ffffff",
-        "grey": {
-            "50": "#f8fafc",
-            "100": "#f1f5f9",
-            "200": "#e2e8f0",
-            "300": "#cbd5e1",
-            "400": "#94a3b8",
-            "500": "#64748b",
-            "600": "#475569",
-            "700": "#334155",
-            "800": "#1e293b",
-            "900": "#0f172a"
-        }
-    },
-    "typography": {
-        "font_family": {
-            "primary": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-            "secondary": "Georgia, 'Times New Roman', Times, serif",
-            "monospace": "'Courier New', Courier, monospace"
-        },
-        "font_sizes": {
-            "xs": "0.75rem",
-            "sm": "0.875rem",
-            "base": "1rem",
-            "lg": "1.125rem",
-            "xl": "1.25rem",
-            "2xl": "1.5rem",
-            "3xl": "1.875rem",
-            "4xl": "2.25rem"
-        }
-    },
-    "color_variants": {
-        "light_variants": [100, 200, 300, 400, 500],
-        "dark_variants": [600, 700, 800, 900],
-        "opacity_variants": [10, 20, 30, 40, 50, 60, 70, 80, 90]
-    },
-    "theme_config": {
-        "enable_dynamic_themes": true,
-        "auto_generate_variants": true,
-        "css_variable_prefix": "--brand"
+        "staging": "staging.dtrader-template.pages.dev",
+        "production": "dtrader-template.pages.dev"
     },
     "platform": {
-        "name": "Baeons Trading Bot",
-        "logo": {
-            "type": "component",
-            "component_name": "BrandLogo",
-            "alt_text": "Baeons Trading Bot",
-            "link_url": "/",
-            "show_text": false,
-            "text": "Baeons Trading Bot"
-        },
-        "footer": {
-            "enable_language_settings": false,
-            "enable_theme_toggle": false
-        },
-        "hostname": {
-            "production": {
-                "com": "baeonstrading-bot-template.vercel.app",
-                "app": "baeonstrading-bot-template.vercel.app"
-            },
-            "staging": {
-                "com": "baeonstrading-bot-template.vercel.app",
-                "app": "baeonstrading-bot-template.vercel.app"
-            }
-        },
-        "auth2_url": {
-            "production": "https://oauth.deriv.com/oauth2/",
-            "staging": "https://staging-oauth.deriv.com/oauth2/"
-        },
-        "derivws": {
-            "url": {
-                "staging": "https://staging-api.derivws.com/trading/v1/",
-                "production": "https://api.derivws.com/trading/v1/"
-            },
-            "directories": {
-                "options": "options/",
-                "derivatives": "derivatives/"
-            }
-        }
+        "name": "Trading Platform",
+        "description": "A whole new trading experience on a powerful yet easy to use platform.",
+        "logo": "brand/platform-logo.svg",
+        "home_url": "https://home.deriv.com/dashboard",
+        "help_centre_url": "https://trade.deriv.com/help-centre"
+    },
+    "signup_url": {
+        "production": "https://home.deriv.com/dashboard/signup",
+        "staging": "https://staging-home.deriv.com/dashboard/signup"
+    },
+    "deposit_url": {
+        "staging": "https://staging.dtrader-template.pages.dev/transfer",
+        "production": "https://dtrader-template.pages.dev/transfer"
+    },
+    "auth": {
+        "staging": "https://staging-auth.deriv.com",
+        "production": "https://auth.deriv.com",
+        "oauth_scopes": ["trade", "account_manage"],
+        "oauth_redirect_uri_staging": "https://staging.dtrader-template.pages.dev",
+        "oauth_redirect_uri_production": "https://dtrader-template.pages.dev",
+        "oauth_app_id": ""
+    },
+    "derivws": {
+        "staging": "https://staging-api.derivws.com",
+        "production": "https://api.derivws.com"
+    },
+    "api_core": {
+        "staging": "staging-api-core.deriv.com",
+        "production": "api-core.deriv.com"
+    },
+    "api": {
+        "staging": "staging-api.deriv.com",
+        "production": "api.deriv.com"
+    },
+    "app_id": {
+        "staging": 16929,
+        "production": 16929
+    },
+    "colors": {
+        "primary": "#118e1c",
+        "secondary": "#85acb0",
+        "tertiary": "#ff6b35",
+        "success": "#4bb4b3",
+        "danger": "#ec3f3f",
+        "warning": "#ffad3a",
+        "info": "#2196f3",
+        "neutral": "#999999",
+        "black": "#181c25",
+        "white": "#ffffff"
+    },
+    "color_variants": {
+        "auto_generate": true,
+        "lighten_percentage": 10,
+        "darken_percentage": 10
+    },
+    "features": {
+        "dark_mode": true,
+        "language_switcher": false
     }
 }
