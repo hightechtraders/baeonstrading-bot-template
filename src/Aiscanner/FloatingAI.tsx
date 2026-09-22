@@ -1,19 +1,16 @@
 import React, { useState } from 'react';
 import Draggable from 'react-draggable';
 import './FloatingAI.css';
-// Import your actual strategies list
-import { strategies } from './strategies';
+import { CORE_7_STRATEGIES as strategies } from './strategies';
 
 export const FloatingAI = () => {
   const [isOpen, setIsOpen] = useState(false);
-  // Default to expanding the top/first strategy (#1) on open
   const [expandedId, setExpandedId] = useState<number | string | null>(null);
 
   const toggleModal = () => {
     setIsOpen((prev) => {
       const nextState = !prev;
       if (nextState && strategies.length > 0) {
-        // Expand the highest ranked strategy automatically
         const topId = strategies[0].id ?? 0;
         setExpandedId(topId);
       }
@@ -24,7 +21,6 @@ export const FloatingAI = () => {
   return (
     <Draggable cancel="button, input, select, .card-expandable">
       <div className="floating-ai-container">
-        {/* Floating AI Action Button */}
         <button 
           className="ai-trigger-btn" 
           onClick={toggleModal} 
@@ -35,10 +31,8 @@ export const FloatingAI = () => {
           <span className="pulse-ring delay"></span>
         </button>
 
-        {/* Strategy Scanner Modal */}
         {isOpen && (
           <div className="scanner-modal">
-            {/* Header */}
             <div className="scanner-header">
               <div className="header-title">
                 <h3>AI Multi-Asset Scanner</h3>
@@ -47,7 +41,6 @@ export const FloatingAI = () => {
               <button className="close-btn" onClick={() => setIsOpen(false)}>×</button>
             </div>
 
-            {/* Global Metrics Bar */}
             <div className="global-metrics-bar">
               <div className="metric-box">
                 <span className="metric-label">GLOBAL WINNER</span>
@@ -63,14 +56,12 @@ export const FloatingAI = () => {
               </div>
             </div>
 
-            {/* Strategy List Container */}
             <div className="strategy-list">
               {strategies.map((strat: any, index: number) => {
                 const stratId = strat.id ?? index;
                 const isExpanded = expandedId === stratId;
                 const rankNum = index + 1;
 
-                // Standardize fields with fallbacks
                 const title = strat.title || strat.name || `Strategy ${rankNum}`;
                 const volatility = strat.volatility || 'VOLATILITY 25';
                 const contractType = strat.contractType || 'RISE FALL';
@@ -89,7 +80,6 @@ export const FloatingAI = () => {
                     className={`strategy-card ${isExpanded ? 'expanded' : ''}`}
                     onClick={() => setExpandedId(isExpanded ? null : stratId)}
                   >
-                    {/* Top Row: Rank Badge & Metadata Header */}
                     <div className="card-top-row">
                       <span className="rank-badge">#{rankNum}</span>
                       <div className="card-main-info">
@@ -110,7 +100,6 @@ export const FloatingAI = () => {
                       </div>
                     </div>
 
-                    {/* Expanded Parameter Form View */}
                     {isExpanded && (
                       <div className="card-expandable" onClick={(e) => e.stopPropagation()}>
                         <p className="description">{description}</p>
