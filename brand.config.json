@@ -1,34 +1,39 @@
 {
-    "brand_name": "Trading Platform",
+    "brand_name": "Baeons Trading",
     "brand_logo": "brand/platform-logo.svg",
     "brand_logo_dark": "brand/platform-logo.svg",
-    "brand_domain": "deriv.com",
+    "brand_domain": "baeonstrading-bot-template.vercel.app",
     "brand_hostname": {
-        "staging": "staging.dtrader-template.pages.dev",
-        "production": "dtrader-template.pages.dev"
+        "staging": "baeonstrading-bot-template.vercel.app",
+        "production": "baeonstrading-bot-template.vercel.app"
     },
+    "domain_name": "baeonstrading-bot-template.vercel.app",
     "platform": {
-        "name": "Trading Platform",
+        "name": "Baeons Trading Bot",
         "description": "A whole new trading experience on a powerful yet easy to use platform.",
         "logo": "brand/platform-logo.svg",
-        "home_url": "https://home.deriv.com/dashboard",
-        "help_centre_url": "https://trade.deriv.com/help-centre"
+        "home_url": "https://baeonstrading-bot-template.vercel.app",
+        "help_centre_url": "https://baeonstrading-bot-template.vercel.app"
     },
     "signup_url": {
-        "production": "https://home.deriv.com/dashboard/signup",
-        "staging": "https://staging-home.deriv.com/dashboard/signup"
+        "production": "https://baeonstrading-bot-template.vercel.app/signup",
+        "staging": "https://baeonstrading-bot-template.vercel.app/signup"
     },
     "deposit_url": {
-        "staging": "https://staging.dtrader-template.pages.dev/transfer",
-        "production": "https://dtrader-template.pages.dev/transfer"
+        "staging": "https://baeonstrading-bot-template.vercel.app/transfer",
+        "production": "https://baeonstrading-bot-template.vercel.app/transfer"
     },
     "auth": {
-        "staging": "https://staging-auth.deriv.com",
-        "production": "https://auth.deriv.com",
+        "staging": "https://oauth.deriv.com/oauth2/",
+        "production": "https://oauth.deriv.com/oauth2/",
         "oauth_scopes": ["trade", "account_manage"],
-        "oauth_redirect_uri_staging": "https://staging.dtrader-template.pages.dev",
-        "oauth_redirect_uri_production": "https://dtrader-template.pages.dev",
-        "oauth_app_id": ""
+        "oauth_redirect_uri_staging": "https://baeonstrading-bot-template.vercel.app",
+        "oauth_redirect_uri_production": "https://baeonstrading-bot-template.vercel.app",
+        "oauth_app_id": "34t7y3xkywoxWNnZuZFaB"
+    },
+    "auth2_url": {
+        "production": "https://oauth.deriv.com/oauth2/",
+        "staging": "https://staging-oauth.deriv.com/oauth2/"
     },
     "derivws": {
         "staging": "https://staging-api.derivws.com",
@@ -43,8 +48,8 @@
         "production": "api.deriv.com"
     },
     "app_id": {
-        "staging": 16929,
-        "production": 16929
+        "staging": "34t7y3xkywoxWNnZuZFaB",
+        "production": "34t7y3xkywoxWNnZuZFaB"
     },
     "colors": {
         "primary": "#118e1c",
