@@ -11,7 +11,7 @@ export const FloatingAI = () => {
     setIsOpen((prev) => {
       const nextState = !prev;
       if (nextState) {
-        setExpandedId(null); // Keep all cards collapsed on open
+        setExpandedId(null);
       }
       return nextState;
     });
@@ -19,29 +19,29 @@ export const FloatingAI = () => {
 
   return (
     <div className="floating-ai-container">
-      {/* Draggable Trigger Button */}
       <Draggable>
-        <button 
-          className="ai-trigger-btn" 
-          onClick={toggleModal} 
-          title="Open AI Multi-Asset Scanner"
-        >
-          {/* Ambient Glow Aura */}
-          <div className="ai-btn-glow" />
+        <div className="draggable-wrapper">
+          <button 
+            className="ai-trigger-btn" 
+            onClick={toggleModal} 
+            title="Open AI Multi-Asset Scanner"
+          >
+            {/* Animated Pulse Rings */}
+            <span className="pulse-ring ring-1" />
+            <span className="pulse-ring ring-2" />
 
-          {/* Professional Tech AI Icon */}
-          <div className="ai-btn-content">
-            <svg className="ai-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" opacity="0.3" />
-              <path d="M12 6v12M6 12h12" strokeLinecap="round" />
-              <circle cx="12" cy="12" r="3" fill="currentColor" />
-            </svg>
-            <span className="ai-btn-text">AI</span>
-          </div>
+            {/* Glowing Core Background */}
+            <div className="ai-btn-glow" />
 
-          {/* Live Signal Status Indicator */}
-          <span className="live-status-dot" title="Live Scanner Active" />
-        </button>
+            {/* Core Label and Icon */}
+            <div className="ai-btn-content">
+              <span className="ai-btn-text">AI</span>
+            </div>
+
+            {/* Live Indicator Dot */}
+            <span className="live-status-dot" />
+          </button>
+        </div>
       </Draggable>
 
       {/* Scanner Modal Window */}
