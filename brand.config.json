@@ -1,11 +1,11 @@
 {
-    "brand_name": "YourBrand",
-    "brand_domain": "yourbrand.com",
+    "brand_name": "Baeons Trading",
+    "brand_domain": "baeonstrading-bot-template.vercel.app",
     "brand_hostname": {
-        "staging": "staging.yourbrand.com/dashboard",
-        "production": "yourbrand.com/dashboard"
+        "staging": "baeonstrading-bot-template.vercel.app",
+        "production": "baeonstrading-bot-template.vercel.app"
     },
-    "domain_name": "YourBrand.com",
+    "domain_name": "baeonstrading-bot-template.vercel.app",
     "colors": {
         "primary": "#3b82f6",
         "secondary": "#64748b",
@@ -58,14 +58,14 @@
         "css_variable_prefix": "--brand"
     },
     "platform": {
-        "name": "Trading Bot",
+        "name": "Baeons Trading Bot",
         "logo": {
             "type": "component",
             "component_name": "BrandLogo",
-            "alt_text": "Trading Bot",
+            "alt_text": "Baeons Trading Bot",
             "link_url": "/",
             "show_text": false,
-            "text": "Trading Bot"
+            "text": "Baeons Trading Bot"
         },
         "footer": {
             "enable_language_settings": false,
@@ -73,10 +73,12 @@
         },
         "hostname": {
             "production": {
-                "com": "bot.yourbrand.com"
+                "com": "baeonstrading-bot-template.vercel.app",
+                "app": "baeonstrading-bot-template.vercel.app"
             },
             "staging": {
-                "com": "staging-bot.yourbrand.com"
+                "com": "baeonstrading-bot-template.vercel.app",
+                "app": "baeonstrading-bot-template.vercel.app"
             }
         },
         "auth2_url": {
