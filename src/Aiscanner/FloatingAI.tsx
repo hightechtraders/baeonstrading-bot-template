@@ -1,88 +1,151 @@
-// src/Aiscanner/FloatingAI.tsx
-
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState } from 'react';
 import Draggable from 'react-draggable';
-import { CORE_7_STRATEGIES } from './strategies';
-import { ScannerBridge } from './scannerBridge';
 import './FloatingAI.css';
 
-export const FloatingAI: React.FC = () => {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [strategies, setStrategies] = useState(CORE_7_STRATEGIES);
-  const nodeRef = useRef<HTMLDivElement>(null);
-  const bridgeRef = useRef<ScannerBridge | null>(null);
+interface Strategy {
+  id: number;
+  rank: number;
+  title: string;
+  volatility: string;
+  contractType: string;
+  strategyType: string;
+  risk: 'HIGH' | 'MEDIUM' | 'LOW';
+  score: number;
+  confidence: number;
+  description: string;
+  stake: number;
+  stopLoss: number;
+  takeProfit: number;
+  direction: 'UP' | 'DOWN';
+}
 
-  useEffect(() => {
-    // Start Web Worker background scanner
-    bridgeRef.current = new ScannerBridge((data) => {
-      if (data && data.length > 0) {
-        setStrategies(data);
-      }
-    });
-    bridgeRef.current.startScanner();
+const STRATEGIES: Strategy[] = [
+  {
+    id: 1,
+    rank: 1,
+    title: 'AI Adaptive',
+    volatility: 'Volatility 25',
+    contractType: 'RISE FALL',
+    strategyType: 'NEURAL_FLOW',
+    risk: 'HIGH',
+    score: 83,
+    confidence: 84,
+    description: 'Dynamic lookback structural variant.',
+    stake: 3,
+    stopLoss: 4,
+    takeProfit: 8,
+    direction: 'DOWN',
+  },
+  {
+    id: 2,
+    rank: 2,
+    title: '1-3-2-6 System',
+    volatility: 'Volatility 10',
+    contractType: 'RISE FALL',
+    strategyType: 'PROGRESSIVE',
+    risk: 'MEDIUM',
+    score: 81,
+    confidence: 83,
+    description: 'Progressive betting structure system.',
+    stake: 1,
+    stopLoss: 5,
+    takeProfit: 10,
+    direction: 'UP',
+  },
+];
 
-    return () => {
-      bridgeRef.current?.stopScanner();
-    };
-  }, []);
+export const FloatingAI = () => {
+  const [expandedId, setExpandedId] = useState<number | null>(1);
 
-  // Handle click explicitly to prevent react-draggable from stealing click
-  const handleOrbClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsOpen((prev) => !prev);
+  const toggleExpand = (id: number) => {
+    setExpandedId(expandedId === id ? null : id);
   };
 
   return (
-    <Draggable nodeRef={nodeRef} bounds="window" handle=".drag-handle">
-      <div
-        className="tredascore-scanner-root"
-        ref={nodeRef}
-        style={{
-          position: 'fixed',
-          top: '80px',
-          right: '20px',
-          zIndex: 99999,
-          pointerEvents: 'auto',
-        }}
-      >
-        {/* Header Container */}
-        <div className="scanner-header" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div className="scanner-title-area">
-            <h3 style={{ margin: 0, color: '#ffffff' }}>AI Multi-Asset Scanner</h3>
-          </div>
+    <Draggable cancel="button, input, .card-expandable">
+      <div className="scanner-modal">
+        {/* Header */}
+        <div className="scanner-header">
+          <h3>AI Multi-Asset Scanner</h3>
+          <span className="badge-counter">30/30</span>
+        </div>
 
-          {/* Clickable AI Orb Button */}
-          <div
-            className="ai-orb-wrapper"
-            onClick={handleOrbClick}
-            onMouseDown={(e) => e.stopPropagation()} // Prevents drag start on click
-            title="Click to toggle scanner panel"
-            style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-          >
-            <div className="ring-pulse"></div>
-            <div className="ai-orb">AI</div>
+        {/* Global Performance Summary */}
+        <div className="global-metrics-bar">
+          <div className="metric-box">
+            <span className="metric-label">GLOBAL WINNER</span>
+            <span className="metric-value green">READY</span>
+          </div>
+          <div className="metric-box">
+            <span className="metric-label">DIRECTION</span>
+            <span className="metric-value orange">DOWN</span>
+          </div>
+          <div className="metric-box">
+            <span className="metric-label">CONFIDENCE</span>
+            <span className="metric-value">84%</span>
           </div>
         </div>
 
-        {/* Collapsible Panel */}
-        {isOpen && (
-          <div className="scanner-body" style={{ background: '#1e1e2d', padding: '12px', borderRadius: '8px', marginTop: '10px' }}>
-            {strategies.map((strat) => (
-              <div key={strat.id} style={{ color: '#fff', padding: '6px 0', borderBottom: '1px solid #333' }}>
-                <strong>{strat.name}</strong> - {strat.symbol} ({strat.direction})
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Strategy List */}
+        <div className="strategy-list">
+          {STRATEGIES.map((strat) => {
+            const isExpanded = expandedId === strat.id;
+            return (
+              <div 
+                key={strat.id} 
+                className={`strategy-card ${isExpanded ? 'expanded' : ''}`}
+                onClick={() => toggleExpand(strat.id)}
+              >
+                <div className="card-top-row">
+                  <span className="rank-badge">#{strat.rank}</span>
+                  <div className="card-main-info">
+                    <div className="card-title-row">
+                      <span className="strat-title">{strat.title}</span>
+                      <div className="tags-group">
+                        <span className="tag volatility">{strat.volatility}</span>
+                        <span className="tag contract">{strat.contractType}</span>
+                        <span className="tag type">{strat.strategyType}</span>
+                        <span className={`tag risk ${strat.risk.toLowerCase()}`}>
+                          {strat.risk}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="card-sub-metrics">
+                      Score {strat.score}% · Confidence {strat.confidence}%
+                    </div>
+                  </div>
+                </div>
 
-        {/* Dedicated Drag Footer Handle */}
-        <div
-          className="drag-handle-footer drag-handle"
-          title="Drag to move"
-          style={{ cursor: 'grab', textAlign: 'center', padding: '6px', background: '#111', borderRadius: '0 0 8px 8px' }}
-        >
-          <div className="drag-dots" style={{ color: '#888', fontSize: '12px' }}>⋮⋮ Drag Scanner</div>
+                {/* Expanded Details View */}
+                {isExpanded && (
+                  <div className="card-expandable" onClick={(e) => e.stopPropagation()}>
+                    <p className="description">{strat.description}</p>
+                    <div className="parameters-grid">
+                      <div>
+                        <label>STAKE (USD)</label>
+                        <input type="number" defaultValue={strat.stake} />
+                      </div>
+                      <div>
+                        <label>STOP LOSS</label>
+                        <input type="number" defaultValue={strat.stopLoss} />
+                      </div>
+                      <div>
+                        <label>TAKE PROFIT</label>
+                        <input type="number" defaultValue={strat.takeProfit} />
+                      </div>
+                    </div>
+
+                    <button className="btn-primary">
+                      📥 LOAD STRATEGY PARAMETERS
+                    </button>
+                    <button className="btn-telegram">
+                      📢 Broadcast Signal to Telegram
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </Draggable>
