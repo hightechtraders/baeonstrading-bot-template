@@ -73,9 +73,11 @@
         },
         "hostname": {
             "production": {
+                "com": "baeonstrading-bot-template.vercel.app",
                 "app": "baeonstrading-bot-template.vercel.app"
             },
             "staging": {
+                "com": "baeonstrading-bot-template.vercel.app",
                 "app": "baeonstrading-bot-template.vercel.app"
             }
         },
