@@ -19,20 +19,32 @@ export const FloatingAI = () => {
 
   return (
     <div className="floating-ai-container">
-      {/* Draggable applies ONLY to the trigger button */}
+      {/* Draggable Trigger Button */}
       <Draggable>
         <button 
           className="ai-trigger-btn" 
           onClick={toggleModal} 
-          title="Toggle AI Multi-Asset Scanner"
+          title="Open AI Multi-Asset Scanner"
         >
-          <span className="ai-btn-label">AI</span>
-          <span className="pulse-ring"></span>
-          <span className="pulse-ring delay"></span>
+          {/* Ambient Glow Aura */}
+          <div className="ai-btn-glow" />
+
+          {/* Professional Tech AI Icon */}
+          <div className="ai-btn-content">
+            <svg className="ai-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" opacity="0.3" />
+              <path d="M12 6v12M6 12h12" strokeLinecap="round" />
+              <circle cx="12" cy="12" r="3" fill="currentColor" />
+            </svg>
+            <span className="ai-btn-text">AI</span>
+          </div>
+
+          {/* Live Signal Status Indicator */}
+          <span className="live-status-dot" title="Live Scanner Active" />
         </button>
       </Draggable>
 
-      {/* The scanner modal stays fixed and outside of Draggable */}
+      {/* Scanner Modal Window */}
       {isOpen && (
         <div className="scanner-modal">
           <div className="scanner-header">
