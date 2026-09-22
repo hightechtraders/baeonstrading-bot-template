@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Draggable from 'react-draggable';
 import './FloatingAI.css';
-import { CORE_7_STRATEGIES as strategies } from './strategies';
+import { CORE_7_STRATEGIES as strategies, StrategyDefinition } from './strategies';
 
 export const FloatingAI = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -57,22 +57,27 @@ export const FloatingAI = () => {
             </div>
 
             <div className="strategy-list">
-              {strategies.map((strat: any, index: number) => {
+              {strategies.map((strat: StrategyDefinition, index: number) => {
                 const stratId = strat.id ?? index;
                 const isExpanded = expandedId === stratId;
                 const rankNum = index + 1;
 
-                const title = strat.title || strat.name || `Strategy ${rankNum}`;
-                const volatility = strat.volatility || 'VOLATILITY 25';
-                const contractType = strat.contractType || 'RISE FALL';
-                const strategyType = strat.strategyType || 'NEURAL_FLOW';
-                const risk = (strat.risk || 'HIGH').toString().toUpperCase();
-                const score = strat.score ?? (85 - index * 2);
-                const confidence = strat.confidence ?? (88 - index * 2);
-                const description = strat.description || 'Dynamic lookback structural variant.';
-                const stake = strat.stake ?? 3;
-                const stopLoss = strat.stopLoss ?? 4;
-                const takeProfit = strat.takeProfit ?? 8;
+                // Mapped to StrategyDefinition properties
+                const title = strat.name || `Strategy ${rankNum}`;
+                const volatility = strat.symbol || 'VOLATILITY 25';
+                const contractType = strat.type || 'RISE / FALL';
+                const strategyType = strat.variant || 'NEURAL_FLOW';
+                const risk = (strat.badgeLevel || 'HIGH').toString().toUpperCase();
+
+                // Dynamically evaluate default tick state or fallback
+                const evalResult = strat.evaluate ? strat.evaluate([]) : { score: 85 - index * 2, confidence: 0.88 - index * 0.02 };
+                const score = evalResult.score;
+                const confidence = Math.round(evalResult.confidence * 100);
+
+                const stake = strat.parameters?.stake ?? 3;
+                const stopLoss = strat.parameters?.stopLoss ?? 4;
+                const takeProfit = strat.parameters?.takeProfit ?? 8;
+                const description = `${strategyType} structural strategy designed for ${volatility}.`;
 
                 return (
                   <div
