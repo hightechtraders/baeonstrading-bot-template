@@ -1,84 +1,48 @@
 import React, { useState } from 'react';
 import Draggable from 'react-draggable';
 import './FloatingAI.css';
-
-interface Strategy {
-  id: number;
-  rank: number;
-  title: string;
-  volatility: string;
-  contractType: string;
-  strategyType: string;
-  risk: 'HIGH' | 'MEDIUM' | 'LOW';
-  score: number;
-  confidence: number;
-  description: string;
-  stake: number;
-  stopLoss: number;
-  takeProfit: number;
-}
-
-const STRATEGIES: Strategy[] = [
-  {
-    id: 1,
-    rank: 1,
-    title: 'AI Adaptive',
-    volatility: 'VOLATILITY 25',
-    contractType: 'RISE FALL',
-    strategyType: 'NEURAL_FLOW',
-    risk: 'HIGH',
-    score: 83,
-    confidence: 84,
-    description: 'Dynamic lookback structural variant.',
-    stake: 3,
-    stopLoss: 4,
-    takeProfit: 8,
-  },
-  {
-    id: 2,
-    rank: 2,
-    title: '1-3-2-6 System',
-    volatility: 'VOLATILITY 10',
-    contractType: 'RISE FALL',
-    strategyType: 'PROGRESSIVE',
-    risk: 'MEDIUM',
-    score: 81,
-    confidence: 83,
-    description: 'Progressive sequence management strategy.',
-    stake: 1,
-    stopLoss: 5,
-    takeProfit: 10,
-  },
-];
+// Import your actual strategies list
+import { strategies } from './strategies';
 
 export const FloatingAI = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  // Default to expanding the top/first strategy (#1) on open
+  const [expandedId, setExpandedId] = useState<number | string | null>(null);
 
-  const toggleModal = () => setIsOpen((prev) => !prev);
+  const toggleModal = () => {
+    setIsOpen((prev) => {
+      const nextState = !prev;
+      if (nextState && strategies.length > 0) {
+        // Expand the highest ranked strategy automatically
+        const topId = strategies[0].id ?? 0;
+        setExpandedId(topId);
+      }
+      return nextState;
+    });
+  };
 
   return (
-    <Draggable cancel="button, input, .strategy-card">
+    <Draggable cancel="button, input, select, .card-expandable">
       <div className="floating-ai-container">
-        {/* Pulsing Floating AI Button */}
+        {/* Floating AI Action Button */}
         <button 
           className="ai-trigger-btn" 
           onClick={toggleModal} 
-          title="Toggle AI Scanner"
+          title="Toggle AI Multi-Asset Scanner"
         >
           <span className="ai-btn-label">AI</span>
           <span className="pulse-ring"></span>
           <span className="pulse-ring delay"></span>
         </button>
 
-        {/* Scanner Popup Drawer */}
+        {/* Strategy Scanner Modal */}
         {isOpen && (
           <div className="scanner-modal">
             {/* Header */}
             <div className="scanner-header">
               <div className="header-title">
                 <h3>AI Multi-Asset Scanner</h3>
-                <span className="badge-counter">30/30</span>
+                <span className="badge-counter">{strategies.length}/{strategies.length}</span>
               </div>
               <button className="close-btn" onClick={() => setIsOpen(false)}>×</button>
             </div>
@@ -99,56 +63,78 @@ export const FloatingAI = () => {
               </div>
             </div>
 
-            {/* Strategy List */}
+            {/* Strategy List Container */}
             <div className="strategy-list">
-              {STRATEGIES.map((strat) => {
-                const isExpanded = expandedId === strat.id;
+              {strategies.map((strat: any, index: number) => {
+                const stratId = strat.id ?? index;
+                const isExpanded = expandedId === stratId;
+                const rankNum = index + 1;
+
+                // Standardize fields with fallbacks
+                const title = strat.title || strat.name || `Strategy ${rankNum}`;
+                const volatility = strat.volatility || 'VOLATILITY 25';
+                const contractType = strat.contractType || 'RISE FALL';
+                const strategyType = strat.strategyType || 'NEURAL_FLOW';
+                const risk = (strat.risk || 'HIGH').toString().toUpperCase();
+                const score = strat.score ?? (85 - index * 2);
+                const confidence = strat.confidence ?? (88 - index * 2);
+                const description = strat.description || 'Dynamic lookback structural variant.';
+                const stake = strat.stake ?? 3;
+                const stopLoss = strat.stopLoss ?? 4;
+                const takeProfit = strat.takeProfit ?? 8;
+
                 return (
                   <div
-                    key={strat.id}
+                    key={stratId}
                     className={`strategy-card ${isExpanded ? 'expanded' : ''}`}
-                    onClick={() => setExpandedId(isExpanded ? null : strat.id)}
+                    onClick={() => setExpandedId(isExpanded ? null : stratId)}
                   >
+                    {/* Top Row: Rank Badge & Metadata Header */}
                     <div className="card-top-row">
-                      <span className="rank-badge">#{strat.rank}</span>
+                      <span className="rank-badge">#{rankNum}</span>
                       <div className="card-main-info">
                         <div className="card-title-row">
-                          <span className="strat-title">{strat.title}</span>
+                          <span className="strat-title">{title}</span>
                           <div className="tags-group">
-                            <span className="tag volatility">{strat.volatility}</span>
-                            <span className="tag contract">{strat.contractType}</span>
-                            <span className="tag type">{strat.strategyType}</span>
-                            <span className={`tag risk ${strat.risk.toLowerCase()}`}>
-                              {strat.risk}
+                            <span className="tag volatility">{volatility}</span>
+                            <span className="tag contract">{contractType}</span>
+                            <span className="tag type">{strategyType}</span>
+                            <span className={`tag risk ${risk.toLowerCase()}`}>
+                              {risk}
                             </span>
                           </div>
                         </div>
                         <div className="card-sub-metrics">
-                          Score {strat.score}% · Confidence {strat.confidence}%
+                          Score {score}% · Confidence {confidence}%
                         </div>
                       </div>
                     </div>
 
+                    {/* Expanded Parameter Form View */}
                     {isExpanded && (
                       <div className="card-expandable" onClick={(e) => e.stopPropagation()}>
-                        <p className="description">{strat.description}</p>
+                        <p className="description">{description}</p>
                         <div className="parameters-grid">
                           <div>
                             <label>STAKE (USD)</label>
-                            <input type="number" defaultValue={strat.stake} />
+                            <input type="number" defaultValue={stake} />
                           </div>
                           <div>
                             <label>STOP LOSS</label>
-                            <input type="number" defaultValue={strat.stopLoss} />
+                            <input type="number" defaultValue={stopLoss} />
                           </div>
                           <div>
                             <label>TAKE PROFIT</label>
-                            <input type="number" defaultValue={strat.takeProfit} />
+                            <input type="number" defaultValue={takeProfit} />
                           </div>
                         </div>
 
-                        <button className="btn-primary">📥 LOAD STRATEGY PARAMETERS</button>
-                        <button className="btn-telegram">📢 Broadcast Signal to Telegram</button>
+                        <button className="btn-primary">
+                          📥 LOAD STRATEGY PARAMETERS
+                        </button>
+                        <button className="btn-telegram">
+                          📢 Broadcast Signal to Telegram
+                        </button>
                       </div>
                     )}
                   </div>
