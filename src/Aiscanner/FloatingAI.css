@@ -1,4 +1,4 @@
-/* Container Positioning */
+/* Position Floating Wrapper */
 .floating-ai-container {
   position: fixed;
   bottom: 28px;
@@ -7,7 +7,7 @@
   user-select: none;
 }
 
-/* AI Floating Button */
+/* Pulsing AI Circle Button */
 .ai-trigger-btn {
   position: relative;
   width: 58px;
@@ -36,7 +36,6 @@
   z-index: 2;
 }
 
-/* Pulsing Rings */
 .pulse-ring {
   position: absolute;
   top: 0;
@@ -58,23 +57,24 @@
   100% { transform: scale(1.8); opacity: 0; }
 }
 
-/* Scanner Popup Modal */
+/* Main Dark Scanner Popup */
 .scanner-modal {
   position: absolute;
   bottom: 70px;
   right: 0;
-  width: 370px;
-  max-width: 90vw;
+  width: 380px;
+  max-width: 92vw;
   background-color: #0b0e14;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
   color: #f3f4f6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
+/* Header */
 .scanner-header {
   display: flex;
   justify-content: space-between;
@@ -118,6 +118,7 @@
   color: #ffffff;
 }
 
+/* Global Metrics Bar */
 .global-metrics-bar {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -139,6 +140,7 @@
   font-weight: 700;
   color: #6b7280;
   letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .metric-value {
@@ -151,20 +153,30 @@
 .metric-value.green { color: #22c55e; }
 .metric-value.orange { color: #f97316; }
 
+/* Scrollable Strategy List */
 .strategy-list {
   padding: 12px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: 420px;
+  max-height: 440px;
 }
 
+.strategy-list::-webkit-scrollbar {
+  width: 5px;
+}
+.strategy-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+/* Strategy Cards */
 .strategy-card {
   background: #141824;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 10px;
-  padding: 10px;
+  padding: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -176,21 +188,24 @@
 .strategy-card.expanded {
   border-color: #3b82f6;
   background: #161b28;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.15);
 }
 
 .card-top-row {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
 }
 
+/* Blue Numerical Rank Box */
 .rank-badge {
   background: #2563eb;
   color: #ffffff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
-  padding: 4px 6px;
+  padding: 4px 7px;
   border-radius: 6px;
+  line-height: 1;
 }
 
 .card-main-info {
@@ -205,12 +220,13 @@
 }
 
 .strat-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #ffffff;
   margin-right: 4px;
 }
 
+/* Tags */
 .tags-group {
   display: flex;
   flex-wrap: wrap;
@@ -220,8 +236,9 @@
 .tag {
   font-size: 9px;
   font-weight: 700;
-  padding: 2px 5px;
+  padding: 2px 6px;
   border-radius: 4px;
+  text-transform: uppercase;
 }
 
 .tag.volatility { background: rgba(16, 185, 129, 0.15); color: #10b981; }
@@ -229,20 +246,22 @@
 .tag.type { background: rgba(234, 179, 8, 0.12); color: #eab308; font-style: italic; }
 .tag.risk.high { background: rgba(225, 29, 72, 0.2); color: #f43f5e; }
 .tag.risk.medium { background: rgba(217, 119, 6, 0.2); color: #f59e0b; }
+.tag.risk.low { background: rgba(16, 185, 129, 0.2); color: #10b981; }
 
 .card-sub-metrics {
-  font-size: 10px;
+  font-size: 11px;
   color: #6b7280;
   margin-top: 4px;
 }
 
+/* Expanded Inputs Drawer */
 .card-expandable {
-  margin-top: 10px;
-  padding-top: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .description {
@@ -254,7 +273,7 @@
 .parameters-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: 8px;
 }
 
 .parameters-grid label {
@@ -262,7 +281,7 @@
   font-size: 8px;
   font-weight: 700;
   color: #6b7280;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .parameters-grid input {
@@ -271,8 +290,9 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   color: #ffffff;
-  padding: 5px 6px;
-  font-size: 11px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
   box-sizing: border-box;
 }
 
@@ -280,12 +300,16 @@
   width: 100%;
   border: none;
   border-radius: 6px;
-  padding: 8px;
-  font-size: 11px;
+  padding: 10px;
+  font-size: 12px;
   font-weight: 700;
   color: #ffffff;
   cursor: pointer;
+  transition: opacity 0.2s ease;
 }
 
 .btn-primary { background: #2563eb; }
+.btn-primary:hover { background: #1d4ed8; }
+
 .btn-telegram { background: #0284c7; }
+.btn-telegram:hover { background: #0369a1; }
