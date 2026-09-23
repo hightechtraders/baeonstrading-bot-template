@@ -200,3 +200,9 @@
 .risk-disclaimer-trigger:active {
   transform: translateY(0);
 }
+
+/* Automatically hide the button whenever the AI Scanner modal is open */
+body:has(.FloatingAI) .risk-disclaimer-trigger,
+body:has([class*="scanner"]) .risk-disclaimer-trigger {
+  display: none !important;
+}
