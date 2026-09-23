@@ -169,3 +169,34 @@
 .btn-understand:hover {
   background-color: #1d4ed8;
 }
+
+/* Floating Yellow Risk Disclaimer Trigger Button */
+.risk-disclaimer-trigger {
+  position: fixed;
+  bottom: 20px;
+  left: 72px;
+  z-index: 9999;
+  background-color: #f59e0b;
+  color: #0f172a;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease-in-out;
+}
+
+.risk-disclaimer-trigger:hover {
+  background-color: #d97706;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.45);
+}
+
+.risk-disclaimer-trigger:active {
+  transform: translateY(0);
+}
