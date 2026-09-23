@@ -10,6 +10,7 @@ import Footer from './footer';
 import AppHeader from './header';
 import Body from './main-body';
 import { FloatingAI } from '../../Aiscanner/FloatingAI';
+import RiskDisclaimer from '../risk-disclaimer/risk-disclaimer';
 import './layout.scss';
 
 const Layout = observer(() => {
@@ -17,6 +18,9 @@ const Layout = observer(() => {
     const store = useStore();
     const is_quick_strategy_active = store?.quick_strategy?.is_open;
     const isCallbackPage = window.location.pathname === '/callback';
+
+    // Risk Disclaimer State
+    const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
 
     const checkClientAccount = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
     const getQueryParams = new URLSearchParams(window.location.search);
@@ -30,12 +34,14 @@ const Layout = observer(() => {
     const [clientHasCurrency, setClientHasCurrency] = useState(ifClientAccountHasCurrency);
     const [isAuthenticating, setIsAuthenticating] = useState(true); // Start with true to prevent flashing
 
-    // Expose setClientHasCurrency to window for global access
+    // Expose setClientHasCurrency and openRiskDisclaimer to window for global access
     useEffect(() => {
         (window as any).setClientHasCurrency = setClientHasCurrency;
+        (window as any).openRiskDisclaimer = () => setIsRiskModalOpen(true);
 
         return () => {
             delete (window as any).setClientHasCurrency;
+            delete (window as any).openRiskDisclaimer;
         };
     }, []);
 
@@ -155,6 +161,12 @@ const Layout = observer(() => {
             </Body>
             {!isCallbackPage && isDesktop && <Footer />}
             <FloatingAI />
+
+            {/* Risk Disclaimer Modal */}
+            <RiskDisclaimer
+                isOpen={isRiskModalOpen}
+                onClose={() => setIsRiskModalOpen(false)}
+            />
         </div>
     );
 });
