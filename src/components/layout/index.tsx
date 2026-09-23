@@ -12,15 +12,23 @@ import Body from './main-body';
 import { FloatingAI } from '../../Aiscanner/FloatingAI';
 import RiskDisclaimer from '../risk-disclaimer/risk-disclaimer';
 import './layout.scss';
- 
+
 const Layout = observer(() => {
     const { isDesktop } = useDevice();
     const store = useStore();
     const is_quick_strategy_active = store?.quick_strategy?.is_open;
     const isCallbackPage = window.location.pathname === '/callback';
 
-    // Risk Disclaimer State
-    const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
+    // Initialize state to open on load if the user hasn't accepted it yet
+    const [isRiskModalOpen, setIsRiskModalOpen] = useState(() => {
+        return localStorage.getItem('riskDisclaimerAccepted') !== 'true';
+    });
+
+    // Handler to save acceptance and close the modal
+    const handleCloseRiskModal = () => {
+        localStorage.setItem('riskDisclaimerAccepted', 'true');
+        setIsRiskModalOpen(false);
+    };
 
     const checkClientAccount = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
     const getQueryParams = new URLSearchParams(window.location.search);
@@ -165,7 +173,8 @@ const Layout = observer(() => {
             {/* Risk Disclaimer Modal */}
             <RiskDisclaimer
                 isOpen={isRiskModalOpen}
-                onClose={() => setIsRiskModalOpen(false)}
+                onClose={handleCloseRiskModal}
+                onUnderstand={handleCloseRiskModal}
             />
         </div>
     );
