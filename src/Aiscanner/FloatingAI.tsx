@@ -21,17 +21,14 @@ export const FloatingAI = () => {
   };
 
   const handleStart = () => {
-    // Reset movement distance on new touch/click start
     dragDistanceRef.current = 0;
   };
 
   const handleDrag = (_e: DraggableEvent, data: DraggableData) => {
-    // Accumulate movement distance during drag
     dragDistanceRef.current += Math.abs(data.deltaX) + Math.abs(data.deltaY);
   };
 
   const handleStop = () => {
-    // If movement was negligible (less than 6px), treat as a mobile tap/click
     if (dragDistanceRef.current < 6) {
       toggleModal();
     }
@@ -49,7 +46,7 @@ export const FloatingAI = () => {
             type="button"
             className="ai-trigger-btn" 
             title="Open AI Multi-Asset Scanner"
-            style={{ touchAction: 'none' }} // Prevents mobile browser page scrolling
+            style={{ touchAction: 'none' }}
           >
             {/* Animated Pulse Rings */}
             <span className="pulse-ring ring-1" />
@@ -162,9 +159,6 @@ export const FloatingAI = () => {
 
                       <button className="btn-primary">
                         📥 LOAD STRATEGY PARAMETERS
-                      </button>
-                      <button className="btn-telegram">
-                        📢 Broadcast Signal to Telegram
                       </button>
                     </div>
                   )}
