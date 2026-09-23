@@ -19,11 +19,36 @@ const Layout = observer(() => {
     const is_quick_strategy_active = store?.quick_strategy?.is_open;
     const isCallbackPage = window.location.pathname === '/callback';
 
-    // Track scanner modal state from store (or custom AI scanner store)
-    const is_scanner_open = store?.dashboard?.is_dialog_open || (store as any)?.ai_scanner?.is_open;
-
-    // Risk Disclaimer Modal State (starts closed so user opens via button)
+    // Risk Disclaimer Modal State
     const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
+
+    // Track scanner visibility by observing screen text
+    const [isScannerVisible, setIsScannerVisible] = useState(false);
+
+    useEffect(() => {
+        const checkForScannerText = () => {
+            // Check if any element on the page contains "AI Multi-Asset Scanner"
+            const bodyText = document.body.innerText || document.body.textContent || '';
+            const isVisible = bodyText.includes('AI Multi-Asset Scanner');
+            setIsScannerVisible(isVisible);
+        };
+
+        // Check initially
+        checkForScannerText();
+
+        // Listen for DOM changes when modal opens or closes
+        const observerInstance = new MutationObserver(() => {
+            checkForScannerText();
+        });
+
+        observerInstance.observe(document.body, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+        });
+
+        return () => observerInstance.disconnect();
+    }, []);
 
     const checkClientAccount = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
     const getQueryParams = new URLSearchParams(window.location.search);
@@ -152,8 +177,8 @@ const Layout = observer(() => {
             {!isCallbackPage && isDesktop && <Footer />}
             <FloatingAI />
 
-            {/* Render Risk Disclaimer Trigger Button ONLY when scanner modal is NOT open */}
-            {!is_scanner_open && (
+            {/* Render Risk Disclaimer Trigger Button ONLY when scanner modal text is NOT present */}
+            {!isScannerVisible && (
                 <button
                     type="button"
                     className="risk-disclaimer-trigger"
