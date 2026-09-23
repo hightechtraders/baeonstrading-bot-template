@@ -173,8 +173,8 @@
 /* Floating Yellow Risk Disclaimer Trigger Button */
 .risk-disclaimer-trigger {
   position: fixed;
-  bottom: 40px; /* Shifted up to align with the center arrow */
-  left: 16px;  /* Slightly reduced to give breathing room from left edge */
+  bottom: 52px; /* Raised above the bottom toolbar to avoid covering 'Run' */
+  left: 12px;   /* Positioned cleanly on the left side */
   z-index: 9999;
   background-color: #f59e0b;
   color: #0f172a;
