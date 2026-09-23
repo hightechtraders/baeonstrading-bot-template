@@ -12,7 +12,7 @@ import Body from './main-body';
 import { FloatingAI } from '../../Aiscanner/FloatingAI';
 import RiskDisclaimer from '../risk-disclaimer/risk-disclaimer';
 import './layout.scss';
-
+ 
 const Layout = observer(() => {
     const { isDesktop } = useDevice();
     const store = useStore();
