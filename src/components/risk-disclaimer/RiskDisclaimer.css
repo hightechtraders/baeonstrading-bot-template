@@ -170,11 +170,11 @@
   background-color: #1d4ed8;
 }
 
-/* Floating Yellow Risk Disclaimer Trigger Button (Scaled down size) */
+/* Floating Yellow Risk Disclaimer Trigger Button */
 .risk-disclaimer-trigger {
   position: fixed;
-  bottom: 12px;
-  left: 72px;
+  bottom: 40px; /* Shifted up to align with the center arrow */
+  left: 16px;  /* Slightly reduced to give breathing room from left edge */
   z-index: 9999;
   background-color: #f59e0b;
   color: #0f172a;
