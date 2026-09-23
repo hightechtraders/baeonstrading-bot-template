@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
-import Draggable from 'react-draggable';
+import React, { useState, useRef } from 'react';
+import Draggable, { DraggableData, DraggableEvent } from 'react-draggable';
 import './FloatingAI.css';
 import { CORE_7_STRATEGIES as strategies, StrategyDefinition } from './strategies';
 
 export const FloatingAI = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<number | string | null>(null);
+
+  // Track drag distance to differentiate between a tap and a drag on mobile
+  const dragDistanceRef = useRef(0);
 
   const toggleModal = () => {
     setIsOpen((prev) => {
@@ -17,14 +20,36 @@ export const FloatingAI = () => {
     });
   };
 
+  const handleStart = () => {
+    // Reset movement distance on new touch/click start
+    dragDistanceRef.current = 0;
+  };
+
+  const handleDrag = (_e: DraggableEvent, data: DraggableData) => {
+    // Accumulate movement distance during drag
+    dragDistanceRef.current += Math.abs(data.deltaX) + Math.abs(data.deltaY);
+  };
+
+  const handleStop = () => {
+    // If movement was negligible (less than 6px), treat as a mobile tap/click
+    if (dragDistanceRef.current < 6) {
+      toggleModal();
+    }
+  };
+
   return (
     <div className="floating-ai-container">
-      <Draggable>
+      <Draggable 
+        onStart={handleStart} 
+        onDrag={handleDrag} 
+        onStop={handleStop}
+      >
         <div className="draggable-wrapper">
           <button 
+            type="button"
             className="ai-trigger-btn" 
-            onClick={toggleModal} 
             title="Open AI Multi-Asset Scanner"
+            style={{ touchAction: 'none' }} // Prevents mobile browser page scrolling
           >
             {/* Animated Pulse Rings */}
             <span className="pulse-ring ring-1" />
