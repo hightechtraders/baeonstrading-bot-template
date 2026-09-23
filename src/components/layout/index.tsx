@@ -19,16 +19,8 @@ const Layout = observer(() => {
     const is_quick_strategy_active = store?.quick_strategy?.is_open;
     const isCallbackPage = window.location.pathname === '/callback';
 
-    // Initialize state to open on load if the user hasn't accepted it yet
-    const [isRiskModalOpen, setIsRiskModalOpen] = useState(() => {
-        return localStorage.getItem('riskDisclaimerAccepted') !== 'true';
-    });
-
-    // Handler to save acceptance and close the modal
-    const handleCloseRiskModal = () => {
-        localStorage.setItem('riskDisclaimerAccepted', 'true');
-        setIsRiskModalOpen(false);
-    };
+    // Risk Disclaimer Modal State (starts closed so user opens via button)
+    const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
 
     const checkClientAccount = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
     const getQueryParams = new URLSearchParams(window.location.search);
@@ -40,9 +32,8 @@ const Layout = observer(() => {
         currency === 'demo' ||
         currency === '';
     const [clientHasCurrency, setClientHasCurrency] = useState(ifClientAccountHasCurrency);
-    const [isAuthenticating, setIsAuthenticating] = useState(true); // Start with true to prevent flashing
+    const [isAuthenticating, setIsAuthenticating] = useState(true);
 
-    // Expose setClientHasCurrency and openRiskDisclaimer to window for global access
     useEffect(() => {
         (window as any).setClientHasCurrency = setClientHasCurrency;
         (window as any).openRiskDisclaimer = () => setIsRiskModalOpen(true);
@@ -60,16 +51,13 @@ const Layout = observer(() => {
     let subscription: { unsubscribe: () => void };
 
     const validateApiAccounts = ({ data }: any) => {
-        //TO do work on this with account switcher
         if (data.msg_type === 'authorize') {
             const account_list = data?.authorize?.account_list || [];
             const account_list_filter = account_list.filter((acc: any) => acc.is_disabled === 0);
             api_accounts.push(account_list_filter || []);
             const allCurrencies = new Set(Object.values(checkClientAccount).map((acc: any) => acc.currency));
 
-            // Skip disabled accounts when checking for missing currency
             const accounts = api_accounts.flat();
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             let detected_currency = '';
             const hasMissingCurrency = accounts.some(data => {
                 if (!allCurrencies.has(data.currency)) {
@@ -87,7 +75,6 @@ const Layout = observer(() => {
                 if (acc.loginid && !accountsList[acc.loginid]) {
                     hasMissingToken = true;
                     missingTokenCurrency = acc.currency || '';
-                    // Store the missing token's currency in session storage
                     if (missingTokenCurrency) {
                         sessionStorage.setItem('query_param_currency', missingTokenCurrency);
                     }
@@ -122,7 +109,6 @@ const Layout = observer(() => {
 
     useEffect(() => {
         if (isCurrencyValid && api_base.api) {
-            // Subscribe to the onMessage event
             const is_valid_currency = currency && validCurrencies.includes(currency.toUpperCase());
             if (!is_valid_currency) return;
             subscription = api_base.api.onMessage().subscribe(validateApiAccounts);
@@ -130,27 +116,20 @@ const Layout = observer(() => {
     }, []);
 
     useEffect(() => {
-        // Always set the currency in session storage, even if the user is not logged in
-        // This ensures the currency is available on the callback page
         setIsAuthenticating(true);
         if (currency) {
             sessionStorage.setItem('query_param_currency', currency);
         }
-
-        // Authentication is now handled by the OAuth flow
         setIsAuthenticating(false);
     }, [isClientAccountsPopulated, isCallbackPage, clientHasCurrency, currency]);
 
-    // Add a state to track if initial authentication check is complete
     const [isInitialAuthCheckComplete, setIsInitialAuthCheckComplete] = useState(false);
 
-    // Effect to mark initial auth check as complete after a short delay
     useEffect(() => {
         if (!isAuthenticating && !isInitialAuthCheckComplete) {
-            // Wait a bit to ensure all state updates have propagated
             const timer = setTimeout(() => {
                 setIsInitialAuthCheckComplete(true);
-            }, 500); // Give it enough time to stabilize
+            }, 500);
 
             return () => clearTimeout(timer);
         }
@@ -170,11 +149,19 @@ const Layout = observer(() => {
             {!isCallbackPage && isDesktop && <Footer />}
             <FloatingAI />
 
+            {/* Floating Yellow Risk Disclaimer Trigger Button */}
+            <button
+                type="button"
+                className="risk-disclaimer-trigger"
+                onClick={() => setIsRiskModalOpen(true)}
+            >
+                ⚠️ Risk Disclaimer
+            </button>
+
             {/* Risk Disclaimer Modal */}
             <RiskDisclaimer
                 isOpen={isRiskModalOpen}
-                onClose={handleCloseRiskModal}
-                onUnderstand={handleCloseRiskModal}
+                onClose={() => setIsRiskModalOpen(false)}
             />
         </div>
     );
