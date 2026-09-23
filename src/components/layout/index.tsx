@@ -19,6 +19,9 @@ const Layout = observer(() => {
     const is_quick_strategy_active = store?.quick_strategy?.is_open;
     const isCallbackPage = window.location.pathname === '/callback';
 
+    // Track scanner modal state from store (or custom AI scanner store)
+    const is_scanner_open = store?.dashboard?.is_dialog_open || (store as any)?.ai_scanner?.is_open;
+
     // Risk Disclaimer Modal State (starts closed so user opens via button)
     const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
 
@@ -149,14 +152,16 @@ const Layout = observer(() => {
             {!isCallbackPage && isDesktop && <Footer />}
             <FloatingAI />
 
-            {/* Floating Yellow Risk Disclaimer Trigger Button */}
-            <button
-                type="button"
-                className="risk-disclaimer-trigger"
-                onClick={() => setIsRiskModalOpen(true)}
-            >
-                ⚠️ Risk Disclaimer
-            </button>
+            {/* Render Risk Disclaimer Trigger Button ONLY when scanner modal is NOT open */}
+            {!is_scanner_open && (
+                <button
+                    type="button"
+                    className="risk-disclaimer-trigger"
+                    onClick={() => setIsRiskModalOpen(true)}
+                >
+                    ⚠️ Risk Disclaimer
+                </button>
+            )}
 
             {/* Risk Disclaimer Modal */}
             <RiskDisclaimer
