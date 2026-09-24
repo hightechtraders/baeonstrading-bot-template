@@ -152,7 +152,7 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Generates DBot-compliant XML blocks for workspace rendering
+ * Generates full DBot-compliant XML containing all mandatory root blocks
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
@@ -169,6 +169,7 @@ export function generateDBotXml(strategy: StrategyConfig): string {
 
   return `
 <xml xmlns="https://developers.google.com/blockly/xml">
+  <!-- 1. TRADE PARAMETERS -->
   <block type="trade_definition" id="trade_def_root" x="0" y="0">
     <statement name="TRADE_OPTIONS">
       <block type="trade_definition_market" id="market_block">
@@ -192,6 +193,25 @@ export function generateDBotXml(strategy: StrategyConfig): string {
           </shadow>
         </value>
       </block>
+    </statement>
+  </block>
+
+  <!-- 2. PURCHASE CONDITIONS -->
+  <block type="before_purchase" id="before_purchase_root" x="0" y="280">
+    <statement name="BEFOREPURCHASE_STACK">
+      <block type="purchase" id="purchase_block">
+        <field name="PURCHASE_LIST">RISE</field>
+      </block>
+    </statement>
+  </block>
+
+  <!-- 3. SELL CONDITIONS -->
+  <block type="during_purchase" id="during_purchase_root" x="0" y="400"></block>
+
+  <!-- 4. RESTART TRADING CONDITIONS -->
+  <block type="after_purchase" id="after_purchase_root" x="0" y="520">
+    <statement name="AFTERPURCHASE_STACK">
+      <block type="trade_again" id="trade_again_block"></block>
     </statement>
   </block>
 </xml>
