@@ -1,4 +1,4 @@
-// strategies.ts
+// src/Aiscanner/strategies.ts
 
 export type PriorityLevel = 'HIGH' | 'MEDIUM' | 'LOW';
 
@@ -113,10 +113,6 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
   },
 ];
 
-/**
- * Ensures strictly ONLY ONE strategy in the array is set to 'HIGH' priority.
- * Automatically promotes the top candidate (or target ID) and lowers the rest.
- */
 export function enforceSingleHighPriority(
   strategies: StrategyConfig[],
   highStrategyId?: string
@@ -129,9 +125,6 @@ export function enforceSingleHighPriority(
   }));
 }
 
-/**
- * Calculates Neural Flow / Tick Momentum signals from tick history
- */
 export function evaluateStrategySignal(
   strategy: StrategyConfig,
   ticks: number[]
@@ -155,9 +148,6 @@ export function evaluateStrategySignal(
   return { direction, confidence, score };
 }
 
-/**
- * Generates valid Deriv DBot Blockly XML representation for workspace importing.
- */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const formattedMarket = strategy.asset.toLowerCase().replace(/[^a-z0-9]/g, '');
 
