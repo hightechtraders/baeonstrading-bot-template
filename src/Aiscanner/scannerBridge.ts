@@ -33,7 +33,6 @@ export class ScannerBridge {
 
           if (strategies && Array.isArray(strategies)) {
             for (const strat of strategies) {
-              // Match exact asset name or symbol mapping
               if (strat.asset === asset || strat.asset.toLowerCase() === asset.toLowerCase()) {
                 const recent = ticks ? ticks.slice(-10) : [];
                 const gains = recent.slice(1).filter((val, i) => val > recent[i]).length;
@@ -95,62 +94,41 @@ export class ScannerBridge {
     }
 
     try {
-      const xmlString = generateDBotXml(strategy);
-
-      // 1. Route to Bot Builder tab
+      // 1. Ensure Bot Builder tab is active
       if (window.location.hash !== '#bot_builder') {
         window.location.hash = '#bot_builder';
       }
 
-      // 2. Dispatch custom event for template listeners
-      window.dispatchEvent(
-        new CustomEvent('dbot:import-xml', {
-          detail: { xmlString, strategy },
-        })
-      );
+      // 2. Parse XML string into an explicit XML DOM Document
+      const xmlString = generateDBotXml(strategy);
+      const parser = new DOMParser();
+      const xmlDom = parser.parseFromString(xmlString, 'text/xml').documentElement;
 
-      // 3. Inject into DBot MobX stores or Blockly Workspace
+      // 3. Directly target active Deriv Blockly Workspace
       setTimeout(() => {
         const win = window as any;
-        const dbotStore = win.store || win.root_store || win.dbot || win.Blockly?.derivWorkspace;
+        const workspace =
+          win.Blockly?.derivWorkspace ||
+          win.Blockly?.mainWorkspace ||
+          (win.Blockly?.Workspace?.getByContainer && win.Blockly.Workspace.getByContainer('board')) ||
+          win.dbot?.workspace;
 
-        // DBot xml_onload MobX Store
-        if (dbotStore?.xml_onload?.loadXmlString) {
-          dbotStore.xml_onload.loadXmlString(xmlString);
-          console.log(`[ScannerBridge] Loaded XML via xml_onload: ${strategy.name}`);
-          return;
-        }
+        if (workspace && win.Blockly?.Xml) {
+          workspace.clear();
+          win.Blockly.Xml.domToWorkspace(xmlDom, workspace);
 
-        // DBot load_modal MobX Store
-        if (dbotStore?.load_modal?.loadStrategyOnUnload) {
-          dbotStore.load_modal.loadStrategyOnUnload(xmlString);
-          console.log(`[ScannerBridge] Loaded XML via load_modal: ${strategy.name}`);
-          return;
-        }
+          if (typeof workspace.cleanUp === 'function') workspace.cleanUp();
+          if (typeof workspace.render === 'function') workspace.render();
 
-        // Direct Blockly Workspace Injection
-        const windowBlockly = win.Blockly;
-        if (windowBlockly?.Xml) {
-          const workspace =
-            windowBlockly.mainWorkspace ||
-            windowBlockly.derivWorkspace ||
-            (windowBlockly.Workspace?.getByContainer && windowBlockly.Workspace.getByContainer('board')) ||
-            win.dbot?.workspace;
-
-          if (workspace) {
-            const xmlDom = windowBlockly.Xml.textToDom(xmlString);
-            workspace.clear();
-            windowBlockly.Xml.domToWorkspace(xmlDom, workspace);
-            if (typeof workspace.cleanUp === 'function') workspace.cleanUp();
-            if (typeof workspace.render === 'function') workspace.render();
-            console.log(`[ScannerBridge] Directly rendered XML to Blockly canvas: ${strategy.name}`);
-          }
+          console.log(`[ScannerBridge] Strategy successfully rendered to workspace: ${strategy.name}`);
+        } else {
+          console.error('[ScannerBridge] Active Blockly workspace instance not found.');
         }
       }, 150);
 
       return true;
     } catch (error) {
-      console.error('[ScannerBridge] Failed to load strategy XML:', error);
+      console.error('[ScannerBridge] Failed to load strategy XML into Blockly:', error);
       return false;
     }
   }
