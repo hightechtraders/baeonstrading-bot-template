@@ -1,65 +1,43 @@
-// src/Aiscanner/scannerWorker.ts
+// scanner.worker.ts
+import { evaluateStrategySignal, StrategyConfig, StrategySignal } from './strategies';
 
-import { ScannerEngine } from './scannerLogic';
+const ctx: Worker = self as any;
 
-const engine = new ScannerEngine();
-let ws: WebSocket | null = null;
+interface WorkerInputMessage {
+  type: 'TICK_UPDATE' | 'RUN_SCAN';
+  payload: {
+    asset: string;
+    ticks: number[];
+    strategies: StrategyConfig[];
+  };
+}
 
-const DERIV_WS_URL = 'wss://ws.derivws.com/websockets/v3?app_id=1089';
+ctx.onmessage = (event: MessageEvent<WorkerInputMessage>) => {
+  const { type, payload } = event.data;
 
-self.onmessage = (e: MessageEvent) => {
-  const { type } = e.data || {};
+  if (type === 'TICK_UPDATE' || type === 'RUN_SCAN') {
+    const { asset, ticks, strategies } = payload;
+    const results: StrategySignal[] = [];
 
-  if (type === 'START_SCANNER') {
-    if (ws) return;
+    for (const strat of strategies) {
+      if (strat.asset === asset) {
+        const signal = evaluateStrategySignal(strat, ticks);
 
-    ws = new WebSocket(DERIV_WS_URL);
-
-    ws.onopen = () => {
-      // Subscribe to Volatility 25 index tick stream
-      ws?.send(
-        JSON.stringify({
-          ticks: 'R_25',
-          subscribe: 1,
-        })
-      );
-    };
-
-    ws.onmessage = (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        if (data.msg_type === 'tick' && data.tick) {
-          const tick = {
-            quote: Number(data.tick.quote),
-            epoch: Number(data.tick.epoch),
-          };
-
-          const results = engine.processTick('Volatility 25', tick);
-
-          // Post updated rankings back to ScannerBridge
-          self.postMessage({
-            type: 'SCANNER_UPDATE',
-            payload: results,
-          });
-        }
-      } catch (err) {
-        console.error('Error processing WebSocket tick:', err);
+        results.push({
+          strategyId: strat.id,
+          direction: signal.direction,
+          confidence: signal.confidence,
+          score: signal.score,
+          timestamp: Date.now(),
+        });
       }
-    };
-
-    ws.onerror = (error) => {
-      console.error('Scanner WebSocket Error:', error);
-      ws?.close();
-    };
-
-    ws.onclose = () => {
-      ws = null;
-    };
-  } else if (type === 'STOP_SCANNER') {
-    if (ws) {
-      ws.close();
-      ws = null;
     }
+
+    ctx.postMessage({
+      type: 'SCAN_RESULTS',
+      payload: results,
+    });
   }
 };
+
+export {};
