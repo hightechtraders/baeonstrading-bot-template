@@ -1,5 +1,6 @@
-// scannerBridge.ts
-import { StrategyConfig, generateDBotXml, enforceSingleHighPriority, evaluateStrategySignal } from './strategies';
+// src/Aiscanner/scannerBridge.ts
+
+import { StrategyConfig, generateDBotXml, enforceSingleHighPriority } from './strategies';
 
 export class ScannerBridge {
   private worker: Worker | null = null;
@@ -12,7 +13,6 @@ export class ScannerBridge {
   private initWorker() {
     if (typeof window === 'undefined') return;
 
-    // Inline worker script string to prevent Rsbuild module resolution issues
     const workerCode = `
       self.onmessage = (event) => {
         const { type, payload } = event.data;
@@ -20,22 +20,24 @@ export class ScannerBridge {
           const { asset, ticks, strategies } = payload;
           const results = [];
 
-          for (const strat of strategies) {
-            if (strat.asset === asset) {
-              const recent = ticks ? ticks.slice(-10) : [];
-              const gains = recent.slice(1).filter((val, i) => val > recent[i]).length;
-              const total = Math.max(recent.length - 1, 1);
-              const score = Math.round((gains / total) * 100);
-              const direction = score >= 65 ? 'UP' : score <= 35 ? 'DOWN' : 'HOLD';
-              const confidence = Math.max(score, 100 - score);
+          if (strategies && Array.isArray(strategies)) {
+            for (const strat of strategies) {
+              if (strat.asset === asset) {
+                const recent = ticks ? ticks.slice(-10) : [];
+                const gains = recent.slice(1).filter((val, i) => val > recent[i]).length;
+                const total = Math.max(recent.length - 1, 1);
+                const score = Math.round((gains / total) * 100);
+                const direction = score >= 65 ? 'UP' : score <= 35 ? 'DOWN' : 'HOLD';
+                const confidence = Math.max(score, 100 - score);
 
-              results.push({
-                strategyId: strat.id,
-                direction,
-                confidence,
-                score,
-                timestamp: Date.now(),
-              });
+                results.push({
+                  strategyId: strat.id,
+                  direction,
+                  confidence,
+                  score,
+                  timestamp: Date.now(),
+                });
+              }
             }
           }
 
@@ -61,9 +63,6 @@ export class ScannerBridge {
     }
   }
 
-  /**
-   * Pushes market ticks from DBot/WebSocket into Worker for evaluation.
-   */
   public pushTick(asset: string, price: number, strategies: StrategyConfig[]) {
     const history = this.tickStore.get(asset) || [];
     history.push(price);
@@ -76,10 +75,6 @@ export class ScannerBridge {
     });
   }
 
-  /**
-   * Directly imports strategy XML into DBot's main Blockly workspace.
-   * Restricted strictly to strategies marked with HIGH priority.
-   */
   public loadStrategyToBot(strategy: StrategyConfig): boolean {
     if (strategy.priority !== 'HIGH') {
       console.warn(`[ScannerBridge] Strategy "${strategy.name}" is not HIGH priority. Import denied.`);
@@ -98,7 +93,6 @@ export class ScannerBridge {
       const xmlString = generateDBotXml(strategy);
       const xmlDom = windowBlockly.Xml.textToDom(xmlString);
 
-      // Clear existing blocks and load imported strategy bot
       workspace.clear();
       windowBlockly.Xml.domToWorkspace(xmlDom, workspace);
       workspace.render();
@@ -115,9 +109,6 @@ export class ScannerBridge {
     }
   }
 
-  /**
-   * Helper to maintain single HIGH strategy state when user updates active selection.
-   */
   public setHighPriorityStrategy(
     strategies: StrategyConfig[],
     targetId: string
