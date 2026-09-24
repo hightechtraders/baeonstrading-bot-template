@@ -152,7 +152,7 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Generates exact DBot schema XML with properly chained market options
+ * Generates exact DBot schema XML with full block definitions to avoid runtime errors
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
@@ -190,6 +190,21 @@ export function generateDBotXml(strategy: StrategyConfig): string {
             <next>
               <block type="trade_definition_contracttype" id="contracttype_block">
                 <field name="TYPE_LIST">both</field>
+                <next>
+                  <block type="trade_definition_candleinterval" id="candle_block">
+                    <field name="CANDLEINTERVAL_LIST">60</field>
+                    <next>
+                      <block type="trade_definition_restartbuystrat" id="restart_block">
+                        <field name="TIME_MACHINE_ENABLED">FALSE</field>
+                        <next>
+                          <block type="trade_definition_restartonerror" id="onerror_block">
+                            <field name="RESTARTONERROR">FALSE</field>
+                          </block>
+                        </next>
+                      </block>
+                    </next>
+                  </block>
+                </next>
               </block>
             </next>
           </block>
@@ -254,15 +269,7 @@ export function generateDBotXml(strategy: StrategyConfig): string {
   </block>
 
   <!-- 3. SELL CONDITIONS -->
-  <block type="during_purchase" id="during_purchase_root" x="0" y="480">
-    <statement name="DURINGPURCHASE_STACK">
-      <block type="controls_if" id="sell_check">
-        <value name="IF0">
-          <block type="check_sell" id="check_sell_block"></block>
-        </value>
-      </block>
-    </statement>
-  </block>
+  <block type="during_purchase" id="during_purchase_root" x="0" y="480"></block>
 
   <!-- 4. RESTART TRADING CONDITIONS -->
   <block type="after_purchase" id="after_purchase_root" x="0" y="600">
