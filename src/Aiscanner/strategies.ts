@@ -152,7 +152,7 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Clean, production-ready DBot XML generator
+ * Generates exact DBot schema XML matching the original workspace blocks
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
@@ -183,6 +183,13 @@ export function generateDBotXml(strategy: StrategyConfig): string {
         <field name="MARKET_LIST">synthetic_index</field>
         <field name="SUBMARKET_LIST">random_index</field>
         <field name="SYMBOL_LIST">${symbol}</field>
+      </block>
+      <block type="trade_definition_tradetype" id="tradetype_block">
+        <field name="TRADETYPECAT_LIST">risepower</field>
+        <field name="TRADETYPE_LIST">risefall</field>
+      </block>
+      <block type="trade_definition_contracttype" id="contracttype_block">
+        <field name="TYPE_LIST">both</field>
       </block>
     </statement>
     <statement name="INITIALIZATION">
@@ -243,7 +250,15 @@ export function generateDBotXml(strategy: StrategyConfig): string {
   </block>
 
   <!-- 3. SELL CONDITIONS -->
-  <block type="during_purchase" id="during_purchase_root" x="0" y="480"></block>
+  <block type="during_purchase" id="during_purchase_root" x="0" y="480">
+    <statement name="DURINGPURCHASE_STACK">
+      <block type="controls_if" id="sell_check">
+        <value name="IF0">
+          <block type="check_sell" id="check_sell_block"></block>
+        </value>
+      </block>
+    </statement>
+  </block>
 
   <!-- 4. RESTART TRADING CONDITIONS -->
   <block type="after_purchase" id="after_purchase_root" x="0" y="600">
