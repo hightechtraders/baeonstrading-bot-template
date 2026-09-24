@@ -152,7 +152,7 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Generates full DBot-compliant XML containing all mandatory root blocks
+ * Clean, production-ready DBot XML generator
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
@@ -166,9 +166,16 @@ export function generateDBotXml(strategy: StrategyConfig): string {
   };
 
   const symbol = symbolMap[strategy.asset] || '1HZ100V';
+  const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
 
   return `
 <xml xmlns="https://developers.google.com/blockly/xml">
+  <variables>
+    <variable id="var_stake">Initial Stake</variable>
+    <variable id="var_tp">Target Profit</variable>
+    <variable id="var_sl">Stop Loss</variable>
+  </variables>
+
   <!-- 1. TRADE PARAMETERS -->
   <block type="trade_definition" id="trade_def_root" x="0" y="0">
     <statement name="TRADE_OPTIONS">
@@ -176,6 +183,36 @@ export function generateDBotXml(strategy: StrategyConfig): string {
         <field name="MARKET_LIST">synthetic_index</field>
         <field name="SUBMARKET_LIST">random_index</field>
         <field name="SYMBOL_LIST">${symbol}</field>
+      </block>
+    </statement>
+    <statement name="INITIALIZATION">
+      <block type="variables_set" id="set_stake">
+        <field name="VAR" id="var_stake">Initial Stake</field>
+        <value name="VALUE">
+          <shadow type="math_number">
+            <field name="NUM">${strategy.stake}</field>
+          </shadow>
+        </value>
+        <next>
+          <block type="variables_set" id="set_tp">
+            <field name="VAR" id="var_tp">Target Profit</field>
+            <value name="VALUE">
+              <shadow type="math_number">
+                <field name="NUM">${strategy.takeProfit}</field>
+              </shadow>
+            </value>
+            <next>
+              <block type="variables_set" id="set_sl">
+                <field name="VAR" id="var_sl">Stop Loss</field>
+                <value name="VALUE">
+                  <shadow type="math_number">
+                    <field name="NUM">${strategy.stopLoss}</field>
+                  </shadow>
+                </value>
+              </block>
+            </next>
+          </block>
+        </next>
       </block>
     </statement>
     <statement name="SUBMARKET">
@@ -188,28 +225,28 @@ export function generateDBotXml(strategy: StrategyConfig): string {
           </shadow>
         </value>
         <value name="AMOUNT">
-          <shadow type="math_number">
-            <field name="NUM">${strategy.stake}</field>
-          </shadow>
+          <block type="variables_get" id="get_stake">
+            <field name="VAR" id="var_stake">Initial Stake</field>
+          </block>
         </value>
       </block>
     </statement>
   </block>
 
   <!-- 2. PURCHASE CONDITIONS -->
-  <block type="before_purchase" id="before_purchase_root" x="0" y="280">
+  <block type="before_purchase" id="before_purchase_root" x="0" y="360">
     <statement name="BEFOREPURCHASE_STACK">
       <block type="purchase" id="purchase_block">
-        <field name="PURCHASE_LIST">RISE</field>
+        <field name="PURCHASE_LIST">${purchaseType}</field>
       </block>
     </statement>
   </block>
 
   <!-- 3. SELL CONDITIONS -->
-  <block type="during_purchase" id="during_purchase_root" x="0" y="400"></block>
+  <block type="during_purchase" id="during_purchase_root" x="0" y="480"></block>
 
   <!-- 4. RESTART TRADING CONDITIONS -->
-  <block type="after_purchase" id="after_purchase_root" x="0" y="520">
+  <block type="after_purchase" id="after_purchase_root" x="0" y="600">
     <statement name="AFTERPURCHASE_STACK">
       <block type="trade_again" id="trade_again_block"></block>
     </statement>
