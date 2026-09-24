@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Draggable, { DraggableData, DraggableEvent } from 'react-draggable';
 import './FloatingAI.css';
-import { CORE_7_STRATEGIES, StrategyConfig } from './strategies';
+import { CORE_7_STRATEGIES, StrategyConfig, StrategySignal } from './strategies';
 import { scannerLogic } from './scannerLogic';
 
 export const FloatingAI = () => {
@@ -18,14 +18,28 @@ export const FloatingAI = () => {
 
   // Subscribe to live Web Worker signal updates from scannerBridge
   useEffect(() => {
-    const handleSignalsUpdated = (e: CustomEvent) => {
-      // Receive live strategy performance signals if needed
+    const handleSignalsUpdated = (e: CustomEvent<StrategySignal[]>) => {
       const updatedSignals = e.detail;
-      if (updatedSignals && updatedSignals.length > 0) {
-        // Automatically set top signal as HIGH priority
-        const topSignalId = updatedSignals[0].strategyId;
-        setStrategiesList(scannerLogic.setHighPriority(topSignalId));
-      }
+      if (!updatedSignals || !Array.isArray(updatedSignals) || updatedSignals.length === 0) return;
+
+      setStrategiesList((prevList) => {
+        // Merge incoming scores, directions, and confidence values into state
+        const updatedList = prevList.map((strat) => {
+          const match = updatedSignals.find((sig) => sig.strategyId === strat.id);
+          if (match) {
+            return {
+              ...strat,
+              score: match.score,
+              confidence: match.confidence,
+              direction: match.direction,
+            };
+          }
+          return strat;
+        });
+
+        // Optional: Re-sort by highest score to rank real-time winners
+        return updatedList.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+      });
     };
 
     window.addEventListener('scanner:signals-updated' as any, handleSignalsUpdated);
@@ -86,8 +100,11 @@ export const FloatingAI = () => {
     }
   };
 
-  // Find top global winner for status display
+  // Dynamic Global Metrics based on top-performing strategy in state
   const highStrategy = strategiesList.find((s) => s.priority === 'HIGH') || strategiesList[0];
+  const globalDirection = highStrategy?.direction || 'DOWN';
+  const globalConfidence = highStrategy?.confidence ?? 84;
+  const globalStatus = globalConfidence > 70 ? 'READY' : 'SCANNING';
 
   return (
     <div className="floating-ai-container">
@@ -135,15 +152,19 @@ export const FloatingAI = () => {
           <div className="global-metrics-bar">
             <div className="metric-box">
               <span className="metric-label">GLOBAL WINNER</span>
-              <span className="metric-value green">READY</span>
+              <span className={`metric-value ${globalStatus === 'READY' ? 'green' : ''}`}>
+                {globalStatus}
+              </span>
             </div>
             <div className="metric-box">
               <span className="metric-label">DIRECTION</span>
-              <span className="metric-value orange">DOWN</span>
+              <span className={`metric-value ${globalDirection === 'UP' ? 'green' : 'orange'}`}>
+                {globalDirection}
+              </span>
             </div>
             <div className="metric-box">
               <span className="metric-label">CONFIDENCE</span>
-              <span className="metric-value">84%</span>
+              <span className="metric-value">{globalConfidence}%</span>
             </div>
           </div>
 
@@ -161,8 +182,9 @@ export const FloatingAI = () => {
               const strategyType = strat.riskModel || 'NEURAL_FLOW';
               const priorityText = strat.priority;
 
-              const score = 88 - index * 3;
-              const confidence = 90 - index * 2;
+              // Read live calculated metrics from state
+              const score = strat.score ?? (88 - index * 3);
+              const confidence = strat.confidence ?? (90 - index * 2);
 
               const description = `${strategyType} structural strategy designed for ${volatility}.`;
 
@@ -200,7 +222,7 @@ export const FloatingAI = () => {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <p className="description">{description}</p>
-                      
+
                       {!isHighPriority && (
                         <div className="priority-warning">
                           🔒 Only HIGH priority strategies are editable and loadable.
