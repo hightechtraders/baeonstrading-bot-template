@@ -151,22 +151,48 @@ export function evaluateStrategySignal(
   return { direction, confidence, score };
 }
 
+/**
+ * Generates DBot-compliant XML blocks for workspace rendering
+ */
 export function generateDBotXml(strategy: StrategyConfig): string {
-  const formattedMarket = strategy.asset.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const symbolMap: Record<string, string> = {
+    'Volatility 10': 'R_10',
+    'Volatility 25': 'R_25',
+    'Volatility 50': 'R_50',
+    'Volatility 75': 'R_75',
+    'Volatility 100': 'R_100',
+    'Volatility 100 (1s)': '1HZ100V',
+    'Volatility 25 (1s)': '1HZ25V',
+  };
+
+  const symbol = symbolMap[strategy.asset] || '1HZ100V';
 
   return `
 <xml xmlns="https://developers.google.com/blockly/xml">
   <block type="trade_definition" id="trade_def_root" x="0" y="0">
     <statement name="TRADE_OPTIONS">
       <block type="trade_definition_market" id="market_block">
-        <field name="MARKET_LIST">${formattedMarket}</field>
+        <field name="MARKET_LIST">synthetic_index</field>
+        <field name="SUBMARKET_LIST">random_index</field>
+        <field name="SYMBOL_LIST">${symbol}</field>
       </block>
     </statement>
-  </block>
-  <block type="trade_definition_tradeoptions" id="trade_opts_block" x="0" y="220">
-    <field name="AMOUNT">${strategy.stake}</field>
-    <field name="STOP_LOSS">${strategy.stopLoss}</field>
-    <field name="TAKE_PROFIT">${strategy.takeProfit}</field>
+    <statement name="SUBMARKET">
+      <block type="trade_definition_tradeoptions" id="trade_opts_block">
+        <field name="DURATION_TYPE_LIST">t</field>
+        <field name="CURRENCY_LIST">USD</field>
+        <value name="DURATION">
+          <shadow type="math_number">
+            <field name="NUM">1</field>
+          </shadow>
+        </value>
+        <value name="AMOUNT">
+          <shadow type="math_number">
+            <field name="NUM">${strategy.stake}</field>
+          </shadow>
+        </value>
+      </block>
+    </statement>
   </block>
 </xml>
   `.trim();
