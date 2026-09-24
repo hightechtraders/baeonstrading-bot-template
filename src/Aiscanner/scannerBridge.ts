@@ -2,6 +2,17 @@
 
 import { StrategyConfig, generateDBotXml, enforceSingleHighPriority } from './strategies';
 
+// Symbol mapper to align raw API symbols with Strategy asset names
+const SYMBOL_MAP: Record<string, string> = {
+  'R_10': 'Volatility 10',
+  'R_25': 'Volatility 25',
+  'R_50': 'Volatility 50',
+  'R_75': 'Volatility 75',
+  'R_100': 'Volatility 100',
+  '1HZ100V': 'Volatility 100 (1s)',
+  '1HZ25V': 'Volatility 25 (1s)',
+};
+
 export class ScannerBridge {
   private worker: Worker | null = null;
   private tickStore: Map<string, number[]> = new Map();
@@ -22,7 +33,8 @@ export class ScannerBridge {
 
           if (strategies && Array.isArray(strategies)) {
             for (const strat of strategies) {
-              if (strat.asset === asset) {
+              // Match exact asset name or symbol mapping
+              if (strat.asset === asset || strat.asset.toLowerCase() === asset.toLowerCase()) {
                 const recent = ticks ? ticks.slice(-10) : [];
                 const gains = recent.slice(1).filter((val, i) => val > recent[i]).length;
                 const total = Math.max(recent.length - 1, 1);
@@ -64,14 +76,15 @@ export class ScannerBridge {
   }
 
   public pushTick(asset: string, price: number, strategies: StrategyConfig[]) {
-    const history = this.tickStore.get(asset) || [];
+    const normalizedAsset = SYMBOL_MAP[asset] || asset;
+    const history = this.tickStore.get(normalizedAsset) || [];
     history.push(price);
     if (history.length > 50) history.shift();
-    this.tickStore.set(asset, history);
+    this.tickStore.set(normalizedAsset, history);
 
     this.worker?.postMessage({
       type: 'TICK_UPDATE',
-      payload: { asset, ticks: history, strategies },
+      payload: { asset: normalizedAsset, ticks: history, strategies },
     });
   }
 
@@ -84,51 +97,57 @@ export class ScannerBridge {
     try {
       const xmlString = generateDBotXml(strategy);
 
-      // Ensure user is on Bot Builder tab
+      // 1. Route to Bot Builder tab
       if (window.location.hash !== '#bot_builder') {
         window.location.hash = '#bot_builder';
       }
 
-      // 1. Try DBot MobX Store integration (Standard Deriv DBot Architecture)
-      const derivStore = (window as any).Blockly?.derivWorkspace || (window as any).store || (window as any).root_store;
-      const loadModalStore = derivStore?.load_modal || derivStore?.dbot?.load_modal;
-
-      if (loadModalStore && typeof loadModalStore.loadStrategy === 'function') {
-        loadModalStore.loadStrategy(xmlString);
-        console.log(`[ScannerBridge] Strategy loaded via DBot MobX store: ${strategy.name}`);
-        return true;
-      }
-
-      // 2. Try window event dispatcher fallback
+      // 2. Dispatch custom event for template listeners
       window.dispatchEvent(
         new CustomEvent('dbot:import-xml', {
           detail: { xmlString, strategy },
         })
       );
 
-      // 3. Fallback to Direct Blockly API Injection
+      // 3. Inject into DBot MobX stores or Blockly Workspace
       setTimeout(() => {
-        const windowBlockly = (window as any).Blockly;
-        if (!windowBlockly) return;
+        const win = window as any;
+        const dbotStore = win.store || win.root_store || win.dbot || win.Blockly?.derivWorkspace;
 
-        // Find active workspace instance
-        const workspace =
-          windowBlockly.mainWorkspace ||
-          windowBlockly.derivWorkspace ||
-          (windowBlockly.Workspace && windowBlockly.Workspace.getByContainer && windowBlockly.Workspace.getByContainer('board')) ||
-          (window as any).dbot?.workspace;
+        // DBot xml_onload MobX Store
+        if (dbotStore?.xml_onload?.loadXmlString) {
+          dbotStore.xml_onload.loadXmlString(xmlString);
+          console.log(`[ScannerBridge] Loaded XML via xml_onload: ${strategy.name}`);
+          return;
+        }
 
-        if (workspace && windowBlockly.Xml) {
-          const xmlDom = windowBlockly.Xml.textToDom(xmlString);
-          workspace.clear();
-          windowBlockly.Xml.domToWorkspace(xmlDom, workspace);
-          if (typeof workspace.render === 'function') {
-            workspace.render();
+        // DBot load_modal MobX Store
+        if (dbotStore?.load_modal?.loadStrategyOnUnload) {
+          dbotStore.load_modal.loadStrategyOnUnload(xmlString);
+          console.log(`[ScannerBridge] Loaded XML via load_modal: ${strategy.name}`);
+          return;
+        }
+
+        // Direct Blockly Workspace Injection
+        const windowBlockly = win.Blockly;
+        if (windowBlockly?.Xml) {
+          const workspace =
+            windowBlockly.mainWorkspace ||
+            windowBlockly.derivWorkspace ||
+            (windowBlockly.Workspace?.getByContainer && windowBlockly.Workspace.getByContainer('board')) ||
+            win.dbot?.workspace;
+
+          if (workspace) {
+            const xmlDom = windowBlockly.Xml.textToDom(xmlString);
+            workspace.clear();
+            windowBlockly.Xml.domToWorkspace(xmlDom, workspace);
+            if (typeof workspace.cleanUp === 'function') workspace.cleanUp();
+            if (typeof workspace.render === 'function') workspace.render();
+            console.log(`[ScannerBridge] Directly rendered XML to Blockly canvas: ${strategy.name}`);
           }
         }
-      }, 100);
+      }, 150);
 
-      console.log(`[ScannerBridge] Strategy import requested: ${strategy.name}`);
       return true;
     } catch (error) {
       console.error('[ScannerBridge] Failed to load strategy XML:', error);
