@@ -13,6 +13,10 @@ export interface StrategyConfig {
   stopLoss: number;
   takeProfit: number;
   description: string;
+  // Optional live metrics updated dynamically by the worker feed
+  score?: number;
+  confidence?: number;
+  direction?: 'UP' | 'DOWN' | 'HOLD';
 }
 
 export interface StrategySignal {
