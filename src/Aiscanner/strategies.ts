@@ -152,7 +152,7 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Generates exact DBot schema XML with full block definitions to avoid runtime errors
+ * Generates exact DBot schema XML with full block definitions
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
@@ -171,9 +171,9 @@ export function generateDBotXml(strategy: StrategyConfig): string {
   return `
 <xml xmlns="https://developers.google.com/blockly/xml">
   <variables>
-    <variable id="var_stake">Initial Stake</variable>
-    <variable id="var_tp">Target Profit</variable>
-    <variable id="var_sl">Stop Loss</variable>
+    <variable id="stake_var">Stake</variable>
+    <variable id="tp_var">Target Profit</variable>
+    <variable id="sl_var">Stop Loss</variable>
   </variables>
 
   <!-- 1. TRADE PARAMETERS -->
@@ -185,7 +185,7 @@ export function generateDBotXml(strategy: StrategyConfig): string {
         <field name="SYMBOL_LIST">${symbol}</field>
         <next>
           <block type="trade_definition_tradetype" id="tradetype_block">
-            <field name="TRADETYPECAT_LIST">risefall</field>
+            <field name="TRADETYPECAT_LIST">risepower</field>
             <field name="TRADETYPE_LIST">risefall</field>
             <next>
               <block type="trade_definition_contracttype" id="contracttype_block">
@@ -194,13 +194,8 @@ export function generateDBotXml(strategy: StrategyConfig): string {
                   <block type="trade_definition_candleinterval" id="candle_block">
                     <field name="CANDLEINTERVAL_LIST">60</field>
                     <next>
-                      <block type="trade_definition_restartbuystrat" id="restart_block">
-                        <field name="TIME_MACHINE_ENABLED">FALSE</field>
-                        <next>
-                          <block type="trade_definition_restartonerror" id="onerror_block">
-                            <field name="RESTARTONERROR">FALSE</field>
-                          </block>
-                        </next>
+                      <block type="trade_definition_restartonerror" id="onerror_block">
+                        <field name="RESTARTONERROR">FALSE</field>
                       </block>
                     </next>
                   </block>
@@ -212,26 +207,26 @@ export function generateDBotXml(strategy: StrategyConfig): string {
       </block>
     </statement>
     <statement name="INITIALIZATION">
-      <block type="variables_set" id="set_stake">
-        <field name="VAR" id="var_stake">Initial Stake</field>
+      <block type="variables_set" id="set_stake_init">
+        <field name="VAR" id="stake_var">Stake</field>
         <value name="VALUE">
-          <shadow type="math_number">
+          <shadow type="math_number" id="stake_num">
             <field name="NUM">${strategy.stake}</field>
           </shadow>
         </value>
         <next>
-          <block type="variables_set" id="set_tp">
-            <field name="VAR" id="var_tp">Target Profit</field>
+          <block type="variables_set" id="set_tp_init">
+            <field name="VAR" id="tp_var">Target Profit</field>
             <value name="VALUE">
-              <shadow type="math_number">
+              <shadow type="math_number" id="tp_num">
                 <field name="NUM">${strategy.takeProfit}</field>
               </shadow>
             </value>
             <next>
-              <block type="variables_set" id="set_sl">
-                <field name="VAR" id="var_sl">Stop Loss</field>
+              <block type="variables_set" id="set_sl_init">
+                <field name="VAR" id="sl_var">Stop Loss</field>
                 <value name="VALUE">
-                  <shadow type="math_number">
+                  <shadow type="math_number" id="sl_num">
                     <field name="NUM">${strategy.stopLoss}</field>
                   </shadow>
                 </value>
@@ -246,21 +241,21 @@ export function generateDBotXml(strategy: StrategyConfig): string {
         <field name="DURATION_TYPE_LIST">t</field>
         <field name="CURRENCY_LIST">USD</field>
         <value name="DURATION">
-          <shadow type="math_number">
+          <shadow type="math_number" id="duration_num">
             <field name="NUM">1</field>
           </shadow>
         </value>
         <value name="AMOUNT">
-          <block type="variables_get" id="get_stake">
-            <field name="VAR" id="var_stake">Initial Stake</field>
-          </block>
+          <shadow type="math_number" id="amount_num">
+            <field name="NUM">${strategy.stake}</field>
+          </shadow>
         </value>
       </block>
     </statement>
   </block>
 
   <!-- 2. PURCHASE CONDITIONS -->
-  <block type="before_purchase" id="before_purchase_root" x="0" y="360">
+  <block type="before_purchase" id="before_purchase_root" x="0" y="380">
     <statement name="BEFOREPURCHASE_STACK">
       <block type="purchase" id="purchase_block">
         <field name="PURCHASE_LIST">${purchaseType}</field>
@@ -269,10 +264,10 @@ export function generateDBotXml(strategy: StrategyConfig): string {
   </block>
 
   <!-- 3. SELL CONDITIONS -->
-  <block type="during_purchase" id="during_purchase_root" x="0" y="480"></block>
+  <block type="during_purchase" id="during_purchase_root" x="0" y="500"></block>
 
   <!-- 4. RESTART TRADING CONDITIONS -->
-  <block type="after_purchase" id="after_purchase_root" x="0" y="600">
+  <block type="after_purchase" id="after_purchase_root" x="0" y="620">
     <statement name="AFTERPURCHASE_STACK">
       <block type="trade_again" id="trade_again_block"></block>
     </statement>
