@@ -1,5 +1,5 @@
 // scannerBridge.ts
-import { StrategyConfig, generateDBotXml, enforceSingleHighPriority } from './strategies';
+import { StrategyConfig, generateDBotXml, enforceSingleHighPriority, evaluateStrategySignal } from './strategies';
 
 export class ScannerBridge {
   private worker: Worker | null = null;
@@ -12,18 +12,53 @@ export class ScannerBridge {
   private initWorker() {
     if (typeof window === 'undefined') return;
 
-    this.worker = new Worker(new URL('./scanner.worker.ts', import.meta.url), {
-      type: 'module',
-    });
+    // Inline worker script string to prevent Rsbuild module resolution issues
+    const workerCode = `
+      self.onmessage = (event) => {
+        const { type, payload } = event.data;
+        if (type === 'TICK_UPDATE' || type === 'RUN_SCAN') {
+          const { asset, ticks, strategies } = payload;
+          const results = [];
 
-    this.worker.onmessage = (event: MessageEvent) => {
-      const { type, payload } = event.data;
-      if (type === 'SCAN_RESULTS') {
-        window.dispatchEvent(
-          new CustomEvent('scanner:signals-updated', { detail: payload })
-        );
-      }
-    };
+          for (const strat of strategies) {
+            if (strat.asset === asset) {
+              const recent = ticks ? ticks.slice(-10) : [];
+              const gains = recent.slice(1).filter((val, i) => val > recent[i]).length;
+              const total = Math.max(recent.length - 1, 1);
+              const score = Math.round((gains / total) * 100);
+              const direction = score >= 65 ? 'UP' : score <= 35 ? 'DOWN' : 'HOLD';
+              const confidence = Math.max(score, 100 - score);
+
+              results.push({
+                strategyId: strat.id,
+                direction,
+                confidence,
+                score,
+                timestamp: Date.now(),
+              });
+            }
+          }
+
+          self.postMessage({ type: 'SCAN_RESULTS', payload: results });
+        }
+      };
+    `;
+
+    try {
+      const blob = new Blob([workerCode], { type: 'application/javascript' });
+      this.worker = new Worker(URL.createObjectURL(blob));
+
+      this.worker.onmessage = (event: MessageEvent) => {
+        const { type, payload } = event.data;
+        if (type === 'SCAN_RESULTS') {
+          window.dispatchEvent(
+            new CustomEvent('scanner:signals-updated', { detail: payload })
+          );
+        }
+      };
+    } catch (err) {
+      console.warn('[ScannerBridge] Web Worker initialization fallback:', err);
+    }
   }
 
   /**
