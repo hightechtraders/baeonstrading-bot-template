@@ -152,7 +152,7 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Generates exact DBot schema XML matching the original workspace blocks
+ * Generates exact DBot schema XML with properly chained market options
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
@@ -183,13 +183,17 @@ export function generateDBotXml(strategy: StrategyConfig): string {
         <field name="MARKET_LIST">synthetic_index</field>
         <field name="SUBMARKET_LIST">random_index</field>
         <field name="SYMBOL_LIST">${symbol}</field>
-      </block>
-      <block type="trade_definition_tradetype" id="tradetype_block">
-        <field name="TRADETYPECAT_LIST">risepower</field>
-        <field name="TRADETYPE_LIST">risefall</field>
-      </block>
-      <block type="trade_definition_contracttype" id="contracttype_block">
-        <field name="TYPE_LIST">both</field>
+        <next>
+          <block type="trade_definition_tradetype" id="tradetype_block">
+            <field name="TRADETYPECAT_LIST">risefall</field>
+            <field name="TRADETYPE_LIST">risefall</field>
+            <next>
+              <block type="trade_definition_contracttype" id="contracttype_block">
+                <field name="TYPE_LIST">both</field>
+              </block>
+            </next>
+          </block>
+        </next>
       </block>
     </statement>
     <statement name="INITIALIZATION">
