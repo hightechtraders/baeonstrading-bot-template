@@ -152,7 +152,7 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Generates exact DBot schema XML with full block definitions
+ * Generates valid DBot XML schema compatible with DBot runtime execution
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
@@ -179,23 +179,28 @@ export function generateDBotXml(strategy: StrategyConfig): string {
   <!-- 1. TRADE PARAMETERS -->
   <block type="trade_definition" id="trade_def_root" x="0" y="0">
     <statement name="TRADE_OPTIONS">
-      <block type="trade_definition_market" id="market_block">
+      <block type="trade_definition_market" id="market_block" deletable="false">
         <field name="MARKET_LIST">synthetic_index</field>
         <field name="SUBMARKET_LIST">random_index</field>
         <field name="SYMBOL_LIST">${symbol}</field>
         <next>
-          <block type="trade_definition_tradetype" id="tradetype_block">
-            <field name="TRADETYPECAT_LIST">risepower</field>
+          <block type="trade_definition_tradetype" id="tradetype_block" deletable="false">
+            <field name="TRADETYPECAT_LIST">risefall</field>
             <field name="TRADETYPE_LIST">risefall</field>
             <next>
-              <block type="trade_definition_contracttype" id="contracttype_block">
+              <block type="trade_definition_contracttype" id="contracttype_block" deletable="false">
                 <field name="TYPE_LIST">both</field>
                 <next>
-                  <block type="trade_definition_candleinterval" id="candle_block">
+                  <block type="trade_definition_candleinterval" id="candle_block" deletable="false">
                     <field name="CANDLEINTERVAL_LIST">60</field>
                     <next>
-                      <block type="trade_definition_restartonerror" id="onerror_block">
-                        <field name="RESTARTONERROR">FALSE</field>
+                      <block type="trade_definition_restartbuystrat" id="restartbuy_block" deletable="false">
+                        <field name="TIME_MACHINE_ENABLED">FALSE</field>
+                        <next>
+                          <block type="trade_definition_restartonerror" id="onerror_block" deletable="false">
+                            <field name="RESTARTONERROR">FALSE</field>
+                          </block>
+                        </next>
                       </block>
                     </next>
                   </block>
@@ -237,9 +242,11 @@ export function generateDBotXml(strategy: StrategyConfig): string {
       </block>
     </statement>
     <statement name="SUBMARKET">
-      <block type="trade_definition_tradeoptions" id="trade_opts_block">
+      <block type="trade_definition_tradeoptions" id="trade_opts_block" deletable="false">
+        <mutation has_first_barrier="false" has_second_barrier="false" has_prediction="false"></mutation>
         <field name="DURATION_TYPE_LIST">t</field>
         <field name="CURRENCY_LIST">USD</field>
+        <field name="AMOUNT_TYPE_LIST">stake</field>
         <value name="DURATION">
           <shadow type="math_number" id="duration_num">
             <field name="NUM">1</field>
@@ -255,7 +262,7 @@ export function generateDBotXml(strategy: StrategyConfig): string {
   </block>
 
   <!-- 2. PURCHASE CONDITIONS -->
-  <block type="before_purchase" id="before_purchase_root" x="0" y="380">
+  <block type="before_purchase" id="before_purchase_root" x="0" y="380" deletable="false">
     <statement name="BEFOREPURCHASE_STACK">
       <block type="purchase" id="purchase_block">
         <field name="PURCHASE_LIST">${purchaseType}</field>
@@ -264,10 +271,10 @@ export function generateDBotXml(strategy: StrategyConfig): string {
   </block>
 
   <!-- 3. SELL CONDITIONS -->
-  <block type="during_purchase" id="during_purchase_root" x="0" y="500"></block>
+  <block type="during_purchase" id="during_purchase_root" x="0" y="500" deletable="false"></block>
 
   <!-- 4. RESTART TRADING CONDITIONS -->
-  <block type="after_purchase" id="after_purchase_root" x="0" y="620">
+  <block type="after_purchase" id="after_purchase_root" x="0" y="620" deletable="false">
     <statement name="AFTERPURCHASE_STACK">
       <block type="trade_again" id="trade_again_block"></block>
     </statement>
