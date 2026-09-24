@@ -84,30 +84,51 @@ export class ScannerBridge {
     try {
       const xmlString = generateDBotXml(strategy);
 
-      // 1. Broadcast event for DBot / React components to consume
+      // Ensure user is on Bot Builder tab
+      if (window.location.hash !== '#bot_builder') {
+        window.location.hash = '#bot_builder';
+      }
+
+      // 1. Try DBot MobX Store integration (Standard Deriv DBot Architecture)
+      const derivStore = (window as any).Blockly?.derivWorkspace || (window as any).store || (window as any).root_store;
+      const loadModalStore = derivStore?.load_modal || derivStore?.dbot?.load_modal;
+
+      if (loadModalStore && typeof loadModalStore.loadStrategy === 'function') {
+        loadModalStore.loadStrategy(xmlString);
+        console.log(`[ScannerBridge] Strategy loaded via DBot MobX store: ${strategy.name}`);
+        return true;
+      }
+
+      // 2. Try window event dispatcher fallback
       window.dispatchEvent(
         new CustomEvent('dbot:import-xml', {
           detail: { xmlString, strategy },
         })
       );
 
-      // 2. Direct Blockly injection fallback
-      const windowBlockly = (window as any).Blockly;
-      const workspace =
-        windowBlockly?.mainWorkspace ||
-        windowBlockly?.Workspace?.getByContainer?.('board') ||
-        (window as any).dbot?.workspace;
+      // 3. Fallback to Direct Blockly API Injection
+      setTimeout(() => {
+        const windowBlockly = (window as any).Blockly;
+        if (!windowBlockly) return;
 
-      if (workspace && windowBlockly?.Xml) {
-        const xmlDom = windowBlockly.Xml.textToDom(xmlString);
-        workspace.clear();
-        windowBlockly.Xml.domToWorkspace(xmlDom, workspace);
-        if (typeof workspace.render === 'function') {
-          workspace.render();
+        // Find active workspace instance
+        const workspace =
+          windowBlockly.mainWorkspace ||
+          windowBlockly.derivWorkspace ||
+          (windowBlockly.Workspace && windowBlockly.Workspace.getByContainer && windowBlockly.Workspace.getByContainer('board')) ||
+          (window as any).dbot?.workspace;
+
+        if (workspace && windowBlockly.Xml) {
+          const xmlDom = windowBlockly.Xml.textToDom(xmlString);
+          workspace.clear();
+          windowBlockly.Xml.domToWorkspace(xmlDom, workspace);
+          if (typeof workspace.render === 'function') {
+            workspace.render();
+          }
         }
-      }
+      }, 100);
 
-      console.log(`[ScannerBridge] Strategy loaded successfully: ${strategy.name}`);
+      console.log(`[ScannerBridge] Strategy import requested: ${strategy.name}`);
       return true;
     } catch (error) {
       console.error('[ScannerBridge] Failed to load strategy XML:', error);
