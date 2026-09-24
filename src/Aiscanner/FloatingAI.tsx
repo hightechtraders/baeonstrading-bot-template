@@ -1,14 +1,38 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Draggable, { DraggableData, DraggableEvent } from 'react-draggable';
 import './FloatingAI.css';
-import { CORE_7_STRATEGIES as strategies, StrategyDefinition } from './strategies';
+import { CORE_7_STRATEGIES, StrategyConfig } from './strategies';
+import { scannerLogic } from './scannerLogic';
 
 export const FloatingAI = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [expandedId, setExpandedId] = useState<number | string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | number | null>(null);
 
-  // Track drag distance to differentiate between a tap and a drag on mobile
+  // Initialize strategies state with single-HIGH priority enforced
+  const [strategiesList, setStrategiesList] = useState<StrategyConfig[]>(() => {
+    return scannerLogic.setStrategies(CORE_7_STRATEGIES);
+  });
+
+  // Track drag distance to differentiate tap vs drag
   const dragDistanceRef = useRef(0);
+
+  // Subscribe to live Web Worker signal updates from scannerBridge
+  useEffect(() => {
+    const handleSignalsUpdated = (e: CustomEvent) => {
+      // Receive live strategy performance signals if needed
+      const updatedSignals = e.detail;
+      if (updatedSignals && updatedSignals.length > 0) {
+        // Automatically set top signal as HIGH priority
+        const topSignalId = updatedSignals[0].strategyId;
+        setStrategiesList(scannerLogic.setHighPriority(topSignalId));
+      }
+    };
+
+    window.addEventListener('scanner:signals-updated' as any, handleSignalsUpdated);
+    return () => {
+      window.removeEventListener('scanner:signals-updated' as any, handleSignalsUpdated);
+    };
+  }, []);
 
   const toggleModal = () => {
     setIsOpen((prev) => {
@@ -34,17 +58,44 @@ export const FloatingAI = () => {
     }
   };
 
+  // Safely update parameters only if strategy is HIGH priority
+  const handleInputChange = (
+    stratId: string,
+    field: 'stake' | 'stopLoss' | 'takeProfit',
+    value: number
+  ) => {
+    const updated = scannerLogic.updateStrategyParams(stratId, { [field]: value });
+    setStrategiesList([...updated]);
+  };
+
+  // Load imported strategy parameters directly into Deriv's Blockly Workspace
+  const handleLoadStrategy = (strat: StrategyConfig, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (strat.priority !== 'HIGH') {
+      alert('Only the strategy marked as HIGH priority can be loaded into Blockly.');
+      return;
+    }
+
+    const success = scannerLogic.loadHighStrategyToWorkspace(strat.id);
+    if (success) {
+      alert(`Strategy "${strat.name}" successfully imported into Bot Builder workspace!`);
+      setIsOpen(false);
+    } else {
+      alert('Failed to load strategy. Make sure the Deriv Bot workspace is open.');
+    }
+  };
+
+  // Find top global winner for status display
+  const highStrategy = strategiesList.find((s) => s.priority === 'HIGH') || strategiesList[0];
+
   return (
     <div className="floating-ai-container">
-      <Draggable 
-        onStart={handleStart} 
-        onDrag={handleDrag} 
-        onStop={handleStop}
-      >
+      <Draggable onStart={handleStart} onDrag={handleDrag} onStop={handleStop}>
         <div className="draggable-wrapper">
-          <button 
+          <button
             type="button"
-            className="ai-trigger-btn" 
+            className="ai-trigger-btn"
             title="Open AI Multi-Asset Scanner"
             style={{ touchAction: 'none' }}
           >
@@ -72,9 +123,13 @@ export const FloatingAI = () => {
           <div className="scanner-header">
             <div className="header-title">
               <h3>AI Multi-Asset Scanner</h3>
-              <span className="badge-counter">{strategies.length}/{strategies.length}</span>
+              <span className="badge-counter">
+                {strategiesList.length}/{strategiesList.length}
+              </span>
             </div>
-            <button className="close-btn" onClick={() => setIsOpen(false)}>×</button>
+            <button className="close-btn" onClick={() => setIsOpen(false)}>
+              ×
+            </button>
           </div>
 
           <div className="global-metrics-bar">
@@ -93,30 +148,30 @@ export const FloatingAI = () => {
           </div>
 
           <div className="strategy-list">
-            {strategies.map((strat: StrategyDefinition, index: number) => {
-              const stratId = strat.id ?? index;
+            {strategiesList.map((strat: StrategyConfig, index: number) => {
+              const stratId = strat.id;
               const isExpanded = expandedId === stratId;
               const rankNum = index + 1;
 
+              const isHighPriority = strat.priority === 'HIGH';
+
               const title = strat.name || `Strategy ${rankNum}`;
-              const volatility = strat.symbol || 'VOLATILITY 25';
-              const contractType = strat.type || 'RISE / FALL';
-              const strategyType = strat.variant || 'NEURAL_FLOW';
-              const risk = (strat.badgeLevel || 'HIGH').toString().toUpperCase();
+              const volatility = strat.asset || 'VOLATILITY 25';
+              const contractType = strat.tradeType || 'RISE / FALL';
+              const strategyType = strat.riskModel || 'NEURAL_FLOW';
+              const priorityText = strat.priority;
 
-              const evalResult = strat.evaluate ? strat.evaluate([]) : { score: 85 - index * 2, confidence: 0.88 - index * 0.02 };
-              const score = evalResult.score;
-              const confidence = Math.round(evalResult.confidence * 100);
+              const score = 88 - index * 3;
+              const confidence = 90 - index * 2;
 
-              const stake = strat.parameters?.stake ?? 3;
-              const stopLoss = strat.parameters?.stopLoss ?? 4;
-              const takeProfit = strat.parameters?.takeProfit ?? 8;
               const description = `${strategyType} structural strategy designed for ${volatility}.`;
 
               return (
                 <div
                   key={stratId}
-                  className={`strategy-card ${isExpanded ? 'expanded' : ''}`}
+                  className={`strategy-card ${isExpanded ? 'expanded' : ''} ${
+                    isHighPriority ? 'high-active' : 'read-only'
+                  }`}
                   onClick={() => setExpandedId(isExpanded ? null : stratId)}
                 >
                   <div className="card-top-row">
@@ -128,8 +183,8 @@ export const FloatingAI = () => {
                           <span className="tag volatility">{volatility}</span>
                           <span className="tag contract">{contractType}</span>
                           <span className="tag type">{strategyType}</span>
-                          <span className={`tag risk ${risk.toLowerCase()}`}>
-                            {risk}
+                          <span className={`tag risk ${priorityText.toLowerCase()}`}>
+                            {priorityText}
                           </span>
                         </div>
                       </div>
@@ -140,24 +195,71 @@ export const FloatingAI = () => {
                   </div>
 
                   {isExpanded && (
-                    <div className="card-expandable" onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className="card-expandable"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <p className="description">{description}</p>
+                      
+                      {!isHighPriority && (
+                        <div className="priority-warning">
+                          🔒 Only HIGH priority strategies are editable and loadable.
+                        </div>
+                      )}
+
                       <div className="parameters-grid">
                         <div>
                           <label>STAKE (USD)</label>
-                          <input type="number" defaultValue={stake} />
+                          <input
+                            type="number"
+                            value={strat.stake}
+                            disabled={!isHighPriority}
+                            onChange={(e) =>
+                              handleInputChange(
+                                strat.id,
+                                'stake',
+                                Number(e.target.value)
+                              )
+                            }
+                          />
                         </div>
                         <div>
                           <label>STOP LOSS</label>
-                          <input type="number" defaultValue={stopLoss} />
+                          <input
+                            type="number"
+                            value={strat.stopLoss}
+                            disabled={!isHighPriority}
+                            onChange={(e) =>
+                              handleInputChange(
+                                strat.id,
+                                'stopLoss',
+                                Number(e.target.value)
+                              )
+                            }
+                          />
                         </div>
                         <div>
                           <label>TAKE PROFIT</label>
-                          <input type="number" defaultValue={takeProfit} />
+                          <input
+                            type="number"
+                            value={strat.takeProfit}
+                            disabled={!isHighPriority}
+                            onChange={(e) =>
+                              handleInputChange(
+                                strat.id,
+                                'takeProfit',
+                                Number(e.target.value)
+                              )
+                            }
+                          />
                         </div>
                       </div>
 
-                      <button className="btn-primary">
+                      <button
+                        className={`btn-primary ${!isHighPriority ? 'btn-disabled' : ''}`}
+                        disabled={!isHighPriority}
+                        onClick={(e) => handleLoadStrategy(strat, e)}
+                      >
                         📥 LOAD STRATEGY PARAMETERS
                       </button>
                     </div>
