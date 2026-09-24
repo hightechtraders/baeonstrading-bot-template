@@ -1,7 +1,7 @@
 // scannerLogic.ts
 import { StrategyConfig, enforceSingleHighPriority } from './strategies';
 import { scannerBridge } from './scannerBridge';
-
+ 
 export class ScannerLogicManager {
   private strategies: StrategyConfig[] = [];
   private activeHighId: string | null = null;
