@@ -1,65 +1,87 @@
-// src/Aiscanner/scannerLogic.ts
+// scannerLogic.ts
+import { StrategyConfig, enforceSingleHighPriority } from './strategies';
+import { scannerBridge } from './scannerBridge';
 
-import { CORE_7_STRATEGIES, TickData } from './strategies';
+export class ScannerLogicManager {
+  private strategies: StrategyConfig[] = [];
+  private activeHighId: string | null = null;
 
-export interface EvaluatedStrategy {
-  id: string;
-  name: string;
-  symbol: string;
-  type: string;
-  variant: string;
-  confidence: number;
-  score: number;
-  badgeLevel: 'HIGH' | 'MEDIUM' | 'LOW';
-  direction: 'RISE' | 'FALL' | 'READY';
-  parameters: {
-    stake: number;
-    stopLoss: number;
-    takeProfit: number;
-  };
-}
-
-export class ScannerEngine {
-  private tickStore: Record<string, TickData[]> = {};
+  constructor(initialStrategies: StrategyConfig[] = []) {
+    this.setStrategies(initialStrategies);
+  }
 
   /**
-   * Processes an incoming market tick and re-evaluates active strategies.
+   * Set or update strategy list while strictly maintaining single HIGH priority rule.
    */
-  public processTick(symbol: string, tick: TickData): EvaluatedStrategy[] {
-    if (!this.tickStore[symbol]) {
-      this.tickStore[symbol] = [];
+  public setStrategies(strategies: StrategyConfig[], targetHighId?: string): StrategyConfig[] {
+    const defaultHigh = targetHighId || this.activeHighId || strategies[0]?.id;
+    this.strategies = enforceSingleHighPriority(strategies, defaultHigh);
+    this.activeHighId = defaultHigh;
+    return this.strategies;
+  }
+
+  /**
+   * Select a new strategy to be the single 'HIGH' priority winner.
+   */
+  public setHighPriority(strategyId: string): StrategyConfig[] {
+    return this.setStrategies(this.strategies, strategyId);
+  }
+
+  /**
+   * Safely update editable parameters (stake, stopLoss, takeProfit).
+   * Restricted strictly to the single active HIGH strategy.
+   */
+  public updateStrategyParams(
+    strategyId: string,
+    updates: Partial<Pick<StrategyConfig, 'stake' | 'stopLoss' | 'takeProfit'>>
+  ): StrategyConfig[] {
+    const target = this.strategies.find((s) => s.id === strategyId);
+
+    if (!target) {
+      console.warn(`[ScannerLogic] Strategy ID "${strategyId}" not found.`);
+      return this.strategies;
     }
 
-    // Push tick to buffer
-    this.tickStore[symbol].push(tick);
-
-    // Keep trailing 50 ticks for calculations
-    if (this.tickStore[symbol].length > 50) {
-      this.tickStore[symbol].shift();
+    if (target.priority !== 'HIGH') {
+      console.warn(`[ScannerLogic] Cannot edit strategy "${target.name}". Only HIGH priority strategies are editable.`);
+      return this.strategies;
     }
 
-    const currentTicks = this.tickStore[symbol];
-
-    // Evaluate all 7 strategies against current tick buffer
-    return CORE_7_STRATEGIES.map((strat) => {
-      const res = strat.evaluate(currentTicks);
-
-      let badgeLevel: 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW';
-      if (res.confidence >= 0.8) badgeLevel = 'HIGH';
-      else if (res.confidence >= 0.7) badgeLevel = 'MEDIUM';
-
-      return {
-        id: strat.id,
-        name: strat.name,
-        symbol: strat.symbol,
-        type: strat.type,
-        variant: strat.variant,
-        confidence: res.confidence,
-        score: res.score,
-        badgeLevel,
-        direction: res.direction,
-        parameters: { ...strat.parameters },
-      };
+    this.strategies = this.strategies.map((strat) => {
+      if (strat.id === strategyId) {
+        return { ...strat, ...updates };
+      }
+      return strat;
     });
+
+    return this.strategies;
+  }
+
+  /**
+   * Triggers loading the active HIGH priority strategy into the Blockly workspace.
+   */
+  public loadHighStrategyToWorkspace(strategyId: string): boolean {
+    const strategy = this.strategies.find((s) => s.id === strategyId);
+
+    if (!strategy) {
+      console.error(`[ScannerLogic] Strategy ID "${strategyId}" does not exist.`);
+      return false;
+    }
+
+    if (strategy.priority !== 'HIGH') {
+      console.error(`[ScannerLogic] Strategy "${strategy.name}" is not HIGH priority. Blocked.`);
+      return false;
+    }
+
+    return scannerBridge.loadStrategyToBot(strategy);
+  }
+
+  /**
+   * Returns current active strategies array.
+   */
+  public getStrategies(): StrategyConfig[] {
+    return this.strategies;
   }
 }
+
+export const scannerLogic = new ScannerLogicManager();
