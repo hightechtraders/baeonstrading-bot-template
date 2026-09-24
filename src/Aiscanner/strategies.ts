@@ -24,6 +24,96 @@ export interface StrategySignal {
 }
 
 /**
+ * Pre-defined core strategy list imported by FloatingAI.tsx
+ */
+export const CORE_7_STRATEGIES: StrategyConfig[] = [
+  {
+    id: 'strat-1',
+    name: '#1 AI Adaptive',
+    asset: 'Volatility 25',
+    tradeType: 'Rise / Fall',
+    riskModel: 'NEURAL_FLOW',
+    priority: 'HIGH',
+    stake: 3,
+    stopLoss: 4,
+    takeProfit: 8,
+    description: 'Neural Flow structural strategy designed for Volatility 25.',
+  },
+  {
+    id: 'strat-2',
+    name: '#2 1-3-2-6 System',
+    asset: 'Volatility 10',
+    tradeType: 'Rise / Fall',
+    riskModel: 'PROGRESSIVE',
+    priority: 'MEDIUM',
+    stake: 2,
+    stopLoss: 5,
+    takeProfit: 10,
+    description: 'Progressive staking system designed for Volatility 10.',
+  },
+  {
+    id: 'strat-3',
+    name: '#3 Hyper Scalper Engine v26',
+    asset: 'Volatility 10',
+    tradeType: 'Rise / Fall',
+    riskModel: 'MARTINGALE',
+    priority: 'MEDIUM',
+    stake: 1,
+    stopLoss: 10,
+    takeProfit: 15,
+    description: 'Martingale scalp strategy designed for Volatility 10.',
+  },
+  {
+    id: 'strat-4',
+    name: '#4 AI Balanced',
+    asset: 'Volatility 50',
+    tradeType: 'Over / Under',
+    riskModel: 'PROGRESSIVE',
+    priority: 'MEDIUM',
+    stake: 5,
+    stopLoss: 10,
+    takeProfit: 20,
+    description: 'Balanced digit strategy designed for Volatility 50.',
+  },
+  {
+    id: 'strat-5',
+    name: '#5 Momentum Breakout',
+    asset: 'Volatility 75',
+    tradeType: 'Rise / Fall',
+    riskModel: 'TICK_MOMENTUM',
+    priority: 'MEDIUM',
+    stake: 2,
+    stopLoss: 6,
+    takeProfit: 12,
+    description: 'Breakout tick strategy designed for Volatility 75.',
+  },
+  {
+    id: 'strat-6',
+    name: '#6 High-Frequency Scalp',
+    asset: 'Volatility 100 (1s)',
+    tradeType: 'Rise / Fall',
+    riskModel: 'NEURAL_FLOW',
+    priority: 'MEDIUM',
+    stake: 4,
+    stopLoss: 8,
+    takeProfit: 16,
+    description: 'Fast-cycle neural model designed for Volatility 100 (1s).',
+  },
+  {
+    id: 'strat-7',
+    name: '#7 Conservative Grid',
+    asset: 'Volatility 100',
+    tradeType: 'Over / Under',
+    riskModel: 'PROGRESSIVE',
+    priority: 'MEDIUM',
+    stake: 1,
+    stopLoss: 3,
+    takeProfit: 6,
+    description: 'Low-risk step model designed for Volatility 100.',
+  },
+];
+
+/**
  * Ensures strictly ONLY ONE strategy in the array is set to 'HIGH' priority.
  * Automatically promotes the top candidate (or target ID) and lowers the rest.
  */
