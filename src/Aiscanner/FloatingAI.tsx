@@ -1,4 +1,3 @@
-// src/Aiscanner/FloatingAI.tsx
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Draggable, { DraggableData, DraggableEvent } from 'react-draggable';
 import './FloatingAI.css';
@@ -50,7 +49,7 @@ export const FloatingAI = () => {
     }
   }, [realTicksBuffer]);
 
-  // 2. Safely process ticks without infinite loops
+  // 2. Safely process ticks without auto-expanding cards during re-renders
   useEffect(() => {
     if (!activeBuffer || Object.keys(activeBuffer).length === 0) return;
 
@@ -70,23 +69,11 @@ export const FloatingAI = () => {
 
     if (hasChanged) {
       setStrategiesList(updatedList);
-
-      const currentHigh = updatedList.find((s) => s.priority === 'HIGH');
-      if (currentHigh) {
-        setExpandedId((prev) => (prev === null ? currentHigh.id : prev));
-      }
     }
-  }, [activeBuffer]); // Removed expandedId from dependencies!
+  }, [activeBuffer]);
 
   const toggleModal = () => {
-    setIsOpen((prev) => {
-      const nextState = !prev;
-      if (nextState) {
-        const highStrat = strategiesList.find((s) => s.priority === 'HIGH');
-        setExpandedId(highStrat ? highStrat.id : null);
-      }
-      return nextState;
-    });
+    setIsOpen((prev) => !prev);
   };
 
   const handleStart = () => {
