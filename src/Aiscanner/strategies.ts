@@ -149,173 +149,58 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Atomic strategy injector: Updates Market, Stake, Direction, and creates/updates
- * Take Profit and Stop Loss variable blocks inside "Run once at start:" instantly.
+ * Bulletproof workspace loader:
+ * 1. Safely registers target variables (target_profit, stop_loss, stake) in DBot's Variable Map.
+ * 2. Pauses events to prevent render glitches.
+ * 3. Clears old state and injects clean DOM via XML parser.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
 
-  const symbolMap: Record<string, string> = {
-    'Volatility 10': 'R_10',
-    'Volatility 25': 'R_25',
-    'Volatility 50': 'R_50',
-    'Volatility 75': 'R_75',
-    'Volatility 100': 'R_100',
-    'Volatility 100 (1s)': '1HZ100V',
-    'Volatility 25 (1s)': '1HZ25V',
-  };
-
-  const symbol = symbolMap[strategy.asset] || '1HZ100V';
-  const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
-
   try {
-    // 1. Pause workspace event processing for zero-flicker batch update
+    const blockly = (window as any).Blockly;
+
+    // 1. Pause event listeners during batch workspace construction
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(false);
     }
 
-    // 2. Set Market Symbol
-    const marketBlock =
-      workspace.getBlockById('trade_definition_market') ||
-      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_market')[0]);
-    if (marketBlock && typeof marketBlock.setFieldValue === 'function') {
-      marketBlock.setFieldValue(symbol, 'SYMBOL_LIST');
-    }
-
-    // 3. Set Stake Amount inside Trade Options
-    const tradeOptionsBlock =
-      workspace.getBlockById('trade_definition_tradeoptions') ||
-      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_tradeoptions')[0]);
-    if (tradeOptionsBlock) {
-      const amountInput = tradeOptionsBlock.getInput('AMOUNT');
-      if (amountInput && amountInput.connection && amountInput.connection.targetBlock()) {
-        const shadowBlock = amountInput.connection.targetBlock();
-        if (typeof shadowBlock.setFieldValue === 'function') {
-          shadowBlock.setFieldValue(strategy.stake.toString(), 'NUM');
+    // 2. Safely register variables in DBot's custom Variable Map
+    const varNames = ['target_profit', 'stop_loss', 'stake'];
+    varNames.forEach((name) => {
+      if (workspace.getVariableMap) {
+        const varMap = workspace.getVariableMap();
+        if (!varMap.getVariable(name)) {
+          varMap.createVariable(name);
         }
-      }
-    }
-
-    // 4. Set Purchase Direction (Rise / Fall)
-    const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
-    if (purchaseBlocks.length > 0) {
-      purchaseBlocks.forEach((pBlock: any) => {
-        if (typeof pBlock.setFieldValue === 'function') {
-          pBlock.setFieldValue(purchaseType, 'PURCHASE_LIST');
-        }
-      });
-    } else {
-      const purchaseBlock = workspace.getBlockById('purchase_block');
-      if (purchaseBlock && typeof purchaseBlock.setFieldValue === 'function') {
-        purchaseBlock.setFieldValue(purchaseType, 'PURCHASE_LIST');
-      }
-    }
-
-    // 5. Check existing variables on canvas
-    const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
-    let foundTP = false;
-    let foundSL = false;
-
-    allBlocks.forEach((block: any) => {
-      if (block.type === 'variables_set') {
-        const varId = block.getFieldValue('VAR');
-        const varModel = workspace.getVariableById
-          ? workspace.getVariableById(varId)
-          : workspace.getVariableMap
-          ? workspace.getVariableMap().getVariableById(varId)
-          : null;
-        const varName = varModel ? varModel.name.toLowerCase() : '';
-
-        const valueInput = block.getInput('VALUE');
-        if (valueInput && valueInput.connection && valueInput.connection.targetBlock()) {
-          const numBlock = valueInput.connection.targetBlock();
-
-          if (typeof numBlock.setFieldValue === 'function') {
-            if (
-              varName.includes('profit') ||
-              varName.includes('tp') ||
-              varName.includes('target') ||
-              block.id === 'init_tp'
-            ) {
-              numBlock.setFieldValue(strategy.takeProfit.toString(), 'NUM');
-              foundTP = true;
-            } else if (
-              varName.includes('loss') ||
-              varName.includes('sl') ||
-              varName.includes('stop') ||
-              block.id === 'init_sl'
-            ) {
-              numBlock.setFieldValue(strategy.stopLoss.toString(), 'NUM');
-              foundSL = true;
-            } else if (varName.includes('stake') || block.id === 'init_stake') {
-              numBlock.setFieldValue(strategy.stake.toString(), 'NUM');
-            }
-          }
-        }
+      } else if (typeof workspace.createVariable === 'function') {
+        workspace.createVariable(name);
       }
     });
 
-    // 6. Automatically construct and insert missing TP & SL blocks into "Run once at start:"
-    const initBlock =
-      workspace.getBlockById('trade_definition_init') ||
-      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_init')[0]);
+    // 3. Parse strategy XML structure
+    const xmlString = generateDBotXml(strategy);
 
-    if (initBlock && (!foundTP || !foundSL)) {
-      const injectVariableBlock = (varName: string, val: number) => {
-        let variable = workspace.getVariableMap
-          ? workspace.getVariableMap().getVariable(varName)
-          : null;
+    if (blockly && blockly.Xml) {
+      // Clear workspace to eliminate block ID collisions
+      if (typeof workspace.clear === 'function') {
+        workspace.clear();
+      }
 
-        if (!variable) {
-          variable = workspace.createVariable
-            ? workspace.createVariable(varName)
-            : workspace.getVariableMap
-            ? workspace.getVariableMap().createVariable(varName)
-            : null;
-        }
+      const xmlDom = blockly.Xml.textToDom(xmlString);
+      blockly.Xml.domToWorkspace(xmlDom, workspace);
 
-        if (!variable) return;
-
-        const varBlock = workspace.newBlock('variables_set');
-        varBlock.setFieldValue(variable.getId(), 'VAR');
-        if (typeof varBlock.initSvg === 'function') varBlock.initSvg();
-
-        const numBlock = workspace.newBlock('math_number');
-        numBlock.setFieldValue(val.toString(), 'NUM');
-        if (typeof numBlock.initSvg === 'function') numBlock.initSvg();
-
-        const valueInput = varBlock.getInput('VALUE');
-        if (valueInput && valueInput.connection && numBlock.outputConnection) {
-          valueInput.connection.connect(numBlock.outputConnection);
-        }
-
-        const initInput = initBlock.getInput('INITIALIZATION');
-        if (initInput && initInput.connection) {
-          const target = initInput.connection.targetBlock();
-          if (!target) {
-            initInput.connection.connect(varBlock.previousConnection);
-          } else {
-            let lastBlock = target;
-            while (lastBlock.nextConnection && lastBlock.nextConnection.targetBlock()) {
-              lastBlock = lastBlock.nextConnection.targetBlock();
-            }
-            if (lastBlock.nextConnection) {
-              lastBlock.nextConnection.connect(varBlock.previousConnection);
-            }
-          }
-        }
-      };
-
-      if (!foundTP) injectVariableBlock('target_profit', strategy.takeProfit);
-      if (!foundSL) injectVariableBlock('stop_loss', strategy.stopLoss);
+      if (typeof workspace.cleanUp === 'function') {
+        workspace.cleanUp();
+      }
     }
 
-    // 7. Resume workspace event handling
+    // 4. Re-enable event listeners
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
 
-    // 8. Render full workspace synchronously in one frame
+    // 5. Trigger single visual render frame
     if (typeof workspace.render === 'function') {
       workspace.render();
     }
@@ -325,13 +210,13 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
-    console.error('[Strategies] Failed to apply parameters directly to workspace:', error);
+    console.error('[Strategies] Workspace strategy application failed:', error);
     return false;
   }
 }
 
 /**
- * XML Generator helper for fallback loading.
+ * Generates valid DBot XML template containing initialisation variable blocks.
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
@@ -354,7 +239,7 @@ export function generateDBotXml(strategy: StrategyConfig): string {
     <variable id="tp_var">target_profit</variable>
     <variable id="sl_var">stop_loss</variable>
   </variables>
-  <block type="trade_definition" id="trade_definition" deletable="false" x="0" y="0">
+  <block type="trade_definition" id="trade_definition" deletable="false" x="40" y="40">
     <statement name="TRADE_OPTIONS">
       <block type="trade_definition_market" id="trade_definition_market" deletable="false">
         <field name="MARKET_LIST">synthetic_index</field>
@@ -437,15 +322,15 @@ export function generateDBotXml(strategy: StrategyConfig): string {
       </block>
     </statement>
   </block>
-  <block type="before_purchase" id="before_purchase" deletable="false" x="0" y="420">
+  <block type="before_purchase" id="before_purchase" deletable="false" x="40" y="560">
     <statement name="BEFOREPURCHASE_STACK">
       <block type="purchase" id="purchase_block">
         <field name="PURCHASE_LIST">${purchaseType}</field>
       </block>
     </statement>
   </block>
-  <block type="during_purchase" id="during_purchase" deletable="false" x="0" y="540"></block>
-  <block type="after_purchase" id="after_purchase" deletable="false" x="0" y="660">
+  <block type="during_purchase" id="during_purchase" deletable="false" x="40" y="680"></block>
+  <block type="after_purchase" id="after_purchase" deletable="false" x="40" y="780">
     <statement name="AFTERPURCHASE_STACK">
       <block type="trade_again" id="trade_again_block"></block>
     </statement>
