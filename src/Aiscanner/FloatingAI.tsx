@@ -49,16 +49,18 @@ export const FloatingAI = () => {
     }
   }, [realTicksBuffer]);
 
-  // 2. Process Ticks smoothly (Locks priority and stops position swapping while editing)
+  // 2. Process Ticks smoothly (FREEZE all metrics & updates completely when editing)
   useEffect(() => {
     if (!activeBuffer || Object.keys(activeBuffer).length === 0) return;
 
-    const isEditing = expandedId !== null;
+    // Completely skip state updates while any card is expanded
+    if (expandedId !== null) return;
+
     const updatedList = scannerLogic.evaluateAndProcessTicks(
       activeBuffer,
       ASSET_TO_SYMBOL,
-      isEditing,
-      expandedId
+      false,
+      null
     );
     
     const hasChanged = updatedList.some((newStrat, i) => {
