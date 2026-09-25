@@ -152,7 +152,7 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Generates valid DBot XML schema compatible with DBot runtime execution
+ * Generates exact DBot schema XML with compliant block definitions
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
@@ -171,13 +171,13 @@ export function generateDBotXml(strategy: StrategyConfig): string {
   return `
 <xml xmlns="https://developers.google.com/blockly/xml">
   <variables>
-    <variable id="stake_var">Stake</variable>
-    <variable id="tp_var">Target Profit</variable>
-    <variable id="sl_var">Stop Loss</variable>
+    <variable id="stake_var_id">stake</variable>
+    <variable id="tp_var_id">target_profit</variable>
+    <variable id="sl_var_id">stop_loss</variable>
   </variables>
 
   <!-- 1. TRADE PARAMETERS -->
-  <block type="trade_definition" id="trade_def_root" x="0" y="0">
+  <block type="trade_definition" id="trade_def_root" deletable="false" x="0" y="0">
     <statement name="TRADE_OPTIONS">
       <block type="trade_definition_market" id="market_block" deletable="false">
         <field name="MARKET_LIST">synthetic_index</field>
@@ -213,25 +213,25 @@ export function generateDBotXml(strategy: StrategyConfig): string {
     </statement>
     <statement name="INITIALIZATION">
       <block type="variables_set" id="set_stake_init">
-        <field name="VAR" id="stake_var">Stake</field>
+        <field name="VAR" id="stake_var_id">stake</field>
         <value name="VALUE">
-          <shadow type="math_number" id="stake_num">
+          <shadow type="math_number" id="stake_shadow_num">
             <field name="NUM">${strategy.stake}</field>
           </shadow>
         </value>
         <next>
           <block type="variables_set" id="set_tp_init">
-            <field name="VAR" id="tp_var">Target Profit</field>
+            <field name="VAR" id="tp_var_id">target_profit</field>
             <value name="VALUE">
-              <shadow type="math_number" id="tp_num">
+              <shadow type="math_number" id="tp_shadow_num">
                 <field name="NUM">${strategy.takeProfit}</field>
               </shadow>
             </value>
             <next>
               <block type="variables_set" id="set_sl_init">
-                <field name="VAR" id="sl_var">Stop Loss</field>
+                <field name="VAR" id="sl_var_id">stop_loss</field>
                 <value name="VALUE">
-                  <shadow type="math_number" id="sl_num">
+                  <shadow type="math_number" id="sl_shadow_num">
                     <field name="NUM">${strategy.stopLoss}</field>
                   </shadow>
                 </value>
@@ -248,21 +248,24 @@ export function generateDBotXml(strategy: StrategyConfig): string {
         <field name="CURRENCY_LIST">USD</field>
         <field name="AMOUNT_TYPE_LIST">stake</field>
         <value name="DURATION">
-          <shadow type="math_number" id="duration_num">
+          <shadow type="math_number" id="duration_shadow_num">
             <field name="NUM">1</field>
           </shadow>
         </value>
         <value name="AMOUNT">
-          <shadow type="math_number" id="amount_num">
+          <shadow type="math_number" id="amount_shadow_num">
             <field name="NUM">${strategy.stake}</field>
           </shadow>
+          <block type="variables_get" id="get_stake_var">
+            <field name="VAR" id="stake_var_id">stake</field>
+          </block>
         </value>
       </block>
     </statement>
   </block>
 
   <!-- 2. PURCHASE CONDITIONS -->
-  <block type="before_purchase" id="before_purchase_root" x="0" y="380" deletable="false">
+  <block type="before_purchase" id="before_purchase_root" deletable="false" x="0" y="420">
     <statement name="BEFOREPURCHASE_STACK">
       <block type="purchase" id="purchase_block">
         <field name="PURCHASE_LIST">${purchaseType}</field>
@@ -271,10 +274,10 @@ export function generateDBotXml(strategy: StrategyConfig): string {
   </block>
 
   <!-- 3. SELL CONDITIONS -->
-  <block type="during_purchase" id="during_purchase_root" x="0" y="500" deletable="false"></block>
+  <block type="during_purchase" id="during_purchase_root" deletable="false" x="0" y="540"></block>
 
   <!-- 4. RESTART TRADING CONDITIONS -->
-  <block type="after_purchase" id="after_purchase_root" x="0" y="620" deletable="false">
+  <block type="after_purchase" id="after_purchase_root" deletable="false" x="0" y="660">
     <statement name="AFTERPURCHASE_STACK">
       <block type="trade_again" id="trade_again_block"></block>
     </statement>
