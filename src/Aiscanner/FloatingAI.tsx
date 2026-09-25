@@ -6,33 +6,27 @@ import { CORE_7_STRATEGIES, StrategyConfig } from './strategies';
 import { scannerLogic } from './scannerLogic';
 import { useDerivTicks, ASSET_TO_SYMBOL } from './useDerivTicks';
 
-// Set to true to force tick simulation for testing, false for live WebSocket ticks
 const ENABLE_SIMULATION = false;
 
 export const FloatingAI = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | number | null>(null);
 
-  // Initialize strategies list
   const [strategiesList, setStrategiesList] = useState<StrategyConfig[]>(() => {
     return scannerLogic.setStrategies(CORE_7_STRATEGIES);
   });
 
-  // Extract static list of asset strings for hook
   const assets = useMemo(() => CORE_7_STRATEGIES.map((s) => s.asset), []);
   const { ticksBuffer: realTicksBuffer } = useDerivTicks(assets);
 
-  // Active buffer holding live or simulated price ticks
   const [activeBuffer, setActiveBuffer] = useState<Record<string, number[]>>({});
-
-  // Drag distance tracker to prevent unwanted modal toggles
   const dragDistanceRef = useRef(0);
 
-  // Ref mirror to inspect state inside effects without introducing render loops
+  // Ref to hold previous list without triggering re-renders in dependency arrays
   const strategiesListRef = useRef(strategiesList);
   strategiesListRef.current = strategiesList;
 
-  // 1. Tick Stream Provider (Live WebSocket vs Local Simulation)
+  // 1. Tick Stream Switcher
   useEffect(() => {
     if (ENABLE_SIMULATION) {
       const simPrices: Record<string, number[]> = {};
@@ -40,10 +34,9 @@ export const FloatingAI = () => {
       const simInterval = setInterval(() => {
         CORE_7_STRATEGIES.forEach((strat) => {
           const key = strat.asset;
-          const currentSeries = simPrices[key] || Array.from({ length: 20 }, () => 1000);
+          const currentSeries = simPrices[key] || Array.from({ length: 10 }, () => 1000);
           const lastPrice = currentSeries[currentSeries.length - 1];
           
-          // Random walk simulation (-2.5 to +2.5 movement)
           const newPrice = Number((lastPrice + (Math.random() - 0.48) * 5).toFixed(2));
           simPrices[key] = [...currentSeries, newPrice].slice(-30);
         });
@@ -57,14 +50,13 @@ export const FloatingAI = () => {
     }
   }, [realTicksBuffer]);
 
-  // 2. Re-evaluate strategy confidence scores when activeBuffer receives ticks
+  // 2. Safely process ticks without infinite loops
   useEffect(() => {
     if (!activeBuffer || Object.keys(activeBuffer).length === 0) return;
 
-    // Process technical signals
     const updatedList = scannerLogic.evaluateAndProcessTicks(activeBuffer, ASSET_TO_SYMBOL);
     
-    // Check if score, direction, or confidence changed before updating React state
+    // Check if score, direction, or confidence actually changed
     const hasChanged = updatedList.some((newStrat, i) => {
       const oldStrat = strategiesListRef.current[i];
       return (
@@ -79,13 +71,12 @@ export const FloatingAI = () => {
     if (hasChanged) {
       setStrategiesList(updatedList);
 
-      // Auto-expand HIGH strategy card if user hasn't selected one
       const currentHigh = updatedList.find((s) => s.priority === 'HIGH');
       if (currentHigh) {
         setExpandedId((prev) => (prev === null ? currentHigh.id : prev));
       }
     }
-  }, [activeBuffer]);
+  }, [activeBuffer]); // Removed expandedId from dependencies!
 
   const toggleModal = () => {
     setIsOpen((prev) => {
@@ -112,7 +103,6 @@ export const FloatingAI = () => {
     }
   };
 
-  // Update strategy parameters in state & sync with scannerLogic
   const handleInputChange = (
     stratId: string,
     field: 'stake' | 'stopLoss' | 'takeProfit',
@@ -122,7 +112,6 @@ export const FloatingAI = () => {
     setStrategiesList(updated);
   };
 
-  // Load HIGH Strategy directly into workspace
   const handleLoadStrategy = (strat: StrategyConfig, e: React.MouseEvent) => {
     e.stopPropagation();
 
@@ -139,7 +128,6 @@ export const FloatingAI = () => {
     }
   };
 
-  // Global Metrics derived from current HIGH strategy
   const highStrategy = strategiesList.find((s) => s.priority === 'HIGH') || strategiesList[0];
   const globalWinnerName = highStrategy?.name || 'ANALYZING...';
   const globalDirection = highStrategy?.direction || 'HOLD';
@@ -189,9 +177,9 @@ export const FloatingAI = () => {
               <span className="metric-label">DIRECTION</span>
               <span
                 className={`metric-value ${
-                  globalDirection === 'RISE'
+                  globalDirection === 'UP' || globalDirection === 'RISE'
                     ? 'green'
-                    : globalDirection === 'FALL'
+                    : globalDirection === 'DOWN' || globalDirection === 'FALL'
                     ? 'orange'
                     : ''
                 }`}
