@@ -52,34 +52,27 @@ export const resolveSymbol = (asset: string): string => {
   return asset;
 };
 
-const SYMBOL_TO_ASSET: Record<string, string> = Object.entries(ASSET_TO_SYMBOL).reduce(
-  (acc, [asset, symbol]) => {
-    if (!acc[symbol]) acc[symbol] = asset;
-    return acc;
-  },
-  {} as Record<string, string>
-);
-
 export function useDerivTicks(assets: string[]) {
   const [ticksBuffer, setTicksBuffer] = useState<Record<string, number[]>>({});
   const wsRef = useRef<WebSocket | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Derive unique array of normalized market symbols
+  // Get distinct symbol codes (e.g. ["R_10", "R_25", "R_50", "R_75", "R_100", "1HZ100V"])
   const activeSymbols = useMemo(() => {
     if (!assets || assets.length === 0) return [];
-    const uniqueSymbols = new Set(assets.map((asset) => resolveSymbol(asset)));
-    return Array.from(uniqueSymbols);
+    const set = new Set(assets.map((a) => resolveSymbol(a)));
+    return Array.from(set);
   }, [assets]);
 
-  useEffect(() => {
-    if (activeSymbols.length === 0) return;
+  const symbolsKey = activeSymbols.join(',');
 
-    let isComponentMounted = true;
+  useEffect(() => {
+    if (!symbolsKey) return;
+
+    let isMounted = true;
 
     const connect = () => {
-      // Safely close existing connection before creating a new one
       if (wsRef.current) {
         wsRef.current.close();
       }
@@ -88,18 +81,20 @@ export function useDerivTicks(assets: string[]) {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        if (!isComponentMounted) return;
+        if (!isMounted) return;
 
-        // Subscribe to each symbol with small delay to avoid rate-limiting
-        activeSymbols.forEach((symbol, index) => {
+        console.log('[Deriv WS] Connected. Subscribing to symbols:', activeSymbols);
+
+        // Stagger subscriptions slightly so Deriv API processes all of them
+        activeSymbols.forEach((sym, idx) => {
           setTimeout(() => {
             if (ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+              ws.send(JSON.stringify({ ticks: sym, subscribe: 1 }));
             }
-          }, index * 50);
+          }, idx * 100);
         });
 
-        // Keep-alive ping every 25 seconds
+        // Ping heartbeat
         if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
         pingIntervalRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
@@ -113,37 +108,42 @@ export function useDerivTicks(assets: string[]) {
           const data = JSON.parse(event.data);
 
           if (data.msg_type === 'tick' && data.tick) {
-            const rawSymbol = data.tick.symbol;
-            const assetName = SYMBOL_TO_ASSET[rawSymbol] || rawSymbol;
+            const rawSymbol = data.tick.symbol; // e.g. "R_25"
             const price = Number(data.tick.quote);
 
             setTicksBuffer((prev) => {
-              const currentSymbolTicks = prev[rawSymbol] || [];
-              const currentAssetTicks = prev[assetName] || [];
+              const currentTicks = prev[rawSymbol] || [];
+              const updatedTicks = [...currentTicks, price].slice(-30);
 
-              const updatedSymbolTicks = [...currentSymbolTicks, price].slice(-20);
-              const updatedAssetTicks = [...currentAssetTicks, price].slice(-20);
-
-              return {
+              // Broadcast tick under rawSymbol ("R_25") and matching strategy asset keys
+              const updatedBuffer: Record<string, number[]> = {
                 ...prev,
-                [rawSymbol]: updatedSymbolTicks,
-                [assetName]: updatedAssetTicks,
-                [assetName.toUpperCase()]: updatedAssetTicks,
+                [rawSymbol]: updatedTicks,
               };
+
+              // Also store under mapped asset keys so lookup never fails
+              Object.entries(ASSET_TO_SYMBOL).forEach(([assetKey, mappedSym]) => {
+                if (mappedSym === rawSymbol) {
+                  updatedBuffer[assetKey] = updatedTicks;
+                  updatedBuffer[assetKey.toUpperCase()] = updatedTicks;
+                }
+              });
+
+              return updatedBuffer;
             });
           }
         } catch (err) {
-          console.error('Tick parsing error:', err);
+          console.error('[Deriv WS] Parse error:', err);
         }
       };
 
       ws.onerror = (err) => {
-        console.warn('Deriv WebSocket Error:', err);
+        console.warn('[Deriv WS] Error:', err);
       };
 
       ws.onclose = () => {
         if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-        if (isComponentMounted) {
+        if (isMounted) {
           reconnectTimeoutRef.current = setTimeout(connect, 3000);
         }
       };
@@ -152,14 +152,12 @@ export function useDerivTicks(assets: string[]) {
     connect();
 
     return () => {
-      isComponentMounted = false;
+      isMounted = false;
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      if (wsRef.current) wsRef.current.close();
     };
-  }, [activeSymbols.join(',')]);
+  }, [symbolsKey]);
 
   return { ticksBuffer, ASSET_TO_SYMBOL };
 }
