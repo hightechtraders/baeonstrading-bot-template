@@ -41,7 +41,8 @@ export function useDerivTicks(assets: string[]) {
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const serializedAssets = assets ? assets.sort().join(',') : '';
+  // Safe non-mutating copy for dependency comparison
+  const serializedAssets = assets && assets.length > 0 ? [...assets].sort().join(',') : '';
 
   useEffect(() => {
     if (!assets || assets.length === 0) return;
@@ -59,11 +60,11 @@ export function useDerivTicks(assets: string[]) {
 
         // 1. Subscribe to requested tick streams
         assets.forEach((asset) => {
-          const symbol = ASSET_TO_SYMBOL[asset] || asset;
+          const symbol = ASSET_TO_SYMBOL[asset] || ASSET_TO_SYMBOL[asset.trim()] || asset;
           ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
         });
 
-        // 2. Keep-alive ping every 25 seconds to prevent timeout
+        // 2. Keep-alive ping every 25 seconds
         pingIntervalRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ ping: 1 }));
@@ -101,7 +102,6 @@ export function useDerivTicks(assets: string[]) {
 
       ws.onclose = () => {
         if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-        // Attempt reconnect after 3 seconds if component is still mounted
         if (isMounted) {
           reconnectTimeoutRef.current = setTimeout(connect, 3000);
         }
