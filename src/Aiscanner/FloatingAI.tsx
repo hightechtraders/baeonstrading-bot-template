@@ -6,7 +6,7 @@ import { CORE_7_STRATEGIES, StrategyConfig } from './strategies';
 import { scannerLogic } from './scannerLogic';
 import { useDerivTicks, ASSET_TO_SYMBOL } from './useDerivTicks';
 
-const ENABLE_SIMULATION = false;
+const ENABLE_SIMULATION = true;
 
 export const FloatingAI = () => {
   const [isOpen, setIsOpen] = useState(false);
