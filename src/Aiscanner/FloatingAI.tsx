@@ -1,5 +1,5 @@
-// FloatingAI.tsx
-import React, { useState, useRef, useEffect } from 'react';
+// src/Aiscanner/FloatingAI.tsx
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Draggable, { DraggableData, DraggableEvent } from 'react-draggable';
 import './FloatingAI.css';
 import { CORE_7_STRATEGIES, StrategyConfig } from './strategies';
@@ -15,24 +15,29 @@ export const FloatingAI = () => {
     return scannerLogic.setStrategies(CORE_7_STRATEGIES);
   });
 
-  // Extract assets array for WebSocket tick stream subscriptions
-  const assets = useRef(CORE_7_STRATEGIES.map((s) => s.asset)).current;
+  // Extract assets memoized safely for hook dependency
+  const assets = useMemo(() => CORE_7_STRATEGIES.map((s) => s.asset), []);
   const { ticksBuffer } = useDerivTicks(assets);
 
   // Track drag distance to differentiate tap vs drag
   const dragDistanceRef = useRef(0);
 
-  // Re-evaluate strategy confidence scores & apply 2-second hold rank lock on every tick update
+  // Re-evaluate strategy confidence scores on every tick update
   useEffect(() => {
+    if (!ticksBuffer || Object.keys(ticksBuffer).length === 0) return;
+
+    // Evaluate live signals across strategies
     const updatedList = scannerLogic.evaluateAndProcessTicks(ticksBuffer, ASSET_TO_SYMBOL);
-    setStrategiesList(updatedList);
+    
+    // Force state update to trigger immediate UI re-render
+    setStrategiesList([...updatedList]);
 
     // Auto-expand HIGH strategy card if no card is manually selected
     const currentHigh = updatedList.find((s) => s.priority === 'HIGH');
     if (currentHigh && !expandedId) {
       setExpandedId(currentHigh.id);
     }
-  }, [ticksBuffer]);
+  }, [ticksBuffer, expandedId]);
 
   const toggleModal = () => {
     setIsOpen((prev) => {
@@ -89,8 +94,8 @@ export const FloatingAI = () => {
   // Dynamic Global Metrics based on top-performing HIGH strategy in state
   const highStrategy = strategiesList.find((s) => s.priority === 'HIGH') || strategiesList[0];
   const globalWinnerName = highStrategy?.name || 'ANALYZING...';
-  const globalDirection = highStrategy?.direction || 'UP';
-  const globalConfidence = highStrategy?.confidence ?? 84;
+  const globalDirection = highStrategy?.direction || 'HOLD';
+  const globalConfidence = highStrategy?.confidence ?? 50;
 
   return (
     <div className="floating-ai-container">
@@ -144,7 +149,7 @@ export const FloatingAI = () => {
             </div>
             <div className="metric-box">
               <span className="metric-label">DIRECTION</span>
-              <span className={`metric-value ${globalDirection === 'UP' ? 'green' : 'orange'}`}>
+              <span className={`metric-value ${globalDirection === 'RISE' ? 'green' : globalDirection === 'FALL' ? 'orange' : ''}`}>
                 {globalDirection}
               </span>
             </div>
@@ -168,8 +173,8 @@ export const FloatingAI = () => {
               const strategyType = strat.riskModel || 'NEURAL_FLOW';
               const priorityText = strat.priority;
 
-              const score = strat.score ?? (88 - index * 3);
-              const confidence = strat.confidence ?? (90 - index * 2);
+              const score = strat.score ?? 50;
+              const confidence = strat.confidence ?? 50;
 
               const description = `${strategyType} structural strategy designed for ${volatility}.`;
 
@@ -196,7 +201,7 @@ export const FloatingAI = () => {
                         </div>
                       </div>
                       <div className="card-sub-metrics">
-                        Score {score}% · Confidence {confidence}% · Direction: {strat.direction || 'UP'}
+                        Score {score}% · Confidence {confidence}% · Direction: {strat.direction || 'HOLD'}
                       </div>
                     </div>
                   </div>
