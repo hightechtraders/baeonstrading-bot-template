@@ -69,8 +69,8 @@ export const FloatingAI = () => {
     setStrategiesList([...updated]);
   };
 
-  // Load imported strategy parameters directly into Blockly Workspace and trigger bot execution
-  const handleLoadAndRunStrategy = (strat: StrategyConfig, e: React.MouseEvent) => {
+  // Safe Parameter Injection directly into Blockly Workspace
+  const handleLoadStrategy = (strat: StrategyConfig, e: React.MouseEvent) => {
     e.stopPropagation();
 
     if (strat.priority !== 'HIGH') {
@@ -81,14 +81,6 @@ export const FloatingAI = () => {
     const success = scannerLogic.loadHighStrategyToWorkspace(strat.id);
     if (success) {
       setIsOpen(false);
-
-      // Programmatically trigger Deriv Bot run execution
-      setTimeout(() => {
-        const runButton = document.getElementById('db-animation__run-button');
-        if (runButton) {
-          runButton.click();
-        }
-      }, 300);
     } else {
       alert('Failed to load strategy. Make sure the Deriv Bot workspace is open.');
     }
@@ -273,9 +265,9 @@ export const FloatingAI = () => {
                       <button
                         className={`btn-primary ${!isHighPriority ? 'btn-disabled' : ''}`}
                         disabled={!isHighPriority}
-                        onClick={(e) => handleLoadAndRunStrategy(strat, e)}
+                        onClick={(e) => handleLoadStrategy(strat, e)}
                       >
-                        ⚡ LOAD & RUN BOT NOW
+                        📥 LOAD STRATEGY PARAMETERS
                       </button>
                     </div>
                   )}
