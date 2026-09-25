@@ -6,7 +6,7 @@ import { CORE_7_STRATEGIES, StrategyConfig } from './strategies';
 import { scannerLogic } from './scannerLogic';
 import { useDerivTicks, ASSET_TO_SYMBOL } from './useDerivTicks';
 
-// Set to true to force tick simulation for offline/local testing
+// Set to true to force tick simulation for testing, false for live WebSocket ticks
 const ENABLE_SIMULATION = false;
 
 export const FloatingAI = () => {
@@ -22,16 +22,19 @@ export const FloatingAI = () => {
   const assets = useMemo(() => CORE_7_STRATEGIES.map((s) => s.asset), []);
   const { ticksBuffer: realTicksBuffer } = useDerivTicks(assets);
 
-  // Buffer state that holds either live ticks or simulated ticks
+  // Active buffer holding live or simulated price ticks
   const [activeBuffer, setActiveBuffer] = useState<Record<string, number[]>>({});
 
   // Drag distance tracker to prevent unwanted modal toggles
   const dragDistanceRef = useRef(0);
 
-  // 1. Tick Stream Provider (Live or Simulated)
+  // Ref mirror to inspect state inside effects without introducing render loops
+  const strategiesListRef = useRef(strategiesList);
+  strategiesListRef.current = strategiesList;
+
+  // 1. Tick Stream Provider (Live WebSocket vs Local Simulation)
   useEffect(() => {
     if (ENABLE_SIMULATION) {
-      // Internal state to hold simulated price series per asset
       const simPrices: Record<string, number[]> = {};
 
       const simInterval = setInterval(() => {
@@ -54,22 +57,35 @@ export const FloatingAI = () => {
     }
   }, [realTicksBuffer]);
 
-  // 2. Re-evaluate strategy confidence scores whenever activeBuffer updates
+  // 2. Re-evaluate strategy confidence scores when activeBuffer receives ticks
   useEffect(() => {
     if (!activeBuffer || Object.keys(activeBuffer).length === 0) return;
 
-    // Evaluate live/simulated signals across all strategies
+    // Process technical signals
     const updatedList = scannerLogic.evaluateAndProcessTicks(activeBuffer, ASSET_TO_SYMBOL);
     
-    // Force React UI re-render with updated tick-driven confidence metrics
-    setStrategiesList(updatedList);
+    // Check if score, direction, or confidence changed before updating React state
+    const hasChanged = updatedList.some((newStrat, i) => {
+      const oldStrat = strategiesListRef.current[i];
+      return (
+        !oldStrat ||
+        oldStrat.score !== newStrat.score ||
+        oldStrat.confidence !== newStrat.confidence ||
+        oldStrat.direction !== newStrat.direction ||
+        oldStrat.priority !== newStrat.priority
+      );
+    });
 
-    // Auto-expand HIGH strategy card if user hasn't selected one manually
-    const currentHigh = updatedList.find((s) => s.priority === 'HIGH');
-    if (currentHigh && !expandedId) {
-      setExpandedId(currentHigh.id);
+    if (hasChanged) {
+      setStrategiesList(updatedList);
+
+      // Auto-expand HIGH strategy card if user hasn't selected one
+      const currentHigh = updatedList.find((s) => s.priority === 'HIGH');
+      if (currentHigh) {
+        setExpandedId((prev) => (prev === null ? currentHigh.id : prev));
+      }
     }
-  }, [activeBuffer, expandedId]);
+  }, [activeBuffer]);
 
   const toggleModal = () => {
     setIsOpen((prev) => {
