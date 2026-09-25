@@ -236,7 +236,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     });
 
-    // Function to safely update a numeric input connected to a variables_set block
+    // Helper to safely update a numeric input connected to a variables_set block
     const setNumValue = (varSetBlock: any, val: number) => {
       if (!varSetBlock) return;
       const valueInput = varSetBlock.getInput('VALUE');
@@ -251,61 +251,73 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (foundTPBlock) setNumValue(foundTPBlock, strategy.takeProfit);
     if (foundSLBlock) setNumValue(foundSLBlock, strategy.stopLoss);
 
-    // 6. If TP/SL blocks don't exist inside "Run once at start:", construct and append them
-    const initBlock =
-      workspace.getBlockById('trade_definition_init') ||
-      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_init')[0]);
+    // 6. TARGETED FIX: Query trade_definition root block directly
+    const rootTradeBlock =
+      workspace.getBlockById('trade_definition') ||
+      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
 
-    if (initBlock && (!foundTPBlock || !foundSLBlock)) {
-      const createAndAttachVarBlock = (varName: string, value: number) => {
-        let variable = workspace.getVariableMap
-          ? workspace.getVariableMap().getVariable(varName)
-          : null;
+    if (rootTradeBlock && (!foundTPBlock || !foundSLBlock)) {
+      const initInput = rootTradeBlock.getInput('INITIALIZATION');
 
-        if (!variable && typeof workspace.createVariable === 'function') {
-          variable = workspace.createVariable(varName);
-        }
-        if (!variable) return;
+      if (initInput && initInput.connection) {
+        const createAndAttachVarBlock = (varName: string, value: number) => {
+          // Get or create variable in DBot workspace
+          let variable = workspace.getVariableMap
+            ? workspace.getVariableMap().getVariable(varName)
+            : null;
 
-        // Create new set variable block
-        const setVarBlock = workspace.newBlock('variables_set');
-        setVarBlock.setFieldValue(variable.getId(), 'VAR');
-        if (typeof setVarBlock.initSvg === 'function') setVarBlock.initSvg();
-
-        // Create number block
-        const numBlock = workspace.newBlock('math_number');
-        numBlock.setFieldValue(value.toString(), 'NUM');
-        if (typeof numBlock.initSvg === 'function') numBlock.initSvg();
-
-        // Connect number block into set variable block
-        const valueInput = setVarBlock.getInput('VALUE');
-        if (valueInput && valueInput.connection && numBlock.outputConnection) {
-          valueInput.connection.connect(numBlock.outputConnection);
-        }
-
-        // Attach inside INITIALIZATION statement under initBlock
-        const initInput = initBlock.getInput('INITIALIZATION');
-        if (initInput && initInput.connection) {
-          const firstChild = initInput.connection.targetBlock();
-          if (!firstChild) {
-            initInput.connection.connect(setVarBlock.previousConnection);
-          } else {
-            let lastChild = firstChild;
-            while (lastChild.nextConnection && lastChild.nextConnection.targetBlock()) {
-              lastChild = lastChild.nextConnection.targetBlock();
-            }
-            if (lastChild.nextConnection) {
-              lastChild.nextConnection.connect(setVarBlock.previousConnection);
-            }
+          if (!variable && typeof workspace.createVariable === 'function') {
+            variable = workspace.createVariable(varName);
           }
-        }
-      };
+          if (!variable) return null;
 
-      if (!foundTPBlock) createAndAttachVarBlock('target_profit', strategy.takeProfit);
-      if (!foundSLBlock) createAndAttachVarBlock('stop_loss', strategy.stopLoss);
+          // Create variables_set block
+          const setVarBlock = workspace.newBlock('variables_set');
+          setVarBlock.setFieldValue(variable.getId(), 'VAR');
+
+          // Create math_number block
+          const numBlock = workspace.newBlock('math_number');
+          numBlock.setFieldValue(value.toString(), 'NUM');
+
+          // Attach number block to variables_set VALUE input
+          const valInput = setVarBlock.getInput('VALUE');
+          if (valInput && valInput.connection && numBlock.outputConnection) {
+            valInput.connection.connect(numBlock.outputConnection);
+          }
+
+          if (typeof setVarBlock.initSvg === 'function') setVarBlock.initSvg();
+          if (typeof numBlock.initSvg === 'function') numBlock.initSvg();
+
+          return setVarBlock;
+        };
+
+        const newTPBlock = !foundTPBlock ? createAndAttachVarBlock('target_profit', strategy.takeProfit) : null;
+        const newSLBlock = !foundSLBlock ? createAndAttachVarBlock('stop_loss', strategy.stopLoss) : null;
+
+        // Snap newly created blocks inside INITIALIZATION slot
+        const existingChild = initInput.connection.targetBlock();
+        let targetSlot = initInput.connection;
+
+        if (existingChild) {
+          let tail = existingChild;
+          while (tail.nextConnection && tail.nextConnection.targetBlock()) {
+            tail = tail.nextConnection.targetBlock();
+          }
+          targetSlot = tail.nextConnection;
+        }
+
+        if (newTPBlock && targetSlot) {
+          targetSlot.connect(newTPBlock.previousConnection);
+          if (newSLBlock && newTPBlock.nextConnection) {
+            newTPBlock.nextConnection.connect(newSLBlock.previousConnection);
+          }
+        } else if (newSLBlock && targetSlot) {
+          targetSlot.connect(newSLBlock.previousConnection);
+        }
+      }
     }
 
-    // 7. Re-enable events and re-render canvas
+    // 7. Re-enable events and trigger render frame
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
