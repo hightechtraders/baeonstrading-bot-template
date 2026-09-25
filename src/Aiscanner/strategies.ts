@@ -149,58 +149,166 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Bulletproof workspace loader:
- * 1. Safely registers target variables (target_profit, stop_loss, stake) in DBot's Variable Map.
- * 2. Pauses events to prevent render glitches.
- * 3. Clears old state and injects clean DOM via XML parser.
+ * Updates active workspace parameters IN-PLACE without ever clearing the canvas.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
 
-  try {
-    const blockly = (window as any).Blockly;
+  const symbolMap: Record<string, string> = {
+    'Volatility 10': 'R_10',
+    'Volatility 25': 'R_25',
+    'Volatility 50': 'R_50',
+    'Volatility 75': 'R_75',
+    'Volatility 100': 'R_100',
+    'Volatility 100 (1s)': '1HZ100V',
+    'Volatility 25 (1s)': '1HZ25V',
+  };
 
-    // 1. Pause event listeners during batch workspace construction
+  const symbol = symbolMap[strategy.asset] || '1HZ100V';
+  const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
+
+  try {
+    // 1. Pause events during batch updates to prevent flickering
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(false);
     }
 
-    // 2. Safely register variables in DBot's custom Variable Map
-    const varNames = ['target_profit', 'stop_loss', 'stake'];
-    varNames.forEach((name) => {
-      if (workspace.getVariableMap) {
-        const varMap = workspace.getVariableMap();
-        if (!varMap.getVariable(name)) {
-          varMap.createVariable(name);
+    // 2. Market Symbol Update
+    const marketBlock =
+      workspace.getBlockById('trade_definition_market') ||
+      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_market')[0]);
+    if (marketBlock && typeof marketBlock.setFieldValue === 'function') {
+      marketBlock.setFieldValue(symbol, 'SYMBOL_LIST');
+    }
+
+    // 3. Stake Amount Update
+    const tradeOptionsBlock =
+      workspace.getBlockById('trade_definition_tradeoptions') ||
+      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_tradeoptions')[0]);
+    if (tradeOptionsBlock) {
+      const amountInput = tradeOptionsBlock.getInput('AMOUNT');
+      if (amountInput && amountInput.connection && amountInput.connection.targetBlock()) {
+        const shadowBlock = amountInput.connection.targetBlock();
+        if (typeof shadowBlock.setFieldValue === 'function') {
+          shadowBlock.setFieldValue(strategy.stake.toString(), 'NUM');
         }
-      } else if (typeof workspace.createVariable === 'function') {
-        workspace.createVariable(name);
+      }
+    }
+
+    // 4. Direction Update (Rise / Fall)
+    const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
+    if (purchaseBlocks.length > 0) {
+      purchaseBlocks.forEach((pBlock: any) => {
+        if (typeof pBlock.setFieldValue === 'function') {
+          pBlock.setFieldValue(purchaseType, 'PURCHASE_LIST');
+        }
+      });
+    }
+
+    // 5. Inspect existing set_variable blocks across workspace
+    const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
+    let foundTPBlock: any = null;
+    let foundSLBlock: any = null;
+
+    allBlocks.forEach((block: any) => {
+      if (block.type === 'variables_set') {
+        const varId = block.getFieldValue('VAR');
+        const varModel = workspace.getVariableById
+          ? workspace.getVariableById(varId)
+          : workspace.getVariableMap
+          ? workspace.getVariableMap().getVariableById(varId)
+          : null;
+        const varName = varModel ? varModel.name.toLowerCase() : '';
+
+        if (varName.includes('profit') || varName.includes('tp') || block.id === 'init_tp') {
+          foundTPBlock = block;
+        } else if (varName.includes('loss') || varName.includes('sl') || block.id === 'init_sl') {
+          foundSLBlock = block;
+        } else if (varName.includes('stake') || block.id === 'init_stake') {
+          const valueInput = block.getInput('VALUE');
+          if (valueInput && valueInput.connection && valueInput.connection.targetBlock()) {
+            const numBlock = valueInput.connection.targetBlock();
+            if (typeof numBlock.setFieldValue === 'function') {
+              numBlock.setFieldValue(strategy.stake.toString(), 'NUM');
+            }
+          }
+        }
       }
     });
 
-    // 3. Parse strategy XML structure
-    const xmlString = generateDBotXml(strategy);
-
-    if (blockly && blockly.Xml) {
-      // Clear workspace to eliminate block ID collisions
-      if (typeof workspace.clear === 'function') {
-        workspace.clear();
+    // Function to safely update a numeric input connected to a variables_set block
+    const setNumValue = (varSetBlock: any, val: number) => {
+      if (!varSetBlock) return;
+      const valueInput = varSetBlock.getInput('VALUE');
+      if (valueInput && valueInput.connection && valueInput.connection.targetBlock()) {
+        const numBlock = valueInput.connection.targetBlock();
+        if (typeof numBlock.setFieldValue === 'function') {
+          numBlock.setFieldValue(val.toString(), 'NUM');
+        }
       }
+    };
 
-      const xmlDom = blockly.Xml.textToDom(xmlString);
-      blockly.Xml.domToWorkspace(xmlDom, workspace);
+    if (foundTPBlock) setNumValue(foundTPBlock, strategy.takeProfit);
+    if (foundSLBlock) setNumValue(foundSLBlock, strategy.stopLoss);
 
-      if (typeof workspace.cleanUp === 'function') {
-        workspace.cleanUp();
-      }
+    // 6. If TP/SL blocks don't exist inside "Run once at start:", construct and append them
+    const initBlock =
+      workspace.getBlockById('trade_definition_init') ||
+      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_init')[0]);
+
+    if (initBlock && (!foundTPBlock || !foundSLBlock)) {
+      const createAndAttachVarBlock = (varName: string, value: number) => {
+        let variable = workspace.getVariableMap
+          ? workspace.getVariableMap().getVariable(varName)
+          : null;
+
+        if (!variable && typeof workspace.createVariable === 'function') {
+          variable = workspace.createVariable(varName);
+        }
+        if (!variable) return;
+
+        // Create new set variable block
+        const setVarBlock = workspace.newBlock('variables_set');
+        setVarBlock.setFieldValue(variable.getId(), 'VAR');
+        if (typeof setVarBlock.initSvg === 'function') setVarBlock.initSvg();
+
+        // Create number block
+        const numBlock = workspace.newBlock('math_number');
+        numBlock.setFieldValue(value.toString(), 'NUM');
+        if (typeof numBlock.initSvg === 'function') numBlock.initSvg();
+
+        // Connect number block into set variable block
+        const valueInput = setVarBlock.getInput('VALUE');
+        if (valueInput && valueInput.connection && numBlock.outputConnection) {
+          valueInput.connection.connect(numBlock.outputConnection);
+        }
+
+        // Attach inside INITIALIZATION statement under initBlock
+        const initInput = initBlock.getInput('INITIALIZATION');
+        if (initInput && initInput.connection) {
+          const firstChild = initInput.connection.targetBlock();
+          if (!firstChild) {
+            initInput.connection.connect(setVarBlock.previousConnection);
+          } else {
+            let lastChild = firstChild;
+            while (lastChild.nextConnection && lastChild.nextConnection.targetBlock()) {
+              lastChild = lastChild.nextConnection.targetBlock();
+            }
+            if (lastChild.nextConnection) {
+              lastChild.nextConnection.connect(setVarBlock.previousConnection);
+            }
+          }
+        }
+      };
+
+      if (!foundTPBlock) createAndAttachVarBlock('target_profit', strategy.takeProfit);
+      if (!foundSLBlock) createAndAttachVarBlock('stop_loss', strategy.stopLoss);
     }
 
-    // 4. Re-enable event listeners
+    // 7. Re-enable events and re-render canvas
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
-
-    // 5. Trigger single visual render frame
     if (typeof workspace.render === 'function') {
       workspace.render();
     }
@@ -210,13 +318,13 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
-    console.error('[Strategies] Workspace strategy application failed:', error);
+    console.error('[Strategies] In-place strategy application failed:', error);
     return false;
   }
 }
 
 /**
- * Generates valid DBot XML template containing initialisation variable blocks.
+ * Exported for XML compatibility.
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
