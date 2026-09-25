@@ -1,58 +1,45 @@
+// FloatingAI.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import Draggable, { DraggableData, DraggableEvent } from 'react-draggable';
 import './FloatingAI.css';
-import { CORE_7_STRATEGIES, StrategyConfig, StrategySignal } from './strategies';
+import { CORE_7_STRATEGIES, StrategyConfig } from './strategies';
 import { scannerLogic } from './scannerLogic';
+import { useDerivTicks, ASSET_TO_SYMBOL } from './useDerivTicks';
 
 export const FloatingAI = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | number | null>(null);
 
-  // Initialize strategies state with single-HIGH priority enforced
+  // Initialize strategy list with single HIGH priority enforced
   const [strategiesList, setStrategiesList] = useState<StrategyConfig[]>(() => {
     return scannerLogic.setStrategies(CORE_7_STRATEGIES);
   });
 
+  // Extract assets array for WebSocket tick stream subscriptions
+  const assets = useRef(CORE_7_STRATEGIES.map((s) => s.asset)).current;
+  const { ticksBuffer } = useDerivTicks(assets);
+
   // Track drag distance to differentiate tap vs drag
   const dragDistanceRef = useRef(0);
 
-  // Subscribe to live Web Worker signal updates from scannerBridge
+  // Re-evaluate strategy confidence scores & apply 2-second hold rank lock on every tick update
   useEffect(() => {
-    const handleSignalsUpdated = (e: CustomEvent<StrategySignal[]>) => {
-      const updatedSignals = e.detail;
-      if (!updatedSignals || !Array.isArray(updatedSignals) || updatedSignals.length === 0) return;
+    const updatedList = scannerLogic.evaluateAndProcessTicks(ticksBuffer, ASSET_TO_SYMBOL);
+    setStrategiesList(updatedList);
 
-      setStrategiesList((prevList) => {
-        // Merge incoming scores, directions, and confidence values into state
-        const updatedList = prevList.map((strat) => {
-          const match = updatedSignals.find((sig) => sig.strategyId === strat.id);
-          if (match) {
-            return {
-              ...strat,
-              score: match.score,
-              confidence: match.confidence,
-              direction: match.direction,
-            };
-          }
-          return strat;
-        });
-
-        // Optional: Re-sort by highest score to rank real-time winners
-        return updatedList.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-      });
-    };
-
-    window.addEventListener('scanner:signals-updated' as any, handleSignalsUpdated);
-    return () => {
-      window.removeEventListener('scanner:signals-updated' as any, handleSignalsUpdated);
-    };
-  }, []);
+    // Auto-expand HIGH strategy card if no card is manually selected
+    const currentHigh = updatedList.find((s) => s.priority === 'HIGH');
+    if (currentHigh && !expandedId) {
+      setExpandedId(currentHigh.id);
+    }
+  }, [ticksBuffer]);
 
   const toggleModal = () => {
     setIsOpen((prev) => {
       const nextState = !prev;
       if (nextState) {
-        setExpandedId(null);
+        const highStrat = strategiesList.find((s) => s.priority === 'HIGH');
+        setExpandedId(highStrat ? highStrat.id : null);
       }
       return nextState;
     });
@@ -72,7 +59,7 @@ export const FloatingAI = () => {
     }
   };
 
-  // Safely update parameters only if strategy is HIGH priority
+  // Update strategy parameters in state
   const handleInputChange = (
     stratId: string,
     field: 'stake' | 'stopLoss' | 'takeProfit',
@@ -82,8 +69,8 @@ export const FloatingAI = () => {
     setStrategiesList([...updated]);
   };
 
-  // Load imported strategy parameters directly into Deriv's Blockly Workspace
-  const handleLoadStrategy = (strat: StrategyConfig, e: React.MouseEvent) => {
+  // Load imported strategy parameters directly into Blockly Workspace and trigger bot execution
+  const handleLoadAndRunStrategy = (strat: StrategyConfig, e: React.MouseEvent) => {
     e.stopPropagation();
 
     if (strat.priority !== 'HIGH') {
@@ -93,18 +80,25 @@ export const FloatingAI = () => {
 
     const success = scannerLogic.loadHighStrategyToWorkspace(strat.id);
     if (success) {
-      alert(`Strategy "${strat.name}" successfully imported into Bot Builder workspace!`);
       setIsOpen(false);
+
+      // Programmatically trigger Deriv Bot run execution
+      setTimeout(() => {
+        const runButton = document.getElementById('db-animation__run-button');
+        if (runButton) {
+          runButton.click();
+        }
+      }, 300);
     } else {
       alert('Failed to load strategy. Make sure the Deriv Bot workspace is open.');
     }
   };
 
-  // Dynamic Global Metrics based on top-performing strategy in state
+  // Dynamic Global Metrics based on top-performing HIGH strategy in state
   const highStrategy = strategiesList.find((s) => s.priority === 'HIGH') || strategiesList[0];
-  const globalDirection = highStrategy?.direction || 'DOWN';
+  const globalWinnerName = highStrategy?.name || 'ANALYZING...';
+  const globalDirection = highStrategy?.direction || 'UP';
   const globalConfidence = highStrategy?.confidence ?? 84;
-  const globalStatus = globalConfidence > 70 ? 'READY' : 'SCANNING';
 
   return (
     <div className="floating-ai-container">
@@ -152,8 +146,8 @@ export const FloatingAI = () => {
           <div className="global-metrics-bar">
             <div className="metric-box">
               <span className="metric-label">GLOBAL WINNER</span>
-              <span className={`metric-value ${globalStatus === 'READY' ? 'green' : ''}`}>
-                {globalStatus}
+              <span className="metric-value green">
+                {globalWinnerName}
               </span>
             </div>
             <div className="metric-box">
@@ -182,7 +176,6 @@ export const FloatingAI = () => {
               const strategyType = strat.riskModel || 'NEURAL_FLOW';
               const priorityText = strat.priority;
 
-              // Read live calculated metrics from state
               const score = strat.score ?? (88 - index * 3);
               const confidence = strat.confidence ?? (90 - index * 2);
 
@@ -211,7 +204,7 @@ export const FloatingAI = () => {
                         </div>
                       </div>
                       <div className="card-sub-metrics">
-                        Score {score}% · Confidence {confidence}%
+                        Score {score}% · Confidence {confidence}% · Direction: {strat.direction || 'UP'}
                       </div>
                     </div>
                   </div>
@@ -280,9 +273,9 @@ export const FloatingAI = () => {
                       <button
                         className={`btn-primary ${!isHighPriority ? 'btn-disabled' : ''}`}
                         disabled={!isHighPriority}
-                        onClick={(e) => handleLoadStrategy(strat, e)}
+                        onClick={(e) => handleLoadAndRunStrategy(strat, e)}
                       >
-                        📥 LOAD STRATEGY PARAMETERS
+                        ⚡ LOAD & RUN BOT NOW
                       </button>
                     </div>
                   )}
