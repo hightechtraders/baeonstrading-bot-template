@@ -27,7 +27,6 @@ export const ASSET_TO_SYMBOL: Record<string, string> = {
   '1HZ25V': '1HZ25V',
 };
 
-// Inverse lookup to map raw API symbols back to asset names
 const SYMBOL_TO_ASSET: Record<string, string> = Object.entries(ASSET_TO_SYMBOL).reduce(
   (acc, [asset, symbol]) => {
     if (!acc[symbol]) acc[symbol] = asset;
@@ -39,53 +38,87 @@ const SYMBOL_TO_ASSET: Record<string, string> = Object.entries(ASSET_TO_SYMBOL).
 export function useDerivTicks(assets: string[]) {
   const [ticksBuffer, setTicksBuffer] = useState<Record<string, number[]>>({});
   const wsRef = useRef<WebSocket | null>(null);
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const serializedAssets = assets ? assets.sort().join(',') : '';
 
   useEffect(() => {
     if (!assets || assets.length === 0) return;
 
-    const ws = new WebSocket(DERIV_WS_URL);
-    wsRef.current = ws;
+    let isMounted = true;
 
-    ws.onopen = () => {
-      assets.forEach((asset) => {
-        const symbol = ASSET_TO_SYMBOL[asset] || asset;
-        ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
-      });
-    };
+    const connect = () => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.msg_type === 'tick' && data.tick) {
-          const rawSymbol = data.tick.symbol;
-          const assetName = SYMBOL_TO_ASSET[rawSymbol] || rawSymbol;
-          const price = Number(data.tick.quote);
+      const ws = new WebSocket(DERIV_WS_URL);
+      wsRef.current = ws;
 
-          setTicksBuffer((prev) => {
-            const currentSymbolTicks = prev[rawSymbol] || [];
-            const currentAssetTicks = prev[assetName] || [];
+      ws.onopen = () => {
+        if (!isMounted) return;
 
-            const updatedSymbolTicks = [...currentSymbolTicks, price].slice(-20);
-            const updatedAssetTicks = [...currentAssetTicks, price].slice(-20);
+        // 1. Subscribe to requested tick streams
+        assets.forEach((asset) => {
+          const symbol = ASSET_TO_SYMBOL[asset] || asset;
+          ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+        });
 
-            return {
-              ...prev,
-              [rawSymbol]: updatedSymbolTicks,
-              [assetName]: updatedAssetTicks,
-            };
-          });
+        // 2. Keep-alive ping every 25 seconds to prevent timeout
+        pingIntervalRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ ping: 1 }));
+          }
+        }, 25000);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.msg_type === 'tick' && data.tick) {
+            const rawSymbol = data.tick.symbol;
+            const assetName = SYMBOL_TO_ASSET[rawSymbol] || rawSymbol;
+            const price = Number(data.tick.quote);
+
+            setTicksBuffer((prev) => {
+              const currentSymbolTicks = prev[rawSymbol] || [];
+              const currentAssetTicks = prev[assetName] || [];
+
+              return {
+                ...prev,
+                [rawSymbol]: [...currentSymbolTicks, price].slice(-20),
+                [assetName]: [...currentAssetTicks, price].slice(-20),
+              };
+            });
+          }
+        } catch (err) {
+          console.error('Tick stream message parsing error:', err);
         }
-      } catch (err) {
-        console.error('Tick stream error:', err);
-      }
+      };
+
+      ws.onerror = (err) => {
+        console.warn('Deriv WebSocket Error:', err);
+      };
+
+      ws.onclose = () => {
+        if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+        // Attempt reconnect after 3 seconds if component is still mounted
+        if (isMounted) {
+          reconnectTimeoutRef.current = setTimeout(connect, 3000);
+        }
+      };
     };
+
+    connect();
 
     return () => {
-      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-        ws.close();
+      isMounted = false;
+      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      if (wsRef.current) {
+        wsRef.current.close();
       }
     };
-  }, [JSON.stringify(assets)]);
+  }, [serializedAssets]);
 
   return { ticksBuffer, ASSET_TO_SYMBOL };
 }
