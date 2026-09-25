@@ -6,6 +6,9 @@ import { CORE_7_STRATEGIES, StrategyConfig } from './strategies';
 import { scannerLogic } from './scannerLogic';
 import { useDerivTicks, ASSET_TO_SYMBOL } from './useDerivTicks';
 
+// Set to true to force tick simulation for offline/local testing
+const ENABLE_SIMULATION = false;
+
 export const FloatingAI = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | number | null>(null);
@@ -17,17 +20,46 @@ export const FloatingAI = () => {
 
   // Extract static list of asset strings for hook
   const assets = useMemo(() => CORE_7_STRATEGIES.map((s) => s.asset), []);
-  const { ticksBuffer } = useDerivTicks(assets);
+  const { ticksBuffer: realTicksBuffer } = useDerivTicks(assets);
+
+  // Buffer state that holds either live ticks or simulated ticks
+  const [activeBuffer, setActiveBuffer] = useState<Record<string, number[]>>({});
 
   // Drag distance tracker to prevent unwanted modal toggles
   const dragDistanceRef = useRef(0);
 
-  // Re-evaluate strategy confidence scores every time ticks updates
+  // 1. Tick Stream Provider (Live or Simulated)
   useEffect(() => {
-    if (!ticksBuffer || Object.keys(ticksBuffer).length === 0) return;
+    if (ENABLE_SIMULATION) {
+      // Internal state to hold simulated price series per asset
+      const simPrices: Record<string, number[]> = {};
 
-    // Evaluate live signals across all strategies
-    const updatedList = scannerLogic.evaluateAndProcessTicks(ticksBuffer, ASSET_TO_SYMBOL);
+      const simInterval = setInterval(() => {
+        CORE_7_STRATEGIES.forEach((strat) => {
+          const key = strat.asset;
+          const currentSeries = simPrices[key] || Array.from({ length: 20 }, () => 1000);
+          const lastPrice = currentSeries[currentSeries.length - 1];
+          
+          // Random walk simulation (-2.5 to +2.5 movement)
+          const newPrice = Number((lastPrice + (Math.random() - 0.48) * 5).toFixed(2));
+          simPrices[key] = [...currentSeries, newPrice].slice(-30);
+        });
+
+        setActiveBuffer({ ...simPrices });
+      }, 1000);
+
+      return () => clearInterval(simInterval);
+    } else {
+      setActiveBuffer(realTicksBuffer);
+    }
+  }, [realTicksBuffer]);
+
+  // 2. Re-evaluate strategy confidence scores whenever activeBuffer updates
+  useEffect(() => {
+    if (!activeBuffer || Object.keys(activeBuffer).length === 0) return;
+
+    // Evaluate live/simulated signals across all strategies
+    const updatedList = scannerLogic.evaluateAndProcessTicks(activeBuffer, ASSET_TO_SYMBOL);
     
     // Force React UI re-render with updated tick-driven confidence metrics
     setStrategiesList(updatedList);
@@ -37,7 +69,7 @@ export const FloatingAI = () => {
     if (currentHigh && !expandedId) {
       setExpandedId(currentHigh.id);
     }
-  }, [ticksBuffer, expandedId]);
+  }, [activeBuffer, expandedId]);
 
   const toggleModal = () => {
     setIsOpen((prev) => {
