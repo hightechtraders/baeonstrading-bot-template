@@ -1,20 +1,18 @@
-// scannerLogic.ts
+// src/Aiscanner/scannerLogic.ts
 import { StrategyConfig, enforceSingleHighPriority, evaluateStrategySignal } from './strategies';
 import { scannerBridge } from './scannerBridge';
+import { ASSET_TO_SYMBOL } from './useDerivTicks';
 
 export class ScannerLogicManager {
   private strategies: StrategyConfig[] = [];
   private activeHighId: string | null = null;
   private lastSwitchTime = 0;
-  private readonly MIN_HOLD_DURATION_MS = 2000; // 2-second stability hold rule
+  private readonly MIN_HOLD_DURATION_MS = 2000;
 
   constructor(initialStrategies: StrategyConfig[] = []) {
     this.setStrategies(initialStrategies);
   }
 
-  /**
-   * Set or update strategy list while strictly maintaining single HIGH priority rule.
-   */
   public setStrategies(strategies: StrategyConfig[], targetHighId?: string): StrategyConfig[] {
     const defaultHigh = targetHighId || this.activeHighId || strategies[0]?.id;
     this.strategies = enforceSingleHighPriority(strategies, defaultHigh);
@@ -23,19 +21,47 @@ export class ScannerLogicManager {
   }
 
   /**
-   * Evaluates live ticks across all assets, updates scores/confidence,
-   * and enforces the 2-second lock before switching HIGH priority.
+   * Helper method to safely retrieve tick array for any asset name format
    */
+  private getTicksForAsset(asset: string, ticksBuffer: Record<string, number[]>, symbolMap: Record<string, string>): number[] {
+    if (!asset || !ticksBuffer) return [];
+
+    // 1. Try explicit symbolMap override
+    const mappedSymbol = symbolMap[asset];
+    if (mappedSymbol && ticksBuffer[mappedSymbol]?.length > 0) {
+      return ticksBuffer[mappedSymbol];
+    }
+
+    // 2. Try ASSET_TO_SYMBOL dictionary lookup (e.g. 'Volatility 25' -> 'R_25')
+    const rawSymbol = ASSET_TO_SYMBOL[asset] || ASSET_TO_SYMBOL[asset.trim()];
+    if (rawSymbol && ticksBuffer[rawSymbol]?.length > 0) {
+      return ticksBuffer[rawSymbol];
+    }
+
+    // 3. Try exact key match in ticksBuffer
+    if (ticksBuffer[asset]?.length > 0) {
+      return ticksBuffer[asset];
+    }
+
+    // 4. Try flexible case-insensitive match
+    const cleanAsset = asset.replace(/_/g, ' ').toLowerCase();
+    const matchedKey = Object.keys(ticksBuffer).find((key) => {
+      const cleanKey = key.replace(/_/g, ' ').toLowerCase();
+      return cleanKey === cleanAsset || cleanKey.includes(cleanAsset);
+    });
+
+    return matchedKey ? ticksBuffer[matchedKey] : [];
+  }
+
   public evaluateAndProcessTicks(
     ticksBuffer: Record<string, number[]>,
     symbolMap: Record<string, string> = {}
   ): StrategyConfig[] {
     const now = Date.now();
 
-    // 1. Calculate real-time signals for every strategy
+    // 1. Calculate real-time signals for every strategy using robust tick extraction
     const evaluated = this.strategies.map((strat) => {
-      const symbol = symbolMap[strat.asset] || '1HZ100V';
-      const ticks = ticksBuffer[symbol] || [];
+      const ticks = this.getTicksForAsset(strat.asset, ticksBuffer, symbolMap);
       const signal = evaluateStrategySignal(strat, ticks);
 
       return {
@@ -49,7 +75,7 @@ export class ScannerLogicManager {
     // 2. Identify strategy with highest confidence
     const rawWinner = [...evaluated].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
 
-    // 3. Apply 2-Second Hold Rule: Only switch HIGH rank if 2 seconds have passed
+    // 3. Apply 2-Second Hold Rule
     if (rawWinner && rawWinner.id !== this.activeHighId) {
       if (now - this.lastSwitchTime >= this.MIN_HOLD_DURATION_MS) {
         this.activeHighId = rawWinner.id;
@@ -61,11 +87,11 @@ export class ScannerLogicManager {
       this.activeHighId = evaluated[0].id;
     }
 
-    // 4. Enforce single HIGH priority and sync back to class state
+    // 4. Enforce single HIGH priority
     const formatted = enforceSingleHighPriority(evaluated, this.activeHighId || undefined);
     this.strategies = formatted;
 
-    // 5. Sort so HIGH priority strategy is always #1 in the list
+    // 5. Sort so HIGH priority strategy is always #1 in list
     return [...formatted].sort((a, b) => {
       if (a.priority === 'HIGH') return -1;
       if (b.priority === 'HIGH') return 1;
@@ -73,17 +99,10 @@ export class ScannerLogicManager {
     });
   }
 
-  /**
-   * Select a new strategy to be the single 'HIGH' priority winner manually.
-   */
   public setHighPriority(strategyId: string): StrategyConfig[] {
     return this.setStrategies(this.strategies, strategyId);
   }
 
-  /**
-   * Safely update editable parameters (stake, stopLoss, takeProfit).
-   * Restricted strictly to the single active HIGH strategy.
-   */
   public updateStrategyParams(
     strategyId: string,
     updates: Partial<Pick<StrategyConfig, 'stake' | 'stopLoss' | 'takeProfit'>>
@@ -110,9 +129,6 @@ export class ScannerLogicManager {
     return this.strategies;
   }
 
-  /**
-   * Triggers loading the active HIGH priority strategy into the Blockly workspace.
-   */
   public loadHighStrategyToWorkspace(strategyId: string): boolean {
     const strategy = this.strategies.find((s) => s.id === strategyId);
 
@@ -129,9 +145,6 @@ export class ScannerLogicManager {
     return scannerBridge.loadStrategyToBot(strategy);
   }
 
-  /**
-   * Returns current active strategies array.
-   */
   public getStrategies(): StrategyConfig[] {
     return this.strategies;
   }
