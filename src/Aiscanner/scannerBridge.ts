@@ -2,7 +2,6 @@
 
 import {
   StrategyConfig,
-  generateDBotXml,
   applyStrategyToWorkspace,
   enforceSingleHighPriority,
 } from './strategies';
@@ -104,7 +103,7 @@ export class ScannerBridge {
         window.location.hash = '#bot_builder';
       }
 
-      // 2. Safely apply strategy parameters directly to the active workspace blocks
+      // 2. Safely update active Deriv Blockly Workspace parameters directly
       setTimeout(() => {
         const win = window as any;
         const workspace =
@@ -118,16 +117,7 @@ export class ScannerBridge {
           if (applied) {
             console.log(`[ScannerBridge] Applied strategy parameters directly to workspace: ${strategy.name}`);
           } else {
-            // Fallback to XML import if workspace blocks aren't initialized yet
-            const xmlString = generateDBotXml(strategy);
-            const parser = new DOMParser();
-            const xmlDom = parser.parseFromString(xmlString, 'text/xml').documentElement;
-            if (win.Blockly?.Xml) {
-              workspace.clear();
-              win.Blockly.Xml.domToWorkspace(xmlDom, workspace);
-              if (typeof workspace.cleanUp === 'function') workspace.cleanUp();
-              if (typeof workspace.render === 'function') workspace.render();
-            }
+            console.warn(`[ScannerBridge] Could not update parameters on workspace blocks for: ${strategy.name}`);
           }
         } else {
           console.error('[ScannerBridge] Active Blockly workspace instance not found.');
@@ -136,7 +126,7 @@ export class ScannerBridge {
 
       return true;
     } catch (error) {
-      console.error('[ScannerBridge] Failed to load strategy parameters into workspace:', error);
+      console.error('[ScannerBridge] Failed to load strategy parameters into Blockly:', error);
       return false;
     }
   }
