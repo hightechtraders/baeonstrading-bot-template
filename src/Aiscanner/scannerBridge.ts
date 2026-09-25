@@ -4,6 +4,7 @@ import {
   StrategyConfig,
   applyStrategyToWorkspace,
   enforceSingleHighPriority,
+  evaluateStrategySignal,
 } from './strategies';
 
 // Symbol mapper to align raw API symbols with Strategy asset names
@@ -38,11 +39,25 @@ export class ScannerBridge {
           if (strategies && Array.isArray(strategies)) {
             for (const strat of strategies) {
               if (strat.asset === asset || strat.asset.toLowerCase() === asset.toLowerCase()) {
-                const recent = ticks ? ticks.slice(-10) : [];
-                const gains = recent.slice(1).filter((val, i) => val > recent[i]).length;
-                const total = Math.max(recent.length - 1, 1);
-                const score = Math.round((gains / total) * 100);
-                const direction = score >= 65 ? 'UP' : score <= 35 ? 'DOWN' : 'HOLD';
+                const recent = ticks ? ticks.slice(-20) : [];
+                
+                let gains = 0;
+                for (let i = 1; i < recent.length; i++) {
+                  if (recent[i] > recent[i - 1]) gains++;
+                }
+                const totalSteps = Math.max(recent.length - 1, 1);
+                const gainRatio = gains / totalSteps;
+                let rawScore = gainRatio * 100;
+
+                const tickDiff = recent.length > 1 ? recent[recent.length - 1] - recent[recent.length - 2] : 0;
+                if (tickDiff > 0) rawScore += 5;
+                if (tickDiff < 0) rawScore -= 5;
+
+                const score = Math.max(10, Math.min(98, Math.round(rawScore)));
+                let direction = 'HOLD';
+                if (score >= 52 || tickDiff > 0) direction = 'RISE';
+                else if (score <= 48 || tickDiff < 0) direction = 'FALL';
+
                 const confidence = Math.max(score, 100 - score);
 
                 results.push({
