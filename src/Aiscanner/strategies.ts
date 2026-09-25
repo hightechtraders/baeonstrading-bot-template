@@ -149,8 +149,8 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Simultaneously injects Market Symbol, Stake Amount, Purchase Direction (Rise/Fall),
- * Take Profit, and Stop Loss into the active DBot workspace in a single atomic update.
+ * Atomic strategy injector: Updates Market, Stake, Direction, and creates/updates
+ * Take Profit and Stop Loss variable blocks inside "Run once at start:" instantly.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
@@ -169,12 +169,12 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
   const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
 
   try {
-    // Disable workspace events during batch injection to prevent intermediate render flashes
+    // 1. Pause workspace event processing for zero-flicker batch update
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(false);
     }
 
-    // 1. Target and update Market Symbol
+    // 2. Set Market Symbol
     const marketBlock =
       workspace.getBlockById('trade_definition_market') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_market')[0]);
@@ -182,7 +182,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       marketBlock.setFieldValue(symbol, 'SYMBOL_LIST');
     }
 
-    // 2. Target and update Stake Amount inside Trade Options
+    // 3. Set Stake Amount inside Trade Options
     const tradeOptionsBlock =
       workspace.getBlockById('trade_definition_tradeoptions') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_tradeoptions')[0]);
@@ -196,7 +196,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 3. Target and update Purchase Contract Direction (RISE / FALL)
+    // 4. Set Purchase Direction (Rise / Fall)
     const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
     if (purchaseBlocks.length > 0) {
       purchaseBlocks.forEach((pBlock: any) => {
@@ -211,7 +211,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 4. Target and update Variable Blocks (Take Profit, Stop Loss, Stake)
+    // 5. Check existing variables on canvas
     const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
     let foundTP = false;
     let foundSL = false;
@@ -219,7 +219,11 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     allBlocks.forEach((block: any) => {
       if (block.type === 'variables_set') {
         const varId = block.getFieldValue('VAR');
-        const varModel = workspace.getVariableById ? workspace.getVariableById(varId) : null;
+        const varModel = workspace.getVariableById
+          ? workspace.getVariableById(varId)
+          : workspace.getVariableMap
+          ? workspace.getVariableMap().getVariableById(varId)
+          : null;
         const varName = varModel ? varModel.name.toLowerCase() : '';
 
         const valueInput = block.getInput('VALUE');
@@ -251,16 +255,24 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     });
 
-    // 5. Auto-Create & Attach Missing TP & SL Variable Blocks inside "Run once at start"
+    // 6. Automatically construct and insert missing TP & SL blocks into "Run once at start:"
     const initBlock =
       workspace.getBlockById('trade_definition_init') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_init')[0]);
 
     if (initBlock && (!foundTP || !foundSL)) {
       const injectVariableBlock = (varName: string, val: number) => {
-        const variable = workspace.createVariable
-          ? workspace.createVariable(varName)
-          : workspace.getVariableMap ? workspace.getVariableMap().createVariable(varName) : null;
+        let variable = workspace.getVariableMap
+          ? workspace.getVariableMap().getVariable(varName)
+          : null;
+
+        if (!variable) {
+          variable = workspace.createVariable
+            ? workspace.createVariable(varName)
+            : workspace.getVariableMap
+            ? workspace.getVariableMap().createVariable(varName)
+            : null;
+        }
 
         if (!variable) return;
 
@@ -298,12 +310,12 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       if (!foundSL) injectVariableBlock('stop_loss', strategy.stopLoss);
     }
 
-    // Re-enable workspace event listeners
+    // 7. Resume workspace event handling
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
 
-    // Render workspace visually in a single atomic frame
+    // 8. Render full workspace synchronously in one frame
     if (typeof workspace.render === 'function') {
       workspace.render();
     }
@@ -319,7 +331,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
 }
 
 /**
- * Exported for backward compatibility with build tools.
+ * XML Generator helper for fallback loading.
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
