@@ -149,7 +149,8 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Directly updates active DBot workspace blocks without clearing or reloading XML DOM.
+ * Directly updates active DBot workspace blocks and strategy variables
+ * (Market Symbol, Stake, Take Profit, Stop Loss, and Purchase Direction).
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
@@ -176,7 +177,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       marketBlock.setFieldValue(symbol, 'SYMBOL_LIST');
     }
 
-    // 2. Target and update Stake Amount
+    // 2. Target and update Stake Amount inside Trade Options
     const tradeOptionsBlock =
       workspace.getBlockById('trade_definition_tradeoptions') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_tradeoptions')[0]);
@@ -190,14 +191,58 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 3. Target and update Purchase Contract Type
-    const purchaseBlock =
-      workspace.getBlockById('purchase_block') ||
-      (workspace.getBlocksByType && workspace.getBlocksByType('purchase')[0]);
-    if (purchaseBlock && typeof purchaseBlock.setFieldValue === 'function') {
-      purchaseBlock.setFieldValue(purchaseType, 'PURCHASE_LIST');
+    // 3. Target and update Purchase Contract Type (RISE / FALL)
+    const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
+    if (purchaseBlocks.length > 0) {
+      purchaseBlocks.forEach((pBlock: any) => {
+        if (typeof pBlock.setFieldValue === 'function') {
+          pBlock.setFieldValue(purchaseType, 'PURCHASE_LIST');
+        }
+      });
+    } else {
+      const purchaseBlock = workspace.getBlockById('purchase_block');
+      if (purchaseBlock && typeof purchaseBlock.setFieldValue === 'function') {
+        purchaseBlock.setFieldValue(purchaseType, 'PURCHASE_LIST');
+      }
     }
 
+    // 4. Target and update Variable Blocks (Take Profit, Stop Loss, Stake)
+    const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
+
+    allBlocks.forEach((block: any) => {
+      if (block.type === 'variables_set') {
+        const varId = block.getFieldValue('VAR');
+        const varModel = workspace.getVariableById ? workspace.getVariableById(varId) : null;
+        const varName = varModel ? varModel.name.toLowerCase() : '';
+
+        const valueInput = block.getInput('VALUE');
+        if (valueInput && valueInput.connection && valueInput.connection.targetBlock()) {
+          const numBlock = valueInput.connection.targetBlock();
+
+          if (typeof numBlock.setFieldValue === 'function') {
+            if (
+              varName.includes('profit') ||
+              varName.includes('tp') ||
+              varName.includes('target') ||
+              block.id === 'init_tp'
+            ) {
+              numBlock.setFieldValue(strategy.takeProfit.toString(), 'NUM');
+            } else if (
+              varName.includes('loss') ||
+              varName.includes('sl') ||
+              varName.includes('stop') ||
+              block.id === 'init_sl'
+            ) {
+              numBlock.setFieldValue(strategy.stopLoss.toString(), 'NUM');
+            } else if (varName.includes('stake') || block.id === 'init_stake') {
+              numBlock.setFieldValue(strategy.stake.toString(), 'NUM');
+            }
+          }
+        }
+      }
+    });
+
+    // Re-render the workspace canvas to instantly reflect changes visually
     if (typeof workspace.render === 'function') {
       workspace.render();
     }
