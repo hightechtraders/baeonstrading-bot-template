@@ -125,23 +125,45 @@ export function enforceSingleHighPriority(
   }));
 }
 
+/**
+ * Dynamic momentum & tick velocity score evaluator.
+ * Prevents static HOLD / 50% values by continuously computing trend direction across ticks.
+ */
 export function evaluateStrategySignal(
   strategy: StrategyConfig,
   ticks: number[]
 ): { direction: 'UP' | 'DOWN' | 'HOLD'; confidence: number; score: number } {
-  if (!ticks || ticks.length < 5) {
+  if (!ticks || ticks.length < 3) {
     return { direction: 'HOLD', confidence: 50, score: 50 };
   }
 
-  const recent = ticks.slice(-10);
-  const gains = recent.slice(1).filter((val, i) => val > recent[i]).length;
-  const total = recent.length - 1;
+  const latestPrice = ticks[ticks.length - 1];
+  const prevPrice = ticks[ticks.length - 2];
+  const firstPrice = ticks[0];
 
-  const score = Math.round((gains / total) * 100);
+  const tickDiff = latestPrice - prevPrice;
+  const overallDiff = latestPrice - firstPrice;
+
+  let gains = 0;
+  for (let i = 1; i < ticks.length; i++) {
+    if (ticks[i] > ticks[i - 1]) gains++;
+  }
+  const totalSteps = ticks.length - 1;
+  const gainRatio = totalSteps > 0 ? gains / totalSteps : 0.5;
+
+  let rawScore = gainRatio * 100;
+
+  if (tickDiff > 0) rawScore += 5;
+  if (tickDiff < 0) rawScore -= 5;
+
+  const score = Math.max(10, Math.min(98, Math.round(rawScore)));
+
   let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
-
-  if (score >= 65) direction = 'UP';
-  else if (score <= 35) direction = 'DOWN';
+  if (score >= 52 || tickDiff > 0 || overallDiff > 0) {
+    direction = 'UP';
+  } else if (score <= 48 || tickDiff < 0 || overallDiff < 0) {
+    direction = 'DOWN';
+  }
 
   const confidence = Math.max(score, 100 - score);
 
@@ -149,7 +171,7 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Updates active workspace parameters IN-PLACE without ever clearing the canvas.
+ * Updates active workspace parameters IN-PLACE without ever clearing the canvas or breaking Blockly structure.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
@@ -162,13 +184,20 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     'Volatility 100': 'R_100',
     'Volatility 100 (1s)': '1HZ100V',
     'Volatility 25 (1s)': '1HZ25V',
+    'Volatility 10 Index': 'R_10',
+    'Volatility 25 Index': 'R_25',
+    'Volatility 50 Index': 'R_50',
+    'Volatility 75 Index': 'R_75',
+    'Volatility 100 Index': 'R_100',
+    'Volatility 100 (1s) Index': '1HZ100V',
+    'Volatility 25 (1s) Index': '1HZ25V',
   };
 
   const symbol = symbolMap[strategy.asset] || '1HZ100V';
   const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
 
   try {
-    // 1. Pause events during batch updates to prevent flickering
+    // 1. Pause events during batch updates to prevent invalid workspace states
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(false);
     }
@@ -205,7 +234,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       });
     }
 
-    // 5. Inspect existing set_variable blocks across workspace
+    // 5. Inspect existing set_variable blocks across workspace safely
     const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
     let foundTPBlock: any = null;
     let foundSLBlock: any = null;
@@ -236,7 +265,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     });
 
-    // Helper to safely update a numeric input connected to a variables_set block
+    // Helper to safely update numeric input values on variables_set blocks
     const setNumValue = (varSetBlock: any, val: number) => {
       if (!varSetBlock) return;
       const valueInput = varSetBlock.getInput('VALUE');
@@ -251,7 +280,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (foundTPBlock) setNumValue(foundTPBlock, strategy.takeProfit);
     if (foundSLBlock) setNumValue(foundSLBlock, strategy.stopLoss);
 
-    // 6. TARGETED FIX: Query trade_definition root block directly
+    // 6. Query trade_definition root block directly if TP/SL variable blocks are missing
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
@@ -261,7 +290,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
 
       if (initInput && initInput.connection) {
         const createAndAttachVarBlock = (varName: string, value: number) => {
-          // Get or create variable in DBot workspace
           let variable = workspace.getVariableMap
             ? workspace.getVariableMap().getVariable(varName)
             : null;
@@ -271,15 +299,12 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           }
           if (!variable) return null;
 
-          // Create variables_set block
           const setVarBlock = workspace.newBlock('variables_set');
           setVarBlock.setFieldValue(variable.getId(), 'VAR');
 
-          // Create math_number block
           const numBlock = workspace.newBlock('math_number');
           numBlock.setFieldValue(value.toString(), 'NUM');
 
-          // Attach number block to variables_set VALUE input
           const valInput = setVarBlock.getInput('VALUE');
           if (valInput && valInput.connection && numBlock.outputConnection) {
             valInput.connection.connect(numBlock.outputConnection);
@@ -294,7 +319,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
         const newTPBlock = !foundTPBlock ? createAndAttachVarBlock('target_profit', strategy.takeProfit) : null;
         const newSLBlock = !foundSLBlock ? createAndAttachVarBlock('stop_loss', strategy.stopLoss) : null;
 
-        // Snap newly created blocks inside INITIALIZATION slot
         const existingChild = initInput.connection.targetBlock();
         let targetSlot = initInput.connection;
 
@@ -317,7 +341,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 7. Re-enable events and trigger render frame
+    // 7. Re-enable events and trigger workspace render frame
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
@@ -336,7 +360,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
 }
 
 /**
- * Exported for XML compatibility.
+ * Clean XML generator for workspace imports.
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
@@ -347,6 +371,13 @@ export function generateDBotXml(strategy: StrategyConfig): string {
     'Volatility 100': 'R_100',
     'Volatility 100 (1s)': '1HZ100V',
     'Volatility 25 (1s)': '1HZ25V',
+    'Volatility 10 Index': 'R_10',
+    'Volatility 25 Index': 'R_25',
+    'Volatility 50 Index': 'R_50',
+    'Volatility 75 Index': 'R_75',
+    'Volatility 100 Index': 'R_100',
+    'Volatility 100 (1s) Index': '1HZ100V',
+    'Volatility 25 (1s) Index': '1HZ25V',
   };
 
   const symbol = symbolMap[strategy.asset] || '1HZ100V';
