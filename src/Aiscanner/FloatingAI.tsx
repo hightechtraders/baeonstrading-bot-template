@@ -1,3 +1,4 @@
+// src/Aiscanner/FloatingAI.tsx
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Draggable, { DraggableData, DraggableEvent } from 'react-draggable';
 import './FloatingAI.css';
@@ -21,7 +22,6 @@ export const FloatingAI = () => {
   const [activeBuffer, setActiveBuffer] = useState<Record<string, number[]>>({});
   const dragDistanceRef = useRef(0);
 
-  // Ref to hold previous list without triggering re-renders in dependency arrays
   const strategiesListRef = useRef(strategiesList);
   strategiesListRef.current = strategiesList;
 
@@ -49,13 +49,17 @@ export const FloatingAI = () => {
     }
   }, [realTicksBuffer]);
 
-  // 2. Safely process ticks without auto-expanding cards during re-renders
+  // 2. Process ticks cleanly - freezes position sorting whenever expandedId is active
   useEffect(() => {
     if (!activeBuffer || Object.keys(activeBuffer).length === 0) return;
 
-    const updatedList = scannerLogic.evaluateAndProcessTicks(activeBuffer, ASSET_TO_SYMBOL);
+    const isEditing = expandedId !== null;
+    const updatedList = scannerLogic.evaluateAndProcessTicks(
+      activeBuffer,
+      ASSET_TO_SYMBOL,
+      isEditing
+    );
     
-    // Check if score, direction, or confidence actually changed
     const hasChanged = updatedList.some((newStrat, i) => {
       const oldStrat = strategiesListRef.current[i];
       return (
@@ -70,7 +74,7 @@ export const FloatingAI = () => {
     if (hasChanged) {
       setStrategiesList(updatedList);
     }
-  }, [activeBuffer]);
+  }, [activeBuffer, expandedId]);
 
   const toggleModal = () => {
     setIsOpen((prev) => !prev);
