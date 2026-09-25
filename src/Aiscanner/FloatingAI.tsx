@@ -10,29 +10,29 @@ export const FloatingAI = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | number | null>(null);
 
-  // Initialize strategy list with single HIGH priority enforced
+  // Initialize strategies list
   const [strategiesList, setStrategiesList] = useState<StrategyConfig[]>(() => {
     return scannerLogic.setStrategies(CORE_7_STRATEGIES);
   });
 
-  // Extract assets memoized safely for hook dependency
+  // Extract static list of asset strings for hook
   const assets = useMemo(() => CORE_7_STRATEGIES.map((s) => s.asset), []);
   const { ticksBuffer } = useDerivTicks(assets);
 
-  // Track drag distance to differentiate tap vs drag
+  // Drag distance tracker to prevent unwanted modal toggles
   const dragDistanceRef = useRef(0);
 
-  // Re-evaluate strategy confidence scores on every tick update
+  // Re-evaluate strategy confidence scores every time ticks updates
   useEffect(() => {
     if (!ticksBuffer || Object.keys(ticksBuffer).length === 0) return;
 
-    // Evaluate live signals across strategies
+    // Evaluate live signals across all strategies
     const updatedList = scannerLogic.evaluateAndProcessTicks(ticksBuffer, ASSET_TO_SYMBOL);
     
-    // Force state update to trigger immediate UI re-render
-    setStrategiesList([...updatedList]);
+    // Force React UI re-render with updated tick-driven confidence metrics
+    setStrategiesList(updatedList);
 
-    // Auto-expand HIGH strategy card if no card is manually selected
+    // Auto-expand HIGH strategy card if user hasn't selected one manually
     const currentHigh = updatedList.find((s) => s.priority === 'HIGH');
     if (currentHigh && !expandedId) {
       setExpandedId(currentHigh.id);
@@ -64,17 +64,17 @@ export const FloatingAI = () => {
     }
   };
 
-  // Update strategy parameters in state
+  // Update strategy parameters in state & sync with scannerLogic
   const handleInputChange = (
     stratId: string,
     field: 'stake' | 'stopLoss' | 'takeProfit',
     value: number
   ) => {
     const updated = scannerLogic.updateStrategyParams(stratId, { [field]: value });
-    setStrategiesList([...updated]);
+    setStrategiesList(updated);
   };
 
-  // Safe Parameter Injection directly into Blockly Workspace
+  // Load HIGH Strategy directly into workspace
   const handleLoadStrategy = (strat: StrategyConfig, e: React.MouseEvent) => {
     e.stopPropagation();
 
@@ -91,7 +91,7 @@ export const FloatingAI = () => {
     }
   };
 
-  // Dynamic Global Metrics based on top-performing HIGH strategy in state
+  // Global Metrics derived from current HIGH strategy
   const highStrategy = strategiesList.find((s) => s.priority === 'HIGH') || strategiesList[0];
   const globalWinnerName = highStrategy?.name || 'ANALYZING...';
   const globalDirection = highStrategy?.direction || 'HOLD';
@@ -107,25 +107,17 @@ export const FloatingAI = () => {
             title="Open AI Multi-Asset Scanner"
             style={{ touchAction: 'none' }}
           >
-            {/* Animated Pulse Rings */}
             <span className="pulse-ring ring-1" />
             <span className="pulse-ring ring-2" />
-
-            {/* Glowing Core Background */}
             <div className="ai-btn-glow" />
-
-            {/* Core Label and Icon */}
             <div className="ai-btn-content">
               <span className="ai-btn-text">AI</span>
             </div>
-
-            {/* Live Indicator Dot */}
             <span className="live-status-dot" />
           </button>
         </div>
       </Draggable>
 
-      {/* Scanner Modal Window */}
       {isOpen && (
         <div className="scanner-modal">
           <div className="scanner-header">
@@ -143,13 +135,19 @@ export const FloatingAI = () => {
           <div className="global-metrics-bar">
             <div className="metric-box">
               <span className="metric-label">GLOBAL WINNER</span>
-              <span className="metric-value green">
-                {globalWinnerName}
-              </span>
+              <span className="metric-value green">{globalWinnerName}</span>
             </div>
             <div className="metric-box">
               <span className="metric-label">DIRECTION</span>
-              <span className={`metric-value ${globalDirection === 'RISE' ? 'green' : globalDirection === 'FALL' ? 'orange' : ''}`}>
+              <span
+                className={`metric-value ${
+                  globalDirection === 'RISE'
+                    ? 'green'
+                    : globalDirection === 'FALL'
+                    ? 'orange'
+                    : ''
+                }`}
+              >
                 {globalDirection}
               </span>
             </div>
@@ -164,7 +162,6 @@ export const FloatingAI = () => {
               const stratId = strat.id;
               const isExpanded = expandedId === stratId;
               const rankNum = index + 1;
-
               const isHighPriority = strat.priority === 'HIGH';
 
               const title = strat.name || `Strategy ${rankNum}`;
@@ -175,7 +172,6 @@ export const FloatingAI = () => {
 
               const score = strat.score ?? 50;
               const confidence = strat.confidence ?? 50;
-
               const description = `${strategyType} structural strategy designed for ${volatility}.`;
 
               return (
