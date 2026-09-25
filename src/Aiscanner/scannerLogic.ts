@@ -10,40 +10,46 @@ export class ScannerLogicManager {
   private readonly MIN_HOLD_DURATION_MS = 2000;
 
   constructor(initialStrategies: StrategyConfig[] = []) {
-    this.setStrategies(initialStrategies);
+    if (initialStrategies.length > 0) {
+      this.setStrategies(initialStrategies);
+    }
   }
 
   public setStrategies(strategies: StrategyConfig[], targetHighId?: string): StrategyConfig[] {
-    const defaultHigh = targetHighId || this.activeHighId || strategies[0]?.id;
-    this.strategies = enforceSingleHighPriority(strategies, defaultHigh);
+    const defaultHigh = targetHighId || this.activeHighId || strategies[0]?.id || null;
+    this.strategies = enforceSingleHighPriority(strategies, defaultHigh || undefined);
     this.activeHighId = defaultHigh;
     return this.strategies;
   }
 
   /**
-   * Helper method to safely retrieve tick array for any asset name format
+   * Safe lookup for symbol tick arrays from ticksBuffer
    */
-  private getTicksForAsset(asset: string, ticksBuffer: Record<string, number[]>, symbolMap: Record<string, string>): number[] {
+  private getTicksForAsset(
+    asset: string,
+    ticksBuffer: Record<string, number[]>,
+    symbolMap: Record<string, string>
+  ): number[] {
     if (!asset || !ticksBuffer) return [];
 
-    // 1. Try explicit symbolMap override
+    // 1. Explicit symbol map override
     const mappedSymbol = symbolMap[asset];
     if (mappedSymbol && ticksBuffer[mappedSymbol]?.length > 0) {
       return ticksBuffer[mappedSymbol];
     }
 
-    // 2. Try ASSET_TO_SYMBOL dictionary lookup (e.g. 'Volatility 25' -> 'R_25')
+    // 2. ASSET_TO_SYMBOL lookup
     const rawSymbol = ASSET_TO_SYMBOL[asset] || ASSET_TO_SYMBOL[asset.trim()];
     if (rawSymbol && ticksBuffer[rawSymbol]?.length > 0) {
       return ticksBuffer[rawSymbol];
     }
 
-    // 3. Try exact key match in ticksBuffer
+    // 3. Direct key match
     if (ticksBuffer[asset]?.length > 0) {
       return ticksBuffer[asset];
     }
 
-    // 4. Try flexible case-insensitive match
+    // 4. Flexible key match
     const cleanAsset = asset.replace(/_/g, ' ').toLowerCase();
     const matchedKey = Object.keys(ticksBuffer).find((key) => {
       const cleanKey = key.replace(/_/g, ' ').toLowerCase();
@@ -59,7 +65,7 @@ export class ScannerLogicManager {
   ): StrategyConfig[] {
     const now = Date.now();
 
-    // 1. Calculate real-time signals for every strategy using robust tick extraction
+    // 1. Calculate indicators for each strategy
     const evaluated = this.strategies.map((strat) => {
       const ticks = this.getTicksForAsset(strat.asset, ticksBuffer, symbolMap);
       const signal = evaluateStrategySignal(strat, ticks);
@@ -72,10 +78,10 @@ export class ScannerLogicManager {
       };
     });
 
-    // 2. Identify strategy with highest confidence
+    // 2. Locate top confidence strategy
     const rawWinner = [...evaluated].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
 
-    // 3. Apply 2-Second Hold Rule
+    // 3. Apply hold lock timer before changing active priority
     if (rawWinner && rawWinner.id !== this.activeHighId) {
       if (now - this.lastSwitchTime >= this.MIN_HOLD_DURATION_MS) {
         this.activeHighId = rawWinner.id;
@@ -87,16 +93,17 @@ export class ScannerLogicManager {
       this.activeHighId = evaluated[0].id;
     }
 
-    // 4. Enforce single HIGH priority
+    // 4. Update internal strategy list with enforced HIGH priority
     const formatted = enforceSingleHighPriority(evaluated, this.activeHighId || undefined);
-    this.strategies = formatted;
-
-    // 5. Sort so HIGH priority strategy is always #1 in list
-    return [...formatted].sort((a, b) => {
+    
+    // 5. Sort array with HIGH priority first, followed by confidence descending
+    this.strategies = [...formatted].sort((a, b) => {
       if (a.priority === 'HIGH') return -1;
       if (b.priority === 'HIGH') return 1;
       return (b.confidence ?? 0) - (a.confidence ?? 0);
     });
+
+    return this.strategies;
   }
 
   public setHighPriority(strategyId: string): StrategyConfig[] {
