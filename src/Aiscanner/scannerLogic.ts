@@ -19,7 +19,7 @@ export class ScannerLogicManager {
     const defaultHigh = targetHighId || this.activeHighId || strategies[0]?.id || null;
     this.strategies = enforceSingleHighPriority(strategies, defaultHigh || undefined);
     this.activeHighId = defaultHigh;
-    return this.strategies;
+    return [...this.strategies];
   }
 
   /**
@@ -32,28 +32,30 @@ export class ScannerLogicManager {
   ): number[] {
     if (!asset || !ticksBuffer) return [];
 
+    const cleanAsset = asset.trim();
+    const cleanAssetUpper = cleanAsset.toUpperCase();
+
     // 1. Explicit symbol map override
-    const mappedSymbol = symbolMap[asset];
-    if (mappedSymbol && ticksBuffer[mappedSymbol]?.length > 0) {
+    const mappedSymbol = symbolMap[asset] || symbolMap[cleanAsset] || symbolMap[cleanAssetUpper];
+    if (mappedSymbol && ticksBuffer[mappedSymbol]?.length) {
       return ticksBuffer[mappedSymbol];
     }
 
     // 2. ASSET_TO_SYMBOL lookup
-    const rawSymbol = ASSET_TO_SYMBOL[asset] || ASSET_TO_SYMBOL[asset.trim()];
-    if (rawSymbol && ticksBuffer[rawSymbol]?.length > 0) {
+    const rawSymbol = ASSET_TO_SYMBOL[asset] || ASSET_TO_SYMBOL[cleanAsset] || ASSET_TO_SYMBOL[cleanAssetUpper];
+    if (rawSymbol && ticksBuffer[rawSymbol]?.length) {
       return ticksBuffer[rawSymbol];
     }
 
-    // 3. Direct key match
-    if (ticksBuffer[asset]?.length > 0) {
-      return ticksBuffer[asset];
-    }
+    // 3. Direct key match (case-insensitive)
+    if (ticksBuffer[asset]?.length) return ticksBuffer[asset];
+    if (ticksBuffer[cleanAssetUpper]?.length) return ticksBuffer[cleanAssetUpper];
 
-    // 4. Flexible key match
-    const cleanAsset = asset.replace(/_/g, ' ').toLowerCase();
+    // 4. Fallback search across buffer keys
     const matchedKey = Object.keys(ticksBuffer).find((key) => {
-      const cleanKey = key.replace(/_/g, ' ').toLowerCase();
-      return cleanKey === cleanAsset || cleanKey.includes(cleanAsset);
+      const k = key.replace(/_/g, ' ').toUpperCase();
+      const a = cleanAssetUpper.replace(/_/g, ' ');
+      return k === a || k.includes(a) || a.includes(k);
     });
 
     return matchedKey ? ticksBuffer[matchedKey] : [];
@@ -63,9 +65,11 @@ export class ScannerLogicManager {
     ticksBuffer: Record<string, number[]>,
     symbolMap: Record<string, string> = {}
   ): StrategyConfig[] {
+    if (!this.strategies.length || !ticksBuffer) return this.strategies;
+
     const now = Date.now();
 
-    // 1. Calculate indicators for each strategy
+    // 1. Calculate indicators for each strategy preserving existing user parameters (stake, SL, TP)
     const evaluated = this.strategies.map((strat) => {
       const ticks = this.getTicksForAsset(strat.asset, ticksBuffer, symbolMap);
       const signal = evaluateStrategySignal(strat, ticks);
@@ -82,18 +86,19 @@ export class ScannerLogicManager {
     const rawWinner = [...evaluated].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
 
     // 3. Apply hold lock timer before changing active priority
-    if (rawWinner && rawWinner.id !== this.activeHighId) {
-      if (now - this.lastSwitchTime >= this.MIN_HOLD_DURATION_MS) {
+    if (rawWinner) {
+      if (!this.activeHighId) {
         this.activeHighId = rawWinner.id;
         this.lastSwitchTime = now;
+      } else if (rawWinner.id !== this.activeHighId) {
+        if (now - this.lastSwitchTime >= this.MIN_HOLD_DURATION_MS) {
+          this.activeHighId = rawWinner.id;
+          this.lastSwitchTime = now;
+        }
       }
     }
 
-    if (!this.activeHighId && evaluated.length > 0) {
-      this.activeHighId = evaluated[0].id;
-    }
-
-    // 4. Update internal strategy list with enforced HIGH priority
+    // 4. Format with single HIGH priority enforced
     const formatted = enforceSingleHighPriority(evaluated, this.activeHighId || undefined);
     
     // 5. Sort array with HIGH priority first, followed by confidence descending
@@ -103,7 +108,7 @@ export class ScannerLogicManager {
       return (b.confidence ?? 0) - (a.confidence ?? 0);
     });
 
-    return this.strategies;
+    return [...this.strategies];
   }
 
   public setHighPriority(strategyId: string): StrategyConfig[] {
@@ -114,18 +119,6 @@ export class ScannerLogicManager {
     strategyId: string,
     updates: Partial<Pick<StrategyConfig, 'stake' | 'stopLoss' | 'takeProfit'>>
   ): StrategyConfig[] {
-    const target = this.strategies.find((s) => s.id === strategyId);
-
-    if (!target) {
-      console.warn(`[ScannerLogic] Strategy ID "${strategyId}" not found.`);
-      return this.strategies;
-    }
-
-    if (target.priority !== 'HIGH') {
-      console.warn(`[ScannerLogic] Cannot edit strategy "${target.name}". Only HIGH priority strategies are editable.`);
-      return this.strategies;
-    }
-
     this.strategies = this.strategies.map((strat) => {
       if (strat.id === strategyId) {
         return { ...strat, ...updates };
@@ -133,7 +126,7 @@ export class ScannerLogicManager {
       return strat;
     });
 
-    return this.strategies;
+    return [...this.strategies];
   }
 
   public loadHighStrategyToWorkspace(strategyId: string): boolean {
@@ -153,7 +146,7 @@ export class ScannerLogicManager {
   }
 
   public getStrategies(): StrategyConfig[] {
-    return this.strategies;
+    return [...this.strategies];
   }
 }
 
