@@ -1,6 +1,11 @@
 // src/Aiscanner/scannerBridge.ts
 
-import { StrategyConfig, generateDBotXml, enforceSingleHighPriority } from './strategies';
+import {
+  StrategyConfig,
+  generateDBotXml,
+  applyStrategyToWorkspace,
+  enforceSingleHighPriority,
+} from './strategies';
 
 // Symbol mapper to align raw API symbols with Strategy asset names
 const SYMBOL_MAP: Record<string, string> = {
@@ -99,12 +104,7 @@ export class ScannerBridge {
         window.location.hash = '#bot_builder';
       }
 
-      // 2. Parse XML string into an explicit XML DOM Document
-      const xmlString = generateDBotXml(strategy);
-      const parser = new DOMParser();
-      const xmlDom = parser.parseFromString(xmlString, 'text/xml').documentElement;
-
-      // 3. Directly target active Deriv Blockly Workspace
+      // 2. Safely apply strategy parameters directly to the active workspace blocks
       setTimeout(() => {
         const win = window as any;
         const workspace =
@@ -113,14 +113,22 @@ export class ScannerBridge {
           (win.Blockly?.Workspace?.getByContainer && win.Blockly.Workspace.getByContainer('board')) ||
           win.dbot?.workspace;
 
-        if (workspace && win.Blockly?.Xml) {
-          workspace.clear();
-          win.Blockly.Xml.domToWorkspace(xmlDom, workspace);
-
-          if (typeof workspace.cleanUp === 'function') workspace.cleanUp();
-          if (typeof workspace.render === 'function') workspace.render();
-
-          console.log(`[ScannerBridge] Strategy successfully rendered to workspace: ${strategy.name}`);
+        if (workspace) {
+          const applied = applyStrategyToWorkspace(workspace, strategy);
+          if (applied) {
+            console.log(`[ScannerBridge] Applied strategy parameters directly to workspace: ${strategy.name}`);
+          } else {
+            // Fallback to XML import if workspace blocks aren't initialized yet
+            const xmlString = generateDBotXml(strategy);
+            const parser = new DOMParser();
+            const xmlDom = parser.parseFromString(xmlString, 'text/xml').documentElement;
+            if (win.Blockly?.Xml) {
+              workspace.clear();
+              win.Blockly.Xml.domToWorkspace(xmlDom, workspace);
+              if (typeof workspace.cleanUp === 'function') workspace.cleanUp();
+              if (typeof workspace.render === 'function') workspace.render();
+            }
+          }
         } else {
           console.error('[ScannerBridge] Active Blockly workspace instance not found.');
         }
@@ -128,7 +136,7 @@ export class ScannerBridge {
 
       return true;
     } catch (error) {
-      console.error('[ScannerBridge] Failed to load strategy XML into Blockly:', error);
+      console.error('[ScannerBridge] Failed to load strategy parameters into workspace:', error);
       return false;
     }
   }
