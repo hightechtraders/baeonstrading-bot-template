@@ -57,7 +57,8 @@ export class ScannerLogicManager {
   public evaluateAndProcessTicks(
     ticksBuffer: Record<string, number[]>,
     symbolMap: Record<string, string> = {},
-    skipSorting: boolean = false
+    skipSorting: boolean = false,
+    activeExpandedId: string | number | null = null
   ): StrategyConfig[] {
     if (!this.strategies.length || !ticksBuffer) return this.strategies;
 
@@ -76,26 +77,29 @@ export class ScannerLogicManager {
       };
     });
 
-    // 2. Locate top confidence strategy
-    const rawWinner = [...evaluated].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
-
-    // 3. Apply hold lock timer before changing active priority
-    if (rawWinner) {
-      if (!this.activeHighId) {
-        this.activeHighId = rawWinner.id;
-        this.lastSwitchTime = now;
-      } else if (rawWinner.id !== this.activeHighId) {
-        if (now - this.lastSwitchTime >= this.MIN_HOLD_DURATION_MS) {
+    // 2. Priority locking: If a card is active/expanded, keep HIGH priority locked to it
+    if (activeExpandedId !== null && activeExpandedId !== undefined) {
+      this.activeHighId = String(activeExpandedId);
+    } else {
+      // Otherwise, locate top confidence strategy
+      const rawWinner = [...evaluated].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
+      if (rawWinner) {
+        if (!this.activeHighId) {
           this.activeHighId = rawWinner.id;
           this.lastSwitchTime = now;
+        } else if (rawWinner.id !== this.activeHighId) {
+          if (now - this.lastSwitchTime >= this.MIN_HOLD_DURATION_MS) {
+            this.activeHighId = rawWinner.id;
+            this.lastSwitchTime = now;
+          }
         }
       }
     }
 
-    // 4. Format with single HIGH priority enforced
+    // 3. Format with single HIGH priority enforced
     const formatted = enforceSingleHighPriority(evaluated, this.activeHighId || undefined);
 
-    // 5. If user is currently editing a card, update metrics in-place without re-sorting array positions
+    // 4. Freeze ordering while user is editing an expanded card
     if (skipSorting) {
       const currentOrderMap = new Map(this.strategies.map((s, index) => [s.id, index]));
       this.strategies = [...formatted].sort((a, b) => {
@@ -104,7 +108,7 @@ export class ScannerLogicManager {
       return [...this.strategies];
     }
 
-    // 6. Default behavior: Sort array with HIGH priority first, followed by confidence descending
+    // 5. Default sorting by priority and confidence when no card is expanded
     this.strategies = [...formatted].sort((a, b) => {
       if (a.priority === 'HIGH') return -1;
       if (b.priority === 'HIGH') return 1;
