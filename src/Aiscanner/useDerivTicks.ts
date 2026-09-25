@@ -18,6 +18,13 @@ export const ASSET_TO_SYMBOL: Record<string, string> = {
   'Volatility 100 Index': 'R_100',
   'Volatility 100 (1s) Index': '1HZ100V',
   'Volatility 25 (1s) Index': '1HZ25V',
+  'VOLATILITY 10': 'R_10',
+  'VOLATILITY 25': 'R_25',
+  'VOLATILITY 50': 'R_50',
+  'VOLATILITY 75': 'R_75',
+  'VOLATILITY 100': 'R_100',
+  'VOLATILITY 100 (1S)': '1HZ100V',
+  'VOLATILITY 25 (1S)': '1HZ25V',
   'R_10': 'R_10',
   'R_25': 'R_25',
   'R_50': 'R_50',
@@ -25,6 +32,25 @@ export const ASSET_TO_SYMBOL: Record<string, string> = {
   'R_100': 'R_100',
   '1HZ100V': '1HZ100V',
   '1HZ25V': '1HZ25V',
+};
+
+// Helper function to resolve any strategy string format to a valid API symbol
+export const resolveSymbol = (asset: string): string => {
+  if (!asset) return '1HZ100V';
+  const clean = asset.trim().toUpperCase();
+
+  if (ASSET_TO_SYMBOL[asset]) return ASSET_TO_SYMBOL[asset];
+  if (ASSET_TO_SYMBOL[clean]) return ASSET_TO_SYMBOL[clean];
+
+  if (clean.includes('100') && (clean.includes('1S') || clean.includes('(1S)'))) return '1HZ100V';
+  if (clean.includes('25') && (clean.includes('1S') || clean.includes('(1S)'))) return '1HZ25V';
+  if (clean.includes('10')) return 'R_10';
+  if (clean.includes('25')) return 'R_25';
+  if (clean.includes('50')) return 'R_50';
+  if (clean.includes('75')) return 'R_75';
+  if (clean.includes('100')) return 'R_100';
+
+  return asset;
 };
 
 const SYMBOL_TO_ASSET: Record<string, string> = Object.entries(ASSET_TO_SYMBOL).reduce(
@@ -41,7 +67,6 @@ export function useDerivTicks(assets: string[]) {
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Safe non-mutating copy for dependency comparison
   const serializedAssets = assets && assets.length > 0 ? [...assets].sort().join(',') : '';
 
   useEffect(() => {
@@ -58,13 +83,13 @@ export function useDerivTicks(assets: string[]) {
       ws.onopen = () => {
         if (!isMounted) return;
 
-        // 1. Subscribe to requested tick streams
+        // Subscribe using normalized symbols
         assets.forEach((asset) => {
-          const symbol = ASSET_TO_SYMBOL[asset] || ASSET_TO_SYMBOL[asset.trim()] || asset;
+          const symbol = resolveSymbol(asset);
           ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
         });
 
-        // 2. Keep-alive ping every 25 seconds
+        // Keep-alive ping every 25 seconds
         pingIntervalRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ ping: 1 }));
@@ -88,6 +113,8 @@ export function useDerivTicks(assets: string[]) {
                 ...prev,
                 [rawSymbol]: [...currentSymbolTicks, price].slice(-20),
                 [assetName]: [...currentAssetTicks, price].slice(-20),
+                // Store under uppercase key as well so UI strategy lookups match immediately
+                [assetName.toUpperCase()]: [...currentAssetTicks, price].slice(-20),
               };
             });
           }
