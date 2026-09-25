@@ -1,3 +1,4 @@
+// src/Aiscanner/useDerivTicks.ts
 import { useEffect, useState, useRef } from 'react';
 
 const DERIV_WS_URL = 'wss://ws.derivws.com/websockets/v3?app_id=1089';
@@ -10,7 +11,30 @@ export const ASSET_TO_SYMBOL: Record<string, string> = {
   'Volatility 100': 'R_100',
   'Volatility 100 (1s)': '1HZ100V',
   'Volatility 25 (1s)': '1HZ25V',
+  'Volatility 10 Index': 'R_10',
+  'Volatility 25 Index': 'R_25',
+  'Volatility 50 Index': 'R_50',
+  'Volatility 75 Index': 'R_75',
+  'Volatility 100 Index': 'R_100',
+  'Volatility 100 (1s) Index': '1HZ100V',
+  'Volatility 25 (1s) Index': '1HZ25V',
+  'R_10': 'R_10',
+  'R_25': 'R_25',
+  'R_50': 'R_50',
+  'R_75': 'R_75',
+  'R_100': 'R_100',
+  '1HZ100V': '1HZ100V',
+  '1HZ25V': '1HZ25V',
 };
+
+// Inverse lookup to map raw API symbols back to asset names
+const SYMBOL_TO_ASSET: Record<string, string> = Object.entries(ASSET_TO_SYMBOL).reduce(
+  (acc, [asset, symbol]) => {
+    if (!acc[symbol]) acc[symbol] = asset;
+    return acc;
+  },
+  {} as Record<string, string>
+);
 
 export function useDerivTicks(assets: string[]) {
   const [ticksBuffer, setTicksBuffer] = useState<Record<string, number[]>>({});
@@ -24,7 +48,7 @@ export function useDerivTicks(assets: string[]) {
 
     ws.onopen = () => {
       assets.forEach((asset) => {
-        const symbol = ASSET_TO_SYMBOL[asset] || '1HZ100V';
+        const symbol = ASSET_TO_SYMBOL[asset] || asset;
         ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
       });
     };
@@ -33,13 +57,22 @@ export function useDerivTicks(assets: string[]) {
       try {
         const data = JSON.parse(event.data);
         if (data.msg_type === 'tick' && data.tick) {
-          const symbol = data.tick.symbol;
+          const rawSymbol = data.tick.symbol;
+          const assetName = SYMBOL_TO_ASSET[rawSymbol] || rawSymbol;
           const price = Number(data.tick.quote);
 
           setTicksBuffer((prev) => {
-            const current = prev[symbol] || [];
-            // Keep rolling buffer of last 20 ticks for logic evaluation
-            return { ...prev, [symbol]: [...current, price].slice(-20) };
+            const currentSymbolTicks = prev[rawSymbol] || [];
+            const currentAssetTicks = prev[assetName] || [];
+
+            const updatedSymbolTicks = [...currentSymbolTicks, price].slice(-20);
+            const updatedAssetTicks = [...currentAssetTicks, price].slice(-20);
+
+            return {
+              ...prev,
+              [rawSymbol]: updatedSymbolTicks,
+              [assetName]: updatedAssetTicks,
+            };
           });
         }
       } catch (err) {
