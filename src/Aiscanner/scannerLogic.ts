@@ -22,9 +22,6 @@ export class ScannerLogicManager {
     return [...this.strategies];
   }
 
-  /**
-   * Safe lookup for symbol tick arrays from ticksBuffer
-   */
   private getTicksForAsset(
     asset: string,
     ticksBuffer: Record<string, number[]>,
@@ -35,23 +32,19 @@ export class ScannerLogicManager {
     const cleanAsset = asset.trim();
     const cleanAssetUpper = cleanAsset.toUpperCase();
 
-    // 1. Explicit symbol map override
     const mappedSymbol = symbolMap[asset] || symbolMap[cleanAsset] || symbolMap[cleanAssetUpper];
     if (mappedSymbol && ticksBuffer[mappedSymbol]?.length) {
       return ticksBuffer[mappedSymbol];
     }
 
-    // 2. ASSET_TO_SYMBOL lookup
     const rawSymbol = ASSET_TO_SYMBOL[asset] || ASSET_TO_SYMBOL[cleanAsset] || ASSET_TO_SYMBOL[cleanAssetUpper];
     if (rawSymbol && ticksBuffer[rawSymbol]?.length) {
       return ticksBuffer[rawSymbol];
     }
 
-    // 3. Direct key match (case-insensitive)
     if (ticksBuffer[asset]?.length) return ticksBuffer[asset];
     if (ticksBuffer[cleanAssetUpper]?.length) return ticksBuffer[cleanAssetUpper];
 
-    // 4. Fallback search across buffer keys
     const matchedKey = Object.keys(ticksBuffer).find((key) => {
       const k = key.replace(/_/g, ' ').toUpperCase();
       const a = cleanAssetUpper.replace(/_/g, ' ');
@@ -63,13 +56,14 @@ export class ScannerLogicManager {
 
   public evaluateAndProcessTicks(
     ticksBuffer: Record<string, number[]>,
-    symbolMap: Record<string, string> = {}
+    symbolMap: Record<string, string> = {},
+    skipSorting: boolean = false
   ): StrategyConfig[] {
     if (!this.strategies.length || !ticksBuffer) return this.strategies;
 
     const now = Date.now();
 
-    // 1. Calculate indicators for each strategy preserving existing user parameters (stake, SL, TP)
+    // 1. Calculate indicators for each strategy
     const evaluated = this.strategies.map((strat) => {
       const ticks = this.getTicksForAsset(strat.asset, ticksBuffer, symbolMap);
       const signal = evaluateStrategySignal(strat, ticks);
@@ -100,8 +94,17 @@ export class ScannerLogicManager {
 
     // 4. Format with single HIGH priority enforced
     const formatted = enforceSingleHighPriority(evaluated, this.activeHighId || undefined);
-    
-    // 5. Sort array with HIGH priority first, followed by confidence descending
+
+    // 5. If user is currently editing a card, update metrics in-place without re-sorting array positions
+    if (skipSorting) {
+      const currentOrderMap = new Map(this.strategies.map((s, index) => [s.id, index]));
+      this.strategies = [...formatted].sort((a, b) => {
+        return (currentOrderMap.get(a.id) ?? 0) - (currentOrderMap.get(b.id) ?? 0);
+      });
+      return [...this.strategies];
+    }
+
+    // 6. Default behavior: Sort array with HIGH priority first, followed by confidence descending
     this.strategies = [...formatted].sort((a, b) => {
       if (a.priority === 'HIGH') return -1;
       if (b.priority === 'HIGH') return 1;
