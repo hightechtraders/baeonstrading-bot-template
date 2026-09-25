@@ -77,11 +77,10 @@ export class ScannerLogicManager {
       };
     });
 
-    // 2. Priority locking: If a card is active/expanded, keep HIGH priority locked to it
+    // 2. Lock priority: If a card is active/expanded, keep HIGH priority locked to it
     if (activeExpandedId !== null && activeExpandedId !== undefined) {
       this.activeHighId = String(activeExpandedId);
     } else {
-      // Otherwise, locate top confidence strategy
       const rawWinner = [...evaluated].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
       if (rawWinner) {
         if (!this.activeHighId) {
