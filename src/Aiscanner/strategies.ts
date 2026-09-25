@@ -15,12 +15,12 @@ export interface StrategyConfig {
   description: string;
   score?: number;
   confidence?: number;
-  direction?: 'UP' | 'DOWN' | 'HOLD';
+  direction?: 'RISE' | 'FALL' | 'HOLD';
 }
 
 export interface StrategySignal {
   strategyId: string;
-  direction: 'UP' | 'DOWN' | 'HOLD';
+  direction: 'RISE' | 'FALL' | 'HOLD';
   confidence: number;
   score: number;
   timestamp: number;
@@ -127,12 +127,12 @@ export function enforceSingleHighPriority(
 
 /**
  * Dynamic momentum & tick velocity score evaluator.
- * Prevents static HOLD / 50% values by continuously computing trend direction across ticks.
+ * Uses direction 'RISE' | 'FALL' | 'HOLD' to match UI and Blockly handlers.
  */
 export function evaluateStrategySignal(
   strategy: StrategyConfig,
   ticks: number[]
-): { direction: 'UP' | 'DOWN' | 'HOLD'; confidence: number; score: number } {
+): { direction: 'RISE' | 'FALL' | 'HOLD'; confidence: number; score: number } {
   if (!ticks || ticks.length < 3) {
     return { direction: 'HOLD', confidence: 50, score: 50 };
   }
@@ -158,11 +158,11 @@ export function evaluateStrategySignal(
 
   const score = Math.max(10, Math.min(98, Math.round(rawScore)));
 
-  let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
+  let direction: 'RISE' | 'FALL' | 'HOLD' = 'HOLD';
   if (score >= 52 || tickDiff > 0 || overallDiff > 0) {
-    direction = 'UP';
+    direction = 'RISE';
   } else if (score <= 48 || tickDiff < 0 || overallDiff < 0) {
-    direction = 'DOWN';
+    direction = 'FALL';
   }
 
   const confidence = Math.max(score, 100 - score);
@@ -194,15 +194,14 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
   };
 
   const symbol = symbolMap[strategy.asset] || '1HZ100V';
-  const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
+  const purchaseType = strategy.direction === 'FALL' ? 'FALL' : 'RISE';
 
   try {
-    // 1. Pause events during batch updates to prevent invalid workspace states
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(false);
     }
 
-    // 2. Market Symbol Update
+    // 1. Market Symbol Update
     const marketBlock =
       workspace.getBlockById('trade_definition_market') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_market')[0]);
@@ -210,7 +209,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       marketBlock.setFieldValue(symbol, 'SYMBOL_LIST');
     }
 
-    // 3. Stake Amount Update
+    // 2. Stake Amount Update
     const tradeOptionsBlock =
       workspace.getBlockById('trade_definition_tradeoptions') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_tradeoptions')[0]);
@@ -224,7 +223,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 4. Direction Update (Rise / Fall)
+    // 3. Purchase Direction Update (RISE / FALL)
     const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
     if (purchaseBlocks.length > 0) {
       purchaseBlocks.forEach((pBlock: any) => {
@@ -234,7 +233,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       });
     }
 
-    // 5. Inspect existing set_variable blocks across workspace safely
+    // 4. Update Stake / Take Profit / Stop Loss Variables
     const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
     let foundTPBlock: any = null;
     let foundSLBlock: any = null;
@@ -265,7 +264,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     });
 
-    // Helper to safely update numeric input values on variables_set blocks
     const setNumValue = (varSetBlock: any, val: number) => {
       if (!varSetBlock) return;
       const valueInput = varSetBlock.getInput('VALUE');
@@ -280,68 +278,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (foundTPBlock) setNumValue(foundTPBlock, strategy.takeProfit);
     if (foundSLBlock) setNumValue(foundSLBlock, strategy.stopLoss);
 
-    // 6. Query trade_definition root block directly if TP/SL variable blocks are missing
-    const rootTradeBlock =
-      workspace.getBlockById('trade_definition') ||
-      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
-
-    if (rootTradeBlock && (!foundTPBlock || !foundSLBlock)) {
-      const initInput = rootTradeBlock.getInput('INITIALIZATION');
-
-      if (initInput && initInput.connection) {
-        const createAndAttachVarBlock = (varName: string, value: number) => {
-          let variable = workspace.getVariableMap
-            ? workspace.getVariableMap().getVariable(varName)
-            : null;
-
-          if (!variable && typeof workspace.createVariable === 'function') {
-            variable = workspace.createVariable(varName);
-          }
-          if (!variable) return null;
-
-          const setVarBlock = workspace.newBlock('variables_set');
-          setVarBlock.setFieldValue(variable.getId(), 'VAR');
-
-          const numBlock = workspace.newBlock('math_number');
-          numBlock.setFieldValue(value.toString(), 'NUM');
-
-          const valInput = setVarBlock.getInput('VALUE');
-          if (valInput && valInput.connection && numBlock.outputConnection) {
-            valInput.connection.connect(numBlock.outputConnection);
-          }
-
-          if (typeof setVarBlock.initSvg === 'function') setVarBlock.initSvg();
-          if (typeof numBlock.initSvg === 'function') numBlock.initSvg();
-
-          return setVarBlock;
-        };
-
-        const newTPBlock = !foundTPBlock ? createAndAttachVarBlock('target_profit', strategy.takeProfit) : null;
-        const newSLBlock = !foundSLBlock ? createAndAttachVarBlock('stop_loss', strategy.stopLoss) : null;
-
-        const existingChild = initInput.connection.targetBlock();
-        let targetSlot = initInput.connection;
-
-        if (existingChild) {
-          let tail = existingChild;
-          while (tail.nextConnection && tail.nextConnection.targetBlock()) {
-            tail = tail.nextConnection.targetBlock();
-          }
-          targetSlot = tail.nextConnection;
-        }
-
-        if (newTPBlock && targetSlot) {
-          targetSlot.connect(newTPBlock.previousConnection);
-          if (newSLBlock && newTPBlock.nextConnection) {
-            newTPBlock.nextConnection.connect(newSLBlock.previousConnection);
-          }
-        } else if (newSLBlock && targetSlot) {
-          targetSlot.connect(newSLBlock.previousConnection);
-        }
-      }
-    }
-
-    // 7. Re-enable events and trigger workspace render frame
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
@@ -360,7 +296,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
 }
 
 /**
- * Clean XML generator for workspace imports.
+ * XML generator for DBot workspace imports.
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
@@ -371,17 +307,10 @@ export function generateDBotXml(strategy: StrategyConfig): string {
     'Volatility 100': 'R_100',
     'Volatility 100 (1s)': '1HZ100V',
     'Volatility 25 (1s)': '1HZ25V',
-    'Volatility 10 Index': 'R_10',
-    'Volatility 25 Index': 'R_25',
-    'Volatility 50 Index': 'R_50',
-    'Volatility 75 Index': 'R_75',
-    'Volatility 100 Index': 'R_100',
-    'Volatility 100 (1s) Index': '1HZ100V',
-    'Volatility 25 (1s) Index': '1HZ25V',
   };
 
   const symbol = symbolMap[strategy.asset] || '1HZ100V';
-  const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
+  const purchaseType = strategy.direction === 'FALL' ? 'FALL' : 'RISE';
 
   return `
 <xml xmlns="https://developers.google.com/blockly/xml">
