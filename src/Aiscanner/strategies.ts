@@ -26,9 +26,6 @@ export interface StrategySignal {
   timestamp: number;
 }
 
-/**
- * Core 7 strategy configurations
- */
 export const CORE_7_STRATEGIES: StrategyConfig[] = [
   {
     id: 'strat-1',
@@ -152,9 +149,11 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Generates exact DBot schema XML with compliant block definitions
+ * Directly updates parameters on existing workspace blocks without replacing the DOM structure.
  */
-export function generateDBotXml(strategy: StrategyConfig): string {
+export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
+  if (!workspace) return false;
+
   const symbolMap: Record<string, string> = {
     'Volatility 10': 'R_10',
     'Volatility 25': 'R_25',
@@ -168,120 +167,35 @@ export function generateDBotXml(strategy: StrategyConfig): string {
   const symbol = symbolMap[strategy.asset] || '1HZ100V';
   const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
 
-  return `
-<xml xmlns="https://developers.google.com/blockly/xml">
-  <variables>
-    <variable id="stake_var_id">stake</variable>
-    <variable id="tp_var_id">target_profit</variable>
-    <variable id="sl_var_id">stop_loss</variable>
-  </variables>
+  try {
+    // 1. Update Market / Symbol
+    const marketBlock = workspace.getBlockById('trade_definition_market') || 
+                       workspace.getBlocksByType('trade_definition_market')[0];
+    if (marketBlock) {
+      marketBlock.setFieldValue(symbol, 'SYMBOL_LIST');
+    }
 
-  <!-- 1. TRADE PARAMETERS -->
-  <block type="trade_definition" id="trade_def_root" deletable="false" x="0" y="0">
-    <statement name="TRADE_OPTIONS">
-      <block type="trade_definition_market" id="market_block" deletable="false">
-        <field name="MARKET_LIST">synthetic_index</field>
-        <field name="SUBMARKET_LIST">random_index</field>
-        <field name="SYMBOL_LIST">${symbol}</field>
-        <next>
-          <block type="trade_definition_tradetype" id="tradetype_block" deletable="false">
-            <field name="TRADETYPECAT_LIST">risefall</field>
-            <field name="TRADETYPE_LIST">risefall</field>
-            <next>
-              <block type="trade_definition_contracttype" id="contracttype_block" deletable="false">
-                <field name="TYPE_LIST">both</field>
-                <next>
-                  <block type="trade_definition_candleinterval" id="candle_block" deletable="false">
-                    <field name="CANDLEINTERVAL_LIST">60</field>
-                    <next>
-                      <block type="trade_definition_restartbuystrat" id="restartbuy_block" deletable="false">
-                        <field name="TIME_MACHINE_ENABLED">FALSE</field>
-                        <next>
-                          <block type="trade_definition_restartonerror" id="onerror_block" deletable="false">
-                            <field name="RESTARTONERROR">FALSE</field>
-                          </block>
-                        </next>
-                      </block>
-                    </next>
-                  </block>
-                </next>
-              </block>
-            </next>
-          </block>
-        </next>
-      </block>
-    </statement>
-    <statement name="INITIALIZATION">
-      <block type="variables_set" id="set_stake_init">
-        <field name="VAR" id="stake_var_id">stake</field>
-        <value name="VALUE">
-          <shadow type="math_number" id="stake_shadow_num">
-            <field name="NUM">${strategy.stake}</field>
-          </shadow>
-        </value>
-        <next>
-          <block type="variables_set" id="set_tp_init">
-            <field name="VAR" id="tp_var_id">target_profit</field>
-            <value name="VALUE">
-              <shadow type="math_number" id="tp_shadow_num">
-                <field name="NUM">${strategy.takeProfit}</field>
-              </shadow>
-            </value>
-            <next>
-              <block type="variables_set" id="set_sl_init">
-                <field name="VAR" id="sl_var_id">stop_loss</field>
-                <value name="VALUE">
-                  <shadow type="math_number" id="sl_shadow_num">
-                    <field name="NUM">${strategy.stopLoss}</field>
-                  </shadow>
-                </value>
-              </block>
-            </next>
-          </block>
-        </next>
-      </block>
-    </statement>
-    <statement name="SUBMARKET">
-      <block type="trade_definition_tradeoptions" id="trade_opts_block" deletable="false">
-        <mutation has_first_barrier="false" has_second_barrier="false" has_prediction="false"></mutation>
-        <field name="DURATION_TYPE_LIST">t</field>
-        <field name="CURRENCY_LIST">USD</field>
-        <field name="AMOUNT_TYPE_LIST">stake</field>
-        <value name="DURATION">
-          <shadow type="math_number" id="duration_shadow_num">
-            <field name="NUM">1</field>
-          </shadow>
-        </value>
-        <value name="AMOUNT">
-          <shadow type="math_number" id="amount_shadow_num">
-            <field name="NUM">${strategy.stake}</field>
-          </shadow>
-          <block type="variables_get" id="get_stake_var">
-            <field name="VAR" id="stake_var_id">stake</field>
-          </block>
-        </value>
-      </block>
-    </statement>
-  </block>
+    // 2. Update Stake Amount
+    const tradeOptionsBlock = workspace.getBlockById('trade_definition_tradeoptions') || 
+                              workspace.getBlocksByType('trade_definition_tradeoptions')[0];
+    if (tradeOptionsBlock) {
+      const amountInput = tradeOptionsBlock.getInput('AMOUNT');
+      if (amountInput && amountInput.connection && amountInput.connection.targetBlock()) {
+        const shadowBlock = amountInput.connection.targetBlock();
+        shadowBlock.setFieldValue(strategy.stake.toString(), 'NUM');
+      }
+    }
 
-  <!-- 2. PURCHASE CONDITIONS -->
-  <block type="before_purchase" id="before_purchase_root" deletable="false" x="0" y="420">
-    <statement name="BEFOREPURCHASE_STACK">
-      <block type="purchase" id="purchase_block">
-        <field name="PURCHASE_LIST">${purchaseType}</field>
-      </block>
-    </statement>
-  </block>
+    // 3. Update Purchase Contract Type (RISE or FALL)
+    const purchaseBlock = workspace.getBlockById('purchase_block') || 
+                          workspace.getBlocksByType('purchase')[0];
+    if (purchaseBlock) {
+      purchaseBlock.setFieldValue(purchaseType, 'PURCHASE_LIST');
+    }
 
-  <!-- 3. SELL CONDITIONS -->
-  <block type="during_purchase" id="during_purchase_root" deletable="false" x="0" y="540"></block>
-
-  <!-- 4. RESTART TRADING CONDITIONS -->
-  <block type="after_purchase" id="after_purchase_root" deletable="false" x="0" y="660">
-    <statement name="AFTERPURCHASE_STACK">
-      <block type="trade_again" id="trade_again_block"></block>
-    </statement>
-  </block>
-</xml>
-  `.trim();
+    return true;
+  } catch (error) {
+    console.error('Failed to apply strategy parameters to workspace:', error);
+    return false;
+  }
 }
