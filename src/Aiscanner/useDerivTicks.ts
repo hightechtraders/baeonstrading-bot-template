@@ -1,5 +1,5 @@
 // src/Aiscanner/useDerivTicks.ts
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 
 const DERIV_WS_URL = 'wss://ws.derivws.com/websockets/v3?app_id=1089';
 
@@ -34,7 +34,6 @@ export const ASSET_TO_SYMBOL: Record<string, string> = {
   '1HZ25V': '1HZ25V',
 };
 
-// Helper function to resolve any strategy string format to a valid API symbol
 export const resolveSymbol = (asset: string): string => {
   if (!asset) return '1HZ100V';
   const clean = asset.trim().toUpperCase();
@@ -67,29 +66,41 @@ export function useDerivTicks(assets: string[]) {
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const serializedAssets = assets && assets.length > 0 ? [...assets].sort().join(',') : '';
+  // Derive unique array of normalized market symbols
+  const activeSymbols = useMemo(() => {
+    if (!assets || assets.length === 0) return [];
+    const uniqueSymbols = new Set(assets.map((asset) => resolveSymbol(asset)));
+    return Array.from(uniqueSymbols);
+  }, [assets]);
 
   useEffect(() => {
-    if (!assets || assets.length === 0) return;
+    if (activeSymbols.length === 0) return;
 
-    let isMounted = true;
+    let isComponentMounted = true;
 
     const connect = () => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) return;
+      // Safely close existing connection before creating a new one
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
 
       const ws = new WebSocket(DERIV_WS_URL);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        if (!isMounted) return;
+        if (!isComponentMounted) return;
 
-        // Subscribe using normalized symbols
-        assets.forEach((asset) => {
-          const symbol = resolveSymbol(asset);
-          ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+        // Subscribe to each symbol with small delay to avoid rate-limiting
+        activeSymbols.forEach((symbol, index) => {
+          setTimeout(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+            }
+          }, index * 50);
         });
 
         // Keep-alive ping every 25 seconds
+        if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
         pingIntervalRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ ping: 1 }));
@@ -100,6 +111,7 @@ export function useDerivTicks(assets: string[]) {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+
           if (data.msg_type === 'tick' && data.tick) {
             const rawSymbol = data.tick.symbol;
             const assetName = SYMBOL_TO_ASSET[rawSymbol] || rawSymbol;
@@ -109,17 +121,19 @@ export function useDerivTicks(assets: string[]) {
               const currentSymbolTicks = prev[rawSymbol] || [];
               const currentAssetTicks = prev[assetName] || [];
 
+              const updatedSymbolTicks = [...currentSymbolTicks, price].slice(-20);
+              const updatedAssetTicks = [...currentAssetTicks, price].slice(-20);
+
               return {
                 ...prev,
-                [rawSymbol]: [...currentSymbolTicks, price].slice(-20),
-                [assetName]: [...currentAssetTicks, price].slice(-20),
-                // Store under uppercase key as well so UI strategy lookups match immediately
-                [assetName.toUpperCase()]: [...currentAssetTicks, price].slice(-20),
+                [rawSymbol]: updatedSymbolTicks,
+                [assetName]: updatedAssetTicks,
+                [assetName.toUpperCase()]: updatedAssetTicks,
               };
             });
           }
         } catch (err) {
-          console.error('Tick stream message parsing error:', err);
+          console.error('Tick parsing error:', err);
         }
       };
 
@@ -129,7 +143,7 @@ export function useDerivTicks(assets: string[]) {
 
       ws.onclose = () => {
         if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-        if (isMounted) {
+        if (isComponentMounted) {
           reconnectTimeoutRef.current = setTimeout(connect, 3000);
         }
       };
@@ -138,14 +152,14 @@ export function useDerivTicks(assets: string[]) {
     connect();
 
     return () => {
-      isMounted = false;
+      isComponentMounted = false;
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       if (wsRef.current) {
         wsRef.current.close();
       }
     };
-  }, [serializedAssets]);
+  }, [activeSymbols.join(',')]);
 
   return { ticksBuffer, ASSET_TO_SYMBOL };
 }
