@@ -1,4 +1,4 @@
-import { StrategyConfig, enforceSingleHighPriority, evaluateStrategySignal } from './strategies';
+import { StrategyConfig, enforceSingleHighPriority, evaluateStrategySignal, applyStrategyToWorkspace } from './strategies';
 import { scannerBridge } from './scannerBridge';
 import { ASSET_TO_SYMBOL, resolveSymbol } from './useDerivTicks';
 
@@ -157,7 +157,19 @@ export class ScannerLogicManager {
       return false;
     }
 
-    return scannerBridge.loadStrategyToBot(strategy);
+    // Locate active global Blockly workspace instance from Deriv DBot template
+    const activeWorkspace =
+      (window as any).Blockly?.getMainWorkspace?.() ||
+      (window as any).DBot?.workspace ||
+      (window as any).workspace;
+
+    if (!activeWorkspace) {
+      console.error('[ScannerLogic] Blockly workspace instance not found on window.');
+      return false;
+    }
+
+    // Apply the strategy parameters directly into the workspace canvas
+    return applyStrategyToWorkspace(activeWorkspace, strategy);
   }
 
   public getStrategies(): StrategyConfig[] {
