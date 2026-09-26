@@ -294,9 +294,7 @@ export const FloatingAI = () => {
                         </div>
                       </div>
 
-                      <div className="martingale-recovery-note" style={{ fontSize: '11px', color: '#00e699', margin: '8px 0', padding: '4px 8px', background: 'rgba(0,230,153,0.1)', borderRadius: '4px' }}>
-                        ⚡ Martingale Recovery Multiplier: 2.0x active on consecutive loss steps.
-                      </div>
+                      
 
                       <button
                         className="btn-primary"
