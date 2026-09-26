@@ -7,7 +7,6 @@ import {
   evaluateStrategySignal,
 } from './strategies';
 
-// Symbol mapper to align raw API symbols with Strategy asset names
 const SYMBOL_MAP: Record<string, string> = {
   'R_10': 'Volatility 10',
   'R_25': 'Volatility 25',
@@ -16,6 +15,16 @@ const SYMBOL_MAP: Record<string, string> = {
   'R_100': 'Volatility 100',
   '1HZ100V': 'Volatility 100 (1s)',
   '1HZ25V': 'Volatility 25 (1s)',
+};
+
+/**
+ * Calculates whether scanner confidence beats the required break-even threshold.
+ * Standard payout ~89.1% requires ~52.8% win rate; we add a buffer for safety.
+ */
+export const isSignalProfitable = (confidence: number, payoutRatio: number = 0.891): boolean => {
+  const breakEvenRate = (1 / (1 + payoutRatio)) * 100;
+  const minimumThreshold = breakEvenRate + 3.0; // 3% safety margin
+  return confidence >= minimumThreshold;
 };
 
 export class ScannerBridge {
@@ -83,8 +92,13 @@ export class ScannerBridge {
       this.worker.onmessage = (event: MessageEvent) => {
         const { type, payload } = event.data;
         if (type === 'SCAN_RESULTS') {
+          // Filter out low-confidence signals before dispatching to UI
+          const filteredPayload = (payload || []).filter((sig: any) =>
+            isSignalProfitable(sig.confidence)
+          );
+
           window.dispatchEvent(
-            new CustomEvent('scanner:signals-updated', { detail: payload })
+            new CustomEvent('scanner:signals-updated', { detail: filteredPayload })
           );
         }
       };
@@ -113,12 +127,10 @@ export class ScannerBridge {
     }
 
     try {
-      // 1. Ensure Bot Builder tab is active
       if (window.location.hash !== '#bot_builder') {
         window.location.hash = '#bot_builder';
       }
 
-      // 2. Safely update active Deriv Blockly Workspace parameters directly
       setTimeout(() => {
         const win = window as any;
         const workspace =
