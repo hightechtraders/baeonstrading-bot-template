@@ -10,6 +10,7 @@ const ENABLE_SIMULATION = false;
 
 export const FloatingAI = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isScanning, setIsScanning] = useState(true);
   const [expandedId, setExpandedId] = useState<string | number | null>(null);
 
   const [strategiesList, setStrategiesList] = useState<StrategyConfig[]>(() => {
@@ -23,7 +24,18 @@ export const FloatingAI = () => {
   const strategiesListRef = useRef(strategiesList);
   strategiesListRef.current = strategiesList;
 
-  // 1. Process incoming tick buffer smoothly (Simulation vs Real WS)
+  // 1. Trigger initial 2-second "SCANNING..." state when opening modal
+  useEffect(() => {
+    if (isOpen) {
+      setIsScanning(true);
+      const timer = setTimeout(() => {
+        setIsScanning(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  // 2. Process incoming live tick buffer (Simulation vs Real WS)
   useEffect(() => {
     let activeBuffer: Record<string, number[]> = {};
 
@@ -77,7 +89,9 @@ export const FloatingAI = () => {
   }, [realTicksBuffer, expandedId]);
 
   const toggleModal = () => setIsOpen((prev) => !prev);
-  const handleStart = () => { dragDistanceRef.current = 0; };
+  const handleStart = () => {
+    dragDistanceRef.current = 0;
+  };
   const handleDrag = (_e: DraggableEvent, data: DraggableData) => {
     dragDistanceRef.current += Math.abs(data.deltaX) + Math.abs(data.deltaY);
   };
@@ -110,9 +124,9 @@ export const FloatingAI = () => {
   };
 
   const highStrategy = strategiesList.find((s) => s.priority === 'HIGH') || strategiesList[0];
-  const globalWinnerName = highStrategy?.name || 'ANALYZING...';
-  const globalDirection = highStrategy?.direction || 'HOLD';
-  const globalConfidence = highStrategy?.confidence ?? 50;
+  const globalWinnerName = isScanning ? 'SCANNING...' : highStrategy?.name || 'ANALYZING...';
+  const globalDirection = isScanning ? 'FLAT' : highStrategy?.direction || 'HOLD';
+  const globalConfidence = isScanning ? 50 : highStrategy?.confidence ?? 50;
 
   return (
     <div className="floating-ai-container">
@@ -152,15 +166,17 @@ export const FloatingAI = () => {
           <div className="global-metrics-bar">
             <div className="metric-box">
               <span className="metric-label">GLOBAL WINNER</span>
-              <span className="metric-value green">{globalWinnerName}</span>
+              <span className={`metric-value ${isScanning ? '' : 'green'}`}>
+                {globalWinnerName}
+              </span>
             </div>
             <div className="metric-box">
               <span className="metric-label">DIRECTION</span>
               <span
                 className={`metric-value ${
-                  globalDirection === 'UP' || globalDirection === 'RISE'
+                  !isScanning && (globalDirection === 'UP' || globalDirection === 'RISE')
                     ? 'green'
-                    : globalDirection === 'DOWN' || globalDirection === 'FALL'
+                    : !isScanning && (globalDirection === 'DOWN' || globalDirection === 'FALL')
                     ? 'orange'
                     : ''
                 }`}
@@ -187,8 +203,9 @@ export const FloatingAI = () => {
               const strategyType = strat.riskModel || 'NEURAL_FLOW';
               const priorityText = strat.priority;
 
-              const score = strat.score ?? 50;
-              const confidence = strat.confidence ?? 50;
+              const score = isScanning ? 50 : strat.score ?? 50;
+              const confidence = isScanning ? 50 : strat.confidence ?? 50;
+              const directionText = isScanning ? 'FLAT' : strat.direction || 'HOLD';
               const description = `${strategyType} structural strategy designed for ${volatility}.`;
 
               return (
@@ -214,7 +231,7 @@ export const FloatingAI = () => {
                         </div>
                       </div>
                       <div className="card-sub-metrics">
-                        Score {score}% · Confidence {confidence}% · Direction: {strat.direction || 'HOLD'}
+                        Score {score}% · Confidence {confidence}% · Direction: {directionText}
                       </div>
                     </div>
                   </div>
