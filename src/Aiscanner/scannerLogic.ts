@@ -1,5 +1,3 @@
-// src/Aiscanner/scannerLogic.ts
-
 import { StrategyConfig, enforceSingleHighPriority, evaluateStrategySignal } from './strategies';
 import { scannerBridge } from './scannerBridge';
 import { ASSET_TO_SYMBOL, resolveSymbol } from './useDerivTicks';
@@ -39,7 +37,6 @@ export class ScannerLogicManager {
   ): number[] {
     if (!asset || !ticksBuffer) return [];
 
-    // Direct lookup via resolveSymbol helper
     const resolvedSym = resolveSymbol(asset);
     if (ticksBuffer[resolvedSym]?.length) {
       return ticksBuffer[resolvedSym];
@@ -73,11 +70,9 @@ export class ScannerLogicManager {
 
     const now = Date.now();
 
-    // 1. Calculate indicators and apply risk/profitability checks
     const evaluated = this.strategies.map((strat) => {
       const ticks = this.getTicksForAsset(strat.asset, ticksBuffer, symbolMap);
       const signal = evaluateStrategySignal(strat, ticks);
-
       const satisfiesRisk = isTradeProfitable(signal.confidence);
 
       return {
@@ -88,7 +83,6 @@ export class ScannerLogicManager {
       };
     });
 
-    // 2. Lock priority: If a card is active/expanded, keep HIGH priority locked to it
     if (activeExpandedId !== null && activeExpandedId !== undefined) {
       this.activeHighId = String(activeExpandedId);
     } else {
@@ -106,10 +100,8 @@ export class ScannerLogicManager {
       }
     }
 
-    // 3. Format with single HIGH priority enforced
     const formatted = enforceSingleHighPriority(evaluated, this.activeHighId || undefined);
 
-    // 4. Freeze ordering while user is editing an expanded card
     if (skipSorting) {
       const currentOrderMap = new Map(this.strategies.map((s, index) => [s.id, index]));
       this.strategies = [...formatted].sort((a, b) => {
@@ -118,7 +110,6 @@ export class ScannerLogicManager {
       return [...this.strategies];
     }
 
-    // 5. Default sorting by priority and confidence when no card is expanded
     this.strategies = [...formatted].sort((a, b) => {
       if (a.priority === 'HIGH') return -1;
       if (b.priority === 'HIGH') return 1;
