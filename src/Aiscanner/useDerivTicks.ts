@@ -22,22 +22,14 @@ export function resolveSymbol(assetName: string): string {
   return ASSET_TO_SYMBOL[clean] || clean;
 }
 
-export function useDerivTicks(assets?: string[]) {
+export function useDerivTicks(_assets?: string[]) {
   const [ticksBuffer, setTicksBuffer] = useState<Record<string, number[]>>({});
 
   useEffect(() => {
-    // 1. Initialize WebSocket interception
+    // 1. Initialize WebSocket bridge & automatic tick subscriptions
     scannerBridge.init();
 
-    // 2. Dispatch tick subscriptions for all target assets
-    const symbolsToSubscribe = (assets && assets.length > 0
-      ? assets
-      : Object.keys(ASSET_TO_SYMBOL)
-    ).map((asset) => resolveSymbol(asset));
-
-    scannerBridge.subscribeToSymbols(symbolsToSubscribe);
-
-    // 3. Subscribe to incoming buffer updates
+    // 2. Stream tick updates into React component state
     const unsubscribe = scannerBridge.subscribe((buffer) => {
       setTicksBuffer(buffer);
     });
@@ -45,7 +37,7 @@ export function useDerivTicks(assets?: string[]) {
     return () => {
       unsubscribe();
     };
-  }, [assets]);
+  }, []);
 
   return { ticksBuffer };
 }
