@@ -111,12 +111,13 @@ export const FloatingAI = () => {
   const handleLoadStrategy = (strat: StrategyConfig, e: React.MouseEvent) => {
     e.stopPropagation();
     if (strat.priority !== 'HIGH') {
-      alert('Only the strategy marked as HIGH priority can be loaded into Blockly.');
+      alert('Only the active Volatility 100 (1s) high-priority strategy can be loaded into Blockly.');
       return;
     }
 
     const success = scannerLogic.loadHighStrategyToWorkspace(strat.id);
     if (success) {
+      alert('Successfully loaded Volatility 100 (1s) Engine with Martingale Recovery & Risk Limits!');
       setIsOpen(false);
     } else {
       alert('Failed to load strategy. Make sure the Deriv Bot workspace is open.');
@@ -153,10 +154,8 @@ export const FloatingAI = () => {
         <div className="scanner-modal">
           <div className="scanner-header">
             <div className="header-title">
-              <h3>AI Multi-Asset Scanner</h3>
-              <span className="badge-counter">
-                {strategiesList.length}/{strategiesList.length}
-              </span>
+              <h3>AI Engine Scanner (Vol 100 1s Active)</h3>
+              <span className="badge-counter">Primary Engine</span>
             </div>
             <button className="close-btn" onClick={() => setIsOpen(false)}>
               ×
@@ -165,7 +164,7 @@ export const FloatingAI = () => {
 
           <div className="global-metrics-bar">
             <div className="metric-box">
-              <span className="metric-label">GLOBAL WINNER</span>
+              <span className="metric-label">ACTIVE ENGINE</span>
               <span className={`metric-value ${isScanning ? '' : 'green'}`}>
                 {globalWinnerName}
               </span>
@@ -198,10 +197,9 @@ export const FloatingAI = () => {
               const isHighPriority = strat.priority === 'HIGH';
 
               const title = strat.name || `Strategy ${rankNum}`;
-              const volatility = strat.asset || 'VOLATILITY 25';
+              const volatility = strat.asset || 'VOLATILITY 100 (1s)';
               const contractType = strat.tradeType || 'RISE / FALL';
               const strategyType = strat.riskModel || 'NEURAL_FLOW';
-              const priorityText = strat.priority;
 
               const score = isScanning ? 50 : strat.score ?? 50;
               const confidence = isScanning ? 50 : strat.confidence ?? 50;
@@ -212,10 +210,16 @@ export const FloatingAI = () => {
                 <div
                   key={stratId}
                   className={`strategy-card ${isExpanded ? 'expanded' : ''} ${
-                    isHighPriority ? 'high-active' : 'read-only'
+                    isHighPriority ? 'high-active' : 'read-only locked-card'
                   }`}
-                  onClick={() => setExpandedId(isExpanded ? null : stratId)}
+                  onClick={() => isHighPriority && setExpandedId(isExpanded ? null : stratId)}
                 >
+                  {!isHighPriority && (
+                    <span className="padlock-badge" title="Asset feed locked to primary engine">
+                      🔒
+                    </span>
+                  )}
+
                   <div className="card-top-row">
                     <span className="rank-badge">#{rankNum}</span>
                     <div className="card-main-info">
@@ -225,37 +229,32 @@ export const FloatingAI = () => {
                           <span className="tag volatility">{volatility}</span>
                           <span className="tag contract">{contractType}</span>
                           <span className="tag type">{strategyType}</span>
-                          <span className={`tag risk ${priorityText.toLowerCase()}`}>
-                            {priorityText}
+                          <span className={`tag risk ${isHighPriority ? 'high' : 'medium'}`}>
+                            {isHighPriority ? 'ACTIVE' : 'LOCKED'}
                           </span>
                         </div>
                       </div>
                       <div className="card-sub-metrics">
-                        Score {score}% · Confidence {confidence}% · Direction: {directionText}
+                        {isHighPriority
+                          ? `Score ${score}% · Confidence ${confidence}% · Direction: ${directionText}`
+                          : `Feed Locked · Inactive Asset Stream`}
                       </div>
                     </div>
                   </div>
 
-                  {isExpanded && (
+                  {isExpanded && isHighPriority && (
                     <div
                       className="card-expandable"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <p className="description">{description}</p>
 
-                      {!isHighPriority && (
-                        <div className="priority-warning">
-                          🔒 Only HIGH priority strategies are editable and loadable.
-                        </div>
-                      )}
-
                       <div className="parameters-grid">
                         <div>
-                          <label>STAKE (USD)</label>
+                          <label>BASE STAKE (USD)</label>
                           <input
                             type="number"
                             value={strat.stake}
-                            disabled={!isHighPriority}
                             onChange={(e) =>
                               handleInputChange(
                                 strat.id,
@@ -270,7 +269,6 @@ export const FloatingAI = () => {
                           <input
                             type="number"
                             value={strat.stopLoss}
-                            disabled={!isHighPriority}
                             onChange={(e) =>
                               handleInputChange(
                                 strat.id,
@@ -285,7 +283,6 @@ export const FloatingAI = () => {
                           <input
                             type="number"
                             value={strat.takeProfit}
-                            disabled={!isHighPriority}
                             onChange={(e) =>
                               handleInputChange(
                                 strat.id,
@@ -297,12 +294,15 @@ export const FloatingAI = () => {
                         </div>
                       </div>
 
+                      <div className="martingale-recovery-note" style={{ fontSize: '11px', color: '#00e699', margin: '8px 0', padding: '4px 8px', background: 'rgba(0,230,153,0.1)', borderRadius: '4px' }}>
+                        ⚡ Martingale Recovery Multiplier: 2.0x active on consecutive loss steps.
+                      </div>
+
                       <button
-                        className={`btn-primary ${!isHighPriority ? 'btn-disabled' : ''}`}
-                        disabled={!isHighPriority}
+                        className="btn-primary"
                         onClick={(e) => handleLoadStrategy(strat, e)}
                       >
-                        📥 LOAD STRATEGY PARAMETERS
+                        📥 LOAD STRATEGY & MARTINGALE TO BOT
                       </button>
                     </div>
                   )}
