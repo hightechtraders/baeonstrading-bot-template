@@ -17,20 +17,27 @@ export const ASSET_TO_SYMBOL: Record<string, string> = {
 export function resolveSymbol(assetName: string): string {
   if (!assetName) return '';
   if (ASSET_TO_SYMBOL[assetName]) return ASSET_TO_SYMBOL[assetName];
-  
-  // Fallback match by stripping spaces/case sensitivity or return as-is if already a symbol
+
   const clean = assetName.trim();
   return ASSET_TO_SYMBOL[clean] || clean;
 }
 
-export function useDerivTicks(_assets?: string[]) {
+export function useDerivTicks(assets?: string[]) {
   const [ticksBuffer, setTicksBuffer] = useState<Record<string, number[]>>({});
 
   useEffect(() => {
-    // 1. Hook into active page WebSocket
+    // 1. Initialize WebSocket interception bridge
     scannerBridge.init();
 
-    // 2. Subscribe to incoming market tick streams
+    // 2. Automatically request live tick subscriptions for target assets
+    const symbolsToSubscribe = (assets && assets.length > 0
+      ? assets
+      : Object.keys(ASSET_TO_SYMBOL)
+    ).map((asset) => resolveSymbol(asset));
+
+    scannerBridge.subscribeToSymbols(symbolsToSubscribe);
+
+    // 3. Subscribe component state to incoming tick buffer updates
     const unsubscribe = scannerBridge.subscribe((buffer) => {
       setTicksBuffer(buffer);
     });
@@ -38,7 +45,7 @@ export function useDerivTicks(_assets?: string[]) {
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [assets]);
 
   return { ticksBuffer };
 }
