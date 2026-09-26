@@ -11,7 +11,7 @@ export class ScannerBridge {
   public init() {
     if (this.isHooked) return;
 
-    // 1. Check for existing active WebSocket
+    // Detect existing global WebSocket instance
     const globalWS =
       (window as any)._derivWebSocket ||
       (window as any).appWebSocket ||
@@ -25,7 +25,7 @@ export class ScannerBridge {
       return;
     }
 
-    // 2. Monkey-patch WebSocket constructor to catch instances on instantiation
+    // Intercept native WebSocket instantiation
     const NativeWebSocket = window.WebSocket;
     const self = this;
 
@@ -49,7 +49,7 @@ export class ScannerBridge {
     const sendSubscriptions = () => {
       if (!this.activeWS || this.activeWS.readyState !== WebSocket.OPEN) return;
 
-      const symbols = Object.values(ASSET_TO_SYMBOL);
+      const symbols = Array.from(new Set(Object.values(ASSET_TO_SYMBOL)));
       symbols.forEach((symbol) => {
         if (!this.subscribedSymbols.has(symbol)) {
           this.subscribedSymbols.add(symbol);
@@ -77,7 +77,7 @@ export class ScannerBridge {
           }
         }
       } catch (e) {
-        // Ignore non-JSON frames
+        // Non-JSON frame
       }
     });
   }
@@ -86,6 +86,7 @@ export class ScannerBridge {
     const currentSymbolTicks = this.ticksBuffer[symbol] || [];
     const updatedSymbolTicks = [...currentSymbolTicks, price].slice(-30);
 
+    // Save under the raw symbol key as well as human-readable asset names
     const mappedEntries: Record<string, number[]> = {
       [symbol]: updatedSymbolTicks,
     };
