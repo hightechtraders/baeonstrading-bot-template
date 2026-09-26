@@ -12,6 +12,7 @@ export interface StrategyConfig {
   stake: number;
   stopLoss: number;
   takeProfit: number;
+  martingaleMultiplier: number;
   description: string;
   score?: number;
   confidence?: number;
@@ -37,6 +38,7 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
     stake: 3,
     stopLoss: 4,
     takeProfit: 8,
+    martingaleMultiplier: 2.0,
     description: 'Neural Flow structural strategy designed for Volatility 25.',
   },
   {
@@ -49,6 +51,7 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
     stake: 2,
     stopLoss: 5,
     takeProfit: 10,
+    martingaleMultiplier: 2.0,
     description: 'Progressive staking system designed for Volatility 10.',
   },
   {
@@ -61,6 +64,7 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
     stake: 1,
     stopLoss: 10,
     takeProfit: 15,
+    martingaleMultiplier: 2.1,
     description: 'Martingale scalp strategy designed for Volatility 10.',
   },
   {
@@ -73,6 +77,7 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
     stake: 5,
     stopLoss: 10,
     takeProfit: 20,
+    martingaleMultiplier: 2.0,
     description: 'Balanced digit strategy designed for Volatility 50.',
   },
   {
@@ -85,6 +90,7 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
     stake: 2,
     stopLoss: 6,
     takeProfit: 12,
+    martingaleMultiplier: 2.0,
     description: 'Breakout tick strategy designed for Volatility 75.',
   },
   {
@@ -97,6 +103,7 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
     stake: 4,
     stopLoss: 8,
     takeProfit: 16,
+    martingaleMultiplier: 2.0,
     description: 'Fast-cycle neural model designed for Volatility 100 (1s).',
   },
   {
@@ -109,6 +116,7 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
     stake: 1,
     stopLoss: 3,
     takeProfit: 6,
+    martingaleMultiplier: 1.5,
     description: 'Low-risk step model designed for Volatility 100.',
   },
 ];
@@ -195,6 +203,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
 
   const symbol = symbolMap[strategy.asset] || '1HZ100V';
   const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
+  const multiplierVal = strategy.martingaleMultiplier ?? 2.0;
 
   try {
     // 1. Pause events during batch updates to prevent invalid workspace states
@@ -238,6 +247,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
     let foundTPBlock: any = null;
     let foundSLBlock: any = null;
+    let foundMultiplierBlock: any = null;
 
     allBlocks.forEach((block: any) => {
       if (block.type === 'variables_set') {
@@ -253,6 +263,8 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           foundTPBlock = block;
         } else if (varName.includes('loss') || varName.includes('sl') || block.id === 'init_sl') {
           foundSLBlock = block;
+        } else if (varName.includes('multiplier') || varName.includes('martingale') || block.id === 'init_multiplier') {
+          foundMultiplierBlock = block;
         } else if (varName.includes('stake') || block.id === 'init_stake') {
           const valueInput = block.getInput('VALUE');
           if (valueInput && valueInput.connection && valueInput.connection.targetBlock()) {
@@ -279,13 +291,14 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
 
     if (foundTPBlock) setNumValue(foundTPBlock, strategy.takeProfit);
     if (foundSLBlock) setNumValue(foundSLBlock, strategy.stopLoss);
+    if (foundMultiplierBlock) setNumValue(foundMultiplierBlock, multiplierVal);
 
-    // 6. Query trade_definition root block directly if TP/SL variable blocks are missing
+    // 6. Query trade_definition root block directly if variable blocks are missing
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
 
-    if (rootTradeBlock && (!foundTPBlock || !foundSLBlock)) {
+    if (rootTradeBlock && (!foundTPBlock || !foundSLBlock || !foundMultiplierBlock)) {
       const initInput = rootTradeBlock.getInput('INITIALIZATION');
 
       if (initInput && initInput.connection) {
@@ -318,6 +331,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
 
         const newTPBlock = !foundTPBlock ? createAndAttachVarBlock('target_profit', strategy.takeProfit) : null;
         const newSLBlock = !foundSLBlock ? createAndAttachVarBlock('stop_loss', strategy.stopLoss) : null;
+        const newMultBlock = !foundMultiplierBlock ? createAndAttachVarBlock('martingale_size', multiplierVal) : null;
 
         const existingChild = initInput.connection.targetBlock();
         let targetSlot = initInput.connection;
@@ -330,13 +344,24 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           targetSlot = tail.nextConnection;
         }
 
+        // Maintaining your exact chaining pattern: TP -> SL -> Multiplier
         if (newTPBlock && targetSlot) {
           targetSlot.connect(newTPBlock.previousConnection);
           if (newSLBlock && newTPBlock.nextConnection) {
             newTPBlock.nextConnection.connect(newSLBlock.previousConnection);
+            if (newMultBlock && newSLBlock.nextConnection) {
+              newSLBlock.nextConnection.connect(newMultBlock.previousConnection);
+            }
+          } else if (newMultBlock && newTPBlock.nextConnection) {
+            newTPBlock.nextConnection.connect(newMultBlock.previousConnection);
           }
         } else if (newSLBlock && targetSlot) {
           targetSlot.connect(newSLBlock.previousConnection);
+          if (newMultBlock && newSLBlock.nextConnection) {
+            newSLBlock.nextConnection.connect(newMultBlock.previousConnection);
+          }
+        } else if (newMultBlock && targetSlot) {
+          targetSlot.connect(newMultBlock.previousConnection);
         }
       }
     }
@@ -382,6 +407,7 @@ export function generateDBotXml(strategy: StrategyConfig): string {
 
   const symbol = symbolMap[strategy.asset] || '1HZ100V';
   const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
+  const multiplierVal = strategy.martingaleMultiplier ?? 2.0;
 
   return `
 <xml xmlns="https://developers.google.com/blockly/xml">
@@ -389,6 +415,7 @@ export function generateDBotXml(strategy: StrategyConfig): string {
     <variable id="stake_var">stake</variable>
     <variable id="tp_var">target_profit</variable>
     <variable id="sl_var">stop_loss</variable>
+    <variable id="mult_var">martingale_size</variable>
   </variables>
   <block type="trade_definition" id="trade_definition" deletable="false" x="40" y="40">
     <statement name="TRADE_OPTIONS">
@@ -448,6 +475,16 @@ export function generateDBotXml(strategy: StrategyConfig): string {
                     <field name="NUM">${strategy.stopLoss}</field>
                   </shadow>
                 </value>
+                <next>
+                  <block type="variables_set" id="init_multiplier">
+                    <field name="VAR" id="mult_var">martingale_size</field>
+                    <value name="VALUE">
+                      <shadow type="math_number" id="shadow_mult">
+                        <field name="NUM">${multiplierVal}</field>
+                      </shadow>
+                    </value>
+                  </block>
+                </next>
               </block>
             </next>
           </block>
