@@ -1,3 +1,162 @@
+export interface StrategyConfig {
+  id: string;
+  name: string;
+  description: string;
+  asset: string;
+  stake: number;
+  stopLoss: number;
+  takeProfit: number;
+  confidence: number;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  direction: 'UP' | 'DOWN';
+  status: 'ACTIVE' | 'PAUSED';
+  martingaleMultiplier?: number;
+}
+
+export interface StrategySignal {
+  confidence: number;
+  direction: 'UP' | 'DOWN';
+}
+
+// 1. Export CORE_7_STRATEGIES
+export const CORE_7_STRATEGIES: StrategyConfig[] = [
+  {
+    id: 'strat-1',
+    name: 'Momentum Scalper',
+    description: 'High-frequency tick momentum tracking on Volatility 100 (1s)',
+    asset: 'Volatility 100 (1s)',
+    stake: 10,
+    stopLoss: 50,
+    takeProfit: 100,
+    confidence: 88,
+    priority: 'HIGH',
+    direction: 'UP',
+    status: 'ACTIVE',
+    martingaleMultiplier: 2.15,
+  },
+  {
+    id: 'strat-2',
+    name: 'Mean Reversion',
+    description: 'Overbought/oversold reversal detector for Volatility 75',
+    asset: 'Volatility 75',
+    stake: 5,
+    stopLoss: 25,
+    takeProfit: 50,
+    confidence: 74,
+    priority: 'MEDIUM',
+    direction: 'DOWN',
+    status: 'ACTIVE',
+    martingaleMultiplier: 2.0,
+  },
+  {
+    id: 'strat-3',
+    name: 'Breakout Trader',
+    description: 'Volatility expansion scanner across Volatility 50',
+    asset: 'Volatility 50',
+    stake: 15,
+    stopLoss: 45,
+    takeProfit: 90,
+    confidence: 65,
+    priority: 'LOW',
+    direction: 'UP',
+    status: 'ACTIVE',
+    martingaleMultiplier: 2.15,
+  },
+  {
+    id: 'strat-4',
+    name: 'Trend Follower',
+    description: 'Sustained micro-trend analyzer on Volatility 25 (1s)',
+    asset: 'Volatility 25 (1s)',
+    stake: 10,
+    stopLoss: 30,
+    takeProfit: 60,
+    confidence: 60,
+    priority: 'LOW',
+    direction: 'UP',
+    status: 'ACTIVE',
+    martingaleMultiplier: 2.15,
+  },
+  {
+    id: 'strat-5',
+    name: 'Range Bound',
+    description: 'Support & resistance bounce targeter on Volatility 10',
+    asset: 'Volatility 10',
+    stake: 5,
+    stopLoss: 20,
+    takeProfit: 40,
+    confidence: 55,
+    priority: 'LOW',
+    direction: 'DOWN',
+    status: 'ACTIVE',
+    martingaleMultiplier: 2.0,
+  },
+  {
+    id: 'strat-6',
+    name: 'Tick Differential',
+    description: 'Rapid directional delta engine on Volatility 100',
+    asset: 'Volatility 100',
+    stake: 20,
+    stopLoss: 60,
+    takeProfit: 120,
+    confidence: 50,
+    priority: 'LOW',
+    direction: 'UP',
+    status: 'ACTIVE',
+    martingaleMultiplier: 2.2,
+  },
+  {
+    id: 'strat-7',
+    name: 'Volatility Pulse',
+    description: 'Dynamic volatility burst indicator on Volatility 25',
+    asset: 'Volatility 25',
+    stake: 10,
+    stopLoss: 35,
+    takeProfit: 70,
+    confidence: 45,
+    priority: 'LOW',
+    direction: 'DOWN',
+    status: 'ACTIVE',
+    martingaleMultiplier: 2.0,
+  },
+];
+
+// 2. Export enforceSingleHighPriority
+export function enforceSingleHighPriority(
+  strategies: StrategyConfig[],
+  targetHighId?: string
+): StrategyConfig[] {
+  const chosenHighId = targetHighId || strategies[0]?.id;
+  return strategies.map((s) => ({
+    ...s,
+    priority: s.id === chosenHighId ? 'HIGH' : 'LOW',
+  }));
+}
+
+// 3. Export evaluateStrategySignal
+export function evaluateStrategySignal(
+  strategy: StrategyConfig,
+  ticks: number[]
+): StrategySignal {
+  if (!ticks || ticks.length < 2) {
+    return { confidence: strategy.confidence, direction: strategy.direction };
+  }
+
+  const last = ticks[ticks.length - 1];
+  const prev = ticks[ticks.length - 2];
+  const diff = last - prev;
+
+  const dynamicConf = Math.min(
+    99,
+    Math.max(30, Math.round(strategy.confidence + (diff !== 0 ? (diff > 0 ? 2 : -2) : 0)))
+  );
+
+  return {
+    confidence: dynamicConf,
+    direction: diff >= 0 ? 'UP' : 'DOWN',
+  };
+}
+
+// 4. Export applyStrategyToWorkspace
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
 
@@ -27,7 +186,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       workspace.setEnableEvents(false);
     }
 
-    // Ensure variables exist in workspace variable map
     ['stake', 'target_profit', 'stop_loss', 'martingale_multiplier'].forEach((varName) => {
       let variable = workspace.getVariableMap
         ? workspace.getVariableMap().getVariable(varName)
@@ -37,7 +195,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     });
 
-    // 1. Update Market & Trade options in Block 1
     const marketBlock =
       workspace.getBlockById('trade_definition_market') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_market')[0]);
@@ -63,7 +220,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 2. Populate Block 1 ("Run once at start") stack
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
@@ -128,7 +284,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 3. Update Block 2 purchase selection
     const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
     purchaseBlocks.forEach((pBlock: any) => {
       if (typeof pBlock.setFieldValue === 'function') {
@@ -136,7 +291,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     });
 
-    // 4. Populate Block 4 ("Restart trading conditions") stack
     const afterPurchaseBlock =
       workspace.getBlockById('after_purchase') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('after_purchase')[0]);
@@ -145,7 +299,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       const afterInput = afterPurchaseBlock.getInput('AFTERPURCHASE_STACK');
 
       if (afterInput && afterInput.connection) {
-        // Clear standalone 'trade_again' or incomplete blocks inside Block 4
         const topChild = afterInput.connection.targetBlock();
         if (topChild && typeof topChild.dispose === 'function') {
           topChild.dispose(false);
