@@ -1,4 +1,3 @@
-// src/Aiscanner/scannerBridge.ts
 import { ASSET_TO_SYMBOL } from './useDerivTicks';
 
 export class ScannerBridge {
