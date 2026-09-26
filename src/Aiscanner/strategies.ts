@@ -360,70 +360,80 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 7. Construct or Update Block 4 (Restart Trading Conditions)
+    // 7. SAFE BLOCK 4 FIX: Construct or update AFTERPURCHASE_STACK using XML snippet
     const afterPurchaseBlock =
       workspace.getBlockById('after_purchase') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('after_purchase')[0]);
 
     if (afterPurchaseBlock) {
       const afterInput = afterPurchaseBlock.getInput('AFTERPURCHASE_STACK');
+
       if (afterInput && afterInput.connection) {
-        let tradeAgainBlock = workspace.getBlockById('trade_again_block') ||
-          (workspace.getBlocksByType && workspace.getBlocksByType('trade_again')[0]);
+        const currentTarget = afterInput.connection.targetBlock();
 
-        // If Block 4 is completely empty, construct restart logic stack inside AFTERPURCHASE_STACK
-        if (!afterInput.connection.targetBlock()) {
-          const controlsIfBlock = workspace.newBlock('controls_if');
-          controlsIfBlock.mutationToDom && controlsIfBlock.domToMutation && 
-            controlsIfBlock.domToMutation(
-              (window as any).Blockly.Xml.textToDom('<mutation else="1"></mutation>')
-            );
-
-          // Win condition: Reset stake
-          const winStakeSet = createAndAttachVarBlock('stake', strategy.stake);
-          const do0Input = controlsIfBlock.getInput('DO0');
-          if (do0Input && do0Input.connection && winStakeSet) {
-            do0Input.connection.connect(winStakeSet.previousConnection);
+        // Check if Block 4 is currently empty or contains only a standalone trade_again block
+        if (!currentTarget || currentTarget.type === 'trade_again') {
+          if (currentTarget && currentTarget.previousConnection && currentTarget.previousConnection.isConnected()) {
+            currentTarget.previousConnection.disconnect();
           }
 
-          // Loss condition: Apply Martingale Multiplier
-          const multiplierVar = getOrCreateVariable('martingale_multiplier');
           const stakeVar = getOrCreateVariable('stake');
+          const multVar = getOrCreateVariable('martingale_multiplier');
+          const stakeId = stakeVar ? stakeVar.getId() : 'stake_var';
+          const multId = multVar ? multVar.getId() : 'mult_var';
 
-          const lossStakeSet = workspace.newBlock('variables_set');
-          if (stakeVar) lossStakeSet.setFieldValue(stakeVar.getId(), 'VAR');
+          const block4XmlString = `
+            <block type="controls_if" id="after_purchase_if">
+              <mutation else="1"></mutation>
+              <value name="IF0">
+                <block type="contract_check_result">
+                  <field name="CHECK_RESULT">win</field>
+                </block>
+              </value>
+              <statement name="DO0">
+                <block type="variables_set">
+                  <field name="VAR" id="${stakeId}">stake</field>
+                  <value name="VALUE">
+                    <shadow type="math_number">
+                      <field name="NUM">${strategy.stake}</field>
+                    </shadow>
+                  </value>
+                </block>
+              </statement>
+              <statement name="ELSE">
+                <block type="variables_set">
+                  <field name="VAR" id="${stakeId}">stake</field>
+                  <value name="VALUE">
+                    <block type="math_arithmetic">
+                      <field name="OP">MULTIPLY</field>
+                      <value name="A">
+                        <block type="variables_get">
+                          <field name="VAR" id="${stakeId}">stake</field>
+                        </block>
+                      </value>
+                      <value name="B">
+                        <block type="variables_get">
+                          <field name="VAR" id="${multId}">martingale_multiplier</field>
+                        </block>
+                      </value>
+                    </block>
+                  </value>
+                </block>
+              </statement>
+              <next>
+                <block type="trade_again" id="trade_again_block"></block>
+              </next>
+            </block>
+          `.trim();
 
-          const mathArith = workspace.newBlock('math_arithmetic');
-          mathArith.setFieldValue('MULTIPLY', 'OP');
+          const blocklyXml = (window as any).Blockly?.Xml;
+          if (blocklyXml) {
+            const domNode = blocklyXml.textToDom(block4XmlString);
+            const createdBlock = blocklyXml.domToBlock(domNode, workspace);
 
-          const varGetA = workspace.newBlock('variables_get');
-          if (stakeVar) varGetA.setFieldValue(stakeVar.getId(), 'VAR');
-
-          const varGetB = workspace.newBlock('variables_get');
-          if (multiplierVar) varGetB.setFieldValue(multiplierVar.getId(), 'VAR');
-
-          mathArith.getInput('A')?.connection?.connect(varGetA.outputConnection);
-          mathArith.getInput('B')?.connection?.connect(varGetB.outputConnection);
-          lossStakeSet.getInput('VALUE')?.connection?.connect(mathArith.outputConnection);
-
-          const elseInput = controlsIfBlock.getInput('ELSE');
-          if (elseInput && elseInput.connection) {
-            elseInput.connection.connect(lossStakeSet.previousConnection);
-          }
-
-          if (typeof controlsIfBlock.initSvg === 'function') controlsIfBlock.initSvg();
-          if (typeof lossStakeSet.initSvg === 'function') lossStakeSet.initSvg();
-
-          // Connect controls_if block to AFTERPURCHASE_STACK
-          afterInput.connection.connect(controlsIfBlock.previousConnection);
-
-          // Ensure trade_again block is connected after controls_if block
-          if (!tradeAgainBlock) {
-            tradeAgainBlock = workspace.newBlock('trade_again');
-            if (typeof tradeAgainBlock.initSvg === 'function') tradeAgainBlock.initSvg();
-          }
-          if (tradeAgainBlock && controlsIfBlock.nextConnection) {
-            controlsIfBlock.nextConnection.connect(tradeAgainBlock.previousConnection);
+            if (createdBlock && createdBlock.previousConnection) {
+              afterInput.connection.connect(createdBlock.previousConnection);
+            }
           }
         }
       }
