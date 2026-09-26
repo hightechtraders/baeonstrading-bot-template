@@ -14,11 +14,20 @@ export const ASSET_TO_SYMBOL: Record<string, string> = {
   'Volatility 25 Index': 'R_25',
 };
 
+export function resolveSymbol(assetName: string): string {
+  if (!assetName) return '';
+  if (ASSET_TO_SYMBOL[assetName]) return ASSET_TO_SYMBOL[assetName];
+  
+  // Fallback match by stripping spaces/case sensitivity or return as-is if already a symbol
+  const clean = assetName.trim();
+  return ASSET_TO_SYMBOL[clean] || clean;
+}
+
 export function useDerivTicks(_assets?: string[]) {
   const [ticksBuffer, setTicksBuffer] = useState<Record<string, number[]>>({});
 
   useEffect(() => {
-    // 1. Hook into the active page WebSocket
+    // 1. Hook into active page WebSocket
     scannerBridge.init();
 
     // 2. Subscribe to incoming market tick streams
