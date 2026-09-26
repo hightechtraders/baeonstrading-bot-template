@@ -19,82 +19,70 @@ export const FloatingAI = () => {
   const assets = useMemo(() => CORE_7_STRATEGIES.map((s) => s.asset), []);
   const { ticksBuffer: realTicksBuffer } = useDerivTicks(assets);
 
-  const [activeBuffer, setActiveBuffer] = useState<Record<string, number[]>>({});
   const dragDistanceRef = useRef(0);
-
   const strategiesListRef = useRef(strategiesList);
   strategiesListRef.current = strategiesList;
 
-  // 1. Tick Stream Switcher
+  // 1. Process incoming tick buffer smoothly (Simulation vs Real WS)
   useEffect(() => {
+    let activeBuffer: Record<string, number[]> = {};
+
     if (ENABLE_SIMULATION) {
       const simPrices: Record<string, number[]> = {};
-
       const simInterval = setInterval(() => {
         CORE_7_STRATEGIES.forEach((strat) => {
           const key = strat.asset;
           const currentSeries = simPrices[key] || Array.from({ length: 10 }, () => 1000);
           const lastPrice = currentSeries[currentSeries.length - 1];
-          
           const newPrice = Number((lastPrice + (Math.random() - 0.48) * 5).toFixed(2));
           simPrices[key] = [...currentSeries, newPrice].slice(-30);
         });
 
-        setActiveBuffer({ ...simPrices });
+        const updatedList = scannerLogic.evaluateAndProcessTicks(
+          simPrices,
+          ASSET_TO_SYMBOL,
+          expandedId !== null,
+          expandedId
+        );
+        setStrategiesList(updatedList);
       }, 1000);
 
       return () => clearInterval(simInterval);
     } else {
-      setActiveBuffer(realTicksBuffer);
-    }
-  }, [realTicksBuffer]);
+      activeBuffer = realTicksBuffer;
+      if (!activeBuffer || Object.keys(activeBuffer).length === 0) return;
 
-  // 2. Process Ticks smoothly (FREEZE all metrics & updates completely when editing)
-  useEffect(() => {
-    if (!activeBuffer || Object.keys(activeBuffer).length === 0) return;
-
-    // Completely skip state updates while any card is expanded
-    if (expandedId !== null) return;
-
-    const updatedList = scannerLogic.evaluateAndProcessTicks(
-      activeBuffer,
-      ASSET_TO_SYMBOL,
-      false,
-      null
-    );
-    
-    const hasChanged = updatedList.some((newStrat, i) => {
-      const oldStrat = strategiesListRef.current[i];
-      return (
-        !oldStrat ||
-        oldStrat.score !== newStrat.score ||
-        oldStrat.confidence !== newStrat.confidence ||
-        oldStrat.direction !== newStrat.direction ||
-        oldStrat.priority !== newStrat.priority
+      const updatedList = scannerLogic.evaluateAndProcessTicks(
+        activeBuffer,
+        ASSET_TO_SYMBOL,
+        expandedId !== null,
+        expandedId
       );
-    });
 
-    if (hasChanged) {
-      setStrategiesList(updatedList);
+      const hasChanged = updatedList.some((newStrat, i) => {
+        const oldStrat = strategiesListRef.current[i];
+        return (
+          !oldStrat ||
+          oldStrat.score !== newStrat.score ||
+          oldStrat.confidence !== newStrat.confidence ||
+          oldStrat.direction !== newStrat.direction ||
+          oldStrat.priority !== newStrat.priority
+        );
+      });
+
+      if (hasChanged) {
+        setStrategiesList(updatedList);
+      }
     }
-  }, [activeBuffer, expandedId]);
+  }, [realTicksBuffer, expandedId]);
 
-  const toggleModal = () => {
-    setIsOpen((prev) => !prev);
-  };
-
-  const handleStart = () => {
-    dragDistanceRef.current = 0;
-  };
-
+  const toggleModal = () => setIsOpen((prev) => !prev);
+  const handleStart = () => { dragDistanceRef.current = 0; };
   const handleDrag = (_e: DraggableEvent, data: DraggableData) => {
     dragDistanceRef.current += Math.abs(data.deltaX) + Math.abs(data.deltaY);
   };
-
   const handleStop = () => {
-    if (dragDistanceRef.current < 6) {
-      toggleModal();
-    }
+    if (dragDistanceRef.current < 6) toggleModal();
   };
 
   const handleInputChange = (
@@ -108,7 +96,6 @@ export const FloatingAI = () => {
 
   const handleLoadStrategy = (strat: StrategyConfig, e: React.MouseEvent) => {
     e.stopPropagation();
-
     if (strat.priority !== 'HIGH') {
       alert('Only the strategy marked as HIGH priority can be loaded into Blockly.');
       return;
