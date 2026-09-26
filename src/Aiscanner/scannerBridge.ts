@@ -23,7 +23,7 @@ export class ScannerBridge {
       return;
     }
 
-    // Intercept native WebSocket constructor if instantiated dynamically
+    // Intercept native WebSocket constructor if initialized dynamically
     const NativeWebSocket = window.WebSocket;
     const self = this;
 
@@ -39,14 +39,21 @@ export class ScannerBridge {
   }
 
   public subscribeToSymbols(symbols: string[]) {
-    if (!this.activeWS || this.activeWS.readyState !== WebSocket.OPEN) return;
+    const sendSubscriptions = () => {
+      if (!this.activeWS || this.activeWS.readyState !== WebSocket.OPEN) return;
+      symbols.forEach((symbol) => {
+        if (!this.subscribedSymbols.has(symbol)) {
+          this.subscribedSymbols.add(symbol);
+          this.activeWS?.send(JSON.stringify({ ticks: symbol }));
+        }
+      });
+    };
 
-    symbols.forEach((symbol) => {
-      if (!this.subscribedSymbols.has(symbol)) {
-        this.subscribedSymbols.add(symbol);
-        this.activeWS?.send(JSON.stringify({ ticks: symbol }));
-      }
-    });
+    if (this.activeWS && this.activeWS.readyState === WebSocket.OPEN) {
+      sendSubscriptions();
+    } else {
+      setTimeout(sendSubscriptions, 1000);
+    }
   }
 
   private attachWSListener(ws: WebSocket) {
@@ -61,7 +68,7 @@ export class ScannerBridge {
           }
         }
       } catch (e) {
-        // Ignore non-JSON socket frames
+        // Ignore non-JSON socket traffic
       }
     });
   }
@@ -70,7 +77,6 @@ export class ScannerBridge {
     const currentSymbolTicks = this.ticksBuffer[symbol] || [];
     const updatedSymbolTicks = [...currentSymbolTicks, price].slice(-30);
 
-    // Map tick stream under both raw symbol ('R_25') and readable asset name ('Volatility 25')
     const mappedEntries: Record<string, number[]> = {
       [symbol]: updatedSymbolTicks,
     };
