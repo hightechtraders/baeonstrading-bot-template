@@ -1,5 +1,4 @@
 // src/Aiscanner/scannerBridge.ts
-
 import { ASSET_TO_SYMBOL } from './useDerivTicks';
 
 export class ScannerBridge {
@@ -12,7 +11,7 @@ export class ScannerBridge {
   public init() {
     if (this.isHooked) return;
 
-    // Detect existing open WebSocket on the window object
+    // 1. Check for existing active WebSocket
     const globalWS =
       (window as any)._derivWebSocket ||
       (window as any).appWebSocket ||
@@ -26,7 +25,7 @@ export class ScannerBridge {
       return;
     }
 
-    // Monkey-patch WebSocket constructor to capture the socket instance dynamically
+    // 2. Monkey-patch WebSocket constructor to catch instances on instantiation
     const NativeWebSocket = window.WebSocket;
     const self = this;
 
@@ -34,7 +33,7 @@ export class ScannerBridge {
       const wsInstance = new NativeWebSocket(url, protocols);
       self.activeWS = wsInstance;
       self.attachWSListener(wsInstance);
-      
+
       wsInstance.addEventListener('open', () => {
         self.subscribeAllAssets();
       });
@@ -78,7 +77,7 @@ export class ScannerBridge {
           }
         }
       } catch (e) {
-        // Ignore non-JSON WS frames
+        // Ignore non-JSON frames
       }
     });
   }
@@ -87,7 +86,6 @@ export class ScannerBridge {
     const currentSymbolTicks = this.ticksBuffer[symbol] || [];
     const updatedSymbolTicks = [...currentSymbolTicks, price].slice(-30);
 
-    // Store tick stream under both raw symbol ('R_25') and readable asset name ('Volatility 25')
     const mappedEntries: Record<string, number[]> = {
       [symbol]: updatedSymbolTicks,
     };
