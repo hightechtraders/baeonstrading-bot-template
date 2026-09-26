@@ -11,7 +11,6 @@ export class ScannerBridge {
   public init() {
     if (this.isHooked) return;
 
-    // 1. Hook into active global WebSocket
     const globalWS =
       (window as any)._derivWebSocket ||
       (window as any).appWebSocket ||
@@ -25,7 +24,6 @@ export class ScannerBridge {
       return;
     }
 
-    // 2. Intercept native WebSocket constructor if instantiated dynamically
     const NativeWebSocket = window.WebSocket;
     const self = this;
 
@@ -86,7 +84,6 @@ export class ScannerBridge {
     const currentSymbolTicks = this.ticksBuffer[symbol] || [];
     const updatedSymbolTicks = [...currentSymbolTicks, price].slice(-30);
 
-    // Save under the raw symbol ('R_25') AND readable display name ('Volatility 25')
     const mappedEntries: Record<string, number[]> = {
       [symbol]: updatedSymbolTicks,
     };
@@ -122,7 +119,7 @@ export class ScannerBridge {
     return this.ticksBuffer;
   }
 
-  public loadStrategyToBot(_strategy: any): boolean {
+  public loadStrategyToBot(strategy: any): boolean {
     return true;
   }
 }
