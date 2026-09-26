@@ -1,5 +1,155 @@
 // src/Aiscanner/strategies.ts
 
+export interface StrategyConfig {
+  id: string;
+  name: string;
+  asset: string;
+  direction: 'UP' | 'DOWN';
+  stake: number;
+  takeProfit: number;
+  stopLoss: number;
+  martingaleMultiplier?: number;
+  priority?: 'HIGH' | 'MEDIUM' | 'LOW';
+  confidence?: number;
+  description?: string;
+}
+
+export const CORE_7_STRATEGIES: StrategyConfig[] = [
+  {
+    id: 'vol-10',
+    name: 'Volatility 10 Strategy',
+    asset: 'Volatility 10',
+    direction: 'UP',
+    stake: 1,
+    takeProfit: 10,
+    stopLoss: 5,
+    martingaleMultiplier: 2.15,
+    priority: 'HIGH',
+    confidence: 85,
+    description: 'Trend following on Volatility 10 Index',
+  },
+  {
+    id: 'vol-25',
+    name: 'Volatility 25 Strategy',
+    asset: 'Volatility 25',
+    direction: 'DOWN',
+    stake: 1,
+    takeProfit: 10,
+    stopLoss: 5,
+    martingaleMultiplier: 2.15,
+    priority: 'MEDIUM',
+    confidence: 72,
+    description: 'Mean reversion on Volatility 25 Index',
+  },
+  {
+    id: 'vol-50',
+    name: 'Volatility 50 Strategy',
+    asset: 'Volatility 50',
+    direction: 'UP',
+    stake: 1,
+    takeProfit: 10,
+    stopLoss: 5,
+    martingaleMultiplier: 2.15,
+    priority: 'MEDIUM',
+    confidence: 68,
+    description: 'Momentum breakout on Volatility 50 Index',
+  },
+  {
+    id: 'vol-75',
+    name: 'Volatility 75 Strategy',
+    asset: 'Volatility 75',
+    direction: 'DOWN',
+    stake: 1,
+    takeProfit: 10,
+    stopLoss: 5,
+    martingaleMultiplier: 2.15,
+    priority: 'LOW',
+    confidence: 60,
+    description: 'Volatility expansion scalping',
+  },
+  {
+    id: 'vol-100',
+    name: 'Volatility 100 Strategy',
+    asset: 'Volatility 100',
+    direction: 'UP',
+    stake: 1,
+    takeProfit: 10,
+    stopLoss: 5,
+    martingaleMultiplier: 2.15,
+    priority: 'LOW',
+    confidence: 55,
+    description: 'Range bound trading strategy',
+  },
+  {
+    id: 'vol-100-1s',
+    name: 'Volatility 100 (1s) Strategy',
+    asset: 'Volatility 100 (1s)',
+    direction: 'UP',
+    stake: 1,
+    takeProfit: 10,
+    stopLoss: 5,
+    martingaleMultiplier: 2.15,
+    priority: 'LOW',
+    confidence: 50,
+    description: 'High-frequency 1-second index reversal',
+  },
+  {
+    id: 'vol-25-1s',
+    name: 'Volatility 25 (1s) Strategy',
+    asset: 'Volatility 25 (1s)',
+    direction: 'DOWN',
+    stake: 1,
+    takeProfit: 10,
+    stopLoss: 5,
+    martingaleMultiplier: 2.15,
+    priority: 'LOW',
+    confidence: 48,
+    description: 'Micro-trend follower on 1s tick feed',
+  },
+];
+
+export function enforceSingleHighPriority(
+  strategies: StrategyConfig[],
+  targetHighId?: string
+): StrategyConfig[] {
+  const activeId = targetHighId || strategies[0]?.id;
+  return strategies.map((strat) => ({
+    ...strat,
+    priority: strat.id === activeId ? 'HIGH' : strat.priority === 'HIGH' ? 'MEDIUM' : strat.priority || 'LOW',
+  }));
+}
+
+export function evaluateStrategySignal(strat: StrategyConfig, ticks: number[]) {
+  if (!ticks || ticks.length < 2) {
+    return {
+      confidence: strat.confidence || 50,
+      direction: strat.direction,
+    };
+  }
+
+  const latest = ticks[ticks.length - 1];
+  const previous = ticks[ticks.length - 2];
+  const diff = latest - previous;
+
+  let calculatedConfidence = strat.confidence || 60;
+  if (diff > 0) {
+    calculatedConfidence += strat.direction === 'UP' ? 5 : -5;
+  } else if (diff < 0) {
+    calculatedConfidence += strat.direction === 'DOWN' ? 5 : -5;
+  }
+
+  const finalConfidence = Math.min(Math.max(calculatedConfidence, 30), 98);
+
+  return {
+    confidence: finalConfidence,
+    direction: strat.direction,
+  };
+}
+
+export function isTradeProfitable(confidence: number): boolean {
+  return confidence >= 65;
+}
+
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
 
@@ -29,9 +179,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       workspace.setEnableEvents(false);
     }
 
-    // -------------------------------------------------------------
-    // 1. IN-PLACE UPDATE FOR NON-BLANK BLOCK 1 PARAMS
-    // -------------------------------------------------------------
+    // 1. Update Market & Trade options in Block 1
     const marketBlock =
       workspace.getBlockById('trade_definition_market') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_market')[0]);
@@ -43,7 +191,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       marketBlock.setFieldValue(symbol, 'SYMBOL_LIST');
     }
 
-    // Update Stake in Submarket Trade Options
     const tradeOptionsBlock =
       workspace.getBlockById('trade_definition_tradeoptions') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_tradeoptions')[0]);
@@ -58,9 +205,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // -------------------------------------------------------------
-    // 2. HELPER FUNCTIONS FOR VARIABLE & BLOCK CREATION / UPDATE
-    // -------------------------------------------------------------
+    // Helper utilities for block creation
     const getOrCreateVariable = (varName: string) => {
       let variable = workspace.getVariableMap
         ? workspace.getVariableMap().getVariable(varName)
@@ -107,9 +252,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     };
 
-    // -------------------------------------------------------------
-    // 3. SCAN EXISTING VARIABLES & UPDATE PRE-EXISTING BLOCKS
-    // -------------------------------------------------------------
+    // 2. Scan & update existing variable set blocks
     const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
     let hasTP = false;
     let hasSL = false;
@@ -143,9 +286,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     });
 
-    // -------------------------------------------------------------
-    // 4. BLOCK 1 (RUN ONCE AT START): POPULATE IF BLANK / MISSING VARS
-    // -------------------------------------------------------------
+    // 3. Populate initialization stack if blank
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
@@ -182,9 +323,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // -------------------------------------------------------------
-    // 5. UPDATE BLOCK 2 (PURCHASE DIRECTION)
-    // -------------------------------------------------------------
+    // 4. Update Block 2 purchase selection
     const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
     purchaseBlocks.forEach((pBlock: any) => {
       if (typeof pBlock.setFieldValue === 'function') {
@@ -192,9 +331,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     });
 
-    // -------------------------------------------------------------
-    // 6. BLOCK 4 (RESTART TRADING CONDITIONS): CLEAR & BUILD IF BLANK / JUST TRADE AGAIN
-    // -------------------------------------------------------------
+    // 5. Block 4 setup if empty or contains only standalone trade_again
     const afterPurchaseBlock =
       workspace.getBlockById('after_purchase') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('after_purchase')[0]);
@@ -205,23 +342,26 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       if (afterInput && afterInput.connection) {
         const topChild = afterInput.connection.targetBlock();
 
-        // Check if Block 4 is empty OR contains only a standalone 'trade_again' block
-        const isBlankOrOnlyTradeAgain = !topChild || (topChild.type === 'trade_again' && !topChild.previousConnection?.targetBlock()?.type?.includes('controls_if'));
+        const isBlankOrOnlyTradeAgain =
+          !topChild ||
+          (topChild.type === 'trade_again' &&
+            !topChild.previousConnection?.targetBlock()?.type?.includes('controls_if'));
 
         if (isBlankOrOnlyTradeAgain) {
-          // Dispose of standalone trade_again block if present so we can rebuild clean
           if (topChild && typeof topChild.dispose === 'function') {
             topChild.dispose(false);
           }
 
-          // Build 'controls_if' condition block
           const controlsIfBlock = workspace.newBlock('controls_if');
-
-          if (typeof controlsIfBlock.mutationToDom === 'function' && typeof controlsIfBlock.domToMutation === 'function') {
-            controlsIfBlock.domToMutation((window as any).Blockly.Xml.textToDom('<mutation else="1"></mutation>'));
+          if (
+            typeof controlsIfBlock.mutationToDom === 'function' &&
+            typeof controlsIfBlock.domToMutation === 'function'
+          ) {
+            controlsIfBlock.domToMutation(
+              (window as any).Blockly.Xml.textToDom('<mutation else="1"></mutation>')
+            );
           }
 
-          // Attach 'contract_check_result = win' to IF0
           const checkWinBlock = workspace.newBlock('contract_check_result');
           if (typeof checkWinBlock.setFieldValue === 'function') {
             checkWinBlock.setFieldValue('win', 'CHECK_RESULT');
@@ -231,14 +371,12 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
             if0Input.connection.connect(checkWinBlock.outputConnection);
           }
 
-          // DO0 (WIN): reset stake to initial stake value
           const winResetStake = createAndAttachVarBlock('stake', strategy.stake);
           const do0Input = controlsIfBlock.getInput('DO0');
           if (do0Input && do0Input.connection && winResetStake) {
             do0Input.connection.connect(winResetStake.previousConnection);
           }
 
-          // ELSE (LOSS): stake = stake * martingale_multiplier
           const stakeVar = getOrCreateVariable('stake');
           const multVar = getOrCreateVariable('martingale_multiplier');
 
@@ -265,7 +403,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
             elseInput.connection.connect(lossStakeSet.previousConnection);
           }
 
-          // Initialize graphics for created blocks
           if (typeof controlsIfBlock.initSvg === 'function') controlsIfBlock.initSvg();
           if (typeof checkWinBlock.initSvg === 'function') checkWinBlock.initSvg();
           if (typeof lossStakeSet.initSvg === 'function') lossStakeSet.initSvg();
@@ -273,10 +410,8 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           if (typeof getStakeBlock.initSvg === 'function') getStakeBlock.initSvg();
           if (typeof getMultBlock.initSvg === 'function') getMultBlock.initSvg();
 
-          // Connect controls_if block into AFTERPURCHASE_STACK
           afterInput.connection.connect(controlsIfBlock.previousConnection);
 
-          // Create fresh trade_again block and attach directly underneath controls_if
           const tradeAgainBlock = workspace.newBlock('trade_again');
           if (typeof tradeAgainBlock.initSvg === 'function') tradeAgainBlock.initSvg();
           if (controlsIfBlock.nextConnection) {
