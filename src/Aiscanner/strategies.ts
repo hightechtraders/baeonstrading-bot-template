@@ -135,7 +135,6 @@ export function enforceSingleHighPriority(
 
 /**
  * Dynamic momentum & tick velocity score evaluator.
- * Prevents static HOLD / 50% values by continuously computing trend direction across ticks.
  */
 export function evaluateStrategySignal(
   strategy: StrategyConfig,
@@ -179,8 +178,8 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Updates active workspace parameters IN-PLACE without breaking Blockly connections.
- * Constructs missing sub-trees from scratch if Block 1 or Block 4 are blank on canvas.
+ * Updates active workspace parameters IN-PLACE.
+ * Safely constructs missing Block 4 win/loss conditions when only "Trade again" is present.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
@@ -375,7 +374,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     });
 
     // -------------------------------------------------------------
-    // 6. BLOCK 4 (RESTART TRADING CONDITIONS): POPULATE IF BLANK
+    // 6. BLOCK 4 (RESTART TRADING CONDITIONS): CONSTRUCT WIN/LOSS IF MISSING
     // -------------------------------------------------------------
     const afterPurchaseBlock =
       workspace.getBlockById('after_purchase') ||
@@ -385,8 +384,15 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       const afterInput = afterPurchaseBlock.getInput('AFTERPURCHASE_STACK');
 
       if (afterInput && afterInput.connection) {
-        // Build and attach full condition + trade_again block structure if Block 4 is blank
-        if (!afterInput.connection.targetBlock()) {
+        const topChild = afterInput.connection.targetBlock();
+
+        // Check if top child is NOT controls_if (e.g. only standalone trade_again exists)
+        if (!topChild || topChild.type !== 'controls_if') {
+          // Unlink existing trade_again block if attached directly
+          if (topChild && typeof topChild.unplug === 'function') {
+            topChild.unplug();
+          }
+
           const controlsIfBlock = workspace.newBlock('controls_if');
 
           if (typeof controlsIfBlock.mutationToDom === 'function' && typeof controlsIfBlock.domToMutation === 'function') {
@@ -441,9 +447,11 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           if (typeof getStakeBlock.initSvg === 'function') getStakeBlock.initSvg();
           if (typeof getMultBlock.initSvg === 'function') getMultBlock.initSvg();
 
+          // Connect controls_if block into Block 4 AFTERPURCHASE_STACK
           afterInput.connection.connect(controlsIfBlock.previousConnection);
 
-          const tradeAgainBlock = workspace.newBlock('trade_again');
+          // Find or create trade_again block and connect it below controls_if
+          let tradeAgainBlock = topChild && topChild.type === 'trade_again' ? topChild : workspace.newBlock('trade_again');
           if (typeof tradeAgainBlock.initSvg === 'function') tradeAgainBlock.initSvg();
           if (controlsIfBlock.nextConnection) {
             controlsIfBlock.nextConnection.connect(tradeAgainBlock.previousConnection);
