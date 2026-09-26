@@ -1,4 +1,5 @@
 // src/Aiscanner/useDerivTicks.ts
+
 import { useEffect, useState, useRef, useMemo } from 'react';
 
 const DERIV_WS_URL = 'wss://ws.derivws.com/websockets/v3?app_id=1089';
@@ -58,7 +59,7 @@ export function useDerivTicks(assets: string[]) {
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Get distinct symbol codes (e.g. ["R_10", "R_25", "R_50", "R_75", "R_100", "1HZ100V"])
+  // Derive normalized symbol array to ensure unique subscription list
   const activeSymbols = useMemo(() => {
     if (!assets || assets.length === 0) return [];
     const set = new Set(assets.map((a) => resolveSymbol(a)));
@@ -85,7 +86,7 @@ export function useDerivTicks(assets: string[]) {
 
         console.log('[Deriv WS] Connected. Subscribing to symbols:', activeSymbols);
 
-        // Stagger subscriptions slightly so Deriv API processes all of them
+        // Stagger subscriptions slightly so Deriv API processes each tick stream smoothly
         activeSymbols.forEach((sym, idx) => {
           setTimeout(() => {
             if (ws.readyState === WebSocket.OPEN) {
@@ -94,7 +95,7 @@ export function useDerivTicks(assets: string[]) {
           }, idx * 100);
         });
 
-        // Ping heartbeat
+        // Maintain WebSocket connection with 25s keepalive ping
         if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
         pingIntervalRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
@@ -115,13 +116,12 @@ export function useDerivTicks(assets: string[]) {
               const currentTicks = prev[rawSymbol] || [];
               const updatedTicks = [...currentTicks, price].slice(-30);
 
-              // Broadcast tick under rawSymbol ("R_25") and matching strategy asset keys
               const updatedBuffer: Record<string, number[]> = {
                 ...prev,
                 [rawSymbol]: updatedTicks,
               };
 
-              // Also store under mapped asset keys so lookup never fails
+              // Map prices back across all asset keys so scanner components receive updates regardless of asset name format
               Object.entries(ASSET_TO_SYMBOL).forEach(([assetKey, mappedSym]) => {
                 if (mappedSym === rawSymbol) {
                   updatedBuffer[assetKey] = updatedTicks;
@@ -133,12 +133,12 @@ export function useDerivTicks(assets: string[]) {
             });
           }
         } catch (err) {
-          console.error('[Deriv WS] Parse error:', err);
+          console.error('[Deriv WS] Tick parsing error:', err);
         }
       };
 
       ws.onerror = (err) => {
-        console.warn('[Deriv WS] Error:', err);
+        console.warn('[Deriv WS] Connection error:', err);
       };
 
       ws.onclose = () => {
