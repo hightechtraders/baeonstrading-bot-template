@@ -1,31 +1,35 @@
 // src/Aiscanner/scannerBridge.ts
+import { ASSET_TO_SYMBOL } from './useDerivTicks';
 
 export class ScannerBridge {
   private ticksBuffer: Record<string, number[]> = {};
   private listeners: Array<(buffer: Record<string, number[]>) => void> = [];
   private isHooked = false;
+  private activeWS: WebSocket | null = null;
+  private subscribedSymbols = new Set<string>();
 
   public init() {
     if (this.isHooked) return;
 
-    // 1. Intercept Global WebSocket instance if already exposed
     const globalWS =
       (window as any)._derivWebSocket ||
       (window as any).appWebSocket ||
-      (window as any).ws ||
-      (window as any).DerivWS;
+      (window as any).ws;
 
     if (globalWS && typeof globalWS.addEventListener === 'function') {
+      this.activeWS = globalWS;
       this.attachWSListener(globalWS);
+      this.isHooked = true;
       return;
     }
 
-    // 2. Monkey-patch WebSocket constructor to catch the active Deriv socket when initialized
+    // Intercept native WebSocket constructor if instantiated dynamically
     const NativeWebSocket = window.WebSocket;
     const self = this;
 
     window.WebSocket = function (url: string | URL, protocols?: string | string[]) {
       const wsInstance = new NativeWebSocket(url, protocols);
+      self.activeWS = wsInstance;
       self.attachWSListener(wsInstance);
       return wsInstance;
     } as any;
@@ -34,12 +38,21 @@ export class ScannerBridge {
     this.isHooked = true;
   }
 
+  public subscribeToSymbols(symbols: string[]) {
+    if (!this.activeWS || this.activeWS.readyState !== WebSocket.OPEN) return;
+
+    symbols.forEach((symbol) => {
+      if (!this.subscribedSymbols.has(symbol)) {
+        this.subscribedSymbols.add(symbol);
+        this.activeWS?.send(JSON.stringify({ ticks: symbol }));
+      }
+    });
+  }
+
   private attachWSListener(ws: WebSocket) {
     ws.addEventListener('message', (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
-
-        // Handle standard Deriv tick streams
         if (data.msg_type === 'tick' && data.tick) {
           const symbol = data.tick.symbol;
           const price = Number(data.tick.quote);
@@ -47,27 +60,32 @@ export class ScannerBridge {
             this.pushTick(symbol, price);
           }
         }
-        
-        // Handle alternative proposal/ohlc tick feeds
-        if (data.msg_type === 'ohlc' && data.ohlc) {
-          const symbol = data.ohlc.symbol;
-          const price = Number(data.ohlc.close);
-          if (symbol && !isNaN(price)) {
-            this.pushTick(symbol, price);
-          }
-        }
       } catch (e) {
-        // Non-JSON WS frame
+        // Ignore non-JSON socket frames
       }
     });
   }
 
   public pushTick(symbol: string, price: number) {
-    const current = this.ticksBuffer[symbol] || [];
+    const currentSymbolTicks = this.ticksBuffer[symbol] || [];
+    const updatedSymbolTicks = [...currentSymbolTicks, price].slice(-30);
+
+    // Map tick stream under both raw symbol ('R_25') and readable asset name ('Volatility 25')
+    const mappedEntries: Record<string, number[]> = {
+      [symbol]: updatedSymbolTicks,
+    };
+
+    Object.entries(ASSET_TO_SYMBOL).forEach(([assetName, sym]) => {
+      if (sym === symbol) {
+        mappedEntries[assetName] = updatedSymbolTicks;
+      }
+    });
+
     this.ticksBuffer = {
       ...this.ticksBuffer,
-      [symbol]: [...current, price].slice(-30),
+      ...mappedEntries,
     };
+
     this.notify();
   }
 
@@ -88,7 +106,7 @@ export class ScannerBridge {
     return this.ticksBuffer;
   }
 
-  public loadStrategyToBot(strategy: any): boolean {
+  public loadStrategyToBot(_strategy: any): boolean {
     return true;
   }
 }
