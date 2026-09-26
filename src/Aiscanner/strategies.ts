@@ -6,340 +6,626 @@ export interface StrategyConfig {
   id: string;
   name: string;
   asset: string;
-  type: string;
+  tradeType: string;
+  riskModel: string;
+  priority: PriorityLevel;
   stake: number;
-  duration: number;
-  durationUnit: 't' | 'm' | 's' | 'h';
   stopLoss: number;
   takeProfit: number;
   martingaleMultiplier?: number;
-  priority: PriorityLevel;
-  confidence?: number;
-  direction?: 'RISE' | 'FALL' | 'HOLD';
+  description: string;
   score?: number;
+  confidence?: number;
+  direction?: 'UP' | 'DOWN' | 'HOLD';
 }
 
-/**
- * Core 7 default strategies array used across FloatingAI component,
- * App WS feed, and ScannerLogicManager initialization.
- */
+export interface StrategySignal {
+  strategyId: string;
+  direction: 'UP' | 'DOWN' | 'HOLD';
+  confidence: number;
+  score: number;
+  timestamp: number;
+}
+
 export const CORE_7_STRATEGIES: StrategyConfig[] = [
   {
-    id: 'strat-v10',
-    name: 'Volatility 10 Index',
-    asset: 'Volatility 10 Index',
-    type: 'Rise/Fall',
+    id: 'strat-1',
+    name: '#1 AI Adaptive',
+    asset: 'Volatility 25',
+    tradeType: 'Rise / Fall',
+    riskModel: 'NEURAL_FLOW',
+    priority: 'HIGH',
+    stake: 3,
+    stopLoss: 4,
+    takeProfit: 8,
+    martingaleMultiplier: 2.15,
+    description: 'Neural Flow structural strategy designed for Volatility 25.',
+  },
+  {
+    id: 'strat-2',
+    name: '#2 1-3-2-6 System',
+    asset: 'Volatility 10',
+    tradeType: 'Rise / Fall',
+    riskModel: 'PROGRESSIVE',
+    priority: 'MEDIUM',
     stake: 2,
-    duration: 1,
-    durationUnit: 't',
+    stopLoss: 5,
+    takeProfit: 10,
+    martingaleMultiplier: 2.0,
+    description: 'Progressive staking system designed for Volatility 10.',
+  },
+  {
+    id: 'strat-3',
+    name: '#3 Hyper Scalper Engine v26',
+    asset: 'Volatility 10',
+    tradeType: 'Rise / Fall',
+    riskModel: 'MARTINGALE',
+    priority: 'MEDIUM',
+    stake: 1,
     stopLoss: 10,
     takeProfit: 15,
     martingaleMultiplier: 2.15,
-    priority: 'HIGH',
-    confidence: 85,
-    direction: 'RISE',
+    description: 'Martingale scalp strategy designed for Volatility 10.',
   },
   {
-    id: 'strat-v25',
-    name: 'Volatility 25 Index',
-    asset: 'Volatility 25 Index',
-    type: 'Rise/Fall',
-    stake: 2,
-    duration: 1,
-    durationUnit: 't',
+    id: 'strat-4',
+    name: '#4 AI Balanced',
+    asset: 'Volatility 50',
+    tradeType: 'Over / Under',
+    riskModel: 'PROGRESSIVE',
+    priority: 'MEDIUM',
+    stake: 5,
     stopLoss: 10,
     takeProfit: 20,
-    martingaleMultiplier: 2.15,
-    priority: 'LOW',
-    confidence: 72,
-    direction: 'FALL',
+    martingaleMultiplier: 2.0,
+    description: 'Balanced digit strategy designed for Volatility 50.',
   },
   {
-    id: 'strat-v50',
-    name: 'Volatility 50 Index',
-    asset: 'Volatility 50 Index',
-    type: 'Rise/Fall',
+    id: 'strat-5',
+    name: '#5 Momentum Breakout',
+    asset: 'Volatility 75',
+    tradeType: 'Rise / Fall',
+    riskModel: 'TICK_MOMENTUM',
+    priority: 'MEDIUM',
     stake: 2,
-    duration: 1,
-    durationUnit: 't',
-    stopLoss: 15,
-    takeProfit: 30,
+    stopLoss: 6,
+    takeProfit: 12,
     martingaleMultiplier: 2.15,
-    priority: 'LOW',
-    confidence: 68,
-    direction: 'RISE',
+    description: 'Breakout tick strategy designed for Volatility 75.',
   },
   {
-    id: 'strat-v75',
-    name: 'Volatility 75 Index',
-    asset: 'Volatility 75 Index',
-    type: 'Rise/Fall',
-    stake: 5,
-    duration: 1,
-    durationUnit: 't',
-    stopLoss: 25,
-    takeProfit: 50,
+    id: 'strat-6',
+    name: '#6 High-Frequency Scalp',
+    asset: 'Volatility 100 (1s)',
+    tradeType: 'Rise / Fall',
+    riskModel: 'NEURAL_FLOW',
+    priority: 'MEDIUM',
+    stake: 4,
+    stopLoss: 8,
+    takeProfit: 16,
     martingaleMultiplier: 2.15,
-    priority: 'LOW',
-    confidence: 65,
-    direction: 'RISE',
+    description: 'Fast-cycle neural model designed for Volatility 100 (1s).',
   },
   {
-    id: 'strat-v100',
-    name: 'Volatility 100 Index',
-    asset: 'Volatility 100 Index',
-    type: 'Rise/Fall',
-    stake: 5,
-    duration: 1,
-    durationUnit: 't',
-    stopLoss: 30,
-    takeProfit: 60,
-    martingaleMultiplier: 2.15,
-    priority: 'LOW',
-    confidence: 70,
-    direction: 'FALL',
-  },
-  {
-    id: 'strat-v100-1s',
-    name: 'Volatility 100 (1s) Index',
-    asset: 'Volatility 100 (1s) Index',
-    type: 'Rise/Fall',
-    stake: 2,
-    duration: 1,
-    durationUnit: 't',
-    stopLoss: 15,
-    takeProfit: 25,
-    martingaleMultiplier: 2.15,
-    priority: 'LOW',
-    confidence: 78,
-    direction: 'RISE',
-  },
-  {
-    id: 'strat-v25-1s',
-    name: 'Volatility 25 (1s) Index',
-    asset: 'Volatility 25 (1s) Index',
-    type: 'Rise/Fall',
-    stake: 2,
-    duration: 1,
-    durationUnit: 't',
-    stopLoss: 10,
-    takeProfit: 20,
-    martingaleMultiplier: 2.15,
-    priority: 'LOW',
-    confidence: 74,
-    direction: 'FALL',
+    id: 'strat-7',
+    name: '#7 Conservative Grid',
+    asset: 'Volatility 100',
+    tradeType: 'Over / Under',
+    riskModel: 'PROGRESSIVE',
+    priority: 'MEDIUM',
+    stake: 1,
+    stopLoss: 3,
+    takeProfit: 6,
+    martingaleMultiplier: 1.5,
+    description: 'Low-risk step model designed for Volatility 100.',
   },
 ];
 
-export const DEFAULT_STRATEGIES = CORE_7_STRATEGIES;
-
-/**
- * Ensures exactly one strategy is marked as HIGH priority in the array.
- */
-export const enforceSingleHighPriority = (
+export function enforceSingleHighPriority(
   strategies: StrategyConfig[],
-  targetHighId?: string
-): StrategyConfig[] => {
-  if (!strategies || strategies.length === 0) return [];
-
-  const highId = targetHighId || strategies[0]?.id;
+  highStrategyId?: string
+): StrategyConfig[] {
+  const targetId = highStrategyId || strategies[0]?.id;
 
   return strategies.map((strat) => ({
     ...strat,
-    priority: strat.id === highId ? 'HIGH' : 'LOW',
+    priority: strat.id === targetId ? 'HIGH' : 'MEDIUM',
   }));
-};
+}
 
 /**
- * Evaluates tick data momentum to produce signal direction and confidence level.
+ * Dynamic momentum & tick velocity score evaluator.
+ * Prevents static HOLD / 50% values by continuously computing trend direction across ticks.
  */
-export const evaluateStrategySignal = (
+export function evaluateStrategySignal(
   strategy: StrategyConfig,
   ticks: number[]
-): { score: number; confidence: number; direction: 'RISE' | 'FALL' | 'HOLD' } => {
-  if (!ticks || ticks.length < 5) {
-    return { score: 0, confidence: 50, direction: 'HOLD' };
+): { direction: 'UP' | 'DOWN' | 'HOLD'; confidence: number; score: number } {
+  if (!ticks || ticks.length < 3) {
+    return { direction: 'HOLD', confidence: 50, score: 50 };
   }
 
-  const recent = ticks.slice(-5);
-  const diffs = recent.slice(1).map((val, idx) => val - recent[idx]);
-  const positiveDiffs = diffs.filter((d) => d > 0).length;
-  const negativeDiffs = diffs.filter((d) => d > 0).length;
+  const latestPrice = ticks[ticks.length - 1];
+  const prevPrice = ticks[ticks.length - 2];
+  const firstPrice = ticks[0];
 
-  let direction: 'RISE' | 'FALL' | 'HOLD' = 'HOLD';
-  let confidence = 50;
+  const tickDiff = latestPrice - prevPrice;
+  const overallDiff = latestPrice - firstPrice;
 
-  if (positiveDiffs >= 3) {
-    direction = 'RISE';
-    confidence = Math.min(95, 60 + positiveDiffs * 8);
-  } else if (negativeDiffs >= 3) {
-    direction = 'FALL';
-    confidence = Math.min(95, 60 + negativeDiffs * 8);
+  let gains = 0;
+  for (let i = 1; i < ticks.length; i++) {
+    if (ticks[i] > ticks[i - 1]) gains++;
+  }
+  const totalSteps = ticks.length - 1;
+  const gainRatio = totalSteps > 0 ? gains / totalSteps : 0.5;
+
+  let rawScore = gainRatio * 100;
+
+  if (tickDiff > 0) rawScore += 5;
+  if (tickDiff < 0) rawScore -= 5;
+
+  const score = Math.max(10, Math.min(98, Math.round(rawScore)));
+
+  let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
+  if (score >= 52 || tickDiff > 0 || overallDiff > 0) {
+    direction = 'UP';
+  } else if (score <= 48 || tickDiff < 0 || overallDiff < 0) {
+    direction = 'DOWN';
   }
 
-  return {
-    score: confidence,
-    confidence,
-    direction,
+  const confidence = Math.max(score, 100 - score);
+
+  return { direction, confidence, score };
+}
+
+/**
+ * Updates active workspace parameters IN-PLACE without ever clearing the canvas or breaking Blockly structure.
+ */
+export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
+  if (!workspace) return false;
+
+  const symbolMap: Record<string, string> = {
+    'Volatility 10': 'R_10',
+    'Volatility 25': 'R_25',
+    'Volatility 50': 'R_50',
+    'Volatility 75': 'R_75',
+    'Volatility 100': 'R_100',
+    'Volatility 100 (1s)': '1HZ100V',
+    'Volatility 25 (1s)': '1HZ25V',
+    'Volatility 10 Index': 'R_10',
+    'Volatility 25 Index': 'R_25',
+    'Volatility 50 Index': 'R_50',
+    'Volatility 75 Index': 'R_75',
+    'Volatility 100 Index': 'R_100',
+    'Volatility 100 (1s) Index': '1HZ100V',
+    'Volatility 25 (1s) Index': '1HZ25V',
   };
-};
 
-/**
- * Helper to build/inject standard Variable Setter blocks into Blockly XML nodes
- */
-const createVariableBlockXml = (varName: string, numValue: number): string => {
-  return `
-    <block type="variables_set">
-      <field name="VAR">${varName}</field>
-      <value name="VALUE">
-        <block type="math_number">
-          <field name="NUM">${numValue}</field>
-        </block>
-      </value>
-    </block>
-  `.trim();
-};
-
-/**
- * Generates dynamic Block 1 (Initialization) XML containing Stop Loss & Take Profit setup.
- */
-export const generateBlock1Xml = (strategy: StrategyConfig): string => {
-  const stake = strategy.stake ?? 1;
-  const stopLoss = strategy.stopLoss ?? 10;
-  const takeProfit = strategy.takeProfit ?? 20;
+  const symbol = symbolMap[strategy.asset] || '1HZ100V';
+  const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
   const multiplier = strategy.martingaleMultiplier ?? 2.15;
 
-  return `
-    <block type="trade_definition" deletable="false" movable="false" x="0" y="0">
-      <statement name="TRADE_OPTIONS">
-        <block type="trade_definition_initialization">
-          <statement name="INITIALIZATION">
-            ${createVariableBlockXml('stake', stake)}
-            ${createVariableBlockXml('target_profit', takeProfit)}
-            ${createVariableBlockXml('stop_loss', stopLoss)}
-            ${createVariableBlockXml('martingale_multiplier', multiplier)}
-          </statement>
-        </block>
-      </statement>
-    </block>
-  `.trim();
-};
-
-/**
- * Generates dynamic Block 4 (After Purchase) XML to handle martingale recovery,
- * stop loss checks, and take profit exit conditions.
- */
-export const generateBlock4Xml = (strategy: StrategyConfig): string => {
-  return `
-    <block type="after_purchase" deletable="false" movable="false" x="0" y="600">
-      <statement name="AFTERPURCHASE_STACK">
-        <block type="controls_if">
-          <mutation else="1"></mutation>
-          <value name="IF0">
-            <block type="contract_check_result">
-              <field name="CHECK_RESULT">win</field>
-            </block>
-          </value>
-          <statement name="DO0">
-            <block type="text_print">
-              <value name="TEXT">
-                <shadow type="text">
-                  <field name="TEXT">Win! Resetting Stake.</field>
-                </shadow>
-              </value>
-            </block>
-            ${createVariableBlockXml('stake', strategy.stake ?? 1)}
-          </statement>
-          <statement name="ELSE">
-            <block type="text_print">
-              <value name="TEXT">
-                <shadow type="text">
-                  <field name="TEXT">Loss! Applying Martingale.</field>
-                </shadow>
-              </value>
-            </block>
-            <block type="variables_set">
-              <field name="VAR">stake</field>
-              <value name="VALUE">
-                <block type="math_arithmetic">
-                  <field name="OP">MULTIPLY</field>
-                  <value name="A">
-                    <block type="variables_get">
-                      <field name="VAR">stake</field>
-                    </block>
-                  </value>
-                  <value name="B">
-                    <block type="math_number">
-                      <field name="NUM">${strategy.martingaleMultiplier ?? 2.15}</field>
-                    </block>
-                  </value>
-                </block>
-              </value>
-            </block>
-          </statement>
-        </block>
-        <block type="trade_again"></block>
-      </statement>
-    </block>
-  `.trim();
-};
-
-/**
- * Directly updates variable values and inputs inside an active Blockly workspace instance.
- * Called by scannerBridge.ts when direct workspace injection is triggered.
- */
-export const applyStrategyToWorkspace = (workspace: any, strategy: StrategyConfig): boolean => {
-  if (!workspace || typeof workspace.getAllBlocks !== 'function') {
-    return false;
-  }
-
   try {
-    const blocks = workspace.getAllBlocks(false);
-    let updatedCount = 0;
+    // 1. Pause events during batch updates to prevent invalid workspace states
+    if (typeof workspace.setEnableEvents === 'function') {
+      workspace.setEnableEvents(false);
+    }
 
-    blocks.forEach((block: any) => {
-      // 1. Update variables_set blocks (stake, target_profit, stop_loss, martingale_multiplier)
-      if (block.type === 'variables_set') {
-        const varField = block.getField('VAR');
-        const varName = varField ? varField.getText() : null;
+    // 2. Market Symbol Update
+    const marketBlock =
+      workspace.getBlockById('trade_definition_market') ||
+      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_market')[0]);
+    if (marketBlock && typeof marketBlock.setFieldValue === 'function') {
+      marketBlock.setFieldValue(symbol, 'SYMBOL_LIST');
+    }
 
-        if (varName) {
-          const lowerVar = varName.toLowerCase();
-          let targetValue: number | null = null;
-
-          if (lowerVar.includes('stake') || lowerVar.includes('initial')) {
-            targetValue = strategy.stake;
-          } else if (lowerVar.includes('profit') || lowerVar.includes('target')) {
-            targetValue = strategy.takeProfit;
-          } else if (lowerVar.includes('loss') || lowerVar.includes('stop')) {
-            targetValue = strategy.stopLoss;
-          } else if (lowerVar.includes('martingale') || lowerVar.includes('multiplier')) {
-            targetValue = strategy.martingaleMultiplier ?? 2.15;
-          }
-
-          if (targetValue !== null && targetValue !== undefined) {
-            const valueBlock = block.getInputTargetBlock('VALUE');
-            if (valueBlock && valueBlock.type === 'math_number') {
-              valueBlock.setFieldValue(String(targetValue), 'NUM');
-              updatedCount++;
-            }
-          }
+    // 3. Stake Amount Update
+    const tradeOptionsBlock =
+      workspace.getBlockById('trade_definition_tradeoptions') ||
+      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_tradeoptions')[0]);
+    if (tradeOptionsBlock) {
+      const amountInput = tradeOptionsBlock.getInput('AMOUNT');
+      if (amountInput && amountInput.connection && amountInput.connection.targetBlock()) {
+        const shadowBlock = amountInput.connection.targetBlock();
+        if (typeof shadowBlock.setFieldValue === 'function') {
+          shadowBlock.setFieldValue(strategy.stake.toString(), 'NUM');
         }
       }
+    }
 
-      // 2. Update market/symbol dropdown on trade definition market block
-      if (block.type === 'trade_definition_market') {
-        const symbolField = block.getField('SYMBOL');
-        if (symbolField && strategy.asset) {
-          symbolField.setValue(strategy.asset);
-          updatedCount++;
+    // 4. Direction Update (Rise / Fall)
+    const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
+    if (purchaseBlocks.length > 0) {
+      purchaseBlocks.forEach((pBlock: any) => {
+        if (typeof pBlock.setFieldValue === 'function') {
+          pBlock.setFieldValue(purchaseType, 'PURCHASE_LIST');
+        }
+      });
+    }
+
+    // Helper to search or create variables safely
+    const getOrCreateVariable = (varName: string) => {
+      let variable = workspace.getVariableMap
+        ? workspace.getVariableMap().getVariable(varName)
+        : null;
+
+      if (!variable && typeof workspace.createVariable === 'function') {
+        variable = workspace.createVariable(varName);
+      }
+      return variable;
+    };
+
+    // Helper to safely create a variable_set block connected to a math_number block
+    const createAndAttachVarBlock = (varName: string, value: number) => {
+      const variable = getOrCreateVariable(varName);
+      if (!variable) return null;
+
+      const setVarBlock = workspace.newBlock('variables_set');
+      setVarBlock.setFieldValue(variable.getId(), 'VAR');
+
+      const numBlock = workspace.newBlock('math_number');
+      numBlock.setFieldValue(value.toString(), 'NUM');
+
+      const valInput = setVarBlock.getInput('VALUE');
+      if (valInput && valInput.connection && numBlock.outputConnection) {
+        valInput.connection.connect(numBlock.outputConnection);
+      }
+
+      if (typeof setVarBlock.initSvg === 'function') setVarBlock.initSvg();
+      if (typeof numBlock.initSvg === 'function') numBlock.initSvg();
+
+      return setVarBlock;
+    };
+
+    // Helper to safely update numeric input values on existing variables_set blocks
+    const setNumValue = (varSetBlock: any, val: number) => {
+      if (!varSetBlock) return;
+      const valueInput = varSetBlock.getInput('VALUE');
+      if (valueInput && valueInput.connection && valueInput.connection.targetBlock()) {
+        const numBlock = valueInput.connection.targetBlock();
+        if (typeof numBlock.setFieldValue === 'function') {
+          numBlock.setFieldValue(val.toString(), 'NUM');
+        }
+      }
+    };
+
+    // 5. Inspect existing set_variable blocks across workspace
+    const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
+    let foundTPBlock: any = null;
+    let foundSLBlock: any = null;
+    let foundMultiplierBlock: any = null;
+
+    allBlocks.forEach((block: any) => {
+      if (block.type === 'variables_set') {
+        const varId = block.getFieldValue('VAR');
+        const varModel = workspace.getVariableById
+          ? workspace.getVariableById(varId)
+          : workspace.getVariableMap
+          ? workspace.getVariableMap().getVariableById(varId)
+          : null;
+        const varName = varModel ? varModel.name.toLowerCase() : '';
+
+        if (varName.includes('profit') || varName.includes('tp') || block.id === 'init_tp') {
+          foundTPBlock = block;
+        } else if (varName.includes('loss') || varName.includes('sl') || block.id === 'init_sl') {
+          foundSLBlock = block;
+        } else if (varName.includes('martingale') || varName.includes('multiplier') || block.id === 'init_multiplier') {
+          foundMultiplierBlock = block;
+        } else if (varName.includes('stake') || block.id === 'init_stake') {
+          setNumValue(block, strategy.stake);
         }
       }
     });
 
-    return updatedCount > 0;
-  } catch (err) {
-    console.error('[Strategies] Failed to apply strategy to workspace:', err);
+    if (foundTPBlock) setNumValue(foundTPBlock, strategy.takeProfit);
+    if (foundSLBlock) setNumValue(foundSLBlock, strategy.stopLoss);
+    if (foundMultiplierBlock) setNumValue(foundMultiplierBlock, multiplier);
+
+    // 6. Query trade_definition (Block 1) INITIALIZATION stack for missing variables
+    const rootTradeBlock =
+      workspace.getBlockById('trade_definition') ||
+      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
+
+    if (rootTradeBlock) {
+      const initInput = rootTradeBlock.getInput('INITIALIZATION');
+
+      if (initInput && initInput.connection) {
+        const newTPBlock = !foundTPBlock ? createAndAttachVarBlock('target_profit', strategy.takeProfit) : null;
+        const newSLBlock = !foundSLBlock ? createAndAttachVarBlock('stop_loss', strategy.stopLoss) : null;
+        const newMultBlock = !foundMultiplierBlock ? createAndAttachVarBlock('martingale_multiplier', multiplier) : null;
+
+        const newBlocksToAttach = [newTPBlock, newSLBlock, newMultBlock].filter(Boolean);
+
+        if (newBlocksToAttach.length > 0) {
+          let targetSlot = initInput.connection;
+          const existingChild = initInput.connection.targetBlock();
+
+          if (existingChild) {
+            let tail = existingChild;
+            while (tail.nextConnection && tail.nextConnection.targetBlock()) {
+              tail = tail.nextConnection.targetBlock();
+            }
+            targetSlot = tail.nextConnection;
+          }
+
+          // Chain newly constructed variable blocks onto initialization stack
+          for (let i = 0; i < newBlocksToAttach.length; i++) {
+            const currentBlock = newBlocksToAttach[i];
+            if (targetSlot && currentBlock) {
+              targetSlot.connect(currentBlock.previousConnection);
+              targetSlot = currentBlock.nextConnection;
+            }
+          }
+        }
+      }
+    }
+
+    // 7. Construct or Update Block 4 (Restart Trading Conditions)
+    const afterPurchaseBlock =
+      workspace.getBlockById('after_purchase') ||
+      (workspace.getBlocksByType && workspace.getBlocksByType('after_purchase')[0]);
+
+    if (afterPurchaseBlock) {
+      const afterInput = afterPurchaseBlock.getInput('AFTERPURCHASE_STACK');
+      if (afterInput && afterInput.connection) {
+        let tradeAgainBlock = workspace.getBlockById('trade_again_block') ||
+          (workspace.getBlocksByType && workspace.getBlocksByType('trade_again')[0]);
+
+        // If Block 4 is completely empty, construct restart logic stack inside AFTERPURCHASE_STACK
+        if (!afterInput.connection.targetBlock()) {
+          const controlsIfBlock = workspace.newBlock('controls_if');
+          controlsIfBlock.mutationToDom && controlsIfBlock.domToMutation && 
+            controlsIfBlock.domToMutation(
+              (window as any).Blockly.Xml.textToDom('<mutation else="1"></mutation>')
+            );
+
+          // Win condition: Reset stake
+          const winStakeSet = createAndAttachVarBlock('stake', strategy.stake);
+          const do0Input = controlsIfBlock.getInput('DO0');
+          if (do0Input && do0Input.connection && winStakeSet) {
+            do0Input.connection.connect(winStakeSet.previousConnection);
+          }
+
+          // Loss condition: Apply Martingale Multiplier
+          const multiplierVar = getOrCreateVariable('martingale_multiplier');
+          const stakeVar = getOrCreateVariable('stake');
+
+          const lossStakeSet = workspace.newBlock('variables_set');
+          if (stakeVar) lossStakeSet.setFieldValue(stakeVar.getId(), 'VAR');
+
+          const mathArith = workspace.newBlock('math_arithmetic');
+          mathArith.setFieldValue('MULTIPLY', 'OP');
+
+          const varGetA = workspace.newBlock('variables_get');
+          if (stakeVar) varGetA.setFieldValue(stakeVar.getId(), 'VAR');
+
+          const varGetB = workspace.newBlock('variables_get');
+          if (multiplierVar) varGetB.setFieldValue(multiplierVar.getId(), 'VAR');
+
+          mathArith.getInput('A')?.connection?.connect(varGetA.outputConnection);
+          mathArith.getInput('B')?.connection?.connect(varGetB.outputConnection);
+          lossStakeSet.getInput('VALUE')?.connection?.connect(mathArith.outputConnection);
+
+          const elseInput = controlsIfBlock.getInput('ELSE');
+          if (elseInput && elseInput.connection) {
+            elseInput.connection.connect(lossStakeSet.previousConnection);
+          }
+
+          if (typeof controlsIfBlock.initSvg === 'function') controlsIfBlock.initSvg();
+          if (typeof lossStakeSet.initSvg === 'function') lossStakeSet.initSvg();
+
+          // Connect controls_if block to AFTERPURCHASE_STACK
+          afterInput.connection.connect(controlsIfBlock.previousConnection);
+
+          // Ensure trade_again block is connected after controls_if block
+          if (!tradeAgainBlock) {
+            tradeAgainBlock = workspace.newBlock('trade_again');
+            if (typeof tradeAgainBlock.initSvg === 'function') tradeAgainBlock.initSvg();
+          }
+          if (tradeAgainBlock && controlsIfBlock.nextConnection) {
+            controlsIfBlock.nextConnection.connect(tradeAgainBlock.previousConnection);
+          }
+        }
+      }
+    }
+
+    // 8. Re-enable events and trigger workspace render frame
+    if (typeof workspace.setEnableEvents === 'function') {
+      workspace.setEnableEvents(true);
+    }
+    if (typeof workspace.render === 'function') {
+      workspace.render();
+    }
+
+    return true;
+  } catch (error) {
+    if (typeof workspace.setEnableEvents === 'function') {
+      workspace.setEnableEvents(true);
+    }
+    console.error('[Strategies] In-place strategy application failed:', error);
     return false;
   }
-};
+}
+
+/**
+ * Clean XML generator for workspace imports.
+ */
+export function generateDBotXml(strategy: StrategyConfig): string {
+  const symbolMap: Record<string, string> = {
+    'Volatility 10': 'R_10',
+    'Volatility 25': 'R_25',
+    'Volatility 50': 'R_50',
+    'Volatility 75': 'R_75',
+    'Volatility 100': 'R_100',
+    'Volatility 100 (1s)': '1HZ100V',
+    'Volatility 25 (1s)': '1HZ25V',
+    'Volatility 10 Index': 'R_10',
+    'Volatility 25 Index': 'R_25',
+    'Volatility 50 Index': 'R_50',
+    'Volatility 75 Index': 'R_75',
+    'Volatility 100 Index': 'R_100',
+    'Volatility 100 (1s) Index': '1HZ100V',
+    'Volatility 25 (1s) Index': '1HZ25V',
+  };
+
+  const symbol = symbolMap[strategy.asset] || '1HZ100V';
+  const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
+  const multiplier = strategy.martingaleMultiplier ?? 2.15;
+
+  return `
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <variables>
+    <variable id="stake_var">stake</variable>
+    <variable id="tp_var">target_profit</variable>
+    <variable id="sl_var">stop_loss</variable>
+    <variable id="mult_var">martingale_multiplier</variable>
+  </variables>
+  <block type="trade_definition" id="trade_definition" deletable="false" x="40" y="40">
+    <statement name="TRADE_OPTIONS">
+      <block type="trade_definition_market" id="trade_definition_market" deletable="false">
+        <field name="MARKET_LIST">synthetic_index</field>
+        <field name="SUBMARKET_LIST">random_index</field>
+        <field name="SYMBOL_LIST">${symbol}</field>
+        <next>
+          <block type="trade_definition_tradetype" id="trade_definition_tradetype" deletable="false">
+            <field name="TRADETYPECAT_LIST">risefall</field>
+            <field name="TRADETYPE_LIST">risefall</field>
+            <next>
+              <block type="trade_definition_contracttype" id="trade_definition_contracttype" deletable="false">
+                <field name="TYPE_LIST">both</field>
+                <next>
+                  <block type="trade_definition_candleinterval" id="trade_definition_candleinterval" deletable="false">
+                    <field name="CANDLEINTERVAL_LIST">60</field>
+                    <next>
+                      <block type="trade_definition_restartbuystrat" id="trade_definition_restartbuystrat" deletable="false">
+                        <field name="TIME_MACHINE_ENABLED">FALSE</field>
+                        <next>
+                          <block type="trade_definition_restartonerror" id="trade_definition_restartonerror" deletable="false">
+                            <field name="RESTARTONERROR">FALSE</field>
+                          </block>
+                        </next>
+                      </block>
+                    </next>
+                  </block>
+                </next>
+              </block>
+            </next>
+          </block>
+        </next>
+      </block>
+    </statement>
+    <statement name="INITIALIZATION">
+      <block type="variables_set" id="init_stake">
+        <field name="VAR" id="stake_var">stake</field>
+        <value name="VALUE">
+          <shadow type="math_number" id="shadow_stake">
+            <field name="NUM">${strategy.stake}</field>
+          </shadow>
+        </value>
+        <next>
+          <block type="variables_set" id="init_tp">
+            <field name="VAR" id="tp_var">target_profit</field>
+            <value name="VALUE">
+              <shadow type="math_number" id="shadow_tp">
+                <field name="NUM">${strategy.takeProfit}</field>
+              </shadow>
+            </value>
+            <next>
+              <block type="variables_set" id="init_sl">
+                <field name="VAR" id="sl_var">stop_loss</field>
+                <value name="VALUE">
+                  <shadow type="math_number" id="shadow_sl">
+                    <field name="NUM">${strategy.stopLoss}</field>
+                  </shadow>
+                </value>
+                <next>
+                  <block type="variables_set" id="init_multiplier">
+                    <field name="VAR" id="mult_var">martingale_multiplier</field>
+                    <value name="VALUE">
+                      <shadow type="math_number" id="shadow_multiplier">
+                        <field name="NUM">${multiplier}</field>
+                      </shadow>
+                    </value>
+                  </block>
+                </next>
+              </block>
+            </next>
+          </block>
+        </next>
+      </block>
+    </statement>
+    <statement name="SUBMARKET">
+      <block type="trade_definition_tradeoptions" id="trade_definition_tradeoptions" deletable="false">
+        <mutation has_first_barrier="false" has_second_barrier="false" has_prediction="false"></mutation>
+        <field name="DURATION_TYPE_LIST">t</field>
+        <field name="CURRENCY_LIST">USD</field>
+        <field name="AMOUNT_TYPE_LIST">stake</field>
+        <value name="DURATION">
+          <shadow type="math_number" id="duration_num">
+            <field name="NUM">1</field>
+          </shadow>
+        </value>
+        <value name="AMOUNT">
+          <shadow type="math_number" id="amount_num">
+            <field name="NUM">${strategy.stake}</field>
+          </shadow>
+        </value>
+      </block>
+    </statement>
+  </block>
+  <block type="before_purchase" id="before_purchase" deletable="false" x="40" y="560">
+    <statement name="BEFOREPURCHASE_STACK">
+      <block type="purchase" id="purchase_block">
+        <field name="PURCHASE_LIST">${purchaseType}</field>
+      </block>
+    </statement>
+  </block>
+  <block type="during_purchase" id="during_purchase" deletable="false" x="40" y="680"></block>
+  <block type="after_purchase" id="after_purchase" deletable="false" x="40" y="780">
+    <statement name="AFTERPURCHASE_STACK">
+      <block type="controls_if" id="after_purchase_if">
+        <mutation else="1"></mutation>
+        <value name="IF0">
+          <block type="contract_check_result" id="contract_check_win">
+            <field name="CHECK_RESULT">win</field>
+          </block>
+        </value>
+        <statement name="DO0">
+          <block type="variables_set" id="reset_stake">
+            <field name="VAR" id="stake_var">stake</field>
+            <value name="VALUE">
+              <shadow type="math_number" id="shadow_reset_stake">
+                <field name="NUM">${strategy.stake}</field>
+              </shadow>
+            </value>
+          </block>
+        </statement>
+        <statement name="ELSE">
+          <block type="variables_set" id="martingale_stake">
+            <field name="VAR" id="stake_var">stake</field>
+            <value name="VALUE">
+              <block type="math_arithmetic" id="mult_arith">
+                <field name="OP">MULTIPLY</field>
+                <value name="A">
+                  <block type="variables_get" id="get_stake">
+                    <field name="VAR" id="stake_var">stake</field>
+                  </block>
+                </value>
+                <value name="B">
+                  <block type="variables_get" id="get_mult">
+                    <field name="VAR" id="mult_var">martingale_multiplier</field>
+                  </block>
+                </value>
+              </block>
+            </value>
+          </block>
+        </statement>
+        <next>
+          <block type="trade_again" id="trade_again_block"></block>
+        </next>
+      </block>
+    </statement>
+  </block>
+</xml>
+  `.trim();
+}
