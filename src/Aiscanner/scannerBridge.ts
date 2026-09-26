@@ -1,4 +1,5 @@
 // src/Aiscanner/scannerBridge.ts
+
 import { ASSET_TO_SYMBOL } from './useDerivTicks';
 
 export class ScannerBridge {
@@ -11,6 +12,7 @@ export class ScannerBridge {
   public init() {
     if (this.isHooked) return;
 
+    // Detect existing open WebSocket on the window object
     const globalWS =
       (window as any)._derivWebSocket ||
       (window as any).appWebSocket ||
@@ -19,11 +21,12 @@ export class ScannerBridge {
     if (globalWS && typeof globalWS.addEventListener === 'function') {
       this.activeWS = globalWS;
       this.attachWSListener(globalWS);
+      this.subscribeAllAssets();
       this.isHooked = true;
       return;
     }
 
-    // Intercept native WebSocket constructor if initialized dynamically
+    // Monkey-patch WebSocket constructor to capture the socket instance dynamically
     const NativeWebSocket = window.WebSocket;
     const self = this;
 
@@ -31,6 +34,11 @@ export class ScannerBridge {
       const wsInstance = new NativeWebSocket(url, protocols);
       self.activeWS = wsInstance;
       self.attachWSListener(wsInstance);
+      
+      wsInstance.addEventListener('open', () => {
+        self.subscribeAllAssets();
+      });
+
       return wsInstance;
     } as any;
 
@@ -38,9 +46,11 @@ export class ScannerBridge {
     this.isHooked = true;
   }
 
-  public subscribeToSymbols(symbols: string[]) {
+  public subscribeAllAssets() {
     const sendSubscriptions = () => {
       if (!this.activeWS || this.activeWS.readyState !== WebSocket.OPEN) return;
+
+      const symbols = Object.values(ASSET_TO_SYMBOL);
       symbols.forEach((symbol) => {
         if (!this.subscribedSymbols.has(symbol)) {
           this.subscribedSymbols.add(symbol);
@@ -68,7 +78,7 @@ export class ScannerBridge {
           }
         }
       } catch (e) {
-        // Ignore non-JSON socket traffic
+        // Ignore non-JSON WS frames
       }
     });
   }
@@ -77,6 +87,7 @@ export class ScannerBridge {
     const currentSymbolTicks = this.ticksBuffer[symbol] || [];
     const updatedSymbolTicks = [...currentSymbolTicks, price].slice(-30);
 
+    // Store tick stream under both raw symbol ('R_25') and readable asset name ('Volatility 25')
     const mappedEntries: Record<string, number[]> = {
       [symbol]: updatedSymbolTicks,
     };
