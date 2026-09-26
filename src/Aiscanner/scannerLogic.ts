@@ -2,14 +2,8 @@
 
 import { StrategyConfig, enforceSingleHighPriority, evaluateStrategySignal } from './strategies';
 import { scannerBridge } from './scannerBridge';
-import { ASSET_TO_SYMBOL } from './useDerivTicks';
+import { ASSET_TO_SYMBOL, resolveSymbol } from './useDerivTicks';
 
-/**
- * Validates whether the scanner confidence clears the break-even math requirement for binary options.
- * @param confidence Signal confidence percentage (0 - 100)
- * @param payoutRatio Contract payout percentage (default: 0.891 or 89.1%)
- * @param safetyMargin Buffer percentage added over break-even (default: 3%)
- */
 export const isTradeProfitable = (
   confidence: number,
   payoutRatio: number = 0.891,
@@ -45,6 +39,14 @@ export class ScannerLogicManager {
   ): number[] {
     if (!asset || !ticksBuffer) return [];
 
+    // Direct lookup via resolveSymbol helper
+    const resolvedSym = resolveSymbol(asset);
+    if (ticksBuffer[resolvedSym]?.length) {
+      return ticksBuffer[resolvedSym];
+    }
+
+    if (ticksBuffer[asset]?.length) return ticksBuffer[asset];
+
     const cleanAsset = asset.trim();
     const cleanAssetUpper = cleanAsset.toUpperCase();
 
@@ -58,16 +60,7 @@ export class ScannerLogicManager {
       return ticksBuffer[rawSymbol];
     }
 
-    if (ticksBuffer[asset]?.length) return ticksBuffer[asset];
-    if (ticksBuffer[cleanAssetUpper]?.length) return ticksBuffer[cleanAssetUpper];
-
-    const matchedKey = Object.keys(ticksBuffer).find((key) => {
-      const k = key.replace(/_/g, ' ').toUpperCase();
-      const a = cleanAssetUpper.replace(/_/g, ' ');
-      return k === a || k.includes(a) || a.includes(k);
-    });
-
-    return matchedKey ? ticksBuffer[matchedKey] : [];
+    return [];
   }
 
   public evaluateAndProcessTicks(
@@ -85,7 +78,6 @@ export class ScannerLogicManager {
       const ticks = this.getTicksForAsset(strat.asset, ticksBuffer, symbolMap);
       const signal = evaluateStrategySignal(strat, ticks);
 
-      // Verify whether the calculated confidence clears risk thresholds
       const satisfiesRisk = isTradeProfitable(signal.confidence);
 
       return {
@@ -167,7 +159,6 @@ export class ScannerLogicManager {
       return false;
     }
 
-    // Filter out entries that do not clear the confidence math requirement
     if (strategy.confidence !== undefined && !isTradeProfitable(strategy.confidence)) {
       console.warn(
         `[ScannerLogic] Trade loading skipped: Strategy "${strategy.name}" confidence (${strategy.confidence}%) is below break-even threshold.`
