@@ -1,186 +1,5 @@
 // src/Aiscanner/strategies.ts
 
-export type PriorityLevel = 'HIGH' | 'MEDIUM' | 'LOW';
-
-export interface StrategyConfig {
-  id: string;
-  name: string;
-  asset: string;
-  tradeType: string;
-  riskModel: string;
-  priority: PriorityLevel;
-  stake: number;
-  stopLoss: number;
-  takeProfit: number;
-  martingaleMultiplier?: number;
-  description: string;
-  score?: number;
-  confidence?: number;
-  direction?: 'UP' | 'DOWN' | 'HOLD';
-}
-
-export interface StrategySignal {
-  strategyId: string;
-  direction: 'UP' | 'DOWN' | 'HOLD';
-  confidence: number;
-  score: number;
-  timestamp: number;
-}
-
-export const CORE_7_STRATEGIES: StrategyConfig[] = [
-  {
-    id: 'strat-1',
-    name: '#1 AI Adaptive',
-    asset: 'Volatility 25',
-    tradeType: 'Rise / Fall',
-    riskModel: 'NEURAL_FLOW',
-    priority: 'HIGH',
-    stake: 3,
-    stopLoss: 4,
-    takeProfit: 8,
-    martingaleMultiplier: 2.15,
-    description: 'Neural Flow structural strategy designed for Volatility 25.',
-  },
-  {
-    id: 'strat-2',
-    name: '#2 1-3-2-6 System',
-    asset: 'Volatility 10',
-    tradeType: 'Rise / Fall',
-    riskModel: 'PROGRESSIVE',
-    priority: 'MEDIUM',
-    stake: 2,
-    stopLoss: 5,
-    takeProfit: 10,
-    martingaleMultiplier: 2.0,
-    description: 'Progressive staking system designed for Volatility 10.',
-  },
-  {
-    id: 'strat-3',
-    name: '#3 Hyper Scalper Engine v26',
-    asset: 'Volatility 10',
-    tradeType: 'Rise / Fall',
-    riskModel: 'MARTINGALE',
-    priority: 'MEDIUM',
-    stake: 1,
-    stopLoss: 10,
-    takeProfit: 15,
-    martingaleMultiplier: 2.15,
-    description: 'Martingale scalp strategy designed for Volatility 10.',
-  },
-  {
-    id: 'strat-4',
-    name: '#4 AI Balanced',
-    asset: 'Volatility 50',
-    tradeType: 'Over / Under',
-    riskModel: 'PROGRESSIVE',
-    priority: 'MEDIUM',
-    stake: 5,
-    stopLoss: 10,
-    takeProfit: 20,
-    martingaleMultiplier: 2.0,
-    description: 'Balanced digit strategy designed for Volatility 50.',
-  },
-  {
-    id: 'strat-5',
-    name: '#5 Momentum Breakout',
-    asset: 'Volatility 75',
-    tradeType: 'Rise / Fall',
-    riskModel: 'TICK_MOMENTUM',
-    priority: 'MEDIUM',
-    stake: 2,
-    stopLoss: 6,
-    takeProfit: 12,
-    martingaleMultiplier: 2.15,
-    description: 'Breakout tick strategy designed for Volatility 75.',
-  },
-  {
-    id: 'strat-6',
-    name: '#6 High-Frequency Scalp',
-    asset: 'Volatility 100 (1s)',
-    tradeType: 'Rise / Fall',
-    riskModel: 'NEURAL_FLOW',
-    priority: 'MEDIUM',
-    stake: 4,
-    stopLoss: 8,
-    takeProfit: 16,
-    martingaleMultiplier: 2.15,
-    description: 'Fast-cycle neural model designed for Volatility 100 (1s).',
-  },
-  {
-    id: 'strat-7',
-    name: '#7 Conservative Grid',
-    asset: 'Volatility 100',
-    tradeType: 'Over / Under',
-    riskModel: 'PROGRESSIVE',
-    priority: 'MEDIUM',
-    stake: 1,
-    stopLoss: 3,
-    takeProfit: 6,
-    martingaleMultiplier: 1.5,
-    description: 'Low-risk step model designed for Volatility 100.',
-  },
-];
-
-export function enforceSingleHighPriority(
-  strategies: StrategyConfig[],
-  highStrategyId?: string
-): StrategyConfig[] {
-  const targetId = highStrategyId || strategies[0]?.id;
-
-  return strategies.map((strat) => ({
-    ...strat,
-    priority: strat.id === targetId ? 'HIGH' : 'MEDIUM',
-  }));
-}
-
-/**
- * Dynamic momentum & tick velocity score evaluator.
- */
-export function evaluateStrategySignal(
-  strategy: StrategyConfig,
-  ticks: number[]
-): { direction: 'UP' | 'DOWN' | 'HOLD'; confidence: number; score: number } {
-  if (!ticks || ticks.length < 3) {
-    return { direction: 'HOLD', confidence: 50, score: 50 };
-  }
-
-  const latestPrice = ticks[ticks.length - 1];
-  const prevPrice = ticks[ticks.length - 2];
-  const firstPrice = ticks[0];
-
-  const tickDiff = latestPrice - prevPrice;
-  const overallDiff = latestPrice - firstPrice;
-
-  let gains = 0;
-  for (let i = 1; i < ticks.length; i++) {
-    if (ticks[i] > ticks[i - 1]) gains++;
-  }
-  const totalSteps = ticks.length - 1;
-  const gainRatio = totalSteps > 0 ? gains / totalSteps : 0.5;
-
-  let rawScore = gainRatio * 100;
-
-  if (tickDiff > 0) rawScore += 5;
-  if (tickDiff < 0) rawScore -= 5;
-
-  const score = Math.max(10, Math.min(98, Math.round(rawScore)));
-
-  let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
-  if (score >= 52 || tickDiff > 0 || overallDiff > 0) {
-    direction = 'UP';
-  } else if (score <= 48 || tickDiff < 0 || overallDiff < 0) {
-    direction = 'DOWN';
-  }
-
-  const confidence = Math.max(score, 100 - score);
-
-  return { direction, confidence, score };
-}
-
-/**
- * Updates active workspace parameters IN-PLACE.
- * Safely constructs missing Block 4 win/loss conditions when only "Trade again" is present.
- */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
 
@@ -211,7 +30,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     }
 
     // -------------------------------------------------------------
-    // 1. UPDATE BLOCK 1: MARKET & SUBMARKET DROPDOWNS
+    // 1. IN-PLACE UPDATE FOR NON-BLANK BLOCK 1 PARAMS
     // -------------------------------------------------------------
     const marketBlock =
       workspace.getBlockById('trade_definition_market') ||
@@ -224,7 +43,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       marketBlock.setFieldValue(symbol, 'SYMBOL_LIST');
     }
 
-    // Update Stake inside Submarket Trade Options
+    // Update Stake in Submarket Trade Options
     const tradeOptionsBlock =
       workspace.getBlockById('trade_definition_tradeoptions') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_tradeoptions')[0]);
@@ -325,7 +144,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     });
 
     // -------------------------------------------------------------
-    // 4. BLOCK 1 (RUN ONCE AT START): POPULATE IF BLANK
+    // 4. BLOCK 1 (RUN ONCE AT START): POPULATE IF BLANK / MISSING VARS
     // -------------------------------------------------------------
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
@@ -374,7 +193,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     });
 
     // -------------------------------------------------------------
-    // 6. BLOCK 4 (RESTART TRADING CONDITIONS): CONSTRUCT WIN/LOSS IF MISSING
+    // 6. BLOCK 4 (RESTART TRADING CONDITIONS): CLEAR & BUILD IF BLANK / JUST TRADE AGAIN
     // -------------------------------------------------------------
     const afterPurchaseBlock =
       workspace.getBlockById('after_purchase') ||
@@ -386,19 +205,23 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       if (afterInput && afterInput.connection) {
         const topChild = afterInput.connection.targetBlock();
 
-        // Check if top child is NOT controls_if (e.g. only standalone trade_again exists)
-        if (!topChild || topChild.type !== 'controls_if') {
-          // Unlink existing trade_again block if attached directly
-          if (topChild && typeof topChild.unplug === 'function') {
-            topChild.unplug();
+        // Check if Block 4 is empty OR contains only a standalone 'trade_again' block
+        const isBlankOrOnlyTradeAgain = !topChild || (topChild.type === 'trade_again' && !topChild.previousConnection?.targetBlock()?.type?.includes('controls_if'));
+
+        if (isBlankOrOnlyTradeAgain) {
+          // Dispose of standalone trade_again block if present so we can rebuild clean
+          if (topChild && typeof topChild.dispose === 'function') {
+            topChild.dispose(false);
           }
 
+          // Build 'controls_if' condition block
           const controlsIfBlock = workspace.newBlock('controls_if');
 
           if (typeof controlsIfBlock.mutationToDom === 'function' && typeof controlsIfBlock.domToMutation === 'function') {
             controlsIfBlock.domToMutation((window as any).Blockly.Xml.textToDom('<mutation else="1"></mutation>'));
           }
 
+          // Attach 'contract_check_result = win' to IF0
           const checkWinBlock = workspace.newBlock('contract_check_result');
           if (typeof checkWinBlock.setFieldValue === 'function') {
             checkWinBlock.setFieldValue('win', 'CHECK_RESULT');
@@ -408,12 +231,14 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
             if0Input.connection.connect(checkWinBlock.outputConnection);
           }
 
+          // DO0 (WIN): reset stake to initial stake value
           const winResetStake = createAndAttachVarBlock('stake', strategy.stake);
           const do0Input = controlsIfBlock.getInput('DO0');
           if (do0Input && do0Input.connection && winResetStake) {
             do0Input.connection.connect(winResetStake.previousConnection);
           }
 
+          // ELSE (LOSS): stake = stake * martingale_multiplier
           const stakeVar = getOrCreateVariable('stake');
           const multVar = getOrCreateVariable('martingale_multiplier');
 
@@ -440,6 +265,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
             elseInput.connection.connect(lossStakeSet.previousConnection);
           }
 
+          // Initialize graphics for created blocks
           if (typeof controlsIfBlock.initSvg === 'function') controlsIfBlock.initSvg();
           if (typeof checkWinBlock.initSvg === 'function') checkWinBlock.initSvg();
           if (typeof lossStakeSet.initSvg === 'function') lossStakeSet.initSvg();
@@ -447,11 +273,11 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           if (typeof getStakeBlock.initSvg === 'function') getStakeBlock.initSvg();
           if (typeof getMultBlock.initSvg === 'function') getMultBlock.initSvg();
 
-          // Connect controls_if block into Block 4 AFTERPURCHASE_STACK
+          // Connect controls_if block into AFTERPURCHASE_STACK
           afterInput.connection.connect(controlsIfBlock.previousConnection);
 
-          // Find or create trade_again block and connect it below controls_if
-          let tradeAgainBlock = topChild && topChild.type === 'trade_again' ? topChild : workspace.newBlock('trade_again');
+          // Create fresh trade_again block and attach directly underneath controls_if
+          const tradeAgainBlock = workspace.newBlock('trade_again');
           if (typeof tradeAgainBlock.initSvg === 'function') tradeAgainBlock.initSvg();
           if (controlsIfBlock.nextConnection) {
             controlsIfBlock.nextConnection.connect(tradeAgainBlock.previousConnection);
@@ -475,187 +301,4 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     console.error('[Strategies] Strategy application failed:', error);
     return false;
   }
-}
-
-/**
- * Clean XML generator for workspace exports or imports.
- */
-export function generateDBotXml(strategy: StrategyConfig): string {
-  const symbolMap: Record<string, string> = {
-    'Volatility 10': 'R_10',
-    'Volatility 25': 'R_25',
-    'Volatility 50': 'R_50',
-    'Volatility 75': 'R_75',
-    'Volatility 100': 'R_100',
-    'Volatility 100 (1s)': '1HZ100V',
-    'Volatility 25 (1s)': '1HZ25V',
-    'Volatility 10 Index': 'R_10',
-    'Volatility 25 Index': 'R_25',
-    'Volatility 50 Index': 'R_50',
-    'Volatility 75 Index': 'R_75',
-    'Volatility 100 Index': 'R_100',
-    'Volatility 100 (1s) Index': '1HZ100V',
-    'Volatility 25 (1s) Index': '1HZ25V',
-  };
-
-  const symbol = symbolMap[strategy.asset] || '1HZ100V';
-  const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
-  const multiplier = strategy.martingaleMultiplier ?? 2.15;
-
-  return `
-<xml xmlns="https://developers.google.com/blockly/xml">
-  <variables>
-    <variable id="stake_var">stake</variable>
-    <variable id="tp_var">target_profit</variable>
-    <variable id="sl_var">stop_loss</variable>
-    <variable id="mult_var">martingale_multiplier</variable>
-  </variables>
-  <block type="trade_definition" id="trade_definition" deletable="false" x="40" y="40">
-    <statement name="TRADE_OPTIONS">
-      <block type="trade_definition_market" id="trade_definition_market" deletable="false">
-        <field name="MARKET_LIST">synthetic_index</field>
-        <field name="SUBMARKET_LIST">random_index</field>
-        <field name="SYMBOL_LIST">${symbol}</field>
-        <next>
-          <block type="trade_definition_tradetype" id="trade_definition_tradetype" deletable="false">
-            <field name="TRADETYPECAT_LIST">risefall</field>
-            <field name="TRADETYPE_LIST">risefall</field>
-            <next>
-              <block type="trade_definition_contracttype" id="trade_definition_contracttype" deletable="false">
-                <field name="TYPE_LIST">both</field>
-                <next>
-                  <block type="trade_definition_candleinterval" id="trade_definition_candleinterval" deletable="false">
-                    <field name="CANDLEINTERVAL_LIST">60</field>
-                    <next>
-                      <block type="trade_definition_restartbuystrat" id="trade_definition_restartbuystrat" deletable="false">
-                        <field name="TIME_MACHINE_ENABLED">FALSE</field>
-                        <next>
-                          <block type="trade_definition_restartonerror" id="trade_definition_restartonerror" deletable="false">
-                            <field name="RESTARTONERROR">FALSE</field>
-                          </block>
-                        </next>
-                      </block>
-                    </next>
-                  </block>
-                </next>
-              </block>
-            </next>
-          </block>
-        </next>
-      </block>
-    </statement>
-    <statement name="INITIALIZATION">
-      <block type="variables_set" id="init_stake">
-        <field name="VAR" id="stake_var">stake</field>
-        <value name="VALUE">
-          <shadow type="math_number" id="shadow_stake">
-            <field name="NUM">${strategy.stake}</field>
-          </shadow>
-        </value>
-        <next>
-          <block type="variables_set" id="init_tp">
-            <field name="VAR" id="tp_var">target_profit</field>
-            <value name="VALUE">
-              <shadow type="math_number" id="shadow_tp">
-                <field name="NUM">${strategy.takeProfit}</field>
-              </shadow>
-            </value>
-            <next>
-              <block type="variables_set" id="init_sl">
-                <field name="VAR" id="sl_var">stop_loss</field>
-                <value name="VALUE">
-                  <shadow type="math_number" id="shadow_sl">
-                    <field name="NUM">${strategy.stopLoss}</field>
-                  </shadow>
-                </value>
-                <next>
-                  <block type="variables_set" id="init_multiplier">
-                    <field name="VAR" id="mult_var">martingale_multiplier</field>
-                    <value name="VALUE">
-                      <shadow type="math_number" id="shadow_multiplier">
-                        <field name="NUM">${multiplier}</field>
-                      </shadow>
-                    </value>
-                  </block>
-                </next>
-              </block>
-            </next>
-          </block>
-        </next>
-      </block>
-    </statement>
-    <statement name="SUBMARKET">
-      <block type="trade_definition_tradeoptions" id="trade_definition_tradeoptions" deletable="false">
-        <mutation has_first_barrier="false" has_second_barrier="false" has_prediction="false"></mutation>
-        <field name="DURATION_TYPE_LIST">t</field>
-        <field name="CURRENCY_LIST">USD</field>
-        <field name="AMOUNT_TYPE_LIST">stake</field>
-        <value name="DURATION">
-          <shadow type="math_number" id="duration_num">
-            <field name="NUM">1</field>
-          </shadow>
-        </value>
-        <value name="AMOUNT">
-          <shadow type="math_number" id="amount_num">
-            <field name="NUM">${strategy.stake}</field>
-          </shadow>
-        </value>
-      </block>
-    </statement>
-  </block>
-  <block type="before_purchase" id="before_purchase" deletable="false" x="40" y="560">
-    <statement name="BEFOREPURCHASE_STACK">
-      <block type="purchase" id="purchase_block">
-        <field name="PURCHASE_LIST">${purchaseType}</field>
-      </block>
-    </statement>
-  </block>
-  <block type="during_purchase" id="during_purchase" deletable="false" x="40" y="680"></block>
-  <block type="after_purchase" id="after_purchase" deletable="false" x="40" y="780">
-    <statement name="AFTERPURCHASE_STACK">
-      <block type="controls_if" id="after_purchase_if">
-        <mutation else="1"></mutation>
-        <value name="IF0">
-          <block type="contract_check_result" id="contract_check_win">
-            <field name="CHECK_RESULT">win</field>
-          </block>
-        </value>
-        <statement name="DO0">
-          <block type="variables_set" id="reset_stake">
-            <field name="VAR" id="stake_var">stake</field>
-            <value name="VALUE">
-              <shadow type="math_number" id="shadow_reset_stake">
-                <field name="NUM">${strategy.stake}</field>
-              </shadow>
-            </value>
-          </block>
-        </statement>
-        <statement name="ELSE">
-          <block type="variables_set" id="martingale_stake">
-            <field name="VAR" id="stake_var">stake</field>
-            <value name="VALUE">
-              <block type="math_arithmetic" id="mult_arith">
-                <field name="OP">MULTIPLY</field>
-                <value name="A">
-                  <block type="variables_get" id="get_stake">
-                    <field name="VAR" id="stake_var">stake</field>
-                  </block>
-                </value>
-                <value name="B">
-                  <block type="variables_get" id="get_mult">
-                    <field name="VAR" id="mult_var">martingale_multiplier</field>
-                  </block>
-                </value>
-              </block>
-            </value>
-          </block>
-        </statement>
-        <next>
-          <block type="trade_again" id="trade_again_block"></block>
-        </next>
-      </block>
-    </statement>
-  </block>
-</xml>
-  `.trim();
 }
