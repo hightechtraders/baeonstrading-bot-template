@@ -1,155 +1,3 @@
-// src/Aiscanner/strategies.ts
-
-export interface StrategyConfig {
-  id: string;
-  name: string;
-  asset: string;
-  direction: 'UP' | 'DOWN';
-  stake: number;
-  takeProfit: number;
-  stopLoss: number;
-  martingaleMultiplier?: number;
-  priority?: 'HIGH' | 'MEDIUM' | 'LOW';
-  confidence?: number;
-  description?: string;
-}
-
-export const CORE_7_STRATEGIES: StrategyConfig[] = [
-  {
-    id: 'vol-10',
-    name: 'Volatility 10 Strategy',
-    asset: 'Volatility 10',
-    direction: 'UP',
-    stake: 1,
-    takeProfit: 10,
-    stopLoss: 5,
-    martingaleMultiplier: 2.15,
-    priority: 'HIGH',
-    confidence: 85,
-    description: 'Trend following on Volatility 10 Index',
-  },
-  {
-    id: 'vol-25',
-    name: 'Volatility 25 Strategy',
-    asset: 'Volatility 25',
-    direction: 'DOWN',
-    stake: 1,
-    takeProfit: 10,
-    stopLoss: 5,
-    martingaleMultiplier: 2.15,
-    priority: 'MEDIUM',
-    confidence: 72,
-    description: 'Mean reversion on Volatility 25 Index',
-  },
-  {
-    id: 'vol-50',
-    name: 'Volatility 50 Strategy',
-    asset: 'Volatility 50',
-    direction: 'UP',
-    stake: 1,
-    takeProfit: 10,
-    stopLoss: 5,
-    martingaleMultiplier: 2.15,
-    priority: 'MEDIUM',
-    confidence: 68,
-    description: 'Momentum breakout on Volatility 50 Index',
-  },
-  {
-    id: 'vol-75',
-    name: 'Volatility 75 Strategy',
-    asset: 'Volatility 75',
-    direction: 'DOWN',
-    stake: 1,
-    takeProfit: 10,
-    stopLoss: 5,
-    martingaleMultiplier: 2.15,
-    priority: 'LOW',
-    confidence: 60,
-    description: 'Volatility expansion scalping',
-  },
-  {
-    id: 'vol-100',
-    name: 'Volatility 100 Strategy',
-    asset: 'Volatility 100',
-    direction: 'UP',
-    stake: 1,
-    takeProfit: 10,
-    stopLoss: 5,
-    martingaleMultiplier: 2.15,
-    priority: 'LOW',
-    confidence: 55,
-    description: 'Range bound trading strategy',
-  },
-  {
-    id: 'vol-100-1s',
-    name: 'Volatility 100 (1s) Strategy',
-    asset: 'Volatility 100 (1s)',
-    direction: 'UP',
-    stake: 1,
-    takeProfit: 10,
-    stopLoss: 5,
-    martingaleMultiplier: 2.15,
-    priority: 'LOW',
-    confidence: 50,
-    description: 'High-frequency 1-second index reversal',
-  },
-  {
-    id: 'vol-25-1s',
-    name: 'Volatility 25 (1s) Strategy',
-    asset: 'Volatility 25 (1s)',
-    direction: 'DOWN',
-    stake: 1,
-    takeProfit: 10,
-    stopLoss: 5,
-    martingaleMultiplier: 2.15,
-    priority: 'LOW',
-    confidence: 48,
-    description: 'Micro-trend follower on 1s tick feed',
-  },
-];
-
-export function enforceSingleHighPriority(
-  strategies: StrategyConfig[],
-  targetHighId?: string
-): StrategyConfig[] {
-  const activeId = targetHighId || strategies[0]?.id;
-  return strategies.map((strat) => ({
-    ...strat,
-    priority: strat.id === activeId ? 'HIGH' : strat.priority === 'HIGH' ? 'MEDIUM' : strat.priority || 'LOW',
-  }));
-}
-
-export function evaluateStrategySignal(strat: StrategyConfig, ticks: number[]) {
-  if (!ticks || ticks.length < 2) {
-    return {
-      confidence: strat.confidence || 50,
-      direction: strat.direction,
-    };
-  }
-
-  const latest = ticks[ticks.length - 1];
-  const previous = ticks[ticks.length - 2];
-  const diff = latest - previous;
-
-  let calculatedConfidence = strat.confidence || 60;
-  if (diff > 0) {
-    calculatedConfidence += strat.direction === 'UP' ? 5 : -5;
-  } else if (diff < 0) {
-    calculatedConfidence += strat.direction === 'DOWN' ? 5 : -5;
-  }
-
-  const finalConfidence = Math.min(Math.max(calculatedConfidence, 30), 98);
-
-  return {
-    confidence: finalConfidence,
-    direction: strat.direction,
-  };
-}
-
-export function isTradeProfitable(confidence: number): boolean {
-  return confidence >= 65;
-}
-
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
 
@@ -179,6 +27,16 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       workspace.setEnableEvents(false);
     }
 
+    // Ensure variables exist in workspace variable map
+    ['stake', 'target_profit', 'stop_loss', 'martingale_multiplier'].forEach((varName) => {
+      let variable = workspace.getVariableMap
+        ? workspace.getVariableMap().getVariable(varName)
+        : null;
+      if (!variable && typeof workspace.createVariable === 'function') {
+        workspace.createVariable(varName);
+      }
+    });
+
     // 1. Update Market & Trade options in Block 1
     const marketBlock =
       workspace.getBlockById('trade_definition_market') ||
@@ -205,88 +63,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // Helper utilities for block creation
-    const getOrCreateVariable = (varName: string) => {
-      let variable = workspace.getVariableMap
-        ? workspace.getVariableMap().getVariable(varName)
-        : null;
-      if (!variable && typeof workspace.createVariable === 'function') {
-        variable = workspace.createVariable(varName);
-      }
-      return variable;
-    };
-
-    const createAndAttachVarBlock = (varName: string, value: number) => {
-      const variable = getOrCreateVariable(varName);
-      if (!variable) return null;
-
-      const setVarBlock = workspace.newBlock('variables_set');
-      setVarBlock.setFieldValue(variable.getId(), 'VAR');
-
-      const numBlock = workspace.newBlock('math_number');
-      numBlock.setFieldValue(value.toString(), 'NUM');
-
-      const valInput = setVarBlock.getInput('VALUE');
-      if (valInput && valInput.connection && numBlock.outputConnection) {
-        valInput.connection.connect(numBlock.outputConnection);
-      }
-
-      if (typeof setVarBlock.initSvg === 'function') setVarBlock.initSvg();
-      if (typeof numBlock.initSvg === 'function') numBlock.initSvg();
-
-      return setVarBlock;
-    };
-
-    const updateBlockNumberValue = (targetBlock: any, val: number) => {
-      if (!targetBlock) return;
-      if (targetBlock.type === 'math_number' && typeof targetBlock.setFieldValue === 'function') {
-        targetBlock.setFieldValue(val.toString(), 'NUM');
-        return;
-      }
-      const valInput = targetBlock.getInput('VALUE') || targetBlock.getInput('NUM');
-      if (valInput && valInput.connection && valInput.connection.targetBlock()) {
-        const numBlock = valInput.connection.targetBlock();
-        if (typeof numBlock.setFieldValue === 'function') {
-          numBlock.setFieldValue(val.toString(), 'NUM');
-        }
-      }
-    };
-
-    // 2. Scan & update existing variable set blocks
-    const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
-    let hasTP = false;
-    let hasSL = false;
-    let hasMultiplier = false;
-    let hasStake = false;
-
-    allBlocks.forEach((block: any) => {
-      if (block.type === 'variables_set') {
-        const varId = block.getFieldValue('VAR');
-        const varModel = workspace.getVariableById
-          ? workspace.getVariableById(varId)
-          : workspace.getVariableMap
-          ? workspace.getVariableMap().getVariableById(varId)
-          : null;
-
-        const varName = varModel ? varModel.name.toLowerCase() : '';
-
-        if (varName.includes('profit') || varName.includes('tp') || block.id === 'init_tp') {
-          updateBlockNumberValue(block, strategy.takeProfit);
-          hasTP = true;
-        } else if (varName.includes('loss') || varName.includes('sl') || block.id === 'init_sl') {
-          updateBlockNumberValue(block, strategy.stopLoss);
-          hasSL = true;
-        } else if (varName.includes('martingale') || varName.includes('multiplier') || block.id === 'init_multiplier') {
-          updateBlockNumberValue(block, multiplier);
-          hasMultiplier = true;
-        } else if (varName.includes('stake') || block.id === 'init_stake' || block.id === 'reset_stake') {
-          updateBlockNumberValue(block, strategy.stake);
-          hasStake = true;
-        }
-      }
-    });
-
-    // 3. Populate initialization stack if blank
+    // 2. Populate Block 1 ("Run once at start") stack
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
@@ -294,36 +71,64 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (rootTradeBlock) {
       const initInput = rootTradeBlock.getInput('INITIALIZATION');
       if (initInput && initInput.connection) {
-        const newTP = !hasTP ? createAndAttachVarBlock('target_profit', strategy.takeProfit) : null;
-        const newSL = !hasSL ? createAndAttachVarBlock('stop_loss', strategy.stopLoss) : null;
-        const newMult = !hasMultiplier ? createAndAttachVarBlock('martingale_multiplier', multiplier) : null;
-        const newStake = !hasStake ? createAndAttachVarBlock('stake', strategy.stake) : null;
+        const existingChild = initInput.connection.targetBlock();
+        if (existingChild && typeof existingChild.dispose === 'function') {
+          existingChild.dispose(false);
+        }
 
-        const toAttach = [newStake, newTP, newSL, newMult].filter(Boolean);
+        const block1Xml = `
+          <xml xmlns="https://developers.google.com/blockly/xml">
+            <block type="variables_set">
+              <field name="VAR">stake</field>
+              <value name="VALUE">
+                <block type="math_number">
+                  <field name="NUM">${strategy.stake}</field>
+                </block>
+              </value>
+              <next>
+                <block type="variables_set">
+                  <field name="VAR">target_profit</field>
+                  <value name="VALUE">
+                    <block type="math_number">
+                      <field name="NUM">${strategy.takeProfit}</field>
+                    </block>
+                  </value>
+                  <next>
+                    <block type="variables_set">
+                      <field name="VAR">stop_loss</field>
+                      <value name="VALUE">
+                        <block type="math_number">
+                          <field name="NUM">${strategy.stopLoss}</field>
+                        </block>
+                      </value>
+                      <next>
+                        <block type="variables_set">
+                          <field name="VAR">martingale_multiplier</field>
+                          <value name="VALUE">
+                            <block type="math_number">
+                              <field name="NUM">${multiplier}</field>
+                            </block>
+                          </value>
+                        </block>
+                      </next>
+                    </block>
+                  </next>
+                </block>
+              </next>
+            </block>
+          </xml>
+        `;
 
-        if (toAttach.length > 0) {
-          let targetSlot = initInput.connection;
-          const existingChild = initInput.connection.targetBlock();
+        const parsedDom = (window as any).Blockly.Xml.textToDom(block1Xml);
+        const firstBlock = (window as any).Blockly.Xml.domToBlock(parsedDom.firstElementChild, workspace);
 
-          if (existingChild) {
-            let tail = existingChild;
-            while (tail.nextConnection && tail.nextConnection.targetBlock()) {
-              tail = tail.nextConnection.targetBlock();
-            }
-            targetSlot = tail.nextConnection;
-          }
-
-          toAttach.forEach((b) => {
-            if (targetSlot && b) {
-              targetSlot.connect(b.previousConnection);
-              targetSlot = b.nextConnection;
-            }
-          });
+        if (firstBlock && firstBlock.previousConnection) {
+          initInput.connection.connect(firstBlock.previousConnection);
         }
       }
     }
 
-    // 4. Update Block 2 purchase selection
+    // 3. Update Block 2 purchase selection
     const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
     purchaseBlocks.forEach((pBlock: any) => {
       if (typeof pBlock.setFieldValue === 'function') {
@@ -331,7 +136,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     });
 
-    // 5. Block 4 setup if empty or contains only standalone trade_again
+    // 4. Populate Block 4 ("Restart trading conditions") stack
     const afterPurchaseBlock =
       workspace.getBlockById('after_purchase') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('after_purchase')[0]);
@@ -340,83 +145,63 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       const afterInput = afterPurchaseBlock.getInput('AFTERPURCHASE_STACK');
 
       if (afterInput && afterInput.connection) {
+        // Clear standalone 'trade_again' or incomplete blocks inside Block 4
         const topChild = afterInput.connection.targetBlock();
+        if (topChild && typeof topChild.dispose === 'function') {
+          topChild.dispose(false);
+        }
 
-        const isBlankOrOnlyTradeAgain =
-          !topChild ||
-          (topChild.type === 'trade_again' &&
-            !topChild.previousConnection?.targetBlock()?.type?.includes('controls_if'));
+        const block4Xml = `
+          <xml xmlns="https://developers.google.com/blockly/xml">
+            <block type="controls_if">
+              <mutation else="1"></mutation>
+              <value name="IF0">
+                <block type="contract_check_result">
+                  <field name="CHECK_RESULT">win</field>
+                </block>
+              </value>
+              <statement name="DO0">
+                <block type="variables_set">
+                  <field name="VAR">stake</field>
+                  <value name="VALUE">
+                    <block type="math_number">
+                      <field name="NUM">${strategy.stake}</field>
+                    </block>
+                  </value>
+                </block>
+              </statement>
+              <statement name="ELSE">
+                <block type="variables_set">
+                  <field name="VAR">stake</field>
+                  <value name="VALUE">
+                    <block type="math_arithmetic">
+                      <field name="OP">MULTIPLY</field>
+                      <value name="A">
+                        <block type="variables_get">
+                          <field name="VAR">stake</field>
+                        </block>
+                      </value>
+                      <value name="B">
+                        <block type="variables_get">
+                          <field name="VAR">martingale_multiplier</field>
+                        </block>
+                      </value>
+                    </block>
+                  </value>
+                </block>
+              </statement>
+              <next>
+                <block type="trade_again"></block>
+              </next>
+            </block>
+          </xml>
+        `;
 
-        if (isBlankOrOnlyTradeAgain) {
-          if (topChild && typeof topChild.dispose === 'function') {
-            topChild.dispose(false);
-          }
+        const parsedDom = (window as any).Blockly.Xml.textToDom(block4Xml);
+        const newBlock = (window as any).Blockly.Xml.domToBlock(parsedDom.firstElementChild, workspace);
 
-          const controlsIfBlock = workspace.newBlock('controls_if');
-          if (
-            typeof controlsIfBlock.mutationToDom === 'function' &&
-            typeof controlsIfBlock.domToMutation === 'function'
-          ) {
-            controlsIfBlock.domToMutation(
-              (window as any).Blockly.Xml.textToDom('<mutation else="1"></mutation>')
-            );
-          }
-
-          const checkWinBlock = workspace.newBlock('contract_check_result');
-          if (typeof checkWinBlock.setFieldValue === 'function') {
-            checkWinBlock.setFieldValue('win', 'CHECK_RESULT');
-          }
-          const if0Input = controlsIfBlock.getInput('IF0');
-          if (if0Input && if0Input.connection && checkWinBlock.outputConnection) {
-            if0Input.connection.connect(checkWinBlock.outputConnection);
-          }
-
-          const winResetStake = createAndAttachVarBlock('stake', strategy.stake);
-          const do0Input = controlsIfBlock.getInput('DO0');
-          if (do0Input && do0Input.connection && winResetStake) {
-            do0Input.connection.connect(winResetStake.previousConnection);
-          }
-
-          const stakeVar = getOrCreateVariable('stake');
-          const multVar = getOrCreateVariable('martingale_multiplier');
-
-          const lossStakeSet = workspace.newBlock('variables_set');
-          if (stakeVar) lossStakeSet.setFieldValue(stakeVar.getId(), 'VAR');
-
-          const mathArith = workspace.newBlock('math_arithmetic');
-          if (typeof mathArith.setFieldValue === 'function') {
-            mathArith.setFieldValue('MULTIPLY', 'OP');
-          }
-
-          const getStakeBlock = workspace.newBlock('variables_get');
-          if (stakeVar) getStakeBlock.setFieldValue(stakeVar.getId(), 'VAR');
-
-          const getMultBlock = workspace.newBlock('variables_get');
-          if (multVar) getMultBlock.setFieldValue(multVar.getId(), 'VAR');
-
-          mathArith.getInput('A')?.connection?.connect(getStakeBlock.outputConnection);
-          mathArith.getInput('B')?.connection?.connect(getMultBlock.outputConnection);
-          lossStakeSet.getInput('VALUE')?.connection?.connect(mathArith.outputConnection);
-
-          const elseInput = controlsIfBlock.getInput('ELSE');
-          if (elseInput && elseInput.connection) {
-            elseInput.connection.connect(lossStakeSet.previousConnection);
-          }
-
-          if (typeof controlsIfBlock.initSvg === 'function') controlsIfBlock.initSvg();
-          if (typeof checkWinBlock.initSvg === 'function') checkWinBlock.initSvg();
-          if (typeof lossStakeSet.initSvg === 'function') lossStakeSet.initSvg();
-          if (typeof mathArith.initSvg === 'function') mathArith.initSvg();
-          if (typeof getStakeBlock.initSvg === 'function') getStakeBlock.initSvg();
-          if (typeof getMultBlock.initSvg === 'function') getMultBlock.initSvg();
-
-          afterInput.connection.connect(controlsIfBlock.previousConnection);
-
-          const tradeAgainBlock = workspace.newBlock('trade_again');
-          if (typeof tradeAgainBlock.initSvg === 'function') tradeAgainBlock.initSvg();
-          if (controlsIfBlock.nextConnection) {
-            controlsIfBlock.nextConnection.connect(tradeAgainBlock.previousConnection);
-          }
+        if (newBlock && newBlock.previousConnection) {
+          afterInput.connection.connect(newBlock.previousConnection);
         }
       }
     }
