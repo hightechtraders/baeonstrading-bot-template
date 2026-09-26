@@ -195,14 +195,14 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
 
   const symbol = symbolMap[strategy.asset] || '1HZ100V';
   const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
+  const martingaleMultiplier = 2.15; // Factor required to cover ~89% payout fee and make profit
 
   try {
-    // 1. Pause events during batch updates to prevent invalid workspace states
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(false);
     }
 
-    // 2. Market Symbol Update
+    // 1. Market Symbol Update
     const marketBlock =
       workspace.getBlockById('trade_definition_market') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_market')[0]);
@@ -210,7 +210,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       marketBlock.setFieldValue(symbol, 'SYMBOL_LIST');
     }
 
-    // 3. Stake Amount Update
+    // 2. Stake Amount Input (Link to Stake variable)
     const tradeOptionsBlock =
       workspace.getBlockById('trade_definition_tradeoptions') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_tradeoptions')[0]);
@@ -224,7 +224,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 4. Direction Update (Rise / Fall)
+    // 3. Purchase Direction Update
     const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
     if (purchaseBlocks.length > 0) {
       purchaseBlocks.forEach((pBlock: any) => {
@@ -234,10 +234,22 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       });
     }
 
-    // 5. Inspect existing set_variable blocks across workspace safely
+    // 4. Set Initial Variables in Workspace
+    const setNumValue = (varSetBlock: any, val: number) => {
+      if (!varSetBlock) return;
+      const valueInput = varSetBlock.getInput('VALUE');
+      if (valueInput && valueInput.connection && valueInput.connection.targetBlock()) {
+        const numBlock = valueInput.connection.targetBlock();
+        if (typeof numBlock.setFieldValue === 'function') {
+          numBlock.setFieldValue(val.toString(), 'NUM');
+        }
+      }
+    };
+
     const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
     let foundTPBlock: any = null;
     let foundSLBlock: any = null;
+    let foundStakeBlock: any = null;
 
     allBlocks.forEach((block: any) => {
       if (block.type === 'variables_set') {
@@ -254,94 +266,15 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
         } else if (varName.includes('loss') || varName.includes('sl') || block.id === 'init_sl') {
           foundSLBlock = block;
         } else if (varName.includes('stake') || block.id === 'init_stake') {
-          const valueInput = block.getInput('VALUE');
-          if (valueInput && valueInput.connection && valueInput.connection.targetBlock()) {
-            const numBlock = valueInput.connection.targetBlock();
-            if (typeof numBlock.setFieldValue === 'function') {
-              numBlock.setFieldValue(strategy.stake.toString(), 'NUM');
-            }
-          }
+          foundStakeBlock = block;
         }
       }
     });
 
-    // Helper to safely update numeric input values on variables_set blocks
-    const setNumValue = (varSetBlock: any, val: number) => {
-      if (!varSetBlock) return;
-      const valueInput = varSetBlock.getInput('VALUE');
-      if (valueInput && valueInput.connection && valueInput.connection.targetBlock()) {
-        const numBlock = valueInput.connection.targetBlock();
-        if (typeof numBlock.setFieldValue === 'function') {
-          numBlock.setFieldValue(val.toString(), 'NUM');
-        }
-      }
-    };
-
     if (foundTPBlock) setNumValue(foundTPBlock, strategy.takeProfit);
     if (foundSLBlock) setNumValue(foundSLBlock, strategy.stopLoss);
+    if (foundStakeBlock) setNumValue(foundStakeBlock, strategy.stake);
 
-    // 6. Query trade_definition root block directly if TP/SL variable blocks are missing
-    const rootTradeBlock =
-      workspace.getBlockById('trade_definition') ||
-      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
-
-    if (rootTradeBlock && (!foundTPBlock || !foundSLBlock)) {
-      const initInput = rootTradeBlock.getInput('INITIALIZATION');
-
-      if (initInput && initInput.connection) {
-        const createAndAttachVarBlock = (varName: string, value: number) => {
-          let variable = workspace.getVariableMap
-            ? workspace.getVariableMap().getVariable(varName)
-            : null;
-
-          if (!variable && typeof workspace.createVariable === 'function') {
-            variable = workspace.createVariable(varName);
-          }
-          if (!variable) return null;
-
-          const setVarBlock = workspace.newBlock('variables_set');
-          setVarBlock.setFieldValue(variable.getId(), 'VAR');
-
-          const numBlock = workspace.newBlock('math_number');
-          numBlock.setFieldValue(value.toString(), 'NUM');
-
-          const valInput = setVarBlock.getInput('VALUE');
-          if (valInput && valInput.connection && numBlock.outputConnection) {
-            valInput.connection.connect(numBlock.outputConnection);
-          }
-
-          if (typeof setVarBlock.initSvg === 'function') setVarBlock.initSvg();
-          if (typeof numBlock.initSvg === 'function') numBlock.initSvg();
-
-          return setVarBlock;
-        };
-
-        const newTPBlock = !foundTPBlock ? createAndAttachVarBlock('target_profit', strategy.takeProfit) : null;
-        const newSLBlock = !foundSLBlock ? createAndAttachVarBlock('stop_loss', strategy.stopLoss) : null;
-
-        const existingChild = initInput.connection.targetBlock();
-        let targetSlot = initInput.connection;
-
-        if (existingChild) {
-          let tail = existingChild;
-          while (tail.nextConnection && tail.nextConnection.targetBlock()) {
-            tail = tail.nextConnection.targetBlock();
-          }
-          targetSlot = tail.nextConnection;
-        }
-
-        if (newTPBlock && targetSlot) {
-          targetSlot.connect(newTPBlock.previousConnection);
-          if (newSLBlock && newTPBlock.nextConnection) {
-            newTPBlock.nextConnection.connect(newSLBlock.previousConnection);
-          }
-        } else if (newSLBlock && targetSlot) {
-          targetSlot.connect(newSLBlock.previousConnection);
-        }
-      }
-    }
-
-    // 7. Re-enable events and trigger workspace render frame
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
@@ -360,7 +293,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
 }
 
 /**
- * Clean XML generator for workspace imports.
+ * Clean XML generator with full Block 1 and Block 4 filled with recovery & risk parameters.
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
@@ -382,11 +315,14 @@ export function generateDBotXml(strategy: StrategyConfig): string {
 
   const symbol = symbolMap[strategy.asset] || '1HZ100V';
   const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
+  const martingaleFactor = 2.15;
 
   return `
 <xml xmlns="https://developers.google.com/blockly/xml">
   <variables>
+    <variable id="initial_stake_var">initial_stake</variable>
     <variable id="stake_var">stake</variable>
+    <variable id="martingale_var">martingale_factor</variable>
     <variable id="tp_var">target_profit</variable>
     <variable id="sl_var">stop_loss</variable>
   </variables>
@@ -425,29 +361,54 @@ export function generateDBotXml(strategy: StrategyConfig): string {
       </block>
     </statement>
     <statement name="INITIALIZATION">
-      <block type="variables_set" id="init_stake">
-        <field name="VAR" id="stake_var">stake</field>
+      <!-- 1. Set initial_stake -->
+      <block type="variables_set" id="init_initial_stake">
+        <field name="VAR" id="initial_stake_var">initial_stake</field>
         <value name="VALUE">
-          <shadow type="math_number" id="shadow_stake">
+          <shadow type="math_number" id="shadow_initial_stake">
             <field name="NUM">${strategy.stake}</field>
           </shadow>
         </value>
         <next>
-          <block type="variables_set" id="init_tp">
-            <field name="VAR" id="tp_var">target_profit</field>
+          <!-- 2. Set current stake -->
+          <block type="variables_set" id="init_stake">
+            <field name="VAR" id="stake_var">stake</field>
             <value name="VALUE">
-              <shadow type="math_number" id="shadow_tp">
-                <field name="NUM">${strategy.takeProfit}</field>
+              <shadow type="math_number" id="shadow_stake">
+                <field name="NUM">${strategy.stake}</field>
               </shadow>
             </value>
             <next>
-              <block type="variables_set" id="init_sl">
-                <field name="VAR" id="sl_var">stop_loss</field>
+              <!-- 3. Set martingale multiplier factor -->
+              <block type="variables_set" id="init_martingale">
+                <field name="VAR" id="martingale_var">martingale_factor</field>
                 <value name="VALUE">
-                  <shadow type="math_number" id="shadow_sl">
-                    <field name="NUM">${strategy.stopLoss}</field>
+                  <shadow type="math_number" id="shadow_martingale">
+                    <field name="NUM">${martingaleFactor}</field>
                   </shadow>
                 </value>
+                <next>
+                  <!-- 4. Set target profit -->
+                  <block type="variables_set" id="init_tp">
+                    <field name="VAR" id="tp_var">target_profit</field>
+                    <value name="VALUE">
+                      <shadow type="math_number" id="shadow_tp">
+                        <field name="NUM">${strategy.takeProfit}</field>
+                      </shadow>
+                    </value>
+                    <next>
+                      <!-- 5. Set stop loss -->
+                      <block type="variables_set" id="init_sl">
+                        <field name="VAR" id="sl_var">stop_loss</field>
+                        <value name="VALUE">
+                          <shadow type="math_number" id="shadow_sl">
+                            <field name="NUM">${strategy.stopLoss}</field>
+                          </shadow>
+                        </value>
+                      </block>
+                    </next>
+                  </block>
+                </next>
               </block>
             </next>
           </block>
@@ -466,9 +427,9 @@ export function generateDBotXml(strategy: StrategyConfig): string {
           </shadow>
         </value>
         <value name="AMOUNT">
-          <shadow type="math_number" id="amount_num">
-            <field name="NUM">${strategy.stake}</field>
-          </shadow>
+          <block type="variables_get" id="stake_amount_get">
+            <field name="VAR" id="stake_var">stake</field>
+          </block>
         </value>
       </block>
     </statement>
@@ -481,9 +442,108 @@ export function generateDBotXml(strategy: StrategyConfig): string {
     </statement>
   </block>
   <block type="during_purchase" id="during_purchase" deletable="false" x="40" y="680"></block>
+  
+  <!-- BLOCK 4: Restart Trading Conditions with Martingale & TP/SL Checks -->
   <block type="after_purchase" id="after_purchase" deletable="false" x="40" y="780">
     <statement name="AFTERPURCHASE_STACK">
-      <block type="trade_again" id="trade_again_block"></block>
+      <block type="controls_if" id="check_result_if">
+        <mutation else="1"></mutation>
+        <value name="IF0">
+          <block type="contract_check_result" id="check_result">
+            <field name="CHECK_RESULT">win</field>
+          </block>
+        </value>
+        <statement name="DO0">
+          <!-- Reset stake to initial_stake on Win -->
+          <block type="variables_set" id="reset_stake_on_win">
+            <field name="VAR" id="stake_var">stake</field>
+            <value name="VALUE">
+              <block type="variables_get" id="get_initial_stake">
+                <field name="VAR" id="initial_stake_var">initial_stake</field>
+              </block>
+            </value>
+          </block>
+        </statement>
+        <statement name="ELSE">
+          <!-- Multiply stake by martingale_factor on Loss -->
+          <block type="variables_set" id="multiply_stake_on_loss">
+            <field name="VAR" id="stake_var">stake</field>
+            <value name="VALUE">
+              <block type="math_arithmetic" id="mult_stake">
+                <field name="OP">MULTIPLY</field>
+                <value name="A">
+                  <block type="variables_get" id="get_current_stake">
+                    <field name="VAR" id="stake_var">stake</field>
+                  </block>
+                </value>
+                <value name="B">
+                  <block type="variables_get" id="get_martingale_factor">
+                    <field name="VAR" id="martingale_var">martingale_factor</field>
+                  </block>
+                </value>
+              </block>
+            </value>
+          </block>
+        </statement>
+        <next>
+          <!-- Stop Loss and Take Profit evaluation -->
+          <block type="controls_if" id="evaluate_limits_if">
+            <mutation elseif="1" else="1"></mutation>
+            <value name="IF0">
+              <block type="logic_compare" id="tp_check">
+                <field name="OP">GTE</field>
+                <value name="A">
+                  <block type="total_profit" id="get_total_profit_tp"></block>
+                </value>
+                <value name="B">
+                  <block type="variables_get" id="get_tp_var">
+                    <field name="VAR" id="tp_var">target_profit</field>
+                  </block>
+                </value>
+              </block>
+            </value>
+            <statement name="DO0">
+              <block type="text_print" id="tp_reached_msg">
+                <value name="TEXT">
+                  <shadow type="text" id="tp_msg_text">
+                    <field name="TEXT">Target Profit Reached!</field>
+                  </shadow>
+                </value>
+              </block>
+            </statement>
+            <value name="IF1">
+              <block type="logic_compare" id="sl_check">
+                <field name="OP">LTE</field>
+                <value name="A">
+                  <block type="total_profit" id="get_total_profit_sl"></block>
+                </value>
+                <value name="B">
+                  <block type="math_single" id="negate_sl">
+                    <field name="OP">NEG</field>
+                    <value name="NUM">
+                      <block type="variables_get" id="get_sl_var">
+                        <field name="VAR" id="sl_var">stop_loss</field>
+                      </block>
+                    </value>
+                  </block>
+                </value>
+              </block>
+            </value>
+            <statement name="DO1">
+              <block type="text_print" id="sl_reached_msg">
+                <value name="TEXT">
+                  <shadow type="text" id="sl_msg_text">
+                    <field name="TEXT">Stop Loss Reached!</field>
+                  </shadow>
+                </value>
+              </block>
+            </statement>
+            <statement name="ELSE">
+              <block type="trade_again" id="trade_again_block"></block>
+            </statement>
+          </block>
+        </next>
+      </block>
     </statement>
   </block>
 </xml>
