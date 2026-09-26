@@ -20,6 +20,120 @@ export interface StrategyConfig {
 }
 
 /**
+ * Core 7 default strategies array used across FloatingAI component,
+ * App WS feed, and ScannerLogicManager initialization.
+ */
+export const CORE_7_STRATEGIES: StrategyConfig[] = [
+  {
+    id: 'strat-v10',
+    name: 'Volatility 10 Index',
+    asset: 'Volatility 10 Index',
+    type: 'Rise/Fall',
+    stake: 2,
+    duration: 1,
+    durationUnit: 't',
+    stopLoss: 10,
+    takeProfit: 15,
+    martingaleMultiplier: 2.15,
+    priority: 'HIGH',
+    confidence: 85,
+    direction: 'RISE',
+  },
+  {
+    id: 'strat-v25',
+    name: 'Volatility 25 Index',
+    asset: 'Volatility 25 Index',
+    type: 'Rise/Fall',
+    stake: 2,
+    duration: 1,
+    durationUnit: 't',
+    stopLoss: 10,
+    takeProfit: 20,
+    martingaleMultiplier: 2.15,
+    priority: 'LOW',
+    confidence: 72,
+    direction: 'FALL',
+  },
+  {
+    id: 'strat-v50',
+    name: 'Volatility 50 Index',
+    asset: 'Volatility 50 Index',
+    type: 'Rise/Fall',
+    stake: 2,
+    duration: 1,
+    durationUnit: 't',
+    stopLoss: 15,
+    takeProfit: 30,
+    martingaleMultiplier: 2.15,
+    priority: 'LOW',
+    confidence: 68,
+    direction: 'RISE',
+  },
+  {
+    id: 'strat-v75',
+    name: 'Volatility 75 Index',
+    asset: 'Volatility 75 Index',
+    type: 'Rise/Fall',
+    stake: 5,
+    duration: 1,
+    durationUnit: 't',
+    stopLoss: 25,
+    takeProfit: 50,
+    martingaleMultiplier: 2.15,
+    priority: 'LOW',
+    confidence: 65,
+    direction: 'RISE',
+  },
+  {
+    id: 'strat-v100',
+    name: 'Volatility 100 Index',
+    asset: 'Volatility 100 Index',
+    type: 'Rise/Fall',
+    stake: 5,
+    duration: 1,
+    durationUnit: 't',
+    stopLoss: 30,
+    takeProfit: 60,
+    martingaleMultiplier: 2.15,
+    priority: 'LOW',
+    confidence: 70,
+    direction: 'FALL',
+  },
+  {
+    id: 'strat-v100-1s',
+    name: 'Volatility 100 (1s) Index',
+    asset: 'Volatility 100 (1s) Index',
+    type: 'Rise/Fall',
+    stake: 2,
+    duration: 1,
+    durationUnit: 't',
+    stopLoss: 15,
+    takeProfit: 25,
+    martingaleMultiplier: 2.15,
+    priority: 'LOW',
+    confidence: 78,
+    direction: 'RISE',
+  },
+  {
+    id: 'strat-v25-1s',
+    name: 'Volatility 25 (1s) Index',
+    asset: 'Volatility 25 (1s) Index',
+    type: 'Rise/Fall',
+    stake: 2,
+    duration: 1,
+    durationUnit: 't',
+    stopLoss: 10,
+    takeProfit: 20,
+    martingaleMultiplier: 2.15,
+    priority: 'LOW',
+    confidence: 74,
+    direction: 'FALL',
+  },
+];
+
+export const DEFAULT_STRATEGIES = CORE_7_STRATEGIES;
+
+/**
  * Ensures exactly one strategy is marked as HIGH priority in the array.
  */
 export const enforceSingleHighPriority = (
@@ -50,7 +164,7 @@ export const evaluateStrategySignal = (
   const recent = ticks.slice(-5);
   const diffs = recent.slice(1).map((val, idx) => val - recent[idx]);
   const positiveDiffs = diffs.filter((d) => d > 0).length;
-  const negativeDiffs = diffs.filter((d) => d < 0).length;
+  const negativeDiffs = diffs.filter((d) => d > 0).length;
 
   let direction: 'RISE' | 'FALL' | 'HOLD' = 'HOLD';
   let confidence = 50;
@@ -170,50 +284,62 @@ export const generateBlock4Xml = (strategy: StrategyConfig): string => {
   `.trim();
 };
 
-export const DEFAULT_STRATEGIES: StrategyConfig[] = [
-  {
-    id: 'strat-v10',
-    name: 'Volatility 10 Index',
-    asset: 'Volatility 10 Index',
-    type: 'Rise/Fall',
-    stake: 2,
-    duration: 1,
-    durationUnit: 't',
-    stopLoss: 10,
-    takeProfit: 15,
-    martingaleMultiplier: 2.15,
-    priority: 'HIGH',
-    confidence: 85,
-    direction: 'RISE',
-  },
-  {
-    id: 'strat-v25',
-    name: 'Volatility 25 Index',
-    asset: 'Volatility 25 Index',
-    type: 'Rise/Fall',
-    stake: 2,
-    duration: 1,
-    durationUnit: 't',
-    stopLoss: 10,
-    takeProfit: 20,
-    martingaleMultiplier: 2.15,
-    priority: 'LOW',
-    confidence: 72,
-    direction: 'FALL',
-  },
-  {
-    id: 'strat-v75',
-    name: 'Volatility 75 Index',
-    asset: 'Volatility 75 Index',
-    type: 'Rise/Fall',
-    stake: 5,
-    duration: 1,
-    durationUnit: 't',
-    stopLoss: 25,
-    takeProfit: 50,
-    martingaleMultiplier: 2.15,
-    priority: 'LOW',
-    confidence: 65,
-    direction: 'RISE',
-  },
-];
+/**
+ * Directly updates variable values and inputs inside an active Blockly workspace instance.
+ * Called by scannerBridge.ts when direct workspace injection is triggered.
+ */
+export const applyStrategyToWorkspace = (workspace: any, strategy: StrategyConfig): boolean => {
+  if (!workspace || typeof workspace.getAllBlocks !== 'function') {
+    return false;
+  }
+
+  try {
+    const blocks = workspace.getAllBlocks(false);
+    let updatedCount = 0;
+
+    blocks.forEach((block: any) => {
+      // 1. Update variables_set blocks (stake, target_profit, stop_loss, martingale_multiplier)
+      if (block.type === 'variables_set') {
+        const varField = block.getField('VAR');
+        const varName = varField ? varField.getText() : null;
+
+        if (varName) {
+          const lowerVar = varName.toLowerCase();
+          let targetValue: number | null = null;
+
+          if (lowerVar.includes('stake') || lowerVar.includes('initial')) {
+            targetValue = strategy.stake;
+          } else if (lowerVar.includes('profit') || lowerVar.includes('target')) {
+            targetValue = strategy.takeProfit;
+          } else if (lowerVar.includes('loss') || lowerVar.includes('stop')) {
+            targetValue = strategy.stopLoss;
+          } else if (lowerVar.includes('martingale') || lowerVar.includes('multiplier')) {
+            targetValue = strategy.martingaleMultiplier ?? 2.15;
+          }
+
+          if (targetValue !== null && targetValue !== undefined) {
+            const valueBlock = block.getInputTargetBlock('VALUE');
+            if (valueBlock && valueBlock.type === 'math_number') {
+              valueBlock.setFieldValue(String(targetValue), 'NUM');
+              updatedCount++;
+            }
+          }
+        }
+      }
+
+      // 2. Update market/symbol dropdown on trade definition market block
+      if (block.type === 'trade_definition_market') {
+        const symbolField = block.getField('SYMBOL');
+        if (symbolField && strategy.asset) {
+          symbolField.setValue(strategy.asset);
+          updatedCount++;
+        }
+      }
+    });
+
+    return updatedCount > 0;
+  } catch (err) {
+    console.error('[Strategies] Failed to apply strategy to workspace:', err);
+    return false;
+  }
+};
