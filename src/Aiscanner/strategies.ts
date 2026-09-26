@@ -366,7 +366,85 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 7. Re-enable events and trigger workspace render frame
+    // 7. Inject Martingale Loss Multiplier into Section 4 (after_purchase stack) safely
+    const afterPurchaseBlock =
+      workspace.getBlockById('after_purchase') ||
+      (workspace.getBlocksByType && workspace.getBlocksByType('after_purchase')[0]);
+
+    if (afterPurchaseBlock) {
+      const stackInput = afterPurchaseBlock.getInput('AFTERPURCHASE_STACK');
+      if (stackInput && stackInput.connection) {
+        const existingChild = stackInput.connection.targetBlock();
+        const hasExistingMartingale = allBlocks.some((b: any) => b.type === 'controls_if' && b.id === 'martingale_if_block');
+
+        if (!hasExistingMartingale) {
+          const ifBlock = workspace.newBlock('controls_if');
+          ifBlock.id = 'martingale_if_block';
+
+          const checkBlock = workspace.newBlock('contract_check_result');
+          if (typeof checkBlock.setFieldValue === 'function') {
+            checkBlock.setFieldValue('loss', 'CHECK_RESULT');
+          }
+
+          const mathBlock = workspace.newBlock('math_arithmetic');
+          if (typeof mathBlock.setFieldValue === 'function') {
+            mathBlock.setFieldValue('MULTIPLY', 'OP');
+          }
+
+          const setStakeBlock = workspace.newBlock('variables_set');
+          let stakeVar = workspace.getVariableMap ? workspace.getVariableMap().getVariable('stake') : null;
+          if (stakeVar && typeof setStakeBlock.setFieldValue === 'function') {
+            setStakeBlock.setFieldValue(stakeVar.getId(), 'VAR');
+          }
+
+          const getStakeBlock = workspace.newBlock('variables_get');
+          if (stakeVar && typeof getStakeBlock.setFieldValue === 'function') {
+            getStakeBlock.setFieldValue(stakeVar.getId(), 'VAR');
+          }
+
+          const getMultBlock = workspace.newBlock('variables_get');
+          let multVar = workspace.getVariableMap ? workspace.getVariableMap().getVariable('martingale_size') : null;
+          if (multVar && typeof getMultBlock.setFieldValue === 'function') {
+            getMultBlock.setFieldValue(multVar.getId(), 'VAR');
+          }
+
+          if (mathBlock.getInput('A') && getStakeBlock.outputConnection) {
+            mathBlock.getInput('A').connection.connect(getStakeBlock.outputConnection);
+          }
+          if (mathBlock.getInput('B') && getMultBlock.outputConnection) {
+            mathBlock.getInput('B').connection.connect(getMultBlock.outputConnection);
+          }
+          if (setStakeBlock.getInput('VALUE') && mathBlock.outputConnection) {
+            setStakeBlock.getInput('VALUE').connection.connect(mathBlock.outputConnection);
+          }
+
+          if (typeof ifBlock.getInput === 'function') {
+            const ifInput = ifBlock.getInput('IF0');
+            if (ifInput && ifInput.connection && checkBlock.outputConnection) {
+              ifInput.connection.connect(checkBlock.outputConnection);
+            }
+            const doInput = ifBlock.getInput('DO0');
+            if (doInput && doInput.connection && setStakeBlock.previousConnection) {
+              doInput.connection.connect(setStakeBlock.previousConnection);
+            }
+          }
+
+          [ifBlock, checkBlock, mathBlock, setStakeBlock, getStakeBlock, getMultBlock].forEach((b: any) => {
+            if (b && typeof b.initSvg === 'function') b.initSvg();
+          });
+
+          // Connect controls_if into the top of after_purchase stack
+          stackInput.connection.connect(ifBlock.previousConnection || ifBlock.outputConnection);
+
+          // Chain the original 'trade_again' block to the bottom of the new if block
+          if (existingChild && ifBlock.nextConnection && existingChild.previousConnection) {
+            ifBlock.nextConnection.connect(existingChild.previousConnection);
+          }
+        }
+      }
+    }
+
+    // 8. Re-enable events and trigger workspace render frame
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
@@ -520,7 +598,36 @@ export function generateDBotXml(strategy: StrategyConfig): string {
   <block type="during_purchase" id="during_purchase" deletable="false" x="40" y="680"></block>
   <block type="after_purchase" id="after_purchase" deletable="false" x="40" y="780">
     <statement name="AFTERPURCHASE_STACK">
-      <block type="trade_again" id="trade_again_block"></block>
+      <block type="controls_if" id="check_contract_result">
+        <value name="IF0">
+          <block type="contract_check_result" id="contract_check_result">
+            <field name="CHECK_RESULT">loss</field>
+          </block>
+        </value>
+        <statement name="DO0">
+          <block type="variables_set" id="set_stake_martingale">
+            <field name="VAR" id="stake_var">stake</field>
+            <value name="VALUE">
+              <block type="math_arithmetic" id="math_multiply">
+                <field name="OP">MULTIPLY</field>
+                <value name="A">
+                  <block type="variables_get" id="get_current_stake">
+                    <field name="VAR" id="stake_var">stake</field>
+                  </block>
+                </value>
+                <value name="B">
+                  <block type="variables_get" id="get_multiplier_val">
+                    <field name="VAR" id="mult_var">martingale_size</field>
+                  </block>
+                </value>
+              </block>
+            </value>
+          </block>
+        </statement>
+        <next>
+          <block type="trade_again" id="trade_again_block"></block>
+        </next>
+      </block>
     </statement>
   </block>
 </xml>
