@@ -1,7 +1,23 @@
 // src/Aiscanner/scannerLogic.ts
+
 import { StrategyConfig, enforceSingleHighPriority, evaluateStrategySignal } from './strategies';
 import { scannerBridge } from './scannerBridge';
 import { ASSET_TO_SYMBOL } from './useDerivTicks';
+
+/**
+ * Validates whether the scanner confidence clears the break-even math requirement for binary options.
+ * @param confidence Signal confidence percentage (0 - 100)
+ * @param payoutRatio Contract payout percentage (default: 0.891 or 89.1%)
+ * @param safetyMargin Buffer percentage added over break-even (default: 3%)
+ */
+export const isTradeProfitable = (
+  confidence: number,
+  payoutRatio: number = 0.891,
+  safetyMargin: number = 3
+): boolean => {
+  const breakEvenRate = (1 / (1 + payoutRatio)) * 100;
+  return confidence >= breakEvenRate + safetyMargin;
+};
 
 export class ScannerLogicManager {
   private strategies: StrategyConfig[] = [];
@@ -64,16 +80,19 @@ export class ScannerLogicManager {
 
     const now = Date.now();
 
-    // 1. Calculate indicators for each strategy
+    // 1. Calculate indicators and apply risk/profitability checks
     const evaluated = this.strategies.map((strat) => {
       const ticks = this.getTicksForAsset(strat.asset, ticksBuffer, symbolMap);
       const signal = evaluateStrategySignal(strat, ticks);
+
+      // Verify whether the calculated confidence clears risk thresholds
+      const satisfiesRisk = isTradeProfitable(signal.confidence);
 
       return {
         ...strat,
         score: signal.score,
         confidence: signal.confidence,
-        direction: signal.direction,
+        direction: satisfiesRisk ? signal.direction : 'HOLD',
       };
     });
 
@@ -145,6 +164,14 @@ export class ScannerLogicManager {
 
     if (strategy.priority !== 'HIGH') {
       console.error(`[ScannerLogic] Strategy "${strategy.name}" is not HIGH priority. Blocked.`);
+      return false;
+    }
+
+    // Filter out entries that do not clear the confidence math requirement
+    if (strategy.confidence !== undefined && !isTradeProfitable(strategy.confidence)) {
+      console.warn(
+        `[ScannerLogic] Trade loading skipped: Strategy "${strategy.name}" confidence (${strategy.confidence}%) is below break-even threshold.`
+      );
       return false;
     }
 
