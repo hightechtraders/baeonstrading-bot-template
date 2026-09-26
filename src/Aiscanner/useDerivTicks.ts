@@ -59,7 +59,6 @@ export function useDerivTicks(assets: string[]) {
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Derive normalized symbol array to ensure unique subscription list
   const activeSymbols = useMemo(() => {
     if (!assets || assets.length === 0) return [];
     const set = new Set(assets.map((a) => resolveSymbol(a)));
@@ -86,7 +85,6 @@ export function useDerivTicks(assets: string[]) {
 
         console.log('[Deriv WS] Connected. Subscribing to symbols:', activeSymbols);
 
-        // Stagger subscriptions slightly so Deriv API processes each tick stream smoothly
         activeSymbols.forEach((sym, idx) => {
           setTimeout(() => {
             if (ws.readyState === WebSocket.OPEN) {
@@ -95,7 +93,6 @@ export function useDerivTicks(assets: string[]) {
           }, idx * 100);
         });
 
-        // Maintain WebSocket connection with 25s keepalive ping
         if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
         pingIntervalRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
@@ -109,7 +106,7 @@ export function useDerivTicks(assets: string[]) {
           const data = JSON.parse(event.data);
 
           if (data.msg_type === 'tick' && data.tick) {
-            const rawSymbol = data.tick.symbol; // e.g. "R_25"
+            const rawSymbol = data.tick.symbol;
             const price = Number(data.tick.quote);
 
             setTicksBuffer((prev) => {
@@ -121,7 +118,6 @@ export function useDerivTicks(assets: string[]) {
                 [rawSymbol]: updatedTicks,
               };
 
-              // Map prices back across all asset keys so scanner components receive updates regardless of asset name format
               Object.entries(ASSET_TO_SYMBOL).forEach(([assetKey, mappedSym]) => {
                 if (mappedSym === rawSymbol) {
                   updatedBuffer[assetKey] = updatedTicks;
