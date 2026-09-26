@@ -179,7 +179,8 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Updates active workspace parameters IN-PLACE without ever clearing the canvas or breaking Blockly structure.
+ * Updates active workspace parameters IN-PLACE without breaking Blockly connections.
+ * Constructs missing sub-trees from scratch if Block 1 or Block 4 are blank on canvas.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
@@ -206,23 +207,29 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
   const multiplier = strategy.martingaleMultiplier ?? 2.15;
 
   try {
-    // 1. Pause events during batch updates to prevent invalid workspace states
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(false);
     }
 
-    // 2. Market Symbol Update
+    // -------------------------------------------------------------
+    // 1. UPDATE BLOCK 1: MARKET & SUBMARKET DROPDOWNS
+    // -------------------------------------------------------------
     const marketBlock =
       workspace.getBlockById('trade_definition_market') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_market')[0]);
+
     if (marketBlock && typeof marketBlock.setFieldValue === 'function') {
+      const is1s = symbol.startsWith('1HZ');
+      marketBlock.setFieldValue('synthetic_index', 'MARKET_LIST');
+      marketBlock.setFieldValue(is1s ? '1hz_index' : 'random_index', 'SUBMARKET_LIST');
       marketBlock.setFieldValue(symbol, 'SYMBOL_LIST');
     }
 
-    // 3. Stake Amount Update
+    // Update Stake inside Submarket Trade Options
     const tradeOptionsBlock =
       workspace.getBlockById('trade_definition_tradeoptions') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_tradeoptions')[0]);
+
     if (tradeOptionsBlock) {
       const amountInput = tradeOptionsBlock.getInput('AMOUNT');
       if (amountInput && amountInput.connection && amountInput.connection.targetBlock()) {
@@ -233,29 +240,19 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 4. Direction Update (Rise / Fall)
-    const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
-    if (purchaseBlocks.length > 0) {
-      purchaseBlocks.forEach((pBlock: any) => {
-        if (typeof pBlock.setFieldValue === 'function') {
-          pBlock.setFieldValue(purchaseType, 'PURCHASE_LIST');
-        }
-      });
-    }
-
-    // Helper to search or create variables safely
+    // -------------------------------------------------------------
+    // 2. HELPER FUNCTIONS FOR VARIABLE & BLOCK CREATION / UPDATE
+    // -------------------------------------------------------------
     const getOrCreateVariable = (varName: string) => {
       let variable = workspace.getVariableMap
         ? workspace.getVariableMap().getVariable(varName)
         : null;
-
       if (!variable && typeof workspace.createVariable === 'function') {
         variable = workspace.createVariable(varName);
       }
       return variable;
     };
 
-    // Helper to safely create a variable_set block connected to a math_number block
     const createAndAttachVarBlock = (varName: string, value: number) => {
       const variable = getOrCreateVariable(varName);
       if (!variable) return null;
@@ -277,23 +274,29 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       return setVarBlock;
     };
 
-    // Helper to safely update numeric input values on existing variables_set blocks
-    const setNumValue = (varSetBlock: any, val: number) => {
-      if (!varSetBlock) return;
-      const valueInput = varSetBlock.getInput('VALUE');
-      if (valueInput && valueInput.connection && valueInput.connection.targetBlock()) {
-        const numBlock = valueInput.connection.targetBlock();
+    const updateBlockNumberValue = (targetBlock: any, val: number) => {
+      if (!targetBlock) return;
+      if (targetBlock.type === 'math_number' && typeof targetBlock.setFieldValue === 'function') {
+        targetBlock.setFieldValue(val.toString(), 'NUM');
+        return;
+      }
+      const valInput = targetBlock.getInput('VALUE') || targetBlock.getInput('NUM');
+      if (valInput && valInput.connection && valInput.connection.targetBlock()) {
+        const numBlock = valInput.connection.targetBlock();
         if (typeof numBlock.setFieldValue === 'function') {
           numBlock.setFieldValue(val.toString(), 'NUM');
         }
       }
     };
 
-    // 5. Inspect existing set_variable blocks across workspace
+    // -------------------------------------------------------------
+    // 3. SCAN EXISTING VARIABLES & UPDATE PRE-EXISTING BLOCKS
+    // -------------------------------------------------------------
     const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
-    let foundTPBlock: any = null;
-    let foundSLBlock: any = null;
-    let foundMultiplierBlock: any = null;
+    let hasTP = false;
+    let hasSL = false;
+    let hasMultiplier = false;
+    let hasStake = false;
 
     allBlocks.forEach((block: any) => {
       if (block.type === 'variables_set') {
@@ -303,40 +306,43 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           : workspace.getVariableMap
           ? workspace.getVariableMap().getVariableById(varId)
           : null;
+
         const varName = varModel ? varModel.name.toLowerCase() : '';
 
         if (varName.includes('profit') || varName.includes('tp') || block.id === 'init_tp') {
-          foundTPBlock = block;
+          updateBlockNumberValue(block, strategy.takeProfit);
+          hasTP = true;
         } else if (varName.includes('loss') || varName.includes('sl') || block.id === 'init_sl') {
-          foundSLBlock = block;
+          updateBlockNumberValue(block, strategy.stopLoss);
+          hasSL = true;
         } else if (varName.includes('martingale') || varName.includes('multiplier') || block.id === 'init_multiplier') {
-          foundMultiplierBlock = block;
-        } else if (varName.includes('stake') || block.id === 'init_stake') {
-          setNumValue(block, strategy.stake);
+          updateBlockNumberValue(block, multiplier);
+          hasMultiplier = true;
+        } else if (varName.includes('stake') || block.id === 'init_stake' || block.id === 'reset_stake') {
+          updateBlockNumberValue(block, strategy.stake);
+          hasStake = true;
         }
       }
     });
 
-    if (foundTPBlock) setNumValue(foundTPBlock, strategy.takeProfit);
-    if (foundSLBlock) setNumValue(foundSLBlock, strategy.stopLoss);
-    if (foundMultiplierBlock) setNumValue(foundMultiplierBlock, multiplier);
-
-    // 6. Query trade_definition (Block 1) INITIALIZATION stack for missing variables
+    // -------------------------------------------------------------
+    // 4. BLOCK 1 (RUN ONCE AT START): POPULATE IF BLANK
+    // -------------------------------------------------------------
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
 
     if (rootTradeBlock) {
       const initInput = rootTradeBlock.getInput('INITIALIZATION');
-
       if (initInput && initInput.connection) {
-        const newTPBlock = !foundTPBlock ? createAndAttachVarBlock('target_profit', strategy.takeProfit) : null;
-        const newSLBlock = !foundSLBlock ? createAndAttachVarBlock('stop_loss', strategy.stopLoss) : null;
-        const newMultBlock = !foundMultiplierBlock ? createAndAttachVarBlock('martingale_multiplier', multiplier) : null;
+        const newTP = !hasTP ? createAndAttachVarBlock('target_profit', strategy.takeProfit) : null;
+        const newSL = !hasSL ? createAndAttachVarBlock('stop_loss', strategy.stopLoss) : null;
+        const newMult = !hasMultiplier ? createAndAttachVarBlock('martingale_multiplier', multiplier) : null;
+        const newStake = !hasStake ? createAndAttachVarBlock('stake', strategy.stake) : null;
 
-        const newBlocksToAttach = [newTPBlock, newSLBlock, newMultBlock].filter(Boolean);
+        const toAttach = [newStake, newTP, newSL, newMult].filter(Boolean);
 
-        if (newBlocksToAttach.length > 0) {
+        if (toAttach.length > 0) {
           let targetSlot = initInput.connection;
           const existingChild = initInput.connection.targetBlock();
 
@@ -348,19 +354,29 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
             targetSlot = tail.nextConnection;
           }
 
-          // Chain newly constructed variable blocks onto initialization stack
-          for (let i = 0; i < newBlocksToAttach.length; i++) {
-            const currentBlock = newBlocksToAttach[i];
-            if (targetSlot && currentBlock) {
-              targetSlot.connect(currentBlock.previousConnection);
-              targetSlot = currentBlock.nextConnection;
+          toAttach.forEach((b) => {
+            if (targetSlot && b) {
+              targetSlot.connect(b.previousConnection);
+              targetSlot = b.nextConnection;
             }
-          }
+          });
         }
       }
     }
 
-    // 7. SAFE BLOCK 4 FIX: Construct or update AFTERPURCHASE_STACK using XML snippet
+    // -------------------------------------------------------------
+    // 5. UPDATE BLOCK 2 (PURCHASE DIRECTION)
+    // -------------------------------------------------------------
+    const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
+    purchaseBlocks.forEach((pBlock: any) => {
+      if (typeof pBlock.setFieldValue === 'function') {
+        pBlock.setFieldValue(purchaseType, 'PURCHASE_LIST');
+      }
+    });
+
+    // -------------------------------------------------------------
+    // 6. BLOCK 4 (RESTART TRADING CONDITIONS): POPULATE IF BLANK
+    // -------------------------------------------------------------
     const afterPurchaseBlock =
       workspace.getBlockById('after_purchase') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('after_purchase')[0]);
@@ -369,77 +385,73 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       const afterInput = afterPurchaseBlock.getInput('AFTERPURCHASE_STACK');
 
       if (afterInput && afterInput.connection) {
-        const currentTarget = afterInput.connection.targetBlock();
+        // Build and attach full condition + trade_again block structure if Block 4 is blank
+        if (!afterInput.connection.targetBlock()) {
+          const controlsIfBlock = workspace.newBlock('controls_if');
 
-        // Check if Block 4 is currently empty or contains only a standalone trade_again block
-        if (!currentTarget || currentTarget.type === 'trade_again') {
-          if (currentTarget && currentTarget.previousConnection && currentTarget.previousConnection.isConnected()) {
-            currentTarget.previousConnection.disconnect();
+          if (typeof controlsIfBlock.mutationToDom === 'function' && typeof controlsIfBlock.domToMutation === 'function') {
+            controlsIfBlock.domToMutation((window as any).Blockly.Xml.textToDom('<mutation else="1"></mutation>'));
+          }
+
+          const checkWinBlock = workspace.newBlock('contract_check_result');
+          if (typeof checkWinBlock.setFieldValue === 'function') {
+            checkWinBlock.setFieldValue('win', 'CHECK_RESULT');
+          }
+          const if0Input = controlsIfBlock.getInput('IF0');
+          if (if0Input && if0Input.connection && checkWinBlock.outputConnection) {
+            if0Input.connection.connect(checkWinBlock.outputConnection);
+          }
+
+          const winResetStake = createAndAttachVarBlock('stake', strategy.stake);
+          const do0Input = controlsIfBlock.getInput('DO0');
+          if (do0Input && do0Input.connection && winResetStake) {
+            do0Input.connection.connect(winResetStake.previousConnection);
           }
 
           const stakeVar = getOrCreateVariable('stake');
           const multVar = getOrCreateVariable('martingale_multiplier');
-          const stakeId = stakeVar ? stakeVar.getId() : 'stake_var';
-          const multId = multVar ? multVar.getId() : 'mult_var';
 
-          const block4XmlString = `
-            <block type="controls_if" id="after_purchase_if">
-              <mutation else="1"></mutation>
-              <value name="IF0">
-                <block type="contract_check_result">
-                  <field name="CHECK_RESULT">win</field>
-                </block>
-              </value>
-              <statement name="DO0">
-                <block type="variables_set">
-                  <field name="VAR" id="${stakeId}">stake</field>
-                  <value name="VALUE">
-                    <shadow type="math_number">
-                      <field name="NUM">${strategy.stake}</field>
-                    </shadow>
-                  </value>
-                </block>
-              </statement>
-              <statement name="ELSE">
-                <block type="variables_set">
-                  <field name="VAR" id="${stakeId}">stake</field>
-                  <value name="VALUE">
-                    <block type="math_arithmetic">
-                      <field name="OP">MULTIPLY</field>
-                      <value name="A">
-                        <block type="variables_get">
-                          <field name="VAR" id="${stakeId}">stake</field>
-                        </block>
-                      </value>
-                      <value name="B">
-                        <block type="variables_get">
-                          <field name="VAR" id="${multId}">martingale_multiplier</field>
-                        </block>
-                      </value>
-                    </block>
-                  </value>
-                </block>
-              </statement>
-              <next>
-                <block type="trade_again" id="trade_again_block"></block>
-              </next>
-            </block>
-          `.trim();
+          const lossStakeSet = workspace.newBlock('variables_set');
+          if (stakeVar) lossStakeSet.setFieldValue(stakeVar.getId(), 'VAR');
 
-          const blocklyXml = (window as any).Blockly?.Xml;
-          if (blocklyXml) {
-            const domNode = blocklyXml.textToDom(block4XmlString);
-            const createdBlock = blocklyXml.domToBlock(domNode, workspace);
+          const mathArith = workspace.newBlock('math_arithmetic');
+          if (typeof mathArith.setFieldValue === 'function') {
+            mathArith.setFieldValue('MULTIPLY', 'OP');
+          }
 
-            if (createdBlock && createdBlock.previousConnection) {
-              afterInput.connection.connect(createdBlock.previousConnection);
-            }
+          const getStakeBlock = workspace.newBlock('variables_get');
+          if (stakeVar) getStakeBlock.setFieldValue(stakeVar.getId(), 'VAR');
+
+          const getMultBlock = workspace.newBlock('variables_get');
+          if (multVar) getMultBlock.setFieldValue(multVar.getId(), 'VAR');
+
+          mathArith.getInput('A')?.connection?.connect(getStakeBlock.outputConnection);
+          mathArith.getInput('B')?.connection?.connect(getMultBlock.outputConnection);
+          lossStakeSet.getInput('VALUE')?.connection?.connect(mathArith.outputConnection);
+
+          const elseInput = controlsIfBlock.getInput('ELSE');
+          if (elseInput && elseInput.connection) {
+            elseInput.connection.connect(lossStakeSet.previousConnection);
+          }
+
+          if (typeof controlsIfBlock.initSvg === 'function') controlsIfBlock.initSvg();
+          if (typeof checkWinBlock.initSvg === 'function') checkWinBlock.initSvg();
+          if (typeof lossStakeSet.initSvg === 'function') lossStakeSet.initSvg();
+          if (typeof mathArith.initSvg === 'function') mathArith.initSvg();
+          if (typeof getStakeBlock.initSvg === 'function') getStakeBlock.initSvg();
+          if (typeof getMultBlock.initSvg === 'function') getMultBlock.initSvg();
+
+          afterInput.connection.connect(controlsIfBlock.previousConnection);
+
+          const tradeAgainBlock = workspace.newBlock('trade_again');
+          if (typeof tradeAgainBlock.initSvg === 'function') tradeAgainBlock.initSvg();
+          if (controlsIfBlock.nextConnection) {
+            controlsIfBlock.nextConnection.connect(tradeAgainBlock.previousConnection);
           }
         }
       }
     }
 
-    // 8. Re-enable events and trigger workspace render frame
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
@@ -452,13 +464,13 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
-    console.error('[Strategies] In-place strategy application failed:', error);
+    console.error('[Strategies] Strategy application failed:', error);
     return false;
   }
 }
 
 /**
- * Clean XML generator for workspace imports.
+ * Clean XML generator for workspace exports or imports.
  */
 export function generateDBotXml(strategy: StrategyConfig): string {
   const symbolMap: Record<string, string> = {
