@@ -26,10 +26,10 @@ export function useDerivTicks(assets?: string[]) {
   const [ticksBuffer, setTicksBuffer] = useState<Record<string, number[]>>({});
 
   useEffect(() => {
-    // 1. Initialize WebSocket interception bridge
+    // 1. Initialize WebSocket interception
     scannerBridge.init();
 
-    // 2. Automatically request live tick subscriptions for target assets
+    // 2. Dispatch tick subscriptions for all target assets
     const symbolsToSubscribe = (assets && assets.length > 0
       ? assets
       : Object.keys(ASSET_TO_SYMBOL)
@@ -37,7 +37,7 @@ export function useDerivTicks(assets?: string[]) {
 
     scannerBridge.subscribeToSymbols(symbolsToSubscribe);
 
-    // 3. Subscribe component state to incoming tick buffer updates
+    // 3. Subscribe to incoming buffer updates
     const unsubscribe = scannerBridge.subscribe((buffer) => {
       setTicksBuffer(buffer);
     });
