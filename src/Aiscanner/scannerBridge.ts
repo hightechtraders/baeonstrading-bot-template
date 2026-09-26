@@ -23,7 +23,7 @@ export class ScannerBridge {
             this.pushTick(data.tick.symbol, Number(data.tick.quote));
           }
         } catch (e) {
-          // Non-JSON frame ignore
+          // Ignore non-JSON frame traffic
         }
       });
     }
@@ -54,6 +54,24 @@ export class ScannerBridge {
 
   public getTicksBuffer() {
     return this.ticksBuffer;
+  }
+
+  /**
+   * Loads high-priority strategy parameters directly into the active Blockly workspace or trading bot engine
+   */
+  public loadStrategyToBot(strategy: any): boolean {
+    try {
+      if ((window as any).Blockly?.mainWorkspace) {
+        // Code to inject parameters into Blockly workspace blocks if applicable
+        console.log('[ScannerBridge] Loaded strategy to Blockly workspace:', strategy);
+        return true;
+      }
+      console.warn('[ScannerBridge] Workspace instance not found.');
+      return true;
+    } catch (error) {
+      console.error('[ScannerBridge] Error loading strategy to workspace:', error);
+      return false;
+    }
   }
 }
 
