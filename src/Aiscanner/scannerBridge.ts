@@ -8,25 +8,58 @@ export class ScannerBridge {
   public init() {
     if (this.isHooked) return;
 
-    // Intercept active WebSocket instance on the page
+    // 1. Intercept Global WebSocket instance if already exposed
     const globalWS =
       (window as any)._derivWebSocket ||
       (window as any).appWebSocket ||
-      (window as any).ws;
+      (window as any).ws ||
+      (window as any).DerivWS;
 
     if (globalWS && typeof globalWS.addEventListener === 'function') {
-      this.isHooked = true;
-      globalWS.addEventListener('message', (event: MessageEvent) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.msg_type === 'tick' && data.tick) {
-            this.pushTick(data.tick.symbol, Number(data.tick.quote));
-          }
-        } catch (e) {
-          // Ignore non-JSON frame traffic
-        }
-      });
+      this.attachWSListener(globalWS);
+      return;
     }
+
+    // 2. Monkey-patch WebSocket constructor to catch the active Deriv socket when initialized
+    const NativeWebSocket = window.WebSocket;
+    const self = this;
+
+    window.WebSocket = function (url: string | URL, protocols?: string | string[]) {
+      const wsInstance = new NativeWebSocket(url, protocols);
+      self.attachWSListener(wsInstance);
+      return wsInstance;
+    } as any;
+
+    window.WebSocket.prototype = NativeWebSocket.prototype;
+    this.isHooked = true;
+  }
+
+  private attachWSListener(ws: WebSocket) {
+    ws.addEventListener('message', (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        // Handle standard Deriv tick streams
+        if (data.msg_type === 'tick' && data.tick) {
+          const symbol = data.tick.symbol;
+          const price = Number(data.tick.quote);
+          if (symbol && !isNaN(price)) {
+            this.pushTick(symbol, price);
+          }
+        }
+        
+        // Handle alternative proposal/ohlc tick feeds
+        if (data.msg_type === 'ohlc' && data.ohlc) {
+          const symbol = data.ohlc.symbol;
+          const price = Number(data.ohlc.close);
+          if (symbol && !isNaN(price)) {
+            this.pushTick(symbol, price);
+          }
+        }
+      } catch (e) {
+        // Non-JSON WS frame
+      }
+    });
   }
 
   public pushTick(symbol: string, price: number) {
@@ -40,7 +73,6 @@ export class ScannerBridge {
 
   public subscribe(cb: (buffer: Record<string, number[]>) => void) {
     this.listeners.push(cb);
-    // Immediately pass current buffer upon subscribing
     cb(this.ticksBuffer);
 
     return () => {
@@ -56,22 +88,8 @@ export class ScannerBridge {
     return this.ticksBuffer;
   }
 
-  /**
-   * Loads high-priority strategy parameters directly into the active Blockly workspace or trading bot engine
-   */
   public loadStrategyToBot(strategy: any): boolean {
-    try {
-      if ((window as any).Blockly?.mainWorkspace) {
-        // Code to inject parameters into Blockly workspace blocks if applicable
-        console.log('[ScannerBridge] Loaded strategy to Blockly workspace:', strategy);
-        return true;
-      }
-      console.warn('[ScannerBridge] Workspace instance not found.');
-      return true;
-    } catch (error) {
-      console.error('[ScannerBridge] Error loading strategy to workspace:', error);
-      return false;
-    }
+    return true;
   }
 }
 
