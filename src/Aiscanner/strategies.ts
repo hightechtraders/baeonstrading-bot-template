@@ -202,10 +202,10 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Applies strategy parameters to the workspace:
- * 1. Pre-populates Purchase Conditions (Rise/Fall)
- * 2. Safely pre-populates existing trade options fields (Stake / Duration)
- * 3. Recreates the "Run once at start" stack cleanly from scratch
+ * Applies strategy parameters to the workspace cleanly:
+ * 1. Sets Purchase Condition (Rise/Fall)
+ * 2. Sets Stake on the trade block
+ * 3. Rebuilds the "Run once at start" stack
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
@@ -219,7 +219,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       workspace.setEnableEvents(false);
     }
 
-    // 1. Safely update existing Purchase Condition Block (Rise/Fall)
+    // 1. Update Purchase Condition Block
     const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
     if (purchaseBlocks.length > 0) {
       const purchaseBlock = purchaseBlocks[0];
@@ -231,28 +231,33 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 2. Locate Trade Definition & safely pre-populate existing trade parameters (Stake / Amount)
+    // 2. Locate Trade Definition & set Stake/Amount directly if available
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
 
     if (rootTradeBlock) {
-      // Safely update field values on trade options blocks or descendants if they exist
-      const allDescendants = rootTradeBlock.getDescendants ? rootTradeBlock.getDescendants(false) : [];
-      for (const block of allDescendants) {
-        if (block.type === 'trade_options' || block.type === 'market_trade') {
-          try {
-            if (typeof block.setFieldValue === 'function') {
-              block.setFieldValue(String(stakeVal), 'AMOUNT');
-              block.setFieldValue(String(stakeVal), 'STAKE');
-            }
-          } catch (err) {
-            // Safe fallback if fields vary
-          }
+      // Clean, direct field setter for stake fields if exposed on the block
+      const setFieldIfExists = (block: any, fieldName: string, val: any) => {
+        const field = block.getField ? block.getField(fieldName) : null;
+        if (field && typeof field.setValue === 'function') {
+          field.setValue(String(val));
+          return true;
         }
+        return false;
+      };
+
+      setFieldIfExists(rootTradeBlock, 'AMOUNT', stakeVal);
+      setFieldIfExists(rootTradeBlock, 'STAKE', stakeVal);
+
+      // Check child blocks (like trade options) as well
+      const descendants = rootTradeBlock.getDescendants ? rootTradeBlock.getDescendants(false) : [];
+      for (const dBlock of descendants) {
+        setFieldIfExists(dBlock, 'AMOUNT', stakeVal);
+        setFieldIfExists(dBlock, 'STAKE', stakeVal);
       }
 
-      // 3. Recreate the "Run once at start" stack exactly as before (untouched core creation logic)
+      // 3. Recreate the "Run once at start" stack cleanly from scratch
       const initInput = rootTradeBlock.getInput('INITIALIZATION');
       if (initInput) {
         let existingChild = initInput.connection.targetBlock();
@@ -330,7 +335,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
-    console.error('[Strategies] Failed to build run-once variables and sync trade params:', error);
+    console.error('[Strategies] Failed to apply strategy to workspace:', error);
     return false;
   }
 }
