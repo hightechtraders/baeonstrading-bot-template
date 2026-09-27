@@ -204,8 +204,8 @@ export function evaluateStrategySignal(
 /**
  * Applies strategy parameters to the workspace cleanly:
  * 1. Sets Purchase Condition (Rise/Fall)
- * 2. Sets Stake on the trade block
- * 3. Rebuilds the "Run once at start" stack
+ * 2. Pre-populates Trade Parameters & Trade Options (Asset, Trade Type, Stake)
+ * 3. Recreates the "Run once at start" variable stack completely from scratch
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
@@ -231,33 +231,53 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 2. Locate Trade Definition & set Stake/Amount directly if available
+    // 2. Locate Trade Definition & pre-populate Trade Parameters / Trade Options
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
 
     if (rootTradeBlock) {
-      // Clean, direct field setter for stake fields if exposed on the block
-      const setFieldIfExists = (block: any, fieldName: string, val: any) => {
-        const field = block.getField ? block.getField(fieldName) : null;
-        if (field && typeof field.setValue === 'function') {
-          field.setValue(String(val));
-          return true;
+      const setFieldOrConnectedValue = (block: any, fieldNames: string[], val: any) => {
+        for (const name of fieldNames) {
+          const field = block.getField ? block.getField(name) : null;
+          if (field) {
+            if (typeof field.setValue === 'function') {
+              try {
+                field.setValue(String(val));
+                return true;
+              } catch (e) {
+                // Ignore dropdown mismatches gracefully
+              }
+            }
+          }
+          const input = block.getInput ? block.getInput(name) : null;
+          if (input && input.connection) {
+            const childBlock = input.connection.targetBlock();
+            if (childBlock && childBlock.type === 'math_number') {
+              const numField = childBlock.getField('NUM');
+              if (numField && typeof numField.setValue === 'function') {
+                numField.setValue(String(val));
+                return true;
+              }
+            }
+          }
         }
         return false;
       };
 
-      setFieldIfExists(rootTradeBlock, 'AMOUNT', stakeVal);
-      setFieldIfExists(rootTradeBlock, 'STAKE', stakeVal);
+      setFieldOrConnectedValue(rootTradeBlock, ['AMOUNT', 'STAKE', 'PURCHASE_AMOUNT'], stakeVal);
+      setFieldOrConnectedValue(rootTradeBlock, ['SUBMARKET_LIST', 'SYMBOL_LIST', 'TRADETYPE_LIST'], strategy.asset);
 
-      // Check child blocks (like trade options) as well
       const descendants = rootTradeBlock.getDescendants ? rootTradeBlock.getDescendants(false) : [];
       for (const dBlock of descendants) {
-        setFieldIfExists(dBlock, 'AMOUNT', stakeVal);
-        setFieldIfExists(dBlock, 'STAKE', stakeVal);
+        setFieldOrConnectedValue(dBlock, ['AMOUNT', 'STAKE', 'PURCHASE_AMOUNT'], stakeVal);
+        setFieldOrConnectedValue(dBlock, ['SUBMARKET_LIST', 'SYMBOL_LIST', 'TRADETYPE_LIST', 'CORR_SYMBOL_LIST'], strategy.asset);
+        if (dBlock.type === 'trade_options' || dBlock.type === 'market_trade') {
+          setFieldOrConnectedValue(dBlock, ['DURATION', 'COUNT', 'TICKS'], 1);
+        }
       }
 
-      // 3. Recreate the "Run once at start" stack cleanly from scratch
+      // 3. Recreate the "Run once at start" stack completely from scratch
       const initInput = rootTradeBlock.getInput('INITIALIZATION');
       if (initInput) {
         let existingChild = initInput.connection.targetBlock();
