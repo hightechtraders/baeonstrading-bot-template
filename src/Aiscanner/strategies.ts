@@ -137,54 +137,38 @@ export function evaluateStrategySignal(
   strategy: StrategyConfig,
   ticks: number[]
 ): { direction: 'UP' | 'DOWN' | 'HOLD'; confidence: number; score: number } {
-  // Require a deeper tick sample for high-probability filtering
-  if (!ticks || ticks.length < 15) {
+  if (!ticks || ticks.length < 10) {
     return { direction: 'HOLD', confidence: 50, score: 50 };
   }
 
-  // Calculate baseline consistency over the expanded window
-  let gains = 0;
+  // Smooth weighted momentum calculation to prevent flashing
+  let totalWeight = 0;
+  let weightedScoreSum = 0;
+
   for (let i = 1; i < ticks.length; i++) {
-    if (ticks[i] > ticks[i - 1]) gains++;
-  }
-  const totalSteps = ticks.length - 1;
-  const gainRatio = totalSteps > 0 ? gains / totalSteps : 0.5;
-  let rawScore = gainRatio * 100;
-
-  // Check for extended consecutive momentum (looking at the last 6 ticks)
-  const recentTicks = ticks.slice(-6);
-  let consecutiveUp = 0;
-  let consecutiveDown = 0;
-
-  for (let i = 1; i < recentTicks.length; i++) {
-    if (recentTicks[i] > recentTicks[i - 1]) {
-      consecutiveUp++;
-    } else if (recentTicks[i] < recentTicks[i - 1]) {
-      consecutiveDown++;
+    const weight = i >= ticks.length - 5 ? 2.5 : 1.0;
+    totalWeight += weight;
+    if (ticks[i] > ticks[i - 1]) {
+      weightedScoreSum += 100 * weight;
+    } else if (ticks[i] < ticks[i - 1]) {
+      weightedScoreSum += 0;
+    } else {
+      weightedScoreSum += 50 * weight;
     }
   }
 
-  // Aggressive weighting to hit the 96% threshold during clean breakouts
-  if (consecutiveUp >= 5) {
-    rawScore += 35;
-  } else if (consecutiveDown >= 5) {
-    rawScore -= 35;
-  } else {
-    rawScore = 50 + (rawScore - 50) * 0.2;
-  }
+  const rawScore = totalWeight > 0 ? weightedScoreSum / totalWeight : 50;
+  const score = Math.max(5, Math.min(95, Math.round(rawScore)));
 
-  const score = Math.max(2, Math.min(98, Math.round(rawScore)));
-
-  // Restrict execution threshold to ultra-high conviction
   let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
-  if (score >= 90) {
+  if (score >= 70) {
     direction = 'UP';
-  } else if (score <= 10) {
+  } else if (score <= 30) {
     direction = 'DOWN';
   }
 
   const baseConfidence = Math.max(score, 100 - score);
-  const confidence = baseConfidence >= 90 ? Math.min(98, baseConfidence + 6) : baseConfidence;
+  const confidence = baseConfidence >= 70 ? Math.min(95, baseConfidence + 10) : baseConfidence;
 
   return { direction, confidence, score };
 }
