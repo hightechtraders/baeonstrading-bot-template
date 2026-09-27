@@ -141,35 +141,53 @@ export function evaluateStrategySignal(
     return { direction: 'HOLD', confidence: 50, score: 50 };
   }
 
-  // Smooth weighted momentum calculation to prevent flashing
-  let totalWeight = 0;
+  // 1. Calculate net movement and total volatility path with weighted recent momentum
+  let netMovement = 0;
+  let totalVolatility = 0;
   let weightedScoreSum = 0;
+  let totalWeight = 0;
 
   for (let i = 1; i < ticks.length; i++) {
-    const weight = i >= ticks.length - 5 ? 2.5 : 1.0;
+    const diff = ticks[i] - ticks[i - 1];
+    netMovement += diff;
+    totalVolatility += Math.abs(diff);
+
+    const weight = i >= ticks.length - 5 ? 3.0 : 1.0;
     totalWeight += weight;
-    if (ticks[i] > ticks[i - 1]) {
+
+    if (diff > 0) {
       weightedScoreSum += 100 * weight;
-    } else if (ticks[i] < ticks[i - 1]) {
+    } else if (diff < 0) {
       weightedScoreSum += 0;
     } else {
       weightedScoreSum += 50 * weight;
     }
   }
 
-  const rawScore = totalWeight > 0 ? weightedScoreSum / totalWeight : 50;
-  const score = Math.max(5, Math.min(95, Math.round(rawScore)));
+  if (totalVolatility === 0) {
+    return { direction: 'HOLD', confidence: 50, score: 50 };
+  }
 
-  // Balanced threshold of 62 to ensure signals fire reliably without excessive hold times
+  // Efficiency Ratio filters out sideways consolidation chop
+  const efficiencyRatio = Math.abs(netMovement) / totalVolatility;
+
+  const rawScore = totalWeight > 0 ? weightedScoreSum / totalWeight : 50;
+  let score = Math.max(5, Math.min(95, Math.round(rawScore)));
+
+  if (efficiencyRatio < 0.35) {
+    score = Math.round(50 + (score - 50) * 0.5);
+  }
+
+  // 2. High-conviction threshold requiring trend efficiency
   let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
-  if (score >= 62) {
+  if (score >= 62 && efficiencyRatio >= 0.4) {
     direction = 'UP';
-  } else if (score <= 38) {
+  } else if (score <= 38 && efficiencyRatio >= 0.4) {
     direction = 'DOWN';
   }
 
   const baseConfidence = Math.max(score, 100 - score);
-  const confidence = baseConfidence >= 62 ? Math.min(95, baseConfidence + 8) : baseConfidence;
+  const confidence = baseConfidence >= 62 ? Math.min(96, baseConfidence + 8) : baseConfidence;
 
   return { direction, confidence, score };
 }
