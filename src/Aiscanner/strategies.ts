@@ -220,16 +220,34 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       marketBlock.setFieldValue(assetConfig.symbol, 'SYMBOL_LIST');
     }
 
-    // 2. Stake Amount Update in Trade Options
+    // 2. Safe Stake Amount Injection via XML block creation (Fixes "Invalid input" error)
     const tradeOptionsBlock =
       workspace.getBlockById('trade_definition_tradeoptions') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_tradeoptions')[0]);
+    
     if (tradeOptionsBlock) {
       const amountInput = tradeOptionsBlock.getInput('AMOUNT');
-      if (amountInput && amountInput.connection && amountInput.connection.targetBlock()) {
-        const shadowBlock = amountInput.connection.targetBlock();
-        if (typeof shadowBlock.setFieldValue === 'function') {
-          shadowBlock.setFieldValue(strategy.stake.toString(), 'NUM');
+      if (amountInput) {
+        const oldTarget = amountInput.connection && amountInput.connection.targetBlock();
+        if (oldTarget && typeof oldTarget.dispose === 'function') {
+          oldTarget.dispose(true);
+        }
+
+        const stakeXmlText = `
+          <block type="math_number">
+            <field name="NUM">${strategy.stake}</field>
+          </block>
+        `.trim();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(stakeXmlText, 'text/xml');
+        const blockElement = xmlDoc.documentElement;
+
+        if (window.Blockly && window.Blockly.Xml && typeof window.Blockly.Xml.domToBlock === 'function') {
+          const newStakeBlock = window.Blockly.Xml.domToBlock(blockElement, workspace);
+          if (newStakeBlock) {
+            if (typeof newStakeBlock.initSvg === 'function') newStakeBlock.initSvg();
+            amountInput.connection.connect(newStakeBlock.outputConnection);
+          }
         }
       }
     }
