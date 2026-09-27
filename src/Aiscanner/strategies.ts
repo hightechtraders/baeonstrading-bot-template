@@ -133,10 +133,6 @@ export function enforceSingleHighPriority(
   }));
 }
 
-/**
- * Enhanced multi-tick momentum filter to eliminate single-tick whipsaws
- * and deliver high-win-rate confidence scoring.
- */
 export function evaluateStrategySignal(
   strategy: StrategyConfig,
   ticks: number[]
@@ -154,15 +150,14 @@ export function evaluateStrategySignal(
 
   let rawScore = gainRatio * 100;
 
-  // Multi-tick momentum verification on last 3 ticks
   const t1 = ticks[ticks.length - 1];
   const t2 = ticks[ticks.length - 2];
   const t3 = ticks[ticks.length - 3];
 
   if (t1 > t2 && t2 > t3) {
-    rawScore += 8; // Strong upward persistence
+    rawScore += 8;
   } else if (t1 < t2 && t2 < t3) {
-    rawScore -= 8; // Strong downward persistence
+    rawScore -= 8;
   }
 
   const score = Math.max(10, Math.min(98, Math.round(rawScore)));
@@ -180,30 +175,12 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Automatically updates existing fields (Market, Stake, Purchase, etc.) and builds the "Run once at start" stack.
+ * Leaves existing canvas dropdowns untouched and builds ONLY the 
+ * "Run once at start" initialization stack (Target Profit, Stop Loss, Martingale Size).
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
 
-  const symbolMap: Record<string, { submarket: string; symbol: string }> = {
-    'Volatility 10': { submarket: 'random_index', symbol: 'R_10' },
-    'Volatility 25': { submarket: 'random_index', symbol: 'R_25' },
-    'Volatility 50': { submarket: 'random_index', symbol: 'R_50' },
-    'Volatility 75': { submarket: 'random_index', symbol: 'R_75' },
-    'Volatility 100': { submarket: 'random_index', symbol: 'R_100' },
-    'Volatility 100 (1s)': { submarket: 'random_index', symbol: '1HZ100V' },
-    'Volatility 25 (1s)': { submarket: 'random_index', symbol: '1HZ25V' },
-    'Volatility 10 Index': { submarket: 'random_index', symbol: 'R_10' },
-    'Volatility 25 Index': { submarket: 'random_index', symbol: 'R_25' },
-    'Volatility 50 Index': { submarket: 'random_index', symbol: 'R_50' },
-    'Volatility 75 Index': { submarket: 'random_index', symbol: 'R_75' },
-    'Volatility 100 Index': { submarket: 'random_index', symbol: 'R_100' },
-    'Volatility 100 (1s) Index': { submarket: 'random_index', symbol: '1HZ100V' },
-    'Volatility 25 (1s) Index': { submarket: 'random_index', symbol: '1HZ25V' },
-  };
-
-  const assetConfig = symbolMap[strategy.asset] || { submarket: 'random_index', symbol: '1HZ100V' };
-  const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
   const multiplierVal = strategy.martingaleMultiplier ?? 2.0;
 
   try {
@@ -211,38 +188,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       workspace.setEnableEvents(false);
     }
 
-    // 1. Automatically update Market and Submarket fields
-    const marketBlock =
-      workspace.getBlockById('trade_definition_market') ||
-      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_market')[0]);
-    if (marketBlock && typeof marketBlock.setFieldValue === 'function') {
-      marketBlock.setFieldValue(assetConfig.submarket, 'SUBMARKET_LIST');
-      marketBlock.setFieldValue(assetConfig.symbol, 'SYMBOL_LIST');
-    }
-
-    // 2. Automatically update Stake Amount field in-place
-    const tradeOptionsBlock =
-      workspace.getBlockById('trade_definition_tradeoptions') ||
-      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_tradeoptions')[0]);
-    if (tradeOptionsBlock) {
-      const amountInput = tradeOptionsBlock.getInput('AMOUNT');
-      if (amountInput && amountInput.connection) {
-        const targetBlock = amountInput.connection.targetBlock();
-        if (targetBlock && typeof targetBlock.setFieldValue === 'function') {
-          targetBlock.setFieldValue(strategy.stake.toString(), 'NUM');
-        }
-      }
-    }
-
-    // 3. Automatically update Purchase Condition (Rise / Fall)
-    const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
-    purchaseBlocks.forEach((pBlock: any) => {
-      if (typeof pBlock.setFieldValue === 'function') {
-        pBlock.setFieldValue(purchaseType, 'PURCHASE_LIST');
-      }
-    });
-
-    // 4. Create and populate the "Run once at start" initialization stack
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
@@ -250,7 +195,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (rootTradeBlock) {
       const initInput = rootTradeBlock.getInput('INITIALIZATION');
       if (initInput) {
-        // Clear existing stack to create blank boxes fresh
+        // 1. Clear whatever is currently inside "Run once at start"
         let existingChild = initInput.connection.targetBlock();
         while (existingChild) {
           const nextChild = existingChild.nextConnection && existingChild.nextConnection.targetBlock();
@@ -260,23 +205,25 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           existingChild = nextChild;
         }
 
-        const ensureVar = (name: string) => {
-          let v = workspace.getVariableMap ? workspace.getVariableMap().getVariable(name) : null;
-          if (!v && typeof workspace.createVariable === 'function') {
-            v = workspace.createVariable(name);
+        // 2. Helper to get or create workspace variables safely
+        const getOrCreateVar = (name: string) => {
+          let variable = workspace.getVariableMap ? workspace.getVariableMap().getVariable(name) : null;
+          if (!variable && typeof workspace.createVariable === 'function') {
+            variable = workspace.createVariable(name);
           }
-          return v;
+          return variable;
         };
 
-        const tpVar = ensureVar('target_profit');
-        const slVar = ensureVar('stop_loss');
-        const multVar = ensureVar('martingale_size');
+        const vTp = getOrCreateVar('target_profit');
+        const vSl = getOrCreateVar('stop_loss');
+        const vMult = getOrCreateVar('martingale_size');
 
-        const createBlockFromXml = (varName: string, varObj: any, val: number) => {
-          const varId = varObj ? (varObj.getId ? varObj.getId() : varObj.id) : varName;
-          const xmlText = `
+        // 3. Build XML strictly for the three "Run once at start" variable blocks
+        const buildVarSetXml = (varObj: any, varName: string, val: number) => {
+          const varId = varObj ? (varObj.getId ? varObj.getId() : varObj.id_) : varName;
+          return `
             <block type="variables_set">
-              <field name="VAR" id="${varId}">${varName}</field>
+              <field name="VAR" id="${varId}" variabletype="">${varName}</field>
               <value name="VALUE">
                 <block type="math_number">
                   <field name="NUM">${val}</field>
@@ -284,30 +231,32 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
               </value>
             </block>
           `.trim();
+        };
 
-          const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-          const blockElement = xmlDoc.documentElement;
-
+        const parser = new DOMParser();
+        const createBlockFromXml = (xmlStr: string) => {
+          const doc = parser.parseFromString(xmlStr, 'text/xml');
           if (window.Blockly && window.Blockly.Xml && typeof window.Blockly.Xml.domToBlock === 'function') {
-            return window.Blockly.Xml.domToBlock(blockElement, workspace);
+            return window.Blockly.Xml.domToBlock(doc.documentElement, workspace);
           }
           return null;
         };
 
-        const tpBlock = createBlockFromXml('target_profit', tpVar, strategy.takeProfit);
-        const slBlock = createBlockFromXml('stop_loss', slVar, strategy.stopLoss);
-        const multBlock = createBlockFromXml('martingale_size', multVar, multiplierVal);
+        const tpBlock = createBlockFromXml(buildVarSetXml(vTp, 'target_profit', strategy.takeProfit));
+        const slBlock = createBlockFromXml(buildVarSetXml(vSl, 'stop_loss', strategy.stopLoss));
+        const multBlock = createBlockFromXml(buildVarSetXml(vMult, 'martingale_size', multiplierVal));
 
         const blocks = [tpBlock, slBlock, multBlock].filter(Boolean);
 
-        // Chain them into the initialization socket
+        // 4. Chain them into the "Run once at start" socket
         let currentConnection = initInput.connection;
         for (const block of blocks) {
           if (block && currentConnection) {
             if (typeof block.initSvg === 'function') block.initSvg();
-            currentConnection.connect(block.previousConnection);
-            currentConnection = block.nextConnection;
+            if (block.previousConnection) {
+              currentConnection.connect(block.previousConnection);
+              currentConnection = block.nextConnection;
+            }
           }
         }
       }
@@ -325,7 +274,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
-    console.error('[Strategies] Failed to build strategy workspace:', error);
+    console.error('[Strategies] Failed to build run-once variables:', error);
     return false;
   }
 }
