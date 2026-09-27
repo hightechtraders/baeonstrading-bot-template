@@ -180,7 +180,7 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Safely updates active workspace parameters and builds "Run once at start" from scratch.
+ * Safely updates active workspace parameters and builds "Run once at start" from scratch with valid inputs.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
@@ -241,7 +241,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     });
 
-    // 4. Build "Run once at start" (Initialization Stack) from Scratch
+    // 4. Build "Run once at start" (Initialization Stack) from Scratch with valid connections
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
@@ -259,8 +259,8 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           existingChild = nextChild;
         }
 
-        // Helper to create a variable set block with a numeric value
-        const createVarSetBlock = (varName: string, value: number) => {
+        // Helper to create a fully bound variable set block with a numeric value
+        const createValidVarSetBlock = (varName: string, value: number) => {
           let variable = workspace.getVariableMap
             ? workspace.getVariableMap().getVariable(varName)
             : null;
@@ -268,13 +268,18 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           if (!variable && typeof workspace.createVariable === 'function') {
             variable = workspace.createVariable(varName);
           }
-          if (!variable) return null;
+          
+          const varId = variable ? (variable.getId ? variable.getId() : variable.id) : varName;
 
           const setVarBlock = workspace.newBlock('variables_set');
-          setVarBlock.setFieldValue(variable.getId(), 'VAR');
+          if (typeof setVarBlock.setFieldValue === 'function') {
+            setVarBlock.setFieldValue(varId, 'VAR');
+          }
 
           const numBlock = workspace.newBlock('math_number');
-          numBlock.setFieldValue(value.toString(), 'NUM');
+          if (typeof numBlock.setFieldValue === 'function') {
+            numBlock.setFieldValue(value.toString(), 'NUM');
+          }
 
           const valInput = setVarBlock.getInput('VALUE');
           if (valInput && valInput.connection && numBlock.outputConnection) {
@@ -288,9 +293,9 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
         };
 
         // Create the sequence: target_profit -> stop_loss -> martingale_size
-        const tpBlock = createVarSetBlock('target_profit', strategy.takeProfit);
-        const slBlock = createVarSetBlock('stop_loss', strategy.stopLoss);
-        const multBlock = createVarSetBlock('martingale_size', multiplierVal);
+        const tpBlock = createValidVarSetBlock('target_profit', strategy.takeProfit);
+        const slBlock = createValidVarSetBlock('stop_loss', strategy.stopLoss);
+        const multBlock = createValidVarSetBlock('martingale_size', multiplierVal);
 
         const blocks = [tpBlock, slBlock, multBlock].filter(Boolean);
 
