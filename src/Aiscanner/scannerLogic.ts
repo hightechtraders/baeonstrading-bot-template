@@ -66,6 +66,11 @@ export class ScannerLogicManager {
     const now = Date.now();
 
     const evaluated = this.strategies.map((strat) => {
+      // If this specific strategy card is expanded/locked, preserve its current metrics and skip recalculation
+      if (activeExpandedId !== null && String(strat.id) === String(activeExpandedId)) {
+        return strat;
+      }
+
       const ticks = this.getTicksForAsset(strat.asset, ticksBuffer, symbolMap);
       const signal = evaluateStrategySignal(strat, ticks);
       const satisfiesRisk = isTradeProfitable(signal.confidence);
