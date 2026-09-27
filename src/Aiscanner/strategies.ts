@@ -134,17 +134,17 @@ export function enforceSingleHighPriority(
 }
 
 /**
- * Institutional-Grade HFT Quantitative Signal Evaluation Engine
+ * Volatility 100 (1s) Optimized HFT Quantitative Signal Evaluation Engine
  */
 export function evaluateStrategySignal(
   strategy: StrategyConfig,
   ticks: number[]
 ): { direction: 'UP' | 'DOWN' | 'HOLD'; confidence: number; score: number } {
-  if (!ticks || ticks.length < 12) {
+  if (!ticks || ticks.length < 10) {
     return { direction: 'HOLD', confidence: 50, score: 50 };
   }
 
-  const window = ticks.slice(-15);
+  const window = ticks.slice(-12);
   let netDisplacement = 0;
   let totalAbsoluteVolatility = 0;
   let weightedMomentumSum = 0;
@@ -155,7 +155,7 @@ export function evaluateStrategySignal(
     netDisplacement += delta;
     totalAbsoluteVolatility += Math.abs(delta);
 
-    const recencyWeight = i >= window.length - 5 ? 3.0 : 1.0;
+    const recencyWeight = i >= window.length - 4 ? 3.5 : 1.0;
     totalWeightAccumulator += recencyWeight;
 
     if (delta > 0) {
@@ -180,32 +180,31 @@ export function evaluateStrategySignal(
   const zScore = standardDeviation > 0 ? (currentPrice - mean) / standardDeviation : 0;
 
   const baseScore = totalWeightAccumulator > 0 ? weightedMomentumSum / totalWeightAccumulator : 50;
-  let scoreAdjustment = (netDisplacement > 0 ? efficiencyRatio : -efficiencyRatio) * 25;
+  let scoreAdjustment = (netDisplacement > 0 ? efficiencyRatio : -efficiencyRatio) * 28;
   let computedScore = Math.round(baseScore + scoreAdjustment);
 
-  if (efficiencyRatio < 0.32) {
-    computedScore = Math.round(50 + (computedScore - 50) * 0.4);
-  } else if (efficiencyRatio >= 0.55 && Math.abs(zScore) >= 0.8) {
+  if (efficiencyRatio < 0.30) {
+    computedScore = Math.round(50 + (computedScore - 50) * 0.35);
+  } else if (efficiencyRatio >= 0.50 && Math.abs(zScore) >= 0.7) {
     if (computedScore > 50) {
-      computedScore = Math.min(98, Math.round(computedScore * 1.25));
+      computedScore = Math.min(98, Math.round(computedScore * 1.28));
     } else {
-      computedScore = Math.max(2, Math.round(computedScore * 0.75));
+      computedScore = Math.max(2, Math.round(computedScore * 0.72));
     }
   }
 
   const score = Math.max(2, Math.min(98, computedScore));
 
-  // 5. Strict Institutional Execution Thresholds (Upgraded to 72 / 28 to eliminate marginal chop losses)
   let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
-  if (score >= 72 && efficiencyRatio >= 0.45 && zScore > 0.3) {
+  if (score >= 72 && efficiencyRatio >= 0.42 && zScore > 0.25) {
     direction = 'UP';
-  } else if (score <= 28 && efficiencyRatio >= 0.45 && zScore < -0.3) {
+  } else if (score <= 28 && efficiencyRatio >= 0.42 && zScore < -0.25) {
     direction = 'DOWN';
   }
 
   const structuralConviction = Math.max(score, 100 - score);
-  const confidenceMultiplier = efficiencyRatio >= 0.5 ? 1.32 : 1.10;
-  const confidence = structuralConviction >= 62 
+  const confidenceMultiplier = efficiencyRatio >= 0.48 ? 1.35 : 1.12;
+  const confidence = structuralConviction >= 60 
     ? Math.min(98, Math.round(structuralConviction * confidenceMultiplier)) 
     : structuralConviction;
 
