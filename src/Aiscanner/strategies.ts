@@ -185,24 +185,24 @@ export function evaluateStrategySignal(
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
 
-  const symbolMap: Record<string, string> = {
-    'Volatility 10': 'R_10',
-    'Volatility 25': 'R_25',
-    'Volatility 50': 'R_50',
-    'Volatility 75': 'R_75',
-    'Volatility 100': 'R_100',
-    'Volatility 100 (1s)': '1HZ100V',
-    'Volatility 25 (1s)': '1HZ25V',
-    'Volatility 10 Index': 'R_10',
-    'Volatility 25 Index': 'R_25',
-    'Volatility 50 Index': 'R_50',
-    'Volatility 75 Index': 'R_75',
-    'Volatility 100 Index': 'R_100',
-    'Volatility 100 (1s) Index': '1HZ100V',
-    'Volatility 25 (1s) Index': '1HZ25V',
+  const symbolMap: Record<string, { submarket: string; symbol: string }> = {
+    'Volatility 10': { submarket: 'random_index', symbol: 'R_10' },
+    'Volatility 25': { submarket: 'random_index', symbol: 'R_25' },
+    'Volatility 50': { submarket: 'random_index', symbol: 'R_50' },
+    'Volatility 75': { submarket: 'random_index', symbol: 'R_75' },
+    'Volatility 100': { submarket: 'random_index', symbol: 'R_100' },
+    'Volatility 100 (1s)': { submarket: 'random_index', symbol: '1HZ100V' },
+    'Volatility 25 (1s)': { submarket: 'random_index', symbol: '1HZ25V' },
+    'Volatility 10 Index': { submarket: 'random_index', symbol: 'R_10' },
+    'Volatility 25 Index': { submarket: 'random_index', symbol: 'R_25' },
+    'Volatility 50 Index': { submarket: 'random_index', symbol: 'R_50' },
+    'Volatility 75 Index': { submarket: 'random_index', symbol: 'R_75' },
+    'Volatility 100 Index': { submarket: 'random_index', symbol: 'R_100' },
+    'Volatility 100 (1s) Index': { submarket: 'random_index', symbol: '1HZ100V' },
+    'Volatility 25 (1s) Index': { submarket: 'random_index', symbol: '1HZ25V' },
   };
 
-  const symbol = symbolMap[strategy.asset] || '1HZ100V';
+  const assetConfig = symbolMap[strategy.asset] || { submarket: 'random_index', symbol: '1HZ100V' };
   const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
   const multiplierVal = strategy.martingaleMultiplier ?? 2.0;
 
@@ -211,12 +211,13 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       workspace.setEnableEvents(false);
     }
 
-    // 1. Market Symbol Update
+    // 1. Market and Submarket Symbol Update (Fixes Option Validation Mismatch)
     const marketBlock =
       workspace.getBlockById('trade_definition_market') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_market')[0]);
     if (marketBlock && typeof marketBlock.setFieldValue === 'function') {
-      marketBlock.setFieldValue(symbol, 'SYMBOL_LIST');
+      marketBlock.setFieldValue(assetConfig.submarket, 'SUBMARKET_LIST');
+      marketBlock.setFieldValue(assetConfig.symbol, 'SYMBOL_LIST');
     }
 
     // 2. Stake Amount Update in Trade Options
