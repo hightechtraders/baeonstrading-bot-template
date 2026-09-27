@@ -180,7 +180,7 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Safely updates active workspace parameters IN-PLACE without breaking layout.
+ * Safely updates active workspace parameters and builds "Run once at start" from scratch.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
@@ -241,41 +241,69 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     });
 
-    // 4. Update Initialization Variable Blocks (TP, SL, Multiplier, Stake)
-    const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
-    
-    const setNumValue = (varSetBlock: any, val: number) => {
-      if (!varSetBlock) return;
-      const valueInput = varSetBlock.getInput('VALUE');
-      if (valueInput && valueInput.connection && valueInput.connection.targetBlock()) {
-        const numBlock = valueInput.connection.targetBlock();
-        if (typeof numBlock.setFieldValue === 'function') {
-          numBlock.setFieldValue(val.toString(), 'NUM');
+    // 4. Build "Run once at start" (Initialization Stack) from Scratch
+    const rootTradeBlock =
+      workspace.getBlockById('trade_definition') ||
+      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
+
+    if (rootTradeBlock) {
+      const initInput = rootTradeBlock.getInput('INITIALIZATION');
+      if (initInput) {
+        // Clear any old initialization blocks to rebuild cleanly
+        let existingChild = initInput.connection.targetBlock();
+        while (existingChild) {
+          const nextChild = existingChild.nextConnection && existingChild.nextConnection.targetBlock();
+          if (typeof existingChild.dispose === 'function') {
+            existingChild.dispose(true);
+          }
+          existingChild = nextChild;
+        }
+
+        // Helper to create a variable set block with a numeric value
+        const createVarSetBlock = (varName: string, value: number) => {
+          let variable = workspace.getVariableMap
+            ? workspace.getVariableMap().getVariable(varName)
+            : null;
+          
+          if (!variable && typeof workspace.createVariable === 'function') {
+            variable = workspace.createVariable(varName);
+          }
+          if (!variable) return null;
+
+          const setVarBlock = workspace.newBlock('variables_set');
+          setVarBlock.setFieldValue(variable.getId(), 'VAR');
+
+          const numBlock = workspace.newBlock('math_number');
+          numBlock.setFieldValue(value.toString(), 'NUM');
+
+          const valInput = setVarBlock.getInput('VALUE');
+          if (valInput && valInput.connection && numBlock.outputConnection) {
+            valInput.connection.connect(numBlock.outputConnection);
+          }
+
+          if (typeof setVarBlock.initSvg === 'function') setVarBlock.initSvg();
+          if (typeof numBlock.initSvg === 'function') numBlock.initSvg();
+
+          return setVarBlock;
+        };
+
+        // Create the sequence: target_profit -> stop_loss -> martingale_size
+        const tpBlock = createVarSetBlock('target_profit', strategy.takeProfit);
+        const slBlock = createVarSetBlock('stop_loss', strategy.stopLoss);
+        const multBlock = createVarSetBlock('martingale_size', multiplierVal);
+
+        const blocks = [tpBlock, slBlock, multBlock].filter(Boolean);
+
+        // Chain them together into the "Run once at start" socket
+        let currentConnection = initInput.connection;
+        for (const block of blocks) {
+          if (block && currentConnection) {
+            currentConnection.connect(block.previousConnection);
+            currentConnection = block.nextConnection;
+          }
         }
       }
-    };
-
-    allBlocks.forEach((block: any) => {
-      if (block.type === 'variables_set') {
-        const varId = block.getFieldValue('VAR');
-        const varModel = workspace.getVariableById
-          ? workspace.getVariableById(varId)
-          : workspace.getVariableMap
-          ? workspace.getVariableMap().getVariableById(varId)
-          : null;
-        const varName = varModel ? varModel.name.toLowerCase() : '';
-
-        if (varName.includes('profit') || varName.includes('tp') || block.id === 'init_tp') {
-          setNumValue(block, strategy.takeProfit);
-        } else if (varName.includes('loss') || varName.includes('sl') || block.id === 'init_sl') {
-          setNumValue(block, strategy.stopLoss);
-        } else if (varName.includes('multiplier') || varName.includes('martingale') || block.id === 'init_multiplier') {
-          setNumValue(block, multiplierVal);
-        } else if (varName.includes('stake') || block.id === 'init_stake') {
-          setNumValue(block, strategy.stake);
-        }
-      }
-    });
+    }
 
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
@@ -289,7 +317,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
-    console.error('[Strategies] In-place strategy application failed:', error);
+    console.error('[Strategies] Failed to build strategy workspace:', error);
     return false;
   }
 }
