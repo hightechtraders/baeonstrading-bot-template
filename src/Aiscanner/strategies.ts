@@ -180,7 +180,7 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Safely updates active workspace parameters and builds "Run once at start" from scratch with valid inputs.
+ * Safely updates active workspace parameters and builds "Run once at start" from scratch using XML parsing.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
@@ -241,7 +241,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     });
 
-    // 4. Build "Run once at start" (Initialization Stack) from Scratch with valid connections
+    // 4. Build "Run once at start" (Initialization Stack) via XML parsing to bypass field validation mismatches
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
@@ -259,50 +259,53 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           existingChild = nextChild;
         }
 
-        // Helper to create a fully bound variable set block with a numeric value
-        const createValidVarSetBlock = (varName: string, value: number) => {
-          let variable = workspace.getVariableMap
-            ? workspace.getVariableMap().getVariable(varName)
-            : null;
-          
-          if (!variable && typeof workspace.createVariable === 'function') {
-            variable = workspace.createVariable(varName);
+        // Ensure variables exist in the workspace map first
+        const ensureVar = (name: string) => {
+          let v = workspace.getVariableMap ? workspace.getVariableMap().getVariable(name) : null;
+          if (!v && typeof workspace.createVariable === 'function') {
+            v = workspace.createVariable(name);
           }
-          
-          const varId = variable ? (variable.getId ? variable.getId() : variable.id) : varName;
-
-          const setVarBlock = workspace.newBlock('variables_set');
-          if (typeof setVarBlock.setFieldValue === 'function') {
-            setVarBlock.setFieldValue(varId, 'VAR');
-          }
-
-          const numBlock = workspace.newBlock('math_number');
-          if (typeof numBlock.setFieldValue === 'function') {
-            numBlock.setFieldValue(value.toString(), 'NUM');
-          }
-
-          const valInput = setVarBlock.getInput('VALUE');
-          if (valInput && valInput.connection && numBlock.outputConnection) {
-            valInput.connection.connect(numBlock.outputConnection);
-          }
-
-          if (typeof setVarBlock.initSvg === 'function') setVarBlock.initSvg();
-          if (typeof numBlock.initSvg === 'function') numBlock.initSvg();
-
-          return setVarBlock;
+          return v;
         };
 
-        // Create the sequence: target_profit -> stop_loss -> martingale_size
-        const tpBlock = createValidVarSetBlock('target_profit', strategy.takeProfit);
-        const slBlock = createValidVarSetBlock('stop_loss', strategy.stopLoss);
-        const multBlock = createValidVarSetBlock('martingale_size', multiplierVal);
+        const tpVar = ensureVar('target_profit');
+        const slVar = ensureVar('stop_loss');
+        const multVar = ensureVar('martingale_size');
+
+        const createBlockFromXml = (varName: string, varObj: any, val: number) => {
+          const varId = varObj ? (varObj.getId ? varObj.getId() : varObj.id) : varName;
+          const xmlText = `
+            <block type="variables_set">
+              <field name="VAR" id="${varId}">${varName}</field>
+              <value name="VALUE">
+                <block type="math_number">
+                  <field name="NUM">${val}</field>
+                </block>
+              </value>
+            </block>
+          `.trim();
+
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+          const blockElement = xmlDoc.documentElement;
+
+          if (window.Blockly && window.Blockly.Xml && typeof window.Blockly.Xml.domToBlock === 'function') {
+            return window.Blockly.Xml.domToBlock(blockElement, workspace);
+          }
+          return null;
+        };
+
+        const tpBlock = createBlockFromXml('target_profit', tpVar, strategy.takeProfit);
+        const slBlock = createBlockFromXml('stop_loss', slVar, strategy.stopLoss);
+        const multBlock = createBlockFromXml('martingale_size', multVar, multiplierVal);
 
         const blocks = [tpBlock, slBlock, multBlock].filter(Boolean);
 
-        // Chain them together into the "Run once at start" socket
+        // Chain them into the initialization socket
         let currentConnection = initInput.connection;
         for (const block of blocks) {
           if (block && currentConnection) {
+            if (typeof block.initSvg === 'function') block.initSvg();
             currentConnection.connect(block.previousConnection);
             currentConnection = block.nextConnection;
           }
