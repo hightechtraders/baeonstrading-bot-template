@@ -180,7 +180,7 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Safely updates active workspace parameters and builds "Run once at start" from scratch using XML parsing.
+ * Automatically updates existing fields (Market, Stake, Purchase, etc.) and builds the "Run once at start" stack.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
@@ -211,7 +211,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       workspace.setEnableEvents(false);
     }
 
-    // 1. Market and Submarket Symbol Update (Fixes Option Validation Mismatch)
+    // 1. Automatically update Market and Submarket fields
     const marketBlock =
       workspace.getBlockById('trade_definition_market') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_market')[0]);
@@ -220,39 +220,21 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       marketBlock.setFieldValue(assetConfig.symbol, 'SYMBOL_LIST');
     }
 
-    // 2. Safe Stake Amount Injection via XML block creation (Fixes "Invalid input" error)
+    // 2. Automatically update Stake Amount field in-place
     const tradeOptionsBlock =
       workspace.getBlockById('trade_definition_tradeoptions') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_tradeoptions')[0]);
-    
     if (tradeOptionsBlock) {
       const amountInput = tradeOptionsBlock.getInput('AMOUNT');
-      if (amountInput) {
-        const oldTarget = amountInput.connection && amountInput.connection.targetBlock();
-        if (oldTarget && typeof oldTarget.dispose === 'function') {
-          oldTarget.dispose(true);
-        }
-
-        const stakeXmlText = `
-          <block type="math_number">
-            <field name="NUM">${strategy.stake}</field>
-          </block>
-        `.trim();
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(stakeXmlText, 'text/xml');
-        const blockElement = xmlDoc.documentElement;
-
-        if (window.Blockly && window.Blockly.Xml && typeof window.Blockly.Xml.domToBlock === 'function') {
-          const newStakeBlock = window.Blockly.Xml.domToBlock(blockElement, workspace);
-          if (newStakeBlock) {
-            if (typeof newStakeBlock.initSvg === 'function') newStakeBlock.initSvg();
-            amountInput.connection.connect(newStakeBlock.outputConnection);
-          }
+      if (amountInput && amountInput.connection) {
+        const targetBlock = amountInput.connection.targetBlock();
+        if (targetBlock && typeof targetBlock.setFieldValue === 'function') {
+          targetBlock.setFieldValue(strategy.stake.toString(), 'NUM');
         }
       }
     }
 
-    // 3. Purchase Condition Update
+    // 3. Automatically update Purchase Condition (Rise / Fall)
     const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
     purchaseBlocks.forEach((pBlock: any) => {
       if (typeof pBlock.setFieldValue === 'function') {
@@ -260,7 +242,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     });
 
-    // 4. Build "Run once at start" (Initialization Stack) via XML parsing to bypass field validation mismatches
+    // 4. Create and populate the "Run once at start" initialization stack
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
@@ -268,7 +250,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (rootTradeBlock) {
       const initInput = rootTradeBlock.getInput('INITIALIZATION');
       if (initInput) {
-        // Clear any old initialization blocks to rebuild cleanly
+        // Clear existing stack to create blank boxes fresh
         let existingChild = initInput.connection.targetBlock();
         while (existingChild) {
           const nextChild = existingChild.nextConnection && existingChild.nextConnection.targetBlock();
@@ -278,7 +260,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           existingChild = nextChild;
         }
 
-        // Ensure variables exist in the workspace map first
         const ensureVar = (name: string) => {
           let v = workspace.getVariableMap ? workspace.getVariableMap().getVariable(name) : null;
           if (!v && typeof workspace.createVariable === 'function') {
