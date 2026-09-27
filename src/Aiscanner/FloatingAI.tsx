@@ -222,7 +222,9 @@ export const FloatingAI = () => {
                     <span className="rank-badge">#{rankNum}</span>
                     <div className="card-main-info">
                       <div className="card-title-row">
-                        <span className="strat-title">{title}</span>
+                        <span className="strat-title">
+                          {title} {isExpanded && '🔒 [LOCKED]'}
+                        </span>
                         <div className="tags-group">
                           <span className="tag volatility">{volatility}</span>
                           <span className="tag contract">{contractType}</span>
