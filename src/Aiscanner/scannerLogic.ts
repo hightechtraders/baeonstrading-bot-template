@@ -1,5 +1,5 @@
+// src/Aiscanner/scannerLogic.ts
 import { StrategyConfig, enforceSingleHighPriority, evaluateStrategySignal, applyStrategyToWorkspace } from './strategies';
-import { scannerBridge } from './scannerBridge';
 import { ASSET_TO_SYMBOL, resolveSymbol } from './useDerivTicks';
 
 export const isTradeProfitable = (
@@ -50,11 +50,6 @@ export class ScannerLogicManager {
     const mappedSymbol = symbolMap[asset] || symbolMap[cleanAsset] || symbolMap[cleanAssetUpper];
     if (mappedSymbol && ticksBuffer[mappedSymbol]?.length) {
       return ticksBuffer[mappedSymbol];
-    }
-
-    const rawSymbol = ASSET_TO_SYMBOL[asset] || ASSET_TO_SYMBOL[cleanAsset] || ASSET_TO_SYMBOL[cleanAssetUpper];
-    if (rawSymbol && ticksBuffer[rawSymbol]?.length) {
-      return ticksBuffer[rawSymbol];
     }
 
     return [];
@@ -119,10 +114,6 @@ export class ScannerLogicManager {
     return [...this.strategies];
   }
 
-  public setHighPriority(strategyId: string): StrategyConfig[] {
-    return this.setStrategies(this.strategies, strategyId);
-  }
-
   public updateStrategyParams(
     strategyId: string,
     updates: Partial<Pick<StrategyConfig, 'stake' | 'stopLoss' | 'takeProfit'>>
@@ -146,18 +137,10 @@ export class ScannerLogicManager {
     }
 
     if (strategy.priority !== 'HIGH') {
-      console.error(`[ScannerLogic] Strategy "${strategy.name}" is not HIGH priority. Blocked.`);
+      console.error(`[ScannerLogic] Strategy "${strategy.name}" is not HIGH priority.`);
       return false;
     }
 
-    if (strategy.confidence !== undefined && !isTradeProfitable(strategy.confidence)) {
-      console.warn(
-        `[ScannerLogic] Trade loading skipped: Strategy "${strategy.name}" confidence (${strategy.confidence}%) is below break-even threshold.`
-      );
-      return false;
-    }
-
-    // Locate active global Blockly workspace instance from Deriv DBot template
     const activeWorkspace =
       (window as any).Blockly?.getMainWorkspace?.() ||
       (window as any).DBot?.workspace ||
@@ -168,7 +151,6 @@ export class ScannerLogicManager {
       return false;
     }
 
-    // Apply the strategy parameters directly into the workspace canvas
     return applyStrategyToWorkspace(activeWorkspace, strategy);
   }
 
