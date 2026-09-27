@@ -185,7 +185,6 @@ export function evaluateStrategySignal(
 
   const score = Math.max(2, Math.min(98, computedScore));
 
-  // Fluid execution gates to keep the bot active and prevent HOLD-stalling
   let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
   if (score >= 62 && efficiencyRatio >= 0.32 && zScore > 0.15) {
     direction = 'UP';
@@ -193,7 +192,6 @@ export function evaluateStrategySignal(
     direction = 'DOWN';
   }
 
-  // Dynamic confidence scaling that safely peaks at 98% during clean structural breakouts
   const structuralConviction = Math.max(score, 100 - score);
   const confidenceMultiplier = efficiencyRatio >= 0.48 ? 1.38 : 1.10;
   const confidence = structuralConviction >= 60
@@ -204,24 +202,51 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Leaves existing canvas dropdowns untouched and builds ONLY the 
- * "Run once at start" initialization stack (Target Profit, Stop Loss, Martingale Size).
+ * Applies strategy parameters to the workspace:
+ * 1. Pre-populates Purchase Conditions (Rise/Fall)
+ * 2. Pre-populates Trade parameters / Stake
+ * 3. Builds the "Run once at start" stack cleanly from scratch
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
 
   const multiplierVal = strategy.martingaleMultiplier ?? 2.0;
+  const targetDirection = strategy.direction === 'DOWN' ? 'Fall' : 'Rise';
+  const stakeVal = strategy.stake ?? 1;
 
   try {
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(false);
     }
 
+    // 1. Pre-populate Purchase Condition Block (Rise/Fall)
+    const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
+    if (purchaseBlocks.length > 0) {
+      const purchaseBlock = purchaseBlocks[0];
+      if (purchaseBlock && typeof purchaseBlock.getField === 'function') {
+        const field = purchaseBlock.getField('PURCHASE_LIST') || purchaseBlock.getField('PURCHASE');
+        if (field && typeof field.setValue === 'function') {
+          field.setValue(targetDirection);
+        }
+      }
+    }
+
+    // 2. Pre-populate Stake / Trade Definition Parameters if available on existing fields
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
 
     if (rootTradeBlock) {
+      // Check if trade definition or its child fields have stake/amount inputs
+      if (typeof rootTradeBlock.setFieldValue === 'function') {
+        try {
+          rootTradeBlock.setFieldValue(String(stakeVal), 'AMOUNT');
+        } catch (e) {
+          // Field might use a different identifier depending on template version
+        }
+      }
+
+      // 3. Build "Run once at start" stack exactly as before (untouched core creation logic)
       const initInput = rootTradeBlock.getInput('INITIALIZATION');
       if (initInput) {
         let existingChild = initInput.connection.targetBlock();
@@ -265,7 +290,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           if (window.Blockly && window.Blockly.Xml && typeof window.Blockly.Xml.domToBlock === 'function') {
             return window.Blockly.Xml.domToBlock(doc.documentElement, workspace);
           }
-          return null;
+        return null;
         };
 
         const tpBlock = createBlockFromXml(buildVarSetXml(vTp, 'target_profit', strategy.takeProfit));
@@ -299,7 +324,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
-    console.error('[Strategies] Failed to build run-once variables:', error);
+    console.error('[Strategies] Failed to build run-once variables and sync trade params:', error);
     return false;
   }
 }
