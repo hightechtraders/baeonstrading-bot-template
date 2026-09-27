@@ -24,7 +24,6 @@ export const FloatingAI = () => {
   const strategiesListRef = useRef(strategiesList);
   strategiesListRef.current = strategiesList;
 
-  // 1. Trigger initial 2-second "SCANNING..." state when opening modal
   useEffect(() => {
     if (isOpen) {
       setIsScanning(true);
@@ -35,7 +34,6 @@ export const FloatingAI = () => {
     }
   }, [isOpen]);
 
-  // 2. Process incoming live tick buffer (Simulation vs Real WS)
   useEffect(() => {
     let activeBuffer: Record<string, number[]> = {};
 
@@ -111,13 +109,13 @@ export const FloatingAI = () => {
   const handleLoadStrategy = (strat: StrategyConfig, e: React.MouseEvent) => {
     e.stopPropagation();
     if (strat.priority !== 'HIGH') {
-      alert('Only the active Volatility 100 (1s) high-priority strategy can be loaded into Blockly.');
+      alert('Only the active high-priority strategy can be loaded into Blockly.');
       return;
     }
 
     const success = scannerLogic.loadHighStrategyToWorkspace(strat.id);
     if (success) {
-      alert('Successfully loaded Volatility 100 (1s) Engine with Martingale Recovery & Risk Limits!');
+      alert('Successfully loaded strategy parameters & Martingale into Blockly canvas!');
       setIsOpen(false);
     } else {
       alert('Failed to load strategy. Make sure the Deriv Bot workspace is open.');
@@ -154,7 +152,7 @@ export const FloatingAI = () => {
         <div className="scanner-modal">
           <div className="scanner-header">
             <div className="header-title">
-              <h3>AI Engine Scanner (Vol 100 1s Active)</h3>
+              <h3>AI Engine Scanner (Active Market)</h3>
               <span className="badge-counter">Primary Engine</span>
             </div>
             <button className="close-btn" onClick={() => setIsOpen(false)}>
@@ -293,8 +291,6 @@ export const FloatingAI = () => {
                           />
                         </div>
                       </div>
-
-                      
 
                       <button
                         className="btn-primary"
