@@ -137,7 +137,7 @@ export function evaluateStrategySignal(
   strategy: StrategyConfig,
   ticks: number[]
 ): { direction: 'UP' | 'DOWN' | 'HOLD'; confidence: number; score: number } {
-  if (!ticks || ticks.length < 5) {
+  if (!ticks || ticks.length < 8) {
     return { direction: 'HOLD', confidence: 50, score: 50 };
   }
 
@@ -153,19 +153,25 @@ export function evaluateStrategySignal(
   const t1 = ticks[ticks.length - 1];
   const t2 = ticks[ticks.length - 2];
   const t3 = ticks[ticks.length - 3];
+  const t4 = ticks[ticks.length - 4];
 
-  if (t1 > t2 && t2 > t3) {
-    rawScore += 8;
-  } else if (t1 < t2 && t2 < t3) {
-    rawScore -= 8;
+  const isStrongUp = t1 > t2 && t2 > t3 && t3 > t4;
+  const isStrongDown = t1 < t2 && t2 < t3 && t3 < t4;
+
+  if (isStrongUp) {
+    rawScore += 18;
+  } else if (isStrongDown) {
+    rawScore -= 18;
+  } else {
+    rawScore = 50 + (rawScore - 50) * 0.4;
   }
 
-  const score = Math.max(10, Math.min(98, Math.round(rawScore)));
+  const score = Math.max(5, Math.min(95, Math.round(rawScore)));
 
   let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
-  if (score >= 54) {
+  if (score >= 65) {
     direction = 'UP';
-  } else if (score <= 46) {
+  } else if (score <= 35) {
     direction = 'DOWN';
   }
 
