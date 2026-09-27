@@ -1,3 +1,4 @@
+// src/Aiscanner/useDerivTicks.ts
 import { useState, useEffect } from 'react';
 import { scannerBridge } from './scannerBridge';
 
@@ -30,10 +31,8 @@ export function useDerivTicks(_assets?: string[]) {
   const [ticksBuffer, setTicksBuffer] = useState<Record<string, number[]>>({});
 
   useEffect(() => {
-    // 1. Initialize WebSocket bridge & automatic tick subscriptions
     scannerBridge.init();
 
-    // 2. Stream tick updates into React component state
     const unsubscribe = scannerBridge.subscribe((buffer) => {
       setTicksBuffer({ ...buffer });
     });
