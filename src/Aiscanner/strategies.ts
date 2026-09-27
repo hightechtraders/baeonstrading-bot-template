@@ -160,15 +160,16 @@ export function evaluateStrategySignal(
   const rawScore = totalWeight > 0 ? weightedScoreSum / totalWeight : 50;
   const score = Math.max(5, Math.min(95, Math.round(rawScore)));
 
+  // Balanced threshold of 62 to ensure signals fire reliably without excessive hold times
   let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
-  if (score >= 70) {
+  if (score >= 62) {
     direction = 'UP';
-  } else if (score <= 30) {
+  } else if (score <= 38) {
     direction = 'DOWN';
   }
 
   const baseConfidence = Math.max(score, 100 - score);
-  const confidence = baseConfidence >= 70 ? Math.min(95, baseConfidence + 10) : baseConfidence;
+  const confidence = baseConfidence >= 62 ? Math.min(95, baseConfidence + 8) : baseConfidence;
 
   return { direction, confidence, score };
 }
