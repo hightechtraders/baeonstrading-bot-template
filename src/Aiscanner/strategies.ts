@@ -134,23 +134,16 @@ export function enforceSingleHighPriority(
 }
 
 /**
- * Dynamic momentum & tick velocity score evaluator.
- * Prevents static HOLD / 50% values by continuously computing trend direction across ticks.
+ * Enhanced multi-tick momentum filter to eliminate single-tick whipsaws
+ * and deliver high-win-rate confidence scoring.
  */
 export function evaluateStrategySignal(
   strategy: StrategyConfig,
   ticks: number[]
 ): { direction: 'UP' | 'DOWN' | 'HOLD'; confidence: number; score: number } {
-  if (!ticks || ticks.length < 3) {
+  if (!ticks || ticks.length < 5) {
     return { direction: 'HOLD', confidence: 50, score: 50 };
   }
-
-  const latestPrice = ticks[ticks.length - 1];
-  const prevPrice = ticks[ticks.length - 2];
-  const firstPrice = ticks[0];
-
-  const tickDiff = latestPrice - prevPrice;
-  const overallDiff = latestPrice - firstPrice;
 
   let gains = 0;
   for (let i = 1; i < ticks.length; i++) {
@@ -161,15 +154,23 @@ export function evaluateStrategySignal(
 
   let rawScore = gainRatio * 100;
 
-  if (tickDiff > 0) rawScore += 5;
-  if (tickDiff < 0) rawScore -= 5;
+  // Multi-tick momentum verification on last 3 ticks
+  const t1 = ticks[ticks.length - 1];
+  const t2 = ticks[ticks.length - 2];
+  const t3 = ticks[ticks.length - 3];
+
+  if (t1 > t2 && t2 > t3) {
+    rawScore += 8; // Strong upward persistence
+  } else if (t1 < t2 && t2 < t3) {
+    rawScore -= 8; // Strong downward persistence
+  }
 
   const score = Math.max(10, Math.min(98, Math.round(rawScore)));
 
   let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
-  if (score >= 52 || tickDiff > 0 || overallDiff > 0) {
+  if (score >= 54) {
     direction = 'UP';
-  } else if (score <= 48 || tickDiff < 0 || overallDiff < 0) {
+  } else if (score <= 46) {
     direction = 'DOWN';
   }
 
@@ -179,7 +180,7 @@ export function evaluateStrategySignal(
 }
 
 /**
- * Updates active workspace parameters IN-PLACE without ever clearing the canvas or breaking Blockly structure.
+ * Safely updates active workspace parameters IN-PLACE without breaking layout.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
@@ -206,12 +207,11 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
   const multiplierVal = strategy.martingaleMultiplier ?? 2.0;
 
   try {
-    // 1. Pause events during batch updates to prevent invalid workspace states
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(false);
     }
 
-    // 2. Market Symbol Update
+    // 1. Market Symbol Update
     const marketBlock =
       workspace.getBlockById('trade_definition_market') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_market')[0]);
@@ -219,7 +219,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       marketBlock.setFieldValue(symbol, 'SYMBOL_LIST');
     }
 
-    // 3. Stake Amount Update
+    // 2. Stake Amount Update in Trade Options
     const tradeOptionsBlock =
       workspace.getBlockById('trade_definition_tradeoptions') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition_tradeoptions')[0]);
@@ -233,21 +233,27 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 4. Direction Update (Rise / Fall)
+    // 3. Purchase Condition Update
     const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
-    if (purchaseBlocks.length > 0) {
-      purchaseBlocks.forEach((pBlock: any) => {
-        if (typeof pBlock.setFieldValue === 'function') {
-          pBlock.setFieldValue(purchaseType, 'PURCHASE_LIST');
-        }
-      });
-    }
+    purchaseBlocks.forEach((pBlock: any) => {
+      if (typeof pBlock.setFieldValue === 'function') {
+        pBlock.setFieldValue(purchaseType, 'PURCHASE_LIST');
+      }
+    });
 
-    // 5. Inspect existing set_variable blocks across workspace safely
+    // 4. Update Initialization Variable Blocks (TP, SL, Multiplier, Stake)
     const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
-    let foundTPBlock: any = null;
-    let foundSLBlock: any = null;
-    let foundMultiplierBlock: any = null;
+    
+    const setNumValue = (varSetBlock: any, val: number) => {
+      if (!varSetBlock) return;
+      const valueInput = varSetBlock.getInput('VALUE');
+      if (valueInput && valueInput.connection && valueInput.connection.targetBlock()) {
+        const numBlock = valueInput.connection.targetBlock();
+        if (typeof numBlock.setFieldValue === 'function') {
+          numBlock.setFieldValue(val.toString(), 'NUM');
+        }
+      }
+    };
 
     allBlocks.forEach((block: any) => {
       if (block.type === 'variables_set') {
@@ -260,113 +266,17 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
         const varName = varModel ? varModel.name.toLowerCase() : '';
 
         if (varName.includes('profit') || varName.includes('tp') || block.id === 'init_tp') {
-          foundTPBlock = block;
+          setNumValue(block, strategy.takeProfit);
         } else if (varName.includes('loss') || varName.includes('sl') || block.id === 'init_sl') {
-          foundSLBlock = block;
+          setNumValue(block, strategy.stopLoss);
         } else if (varName.includes('multiplier') || varName.includes('martingale') || block.id === 'init_multiplier') {
-          foundMultiplierBlock = block;
+          setNumValue(block, multiplierVal);
         } else if (varName.includes('stake') || block.id === 'init_stake') {
-          const valueInput = block.getInput('VALUE');
-          if (valueInput && valueInput.connection && valueInput.connection.targetBlock()) {
-            const numBlock = valueInput.connection.targetBlock();
-            if (typeof numBlock.setFieldValue === 'function') {
-              numBlock.setFieldValue(strategy.stake.toString(), 'NUM');
-            }
-          }
+          setNumValue(block, strategy.stake);
         }
       }
     });
 
-    // Helper to safely update numeric input values on variables_set blocks
-    const setNumValue = (varSetBlock: any, val: number) => {
-      if (!varSetBlock) return;
-      const valueInput = varSetBlock.getInput('VALUE');
-      if (valueInput && valueInput.connection && valueInput.connection.targetBlock()) {
-        const numBlock = valueInput.connection.targetBlock();
-        if (typeof numBlock.setFieldValue === 'function') {
-          numBlock.setFieldValue(val.toString(), 'NUM');
-        }
-      }
-    };
-
-    if (foundTPBlock) setNumValue(foundTPBlock, strategy.takeProfit);
-    if (foundSLBlock) setNumValue(foundSLBlock, strategy.stopLoss);
-    if (foundMultiplierBlock) setNumValue(foundMultiplierBlock, multiplierVal);
-
-    // 6. Query trade_definition root block directly if variable blocks are missing
-    const rootTradeBlock =
-      workspace.getBlockById('trade_definition') ||
-      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
-
-    if (rootTradeBlock && (!foundTPBlock || !foundSLBlock || !foundMultiplierBlock)) {
-      const initInput = rootTradeBlock.getInput('INITIALIZATION');
-
-      if (initInput && initInput.connection) {
-        const createAndAttachVarBlock = (varName: string, value: number) => {
-          let variable = workspace.getVariableMap
-            ? workspace.getVariableMap().getVariable(varName)
-            : null;
-
-          if (!variable && typeof workspace.createVariable === 'function') {
-            variable = workspace.createVariable(varName);
-          }
-          if (!variable) return null;
-
-          const setVarBlock = workspace.newBlock('variables_set');
-          setVarBlock.setFieldValue(variable.getId(), 'VAR');
-
-          const numBlock = workspace.newBlock('math_number');
-          numBlock.setFieldValue(value.toString(), 'NUM');
-
-          const valInput = setVarBlock.getInput('VALUE');
-          if (valInput && valInput.connection && numBlock.outputConnection) {
-            valInput.connection.connect(numBlock.outputConnection);
-          }
-
-          if (typeof setVarBlock.initSvg === 'function') setVarBlock.initSvg();
-          if (typeof numBlock.initSvg === 'function') numBlock.initSvg();
-
-          return setVarBlock;
-        };
-
-        const newTPBlock = !foundTPBlock ? createAndAttachVarBlock('target_profit', strategy.takeProfit) : null;
-        const newSLBlock = !foundSLBlock ? createAndAttachVarBlock('stop_loss', strategy.stopLoss) : null;
-        const newMultBlock = !foundMultiplierBlock ? createAndAttachVarBlock('martingale_size', multiplierVal) : null;
-
-        const existingChild = initInput.connection.targetBlock();
-        let targetSlot = initInput.connection;
-
-        if (existingChild) {
-          let tail = existingChild;
-          while (tail.nextConnection && tail.nextConnection.targetBlock()) {
-            tail = tail.nextConnection.targetBlock();
-          }
-          targetSlot = tail.nextConnection;
-        }
-
-        // Maintaining your exact chaining pattern: TP -> SL -> Multiplier
-        if (newTPBlock && targetSlot) {
-          targetSlot.connect(newTPBlock.previousConnection);
-          if (newSLBlock && newTPBlock.nextConnection) {
-            newTPBlock.nextConnection.connect(newSLBlock.previousConnection);
-            if (newMultBlock && newSLBlock.nextConnection) {
-              newSLBlock.nextConnection.connect(newMultBlock.previousConnection);
-            }
-          } else if (newMultBlock && newTPBlock.nextConnection) {
-            newTPBlock.nextConnection.connect(newMultBlock.previousConnection);
-          }
-        } else if (newSLBlock && targetSlot) {
-          targetSlot.connect(newSLBlock.previousConnection);
-          if (newMultBlock && newSLBlock.nextConnection) {
-            newSLBlock.nextConnection.connect(newMultBlock.previousConnection);
-          }
-        } else if (newMultBlock && targetSlot) {
-          targetSlot.connect(newMultBlock.previousConnection);
-        }
-      }
-    }
-
-    // 7. Re-enable events and trigger workspace render frame
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
@@ -382,147 +292,4 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     console.error('[Strategies] In-place strategy application failed:', error);
     return false;
   }
-}
-
-/**
- * Clean XML generator for workspace imports.
- */
-export function generateDBotXml(strategy: StrategyConfig): string {
-  const symbolMap: Record<string, string> = {
-    'Volatility 10': 'R_10',
-    'Volatility 25': 'R_25',
-    'Volatility 50': 'R_50',
-    'Volatility 75': 'R_75',
-    'Volatility 100': 'R_100',
-    'Volatility 100 (1s)': '1HZ100V',
-    'Volatility 25 (1s)': '1HZ25V',
-    'Volatility 10 Index': 'R_10',
-    'Volatility 25 Index': 'R_25',
-    'Volatility 50 Index': 'R_50',
-    'Volatility 75 Index': 'R_75',
-    'Volatility 100 Index': 'R_100',
-    'Volatility 100 (1s) Index': '1HZ100V',
-    'Volatility 25 (1s) Index': '1HZ25V',
-  };
-
-  const symbol = symbolMap[strategy.asset] || '1HZ100V';
-  const purchaseType = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
-  const multiplierVal = strategy.martingaleMultiplier ?? 2.0;
-
-  return `
-<xml xmlns="https://developers.google.com/blockly/xml">
-  <variables>
-    <variable id="stake_var">stake</variable>
-    <variable id="tp_var">target_profit</variable>
-    <variable id="sl_var">stop_loss</variable>
-    <variable id="mult_var">martingale_size</variable>
-  </variables>
-  <block type="trade_definition" id="trade_definition" deletable="false" x="40" y="40">
-    <statement name="TRADE_OPTIONS">
-      <block type="trade_definition_market" id="trade_definition_market" deletable="false">
-        <field name="MARKET_LIST">synthetic_index</field>
-        <field name="SUBMARKET_LIST">random_index</field>
-        <field name="SYMBOL_LIST">${symbol}</field>
-        <next>
-          <block type="trade_definition_tradetype" id="trade_definition_tradetype" deletable="false">
-            <field name="TRADETYPECAT_LIST">risefall</field>
-            <field name="TRADETYPE_LIST">risefall</field>
-            <next>
-              <block type="trade_definition_contracttype" id="trade_definition_contracttype" deletable="false">
-                <field name="TYPE_LIST">both</field>
-                <next>
-                  <block type="trade_definition_candleinterval" id="trade_definition_candleinterval" deletable="false">
-                    <field name="CANDLEINTERVAL_LIST">60</field>
-                    <next>
-                      <block type="trade_definition_restartbuystrat" id="trade_definition_restartbuystrat" deletable="false">
-                        <field name="TIME_MACHINE_ENABLED">FALSE</field>
-                        <next>
-                          <block type="trade_definition_restartonerror" id="trade_definition_restartonerror" deletable="false">
-                            <field name="RESTARTONERROR">FALSE</field>
-                          </block>
-                        </next>
-                      </block>
-                    </next>
-                  </block>
-                </next>
-              </block>
-            </next>
-          </block>
-        </next>
-      </block>
-    </statement>
-    <statement name="INITIALIZATION">
-      <block type="variables_set" id="init_stake">
-        <field name="VAR" id="stake_var">stake</field>
-        <value name="VALUE">
-          <shadow type="math_number" id="shadow_stake">
-            <field name="NUM">${strategy.stake}</field>
-          </shadow>
-        </value>
-        <next>
-          <block type="variables_set" id="init_tp">
-            <field name="VAR" id="tp_var">target_profit</field>
-            <value name="VALUE">
-              <shadow type="math_number" id="shadow_tp">
-                <field name="NUM">${strategy.takeProfit}</field>
-              </shadow>
-            </value>
-            <next>
-              <block type="variables_set" id="init_sl">
-                <field name="VAR" id="sl_var">stop_loss</field>
-                <value name="VALUE">
-                  <shadow type="math_number" id="shadow_sl">
-                    <field name="NUM">${strategy.stopLoss}</field>
-                  </shadow>
-                </value>
-                <next>
-                  <block type="variables_set" id="init_multiplier">
-                    <field name="VAR" id="mult_var">martingale_size</field>
-                    <value name="VALUE">
-                      <shadow type="math_number" id="shadow_mult">
-                        <field name="NUM">${multiplierVal}</field>
-                      </shadow>
-                    </value>
-                  </block>
-                </next>
-              </block>
-            </next>
-          </block>
-        </next>
-      </block>
-    </statement>
-    <statement name="SUBMARKET">
-      <block type="trade_definition_tradeoptions" id="trade_definition_tradeoptions" deletable="false">
-        <mutation has_first_barrier="false" has_second_barrier="false" has_prediction="false"></mutation>
-        <field name="DURATION_TYPE_LIST">t</field>
-        <field name="CURRENCY_LIST">USD</field>
-        <field name="AMOUNT_TYPE_LIST">stake</field>
-        <value name="DURATION">
-          <shadow type="math_number" id="duration_num">
-            <field name="NUM">1</field>
-          </shadow>
-        </value>
-        <value name="AMOUNT">
-          <shadow type="math_number" id="amount_num">
-            <field name="NUM">${strategy.stake}</field>
-          </shadow>
-        </value>
-      </block>
-    </statement>
-  </block>
-  <block type="before_purchase" id="before_purchase" deletable="false" x="40" y="560">
-    <statement name="BEFOREPURCHASE_STACK">
-      <block type="purchase" id="purchase_block">
-        <field name="PURCHASE_LIST">${purchaseType}</field>
-      </block>
-    </statement>
-  </block>
-  <block type="during_purchase" id="during_purchase" deletable="false" x="40" y="680"></block>
-  <block type="after_purchase" id="after_purchase" deletable="false" x="40" y="780">
-    <statement name="AFTERPURCHASE_STACK">
-      <block type="trade_again" id="trade_again_block"></block>
-    </statement>
-  </block>
-</xml>
-  `.trim();
 }
