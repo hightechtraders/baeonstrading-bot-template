@@ -204,8 +204,8 @@ export function evaluateStrategySignal(
 /**
  * Applies strategy parameters to the workspace:
  * 1. Pre-populates Purchase Conditions (Rise/Fall)
- * 2. Pre-populates Trade parameters / Stake
- * 3. Builds the "Run once at start" stack cleanly from scratch
+ * 2. Safely pre-populates existing trade options fields (Stake / Duration)
+ * 3. Recreates the "Run once at start" stack cleanly from scratch
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
@@ -219,7 +219,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       workspace.setEnableEvents(false);
     }
 
-    // 1. Pre-populate Purchase Condition Block (Rise/Fall)
+    // 1. Safely update existing Purchase Condition Block (Rise/Fall)
     const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
     if (purchaseBlocks.length > 0) {
       const purchaseBlock = purchaseBlocks[0];
@@ -231,22 +231,28 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 2. Pre-populate Stake / Trade Definition Parameters if available on existing fields
+    // 2. Locate Trade Definition & safely pre-populate existing trade parameters (Stake / Amount)
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
 
     if (rootTradeBlock) {
-      // Check if trade definition or its child fields have stake/amount inputs
-      if (typeof rootTradeBlock.setFieldValue === 'function') {
-        try {
-          rootTradeBlock.setFieldValue(String(stakeVal), 'AMOUNT');
-        } catch (e) {
-          // Field might use a different identifier depending on template version
+      // Safely update field values on trade options blocks or descendants if they exist
+      const allDescendants = rootTradeBlock.getDescendants ? rootTradeBlock.getDescendants(false) : [];
+      for (const block of allDescendants) {
+        if (block.type === 'trade_options' || block.type === 'market_trade') {
+          try {
+            if (typeof block.setFieldValue === 'function') {
+              block.setFieldValue(String(stakeVal), 'AMOUNT');
+              block.setFieldValue(String(stakeVal), 'STAKE');
+            }
+          } catch (err) {
+            // Safe fallback if fields vary
+          }
         }
       }
 
-      // 3. Build "Run once at start" stack exactly as before (untouched core creation logic)
+      // 3. Recreate the "Run once at start" stack exactly as before (untouched core creation logic)
       const initInput = rootTradeBlock.getInput('INITIALIZATION');
       if (initInput) {
         let existingChild = initInput.connection.targetBlock();
@@ -290,7 +296,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           if (window.Blockly && window.Blockly.Xml && typeof window.Blockly.Xml.domToBlock === 'function') {
             return window.Blockly.Xml.domToBlock(doc.documentElement, workspace);
           }
-        return null;
+          return null;
         };
 
         const tpBlock = createBlockFromXml(buildVarSetXml(vTp, 'target_profit', strategy.takeProfit));
