@@ -1,3 +1,4 @@
+// src/Aiscanner/scannerBridge.ts
 import { ASSET_TO_SYMBOL } from './useDerivTicks';
 
 export class ScannerBridge {
@@ -74,7 +75,7 @@ export class ScannerBridge {
           }
         }
       } catch (e) {
-        // Non-JSON frame
+        // Ignored non-JSON frames
       }
     });
   }
@@ -116,10 +117,6 @@ export class ScannerBridge {
 
   public getTicksBuffer() {
     return this.ticksBuffer;
-  }
-
-  public loadStrategyToBot(strategy: any): boolean {
-    return true;
   }
 }
 
