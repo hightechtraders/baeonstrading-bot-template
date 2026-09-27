@@ -140,7 +140,6 @@ export function evaluateStrategySignal(
   strategy: StrategyConfig,
   ticks: number[]
 ): { direction: 'UP' | 'DOWN' | 'HOLD'; confidence: number; score: number } {
-  // Ensure sufficient tick depth for matrix calculation
   if (!ticks || ticks.length < 12) {
     return { direction: 'HOLD', confidence: 50, score: 50 };
   }
@@ -151,13 +150,11 @@ export function evaluateStrategySignal(
   let weightedMomentumSum = 0;
   let totalWeightAccumulator = 0;
 
-  // 1. Calculate true vector displacement and absolute path volatility
   for (let i = 1; i < window.length; i++) {
     const delta = window[i] - window[i - 1];
     netDisplacement += delta;
     totalAbsoluteVolatility += Math.abs(delta);
 
-    // Exponential recency weighting (heavier bias on the last 5 ticks)
     const recencyWeight = i >= window.length - 5 ? 3.0 : 1.0;
     totalWeightAccumulator += recencyWeight;
 
@@ -174,26 +171,21 @@ export function evaluateStrategySignal(
     return { direction: 'HOLD', confidence: 50, score: 50 };
   }
 
-  // 2. Efficiency Ratio (Hurst/Trend Quality proxy: 0.0 = pure noise/chop, 1.0 = linear expansion)
   const efficiencyRatio = Math.abs(netDisplacement) / totalAbsoluteVolatility;
 
-  // 3. Statistical Z-Score Deviation (Volatility Expansion Check)
   const mean = window.reduce((acc, val) => acc + val, 0) / window.length;
   const variance = window.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / window.length;
   const standardDeviation = Math.sqrt(variance);
   const currentPrice = window[window.length - 1];
   const zScore = standardDeviation > 0 ? (currentPrice - mean) / standardDeviation : 0;
 
-  // 4. Raw Quantitative Score Matrix
   const baseScore = totalWeightAccumulator > 0 ? weightedMomentumSum / totalWeightAccumulator : 50;
   let scoreAdjustment = (netDisplacement > 0 ? efficiencyRatio : -efficiencyRatio) * 25;
   let computedScore = Math.round(baseScore + scoreAdjustment);
 
-  // Suppress score during flat chop, amplify during clean momentum breakouts
   if (efficiencyRatio < 0.32) {
-    computedScore = Math.round(50 + (computedScore - 50) * 0.4); // Clamp to neutral
+    computedScore = Math.round(50 + (computedScore - 50) * 0.4);
   } else if (efficiencyRatio >= 0.55 && Math.abs(zScore) >= 0.8) {
-    // Supercharge score for high-conviction momentum legs
     if (computedScore > 50) {
       computedScore = Math.min(98, Math.round(computedScore * 1.25));
     } else {
@@ -203,15 +195,14 @@ export function evaluateStrategySignal(
 
   const score = Math.max(2, Math.min(98, computedScore));
 
-  // 5. Execution Threshold Matrix (Fires cleanly without locking on hold)
+  // 5. Strict Institutional Execution Thresholds (Upgraded to 72 / 28 to eliminate marginal chop losses)
   let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
-  if (score >= 65 && efficiencyRatio >= 0.38 && zScore > 0.2) {
+  if (score >= 72 && efficiencyRatio >= 0.45 && zScore > 0.3) {
     direction = 'UP';
-  } else if (score <= 35 && efficiencyRatio >= 0.38 && zScore < -0.2) {
+  } else if (score <= 28 && efficiencyRatio >= 0.45 && zScore < -0.3) {
     direction = 'DOWN';
   }
 
-  // 6. Dynamic High-Confidence Scaling (Breaks 66% ceiling cleanly into 96%–98% tier)
   const structuralConviction = Math.max(score, 100 - score);
   const confidenceMultiplier = efficiencyRatio >= 0.5 ? 1.32 : 1.10;
   const confidence = structuralConviction >= 62 
@@ -242,7 +233,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (rootTradeBlock) {
       const initInput = rootTradeBlock.getInput('INITIALIZATION');
       if (initInput) {
-        // 1. Clear whatever is currently inside "Run once at start"
         let existingChild = initInput.connection.targetBlock();
         while (existingChild) {
           const nextChild = existingChild.nextConnection && existingChild.nextConnection.targetBlock();
@@ -252,7 +242,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
           existingChild = nextChild;
         }
 
-        // 2. Helper to get or create workspace variables safely
         const getOrCreateVar = (name: string) => {
           let variable = workspace.getVariableMap ? workspace.getVariableMap().getVariable(name) : null;
           if (!variable && typeof workspace.createVariable === 'function') {
@@ -265,7 +254,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
         const vSl = getOrCreateVar('stop_loss');
         const vMult = getOrCreateVar('martingale_size');
 
-        // 3. Build XML strictly for the three "Run once at start" variable blocks
         const buildVarSetXml = (varObj: any, varName: string, val: number) => {
           const varId = varObj ? (varObj.getId ? varObj.getId() : varObj.id_) : varName;
           return `
@@ -295,7 +283,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
 
         const blocks = [tpBlock, slBlock, multBlock].filter(Boolean);
 
-        // 4. Chain them into the "Run once at start" socket
         let currentConnection = initInput.connection;
         for (const block of blocks) {
           if (block && currentConnection) {
