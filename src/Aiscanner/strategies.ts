@@ -203,8 +203,8 @@ export function evaluateStrategySignal(
 
 /**
  * Applies strategy parameters to the workspace cleanly:
- * 1. Sets Purchase Condition (Rise/Fall)
- * 2. Pre-populates Trade Parameters & Trade Options (Asset, Trade Type, Stake)
+ * 1. Pre-populates Purchase Condition (Rise/Fall) on existing block
+ * 2. Pre-populates Trade Parameters & Trade Options (Asset, Trade Type, Stake) on existing blocks
  * 3. Recreates the "Run once at start" variable stack completely from scratch
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
@@ -219,7 +219,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       workspace.setEnableEvents(false);
     }
 
-    // 1. Update Purchase Condition Block
+    // 1. PRE-POPULATE: Update existing Purchase Condition Block
     const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
     if (purchaseBlocks.length > 0) {
       const purchaseBlock = purchaseBlocks[0];
@@ -231,7 +231,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       }
     }
 
-    // 2. Locate Trade Definition & pre-populate Trade Parameters / Trade Options
+    // 2. PRE-POPULATE: Trade Parameters & Trade Options on existing blocks
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
@@ -277,7 +277,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
         }
       }
 
-      // 3. Recreate the "Run once at start" stack completely from scratch
+      // 3. BUILD FROM SCRATCH: Recreate the "Run once at start" variable stack only
       const initInput = rootTradeBlock.getInput('INITIALIZATION');
       if (initInput) {
         let existingChild = initInput.connection.targetBlock();
