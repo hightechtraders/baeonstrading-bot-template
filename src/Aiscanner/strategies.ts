@@ -36,8 +36,8 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
     riskModel: 'NEURAL_FLOW',
     priority: 'HIGH',
     stake: 3,
-    stopLoss: 4,
-    takeProfit: 8,
+    stopLoss: 10,
+    takeProfit: 20,
     martingaleMultiplier: 2.0,
     description: 'Neural Flow structural strategy designed for Volatility 25.',
   },
@@ -49,8 +49,8 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
     riskModel: 'PROGRESSIVE',
     priority: 'MEDIUM',
     stake: 2,
-    stopLoss: 5,
-    takeProfit: 10,
+    stopLoss: 10,
+    takeProfit: 15,
     martingaleMultiplier: 2.0,
     description: 'Progressive staking system designed for Volatility 10.',
   },
@@ -62,8 +62,8 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
     riskModel: 'MARTINGALE',
     priority: 'MEDIUM',
     stake: 1,
-    stopLoss: 10,
-    takeProfit: 15,
+    stopLoss: 15,
+    takeProfit: 25,
     martingaleMultiplier: 2.1,
     description: 'Martingale scalp strategy designed for Volatility 10.',
   },
@@ -71,14 +71,14 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
     id: 'strat-4',
     name: '#4 AI Balanced',
     asset: 'Volatility 50',
-    tradeType: 'Over / Under',
+    tradeType: 'Rise / Fall',
     riskModel: 'PROGRESSIVE',
     priority: 'MEDIUM',
     stake: 5,
-    stopLoss: 10,
-    takeProfit: 20,
+    stopLoss: 15,
+    takeProfit: 30,
     martingaleMultiplier: 2.0,
-    description: 'Balanced digit strategy designed for Volatility 50.',
+    description: 'Balanced trend strategy designed for Volatility 50.',
   },
   {
     id: 'strat-5',
@@ -88,8 +88,8 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
     riskModel: 'TICK_MOMENTUM',
     priority: 'MEDIUM',
     stake: 2,
-    stopLoss: 6,
-    takeProfit: 12,
+    stopLoss: 12,
+    takeProfit: 24,
     martingaleMultiplier: 2.0,
     description: 'Breakout tick strategy designed for Volatility 75.',
   },
@@ -101,8 +101,8 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
     riskModel: 'NEURAL_FLOW',
     priority: 'MEDIUM',
     stake: 4,
-    stopLoss: 8,
-    takeProfit: 16,
+    stopLoss: 15,
+    takeProfit: 30,
     martingaleMultiplier: 2.0,
     description: 'Fast-cycle neural model designed for Volatility 100 (1s).',
   },
@@ -110,12 +110,12 @@ export const CORE_7_STRATEGIES: StrategyConfig[] = [
     id: 'strat-7',
     name: '#7 Conservative Grid',
     asset: 'Volatility 100',
-    tradeType: 'Over / Under',
+    tradeType: 'Rise / Fall',
     riskModel: 'PROGRESSIVE',
     priority: 'MEDIUM',
     stake: 1,
-    stopLoss: 3,
-    takeProfit: 6,
+    stopLoss: 8,
+    takeProfit: 16,
     martingaleMultiplier: 1.5,
     description: 'Low-risk step model designed for Volatility 100.',
   },
@@ -133,36 +133,26 @@ export function enforceSingleHighPriority(
 }
 
 /**
- * High-Precision Win-Rate Optimized Signal Engine
+ * Robust Signal Engine with Trend Filtering
  */
 export function evaluateStrategySignal(
   strategy: StrategyConfig,
   ticks: number[]
 ): { direction: 'UP' | 'DOWN' | 'HOLD'; confidence: number; score: number } {
-  if (!ticks || ticks.length < 10) {
+  if (!ticks || ticks.length < 15) {
     return { direction: 'HOLD', confidence: 50, score: 50 };
   }
 
-  const window = ticks.slice(-12);
+  const window = ticks.slice(-20);
   let netDisplacement = 0;
   let totalAbsoluteVolatility = 0;
-  let weightedMomentumSum = 0;
-  let totalWeightAccumulator = 0;
+  let upTicks = 0;
 
   for (let i = 1; i < window.length; i++) {
     const delta = window[i] - window[i - 1];
     netDisplacement += delta;
     totalAbsoluteVolatility += Math.abs(delta);
-    const recencyWeight = i >= window.length - 4 ? 3.0 : 1.0;
-    totalWeightAccumulator += recencyWeight;
-
-    if (delta > 0) {
-      weightedMomentumSum += 100 * recencyWeight;
-    } else if (delta < 0) {
-      weightedMomentumSum += 0 * recencyWeight;
-    } else {
-      weightedMomentumSum += 50 * recencyWeight;
-    }
+    if (delta > 0) upTicks++;
   }
 
   if (totalAbsoluteVolatility === 0) {
@@ -170,197 +160,95 @@ export function evaluateStrategySignal(
   }
 
   const efficiencyRatio = Math.abs(netDisplacement) / totalAbsoluteVolatility;
-  const mean = window.reduce((acc, val) => acc + val, 0) / window.length;
-  const variance =
-    window.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) /
-    window.length;
-  const standardDeviation = Math.sqrt(variance);
-  const currentPrice = window[window.length - 1];
-  const zScore =
-    standardDeviation > 0 ? (currentPrice - mean) / standardDeviation : 0;
-
-  const baseScore =
-    totalWeightAccumulator > 0
-      ? weightedMomentumSum / totalWeightAccumulator
-      : 50;
-  let scoreAdjustment =
-    (netDisplacement > 0 ? efficiencyRatio : -efficiencyRatio) * 22;
-  let computedScore = Math.round(baseScore + scoreAdjustment);
-  const score = Math.max(2, Math.min(98, computedScore));
+  const rawScore = Math.round((upTicks / (window.length - 1)) * 100);
+  const score = Math.max(5, Math.min(95, rawScore));
 
   let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
-  if (score >= 62 && efficiencyRatio >= 0.32 && zScore > 0.15) {
+  // Require strong directional bias and efficiency to prevent false whipsaws
+  if (score >= 60 && efficiencyRatio >= 0.25) {
     direction = 'UP';
-  } else if (score <= 38 && efficiencyRatio >= 0.32 && zScore < -0.15) {
+  } else if (score <= 40 && efficiencyRatio >= 0.25) {
     direction = 'DOWN';
   }
 
-  const structuralConviction = Math.max(score, 100 - score);
-  const confidenceMultiplier = efficiencyRatio >= 0.48 ? 1.38 : 1.10;
-  const confidence =
-    structuralConviction >= 60
-      ? Math.min(98, Math.round(structuralConviction * confidenceMultiplier))
-      : structuralConviction;
+  const confidence = Math.round(50 + Math.abs(score - 50) * 0.9 + efficiencyRatio * 15);
 
-  return { direction, confidence, score };
+  return { direction, confidence: Math.min(95, confidence), score };
 }
 
 /**
- * Maps human-readable asset names from StrategyConfig to DBot internal workspace keys.
+ * Maps asset names to DBot symbol internal keys.
  */
-function getAssetMapping(assetName: string): {
-  marketType: string;
-  submarket: string;
-  symbol: string;
-} {
+export function getAssetSymbol(assetName: string): string {
   const normalized = assetName.toLowerCase();
-
-  if (normalized.includes('volatility 10 (1s)')) {
-    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: '1HZ10V' };
-  }
-  if (normalized.includes('volatility 10')) {
-    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: 'R_10' };
-  }
-  if (normalized.includes('volatility 25 (1s)')) {
-    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: '1HZ25V' };
-  }
-  if (normalized.includes('volatility 25')) {
-    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: 'R_25' };
-  }
-  if (normalized.includes('volatility 50 (1s)')) {
-    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: '1HZ50V' };
-  }
-  if (normalized.includes('volatility 50')) {
-    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: 'R_50' };
-  }
-  if (normalized.includes('volatility 75 (1s)')) {
-    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: '1HZ75V' };
-  }
-  if (normalized.includes('volatility 75')) {
-    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: 'R_75' };
-  }
-  if (normalized.includes('volatility 100 (1s)')) {
-    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: '1HZ100V' };
-  }
-  if (normalized.includes('volatility 100')) {
-    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: 'R_100' };
-  }
-
-  return { marketType: 'synthetic_index', submarket: 'random_index', symbol: 'R_100' };
+  if (normalized.includes('100 (1s)')) return '1HZ100V';
+  if (normalized.includes('50 (1s)')) return '1HZ50V';
+  if (normalized.includes('25 (1s)')) return '1HZ25V';
+  if (normalized.includes('10 (1s)')) return '1HZ10V';
+  if (normalized.includes('100')) return 'R_100';
+  if (normalized.includes('75')) return 'R_75';
+  if (normalized.includes('50')) return 'R_50';
+  if (normalized.includes('25')) return 'R_25';
+  if (normalized.includes('10')) return 'R_10';
+  return 'R_100';
 }
 
 /**
- * Generates a complete, self-contained XML string for the workspace blueprint.
- */
-function buildCompleteBotXml(
-  strategy: StrategyConfig,
-  assetMapped: { marketType: string; submarket: string; symbol: string }
-): string {
-  // DBot expects 'UP' or 'DOWN' for Rise/Fall purchase conditions
-  const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
-  const tradeTypeCat = strategy.tradeType.toLowerCase().includes('over') ? 'digits' : 'updown';
-  const tradeType = strategy.tradeType.toLowerCase().includes('over') ? 'overunder' : 'risefall';
-
-  return `
-    <xml xmlns="http://www.w3.org/1999/xhtml">
-      <block type="trade_definition" id="trade_definition_block" x="0" y="0">
-        <field name="MARKET_LIST">${assetMapped.marketType}</field>
-        <field name="SUBMARKET_LIST">${assetMapped.submarket}</field>
-        <field name="SYMBOL_LIST">${assetMapped.symbol}</field>
-        <field name="TRADETYPECAT_LIST">${tradeTypeCat}</field>
-        <field name="TRADETYPE_LIST">${tradeType}</field>
-        <field name="TYPECAT_LIST">both</field>
-        <field name="CANDLEINTERVAL_LIST">60</field>
-        <field name="TIME_MACHINE_ENABLED">FALSE</field>
-        <field name="RESTARTONERROR">FALSE</field>
-        <field name="REPEATONERROR">TRUE</field>
-
-        <statement name="INITIALIZATION">
-          <block type="variables_set">
-            <field name="VAR">target_profit</field>
-            <value name="VALUE">
-              <block type="math_number"><field name="NUM">${strategy.takeProfit}</field></block>
-            </value>
-            <next>
-              <block type="variables_set">
-                <field name="VAR">stop_loss</field>
-                <value name="VALUE">
-                  <block type="math_number"><field name="NUM">${strategy.stopLoss}</field></block>
-                </value>
-                <next>
-                  <block type="variables_set">
-                    <field name="VAR">martingale_size</field>
-                    <value name="VALUE">
-                      <block type="math_number"><field name="NUM">${strategy.martingaleMultiplier ?? 2.0}</field></block>
-                    </value>
-                  </block>
-                </next>
-              </block>
-            </next>
-          </block>
-        </statement>
-
-        <statement name="SUBMARKET">
-          <block type="trade_options" id="trade_options_block">
-            <field name="DURATIONUNIT_LIST">t</field>
-            <value name="DURATION">
-              <block type="math_number"><field name="NUM">1</field></block>
-            </value>
-            <value name="AMOUNT">
-              <block type="math_number"><field name="NUM">${strategy.stake ?? 1}</field></block>
-            </value>
-          </block>
-        </statement>
-
-        <statement name="SUBMARKET_PURCHASE">
-          <block type="purchase" id="purchase_block">
-            <field name="PURCHASE_LIST">${targetDirection}</field>
-          </block>
-        </statement>
-      </block>
-    </xml>
-  `.trim();
-}
-
-/**
- * Applies strategy parameters to the workspace cleanly via atomic XML injection.
- * Clears the workspace and loads a fully validated blueprint to prevent broken Blockly states.
+ * Safely mutates existing blocks on the active DBot Blockly workspace in-place
+ * without wiping event hooks or crashing the runner.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
-  if (!workspace) return false;
-
-  const assetMapped = getAssetMapping(strategy.asset);
+  if (!workspace || typeof workspace.getAllBlocks !== 'function') {
+    console.error('[Strategies] Blockly workspace is invalid or uninitialized.');
+    return false;
+  }
 
   try {
-    if (typeof workspace.setEnableEvents === 'function') {
-      workspace.setEnableEvents(false);
-    }
+    const blocks = workspace.getAllBlocks(false);
+    const symbolCode = getAssetSymbol(strategy.asset);
+    const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
 
-    if (typeof workspace.clear === 'function') {
-      workspace.clear();
-    }
+    let updatedAny = false;
 
-    const xmlString = buildCompleteBotXml(strategy, assetMapped);
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(xmlString, 'text/xml');
+    blocks.forEach((block: any) => {
+      // 1. Update Trade Definition (Symbol & Market)
+      if (block.type === 'trade_definition') {
+        if (typeof block.setFieldValue === 'function') {
+          block.setFieldValue(symbolCode, 'SYMBOL_LIST');
+          updatedAny = true;
+        }
+      }
 
-    if (window.Blockly && window.Blockly.Xml && typeof window.Blockly.Xml.domToWorkspace === 'function') {
-      window.Blockly.Xml.domToWorkspace(doc.documentElement, workspace);
-    }
+      // 2. Update Trade Options (Stake Amount)
+      if (block.type === 'trade_options') {
+        const amountInput = block.getInput('AMOUNT');
+        if (amountInput && amountInput.connection && amountInput.connection.targetBlock()) {
+          const numBlock = amountInput.connection.targetBlock();
+          if (numBlock.type === 'math_number' && typeof numBlock.setFieldValue === 'function') {
+            numBlock.setFieldValue(String(strategy.stake), 'NUM');
+            updatedAny = true;
+          }
+        }
+      }
 
-    if (typeof workspace.setEnableEvents === 'function') {
-      workspace.setEnableEvents(true);
-    }
-    if (typeof workspace.render === 'function') {
+      // 3. Update Purchase Direction Block
+      if (block.type === 'purchase') {
+        if (typeof block.setFieldValue === 'function') {
+          block.setFieldValue(targetDirection, 'PURCHASE_LIST');
+          updatedAny = true;
+        }
+      }
+    });
+
+    if (updatedAny && typeof workspace.render === 'function') {
       workspace.render();
+      return true;
     }
 
-    return true;
+    console.warn('[Strategies] No matching DBot blocks found to update. Ensure a standard bot template is loaded.');
+    return false;
   } catch (error) {
-    if (typeof workspace.setEnableEvents === 'function') {
-      workspace.setEnableEvents(true);
-    }
-    console.error('[Strategies] Workspace XML injection failed:', error);
+    console.error('[Strategies] In-place workspace update failed:', error);
     return false;
   }
 }
