@@ -126,7 +126,6 @@ export function enforceSingleHighPriority(
   highStrategyId?: string
 ): StrategyConfig[] {
   const targetId = highStrategyId || strategies[0]?.id;
-
   return strategies.map((strat) => ({
     ...strat,
     priority: strat.id === targetId ? 'HIGH' : 'MEDIUM',
@@ -154,7 +153,6 @@ export function evaluateStrategySignal(
     const delta = window[i] - window[i - 1];
     netDisplacement += delta;
     totalAbsoluteVolatility += Math.abs(delta);
-
     const recencyWeight = i >= window.length - 4 ? 3.0 : 1.0;
     totalWeightAccumulator += recencyWeight;
 
@@ -172,17 +170,22 @@ export function evaluateStrategySignal(
   }
 
   const efficiencyRatio = Math.abs(netDisplacement) / totalAbsoluteVolatility;
-
   const mean = window.reduce((acc, val) => acc + val, 0) / window.length;
-  const variance = window.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / window.length;
+  const variance =
+    window.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) /
+    window.length;
   const standardDeviation = Math.sqrt(variance);
   const currentPrice = window[window.length - 1];
-  const zScore = standardDeviation > 0 ? (currentPrice - mean) / standardDeviation : 0;
+  const zScore =
+    standardDeviation > 0 ? (currentPrice - mean) / standardDeviation : 0;
 
-  const baseScore = totalWeightAccumulator > 0 ? weightedMomentumSum / totalWeightAccumulator : 50;
-  let scoreAdjustment = (netDisplacement > 0 ? efficiencyRatio : -efficiencyRatio) * 22;
+  const baseScore =
+    totalWeightAccumulator > 0
+      ? weightedMomentumSum / totalWeightAccumulator
+      : 50;
+  let scoreAdjustment =
+    (netDisplacement > 0 ? efficiencyRatio : -efficiencyRatio) * 22;
   let computedScore = Math.round(baseScore + scoreAdjustment);
-
   const score = Math.max(2, Math.min(98, computedScore));
 
   let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
@@ -194,9 +197,10 @@ export function evaluateStrategySignal(
 
   const structuralConviction = Math.max(score, 100 - score);
   const confidenceMultiplier = efficiencyRatio >= 0.48 ? 1.38 : 1.10;
-  const confidence = structuralConviction >= 60
-    ? Math.min(98, Math.round(structuralConviction * confidenceMultiplier))
-    : structuralConviction;
+  const confidence =
+    structuralConviction >= 60
+      ? Math.min(98, Math.round(structuralConviction * confidenceMultiplier))
+      : structuralConviction;
 
   return { direction, confidence, score };
 }
@@ -204,9 +208,13 @@ export function evaluateStrategySignal(
 /**
  * Maps human-readable asset names from StrategyConfig to DBot internal workspace keys.
  */
-function getAssetMapping(assetName: string): { marketType: string; submarket: string; symbol: string } {
+function getAssetMapping(assetName: string): {
+  marketType: string;
+  submarket: string;
+  symbol: string;
+} {
   const normalized = assetName.toLowerCase();
-  
+
   if (normalized.includes('volatility 10 (1s)')) {
     return { marketType: 'synthetic_index', submarket: 'random_index', symbol: '1HZ10V' };
   }
@@ -394,8 +402,8 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
         const multBlock = createBlockFromXml(buildVarSetXml(vMult, 'martingale_size', multiplierVal));
 
         const blocks = [tpBlock, slBlock, multBlock].filter(Boolean);
-
         let currentConnection = initInput.connection;
+
         for (const block of blocks) {
           if (block && currentConnection) {
             if (typeof block.initSvg === 'function') block.initSvg();
