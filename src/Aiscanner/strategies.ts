@@ -202,82 +202,147 @@ export function evaluateStrategySignal(
 }
 
 /**
+ * Maps human-readable asset names from StrategyConfig to DBot internal workspace keys.
+ */
+function getAssetMapping(assetName: string): { marketType: string; submarket: string; symbol: string } {
+  const normalized = assetName.toLowerCase();
+  
+  if (normalized.includes('volatility 10 (1s)')) {
+    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: '1HZ10V' };
+  }
+  if (normalized.includes('volatility 10')) {
+    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: 'R_10' };
+  }
+  if (normalized.includes('volatility 25 (1s)')) {
+    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: '1HZ25V' };
+  }
+  if (normalized.includes('volatility 25')) {
+    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: 'R_25' };
+  }
+  if (normalized.includes('volatility 50 (1s)')) {
+    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: '1HZ50V' };
+  }
+  if (normalized.includes('volatility 50')) {
+    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: 'R_50' };
+  }
+  if (normalized.includes('volatility 75 (1s)')) {
+    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: '1HZ75V' };
+  }
+  if (normalized.includes('volatility 75')) {
+    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: 'R_75' };
+  }
+  if (normalized.includes('volatility 100 (1s)')) {
+    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: '1HZ100V' };
+  }
+  if (normalized.includes('volatility 100')) {
+    return { marketType: 'synthetic_index', submarket: 'random_index', symbol: 'R_100' };
+  }
+
+  return { marketType: 'synthetic_index', submarket: 'random_index', symbol: 'R_100' };
+}
+
+/**
  * Applies strategy parameters to the workspace cleanly:
- * 1. Pre-populates Purchase Condition (Rise/Fall) on existing block
- * 2. Pre-populates Trade Parameters & Trade Options (Asset, Trade Type, Stake) on existing blocks
- * 3. Recreates the "Run once at start" variable stack completely from scratch
+ * 1. Pre-populates Market Volatility, Trade Type, Contract Type, and Candle Interval on root trade definition.
+ * 2. Pre-populates Trade Options (Stake, Duration) and Purchase Conditions via submarket statement links.
+ * 3. Recreates the "Run once at start" variable stack completely from scratch.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
 
   const multiplierVal = strategy.martingaleMultiplier ?? 2.0;
-  const targetDirection = strategy.direction === 'DOWN' ? 'Fall' : 'Rise';
+  const targetDirection = strategy.direction === 'DOWN' ? 'PUT' : 'CALL';
   const stakeVal = strategy.stake ?? 1;
+  const assetMapped = getAssetMapping(strategy.asset);
 
   try {
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(false);
     }
 
-    // 1. PRE-POPULATE: Update existing Purchase Condition Block
-    const purchaseBlocks = workspace.getBlocksByType ? workspace.getBlocksByType('purchase') : [];
-    if (purchaseBlocks.length > 0) {
-      const purchaseBlock = purchaseBlocks[0];
-      if (purchaseBlock && typeof purchaseBlock.getField === 'function') {
-        const field = purchaseBlock.getField('PURCHASE_LIST') || purchaseBlock.getField('PURCHASE');
-        if (field && typeof field.setValue === 'function') {
-          field.setValue(targetDirection);
-        }
-      }
-    }
-
-    // 2. PRE-POPULATE: Trade Parameters & Trade Options on existing blocks
     const rootTradeBlock =
       workspace.getBlockById('trade_definition') ||
       (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
 
     if (rootTradeBlock) {
-      const setFieldOrConnectedValue = (block: any, fieldNames: string[], val: any) => {
-        for (const name of fieldNames) {
-          const field = block.getField ? block.getField(name) : null;
-          if (field) {
-            if (typeof field.setValue === 'function') {
-              try {
-                field.setValue(String(val));
-                return true;
-              } catch (e) {
-                // Ignore dropdown mismatches gracefully
-              }
-            }
+      // Helper to safely set dropdown/field values
+      const setField = (block: any, fieldName: string, val: any) => {
+        const field = block.getField ? block.getField(fieldName) : null;
+        if (field && typeof field.setValue === 'function') {
+          try {
+            field.setValue(String(val));
+            return true;
+          } catch (e) {
+            // Ignore dropdown mismatches gracefully
           }
-          const input = block.getInput ? block.getInput(name) : null;
-          if (input && input.connection) {
-            const childBlock = input.connection.targetBlock();
-            if (childBlock && childBlock.type === 'math_number') {
-              const numField = childBlock.getField('NUM');
-              if (numField && typeof numField.setValue === 'function') {
-                numField.setValue(String(val));
-                return true;
-              }
+        }
+        return false;
+      };
+
+      // Helper to safely update connected math number blocks (like Stake or Duration)
+      const setInputValue = (block: any, inputName: string, val: any) => {
+        const input = block.getInput ? block.getInput(inputName) : null;
+        if (input && input.connection) {
+          const childBlock = input.connection.targetBlock();
+          if (childBlock && childBlock.type === 'math_number') {
+            const numField = childBlock.getField('NUM');
+            if (numField && typeof numField.setValue === 'function') {
+              numField.setValue(String(val));
+              return true;
             }
           }
         }
         return false;
       };
 
-      setFieldOrConnectedValue(rootTradeBlock, ['AMOUNT', 'STAKE', 'PURCHASE_AMOUNT'], stakeVal);
-      setFieldOrConnectedValue(rootTradeBlock, ['SUBMARKET_LIST', 'SYMBOL_LIST', 'TRADETYPE_LIST'], strategy.asset);
+      // 1. PRE-POPULATE: Root Trade Parameters
+      setField(rootTradeBlock, 'MARKET_LIST', assetMapped.marketType);
+      setField(rootTradeBlock, 'SUBMARKET_LIST', assetMapped.submarket);
+      setField(rootTradeBlock, 'SYMBOL_LIST', assetMapped.symbol);
+      setField(rootTradeBlock, 'CANDLEINTERVAL_LIST', '60');
 
-      const descendants = rootTradeBlock.getDescendants ? rootTradeBlock.getDescendants(false) : [];
-      for (const dBlock of descendants) {
-        setFieldOrConnectedValue(dBlock, ['AMOUNT', 'STAKE', 'PURCHASE_AMOUNT'], stakeVal);
-        setFieldOrConnectedValue(dBlock, ['SUBMARKET_LIST', 'SYMBOL_LIST', 'TRADETYPE_LIST', 'CORR_SYMBOL_LIST'], strategy.asset);
-        if (dBlock.type === 'trade_options' || dBlock.type === 'market_trade') {
-          setFieldOrConnectedValue(dBlock, ['DURATION', 'COUNT', 'TICKS'], 1);
+      if (strategy.tradeType.toLowerCase().includes('over')) {
+        setField(rootTradeBlock, 'TRADETYPECAT_LIST', 'digits');
+        setField(rootTradeBlock, 'TRADETYPE_LIST', 'overunder');
+      } else {
+        setField(rootTradeBlock, 'TRADETYPECAT_LIST', 'updown');
+        setField(rootTradeBlock, 'TRADETYPE_LIST', 'risefall');
+      }
+      setField(rootTradeBlock, 'TYPECAT_LIST', 'both');
+
+      // 2. PRE-POPULATE: Trade Options & Purchase Conditions via Submarket Statements
+      const submarketInput = rootTradeBlock.getInput('SUBMARKET');
+      if (submarketInput && submarketInput.connection) {
+        const tradeOptionsBlock = submarketInput.connection.targetBlock();
+        if (tradeOptionsBlock && tradeOptionsBlock.type === 'trade_options') {
+          setField(tradeOptionsBlock, 'DURATIONUNIT_LIST', 't');
+          setInputValue(tradeOptionsBlock, 'DURATION', 1);
+          setInputValue(tradeOptionsBlock, 'AMOUNT', stakeVal);
         }
       }
 
-      // 3. BUILD FROM SCRATCH: Recreate the "Run once at start" variable stack only
+      const purchaseInput = rootTradeBlock.getInput('SUBMARKET_PURCHASE');
+      if (purchaseInput && purchaseInput.connection) {
+        const purchaseBlock = purchaseInput.connection.targetBlock();
+        if (purchaseBlock && purchaseBlock.type === 'purchase') {
+          setField(purchaseBlock, 'PURCHASE_LIST', targetDirection);
+        }
+      }
+
+      // Fallback descending sweep if statements are structured loosely
+      const descendants = rootTradeBlock.getDescendants ? rootTradeBlock.getDescendants(false) : [];
+      for (const dBlock of descendants) {
+        if (dBlock.type === 'trade_options') {
+          setField(dBlock, 'DURATIONUNIT_LIST', 't');
+          setInputValue(dBlock, 'DURATION', 1);
+          setInputValue(dBlock, 'AMOUNT', stakeVal);
+        }
+        if (dBlock.type === 'purchase') {
+          setField(dBlock, 'PURCHASE_LIST', targetDirection);
+        }
+      }
+
+      // 3. BUILD FROM SCRATCH: Recreate the "Run once at start" variable stack completely from scratch
       const initInput = rootTradeBlock.getInput('INITIALIZATION');
       if (initInput) {
         let existingChild = initInput.connection.targetBlock();
