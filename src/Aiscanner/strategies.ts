@@ -250,17 +250,85 @@ function getAssetMapping(assetName: string): {
 }
 
 /**
- * Applies strategy parameters to the workspace cleanly:
- * 1. Pre-populates Market Volatility, Trade Type, Contract Type, and Candle Interval on root trade definition.
- * 2. Pre-populates Trade Options (Stake, Duration) and Purchase Conditions via submarket statement links.
- * 3. Recreates the "Run once at start" variable stack completely from scratch.
+ * Generates a complete, self-contained XML string for the workspace blueprint.
+ */
+function buildCompleteBotXml(
+  strategy: StrategyConfig,
+  assetMapped: { marketType: string; submarket: string; symbol: string }
+): string {
+  // DBot expects 'UP' or 'DOWN' for Rise/Fall purchase conditions
+  const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
+  const tradeTypeCat = strategy.tradeType.toLowerCase().includes('over') ? 'digits' : 'updown';
+  const tradeType = strategy.tradeType.toLowerCase().includes('over') ? 'overunder' : 'risefall';
+
+  return `
+    <xml xmlns="http://www.w3.org/1999/xhtml">
+      <block type="trade_definition" id="trade_definition_block" x="0" y="0">
+        <field name="MARKET_LIST">${assetMapped.marketType}</field>
+        <field name="SUBMARKET_LIST">${assetMapped.submarket}</field>
+        <field name="SYMBOL_LIST">${assetMapped.symbol}</field>
+        <field name="TRADETYPECAT_LIST">${tradeTypeCat}</field>
+        <field name="TRADETYPE_LIST">${tradeType}</field>
+        <field name="TYPECAT_LIST">both</field>
+        <field name="CANDLEINTERVAL_LIST">60</field>
+        <field name="TIME_MACHINE_ENABLED">FALSE</field>
+        <field name="RESTARTONERROR">FALSE</field>
+        <field name="REPEATONERROR">TRUE</field>
+
+        <statement name="INITIALIZATION">
+          <block type="variables_set">
+            <field name="VAR">target_profit</field>
+            <value name="VALUE">
+              <block type="math_number"><field name="NUM">${strategy.takeProfit}</field></block>
+            </value>
+            <next>
+              <block type="variables_set">
+                <field name="VAR">stop_loss</field>
+                <value name="VALUE">
+                  <block type="math_number"><field name="NUM">${strategy.stopLoss}</field></block>
+                </value>
+                <next>
+                  <block type="variables_set">
+                    <field name="VAR">martingale_size</field>
+                    <value name="VALUE">
+                      <block type="math_number"><field name="NUM">${strategy.martingaleMultiplier ?? 2.0}</field></block>
+                    </value>
+                  </block>
+                </next>
+              </block>
+            </next>
+          </block>
+        </statement>
+
+        <statement name="SUBMARKET">
+          <block type="trade_options" id="trade_options_block">
+            <field name="DURATIONUNIT_LIST">t</field>
+            <value name="DURATION">
+              <block type="math_number"><field name="NUM">1</field></block>
+            </value>
+            <value name="AMOUNT">
+              <block type="math_number"><field name="NUM">${strategy.stake ?? 1}</field></block>
+            </value>
+          </block>
+        </statement>
+
+        <statement name="SUBMARKET_PURCHASE">
+          <block type="purchase" id="purchase_block">
+            <field name="PURCHASE_LIST">${targetDirection}</field>
+          </block>
+        </statement>
+      </block>
+    </xml>
+  `.trim();
+}
+
+/**
+ * Applies strategy parameters to the workspace cleanly via atomic XML injection.
+ * Clears the workspace and loads a fully validated blueprint to prevent broken Blockly states.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) return false;
 
-  const multiplierVal = strategy.martingaleMultiplier ?? 2.0;
-  const targetDirection = strategy.direction === 'DOWN' ? 'PUT' : 'CALL';
-  const stakeVal = strategy.stake ?? 1;
   const assetMapped = getAssetMapping(strategy.asset);
 
   try {
@@ -268,152 +336,16 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       workspace.setEnableEvents(false);
     }
 
-    const rootTradeBlock =
-      workspace.getBlockById('trade_definition') ||
-      (workspace.getBlocksByType && workspace.getBlocksByType('trade_definition')[0]);
+    if (typeof workspace.clear === 'function') {
+      workspace.clear();
+    }
 
-    if (rootTradeBlock) {
-      // Helper to safely set dropdown/field values
-      const setField = (block: any, fieldName: string, val: any) => {
-        const field = block.getField ? block.getField(fieldName) : null;
-        if (field && typeof field.setValue === 'function') {
-          try {
-            field.setValue(String(val));
-            return true;
-          } catch (e) {
-            // Ignore dropdown mismatches gracefully
-          }
-        }
-        return false;
-      };
+    const xmlString = buildCompleteBotXml(strategy, assetMapped);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlString, 'text/xml');
 
-      // Helper to safely update connected math number blocks (like Stake or Duration)
-      const setInputValue = (block: any, inputName: string, val: any) => {
-        const input = block.getInput ? block.getInput(inputName) : null;
-        if (input && input.connection) {
-          const childBlock = input.connection.targetBlock();
-          if (childBlock && childBlock.type === 'math_number') {
-            const numField = childBlock.getField('NUM');
-            if (numField && typeof numField.setValue === 'function') {
-              numField.setValue(String(val));
-              return true;
-            }
-          }
-        }
-        return false;
-      };
-
-      // 1. PRE-POPULATE: Root Trade Parameters
-      setField(rootTradeBlock, 'MARKET_LIST', assetMapped.marketType);
-      setField(rootTradeBlock, 'SUBMARKET_LIST', assetMapped.submarket);
-      setField(rootTradeBlock, 'SYMBOL_LIST', assetMapped.symbol);
-      setField(rootTradeBlock, 'CANDLEINTERVAL_LIST', '60');
-
-      if (strategy.tradeType.toLowerCase().includes('over')) {
-        setField(rootTradeBlock, 'TRADETYPECAT_LIST', 'digits');
-        setField(rootTradeBlock, 'TRADETYPE_LIST', 'overunder');
-      } else {
-        setField(rootTradeBlock, 'TRADETYPECAT_LIST', 'updown');
-        setField(rootTradeBlock, 'TRADETYPE_LIST', 'risefall');
-      }
-      setField(rootTradeBlock, 'TYPECAT_LIST', 'both');
-
-      // 2. PRE-POPULATE: Trade Options & Purchase Conditions via Submarket Statements
-      const submarketInput = rootTradeBlock.getInput('SUBMARKET');
-      if (submarketInput && submarketInput.connection) {
-        const tradeOptionsBlock = submarketInput.connection.targetBlock();
-        if (tradeOptionsBlock && tradeOptionsBlock.type === 'trade_options') {
-          setField(tradeOptionsBlock, 'DURATIONUNIT_LIST', 't');
-          setInputValue(tradeOptionsBlock, 'DURATION', 1);
-          setInputValue(tradeOptionsBlock, 'AMOUNT', stakeVal);
-        }
-      }
-
-      const purchaseInput = rootTradeBlock.getInput('SUBMARKET_PURCHASE');
-      if (purchaseInput && purchaseInput.connection) {
-        const purchaseBlock = purchaseInput.connection.targetBlock();
-        if (purchaseBlock && purchaseBlock.type === 'purchase') {
-          setField(purchaseBlock, 'PURCHASE_LIST', targetDirection);
-        }
-      }
-
-      // Fallback descending sweep if statements are structured loosely
-      const descendants = rootTradeBlock.getDescendants ? rootTradeBlock.getDescendants(false) : [];
-      for (const dBlock of descendants) {
-        if (dBlock.type === 'trade_options') {
-          setField(dBlock, 'DURATIONUNIT_LIST', 't');
-          setInputValue(dBlock, 'DURATION', 1);
-          setInputValue(dBlock, 'AMOUNT', stakeVal);
-        }
-        if (dBlock.type === 'purchase') {
-          setField(dBlock, 'PURCHASE_LIST', targetDirection);
-        }
-      }
-
-      // 3. BUILD FROM SCRATCH: Recreate the "Run once at start" variable stack completely from scratch
-      const initInput = rootTradeBlock.getInput('INITIALIZATION');
-      if (initInput) {
-        let existingChild = initInput.connection.targetBlock();
-        while (existingChild) {
-          const nextChild = existingChild.nextConnection && existingChild.nextConnection.targetBlock();
-          if (typeof existingChild.dispose === 'function') {
-            existingChild.dispose(true);
-          }
-          existingChild = nextChild;
-        }
-
-        const getOrCreateVar = (name: string) => {
-          let variable = workspace.getVariableMap ? workspace.getVariableMap().getVariable(name) : null;
-          if (!variable && typeof workspace.createVariable === 'function') {
-            variable = workspace.createVariable(name);
-          }
-          return variable;
-        };
-
-        const vTp = getOrCreateVar('target_profit');
-        const vSl = getOrCreateVar('stop_loss');
-        const vMult = getOrCreateVar('martingale_size');
-
-        const buildVarSetXml = (varObj: any, varName: string, val: number) => {
-          const varId = varObj ? (varObj.getId ? varObj.getId() : varObj.id_) : varName;
-          return `
-            <block type="variables_set">
-              <field name="VAR" id="${varId}" variabletype="">${varName}</field>
-              <value name="VALUE">
-                <block type="math_number">
-                  <field name="NUM">${val}</field>
-                </block>
-              </value>
-            </block>
-          `.trim();
-        };
-
-        const parser = new DOMParser();
-        const createBlockFromXml = (xmlStr: string) => {
-          const doc = parser.parseFromString(xmlStr, 'text/xml');
-          if (window.Blockly && window.Blockly.Xml && typeof window.Blockly.Xml.domToBlock === 'function') {
-            return window.Blockly.Xml.domToBlock(doc.documentElement, workspace);
-          }
-          return null;
-        };
-
-        const tpBlock = createBlockFromXml(buildVarSetXml(vTp, 'target_profit', strategy.takeProfit));
-        const slBlock = createBlockFromXml(buildVarSetXml(vSl, 'stop_loss', strategy.stopLoss));
-        const multBlock = createBlockFromXml(buildVarSetXml(vMult, 'martingale_size', multiplierVal));
-
-        const blocks = [tpBlock, slBlock, multBlock].filter(Boolean);
-        let currentConnection = initInput.connection;
-
-        for (const block of blocks) {
-          if (block && currentConnection) {
-            if (typeof block.initSvg === 'function') block.initSvg();
-            if (block.previousConnection) {
-              currentConnection.connect(block.previousConnection);
-              currentConnection = block.nextConnection;
-            }
-          }
-        }
-      }
+    if (window.Blockly && window.Blockly.Xml && typeof window.Blockly.Xml.domToWorkspace === 'function') {
+      window.Blockly.Xml.domToWorkspace(doc.documentElement, workspace);
     }
 
     if (typeof workspace.setEnableEvents === 'function') {
@@ -428,7 +360,7 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
-    console.error('[Strategies] Failed to apply strategy to workspace:', error);
+    console.error('[Strategies] Workspace XML injection failed:', error);
     return false;
   }
 }
