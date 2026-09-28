@@ -164,7 +164,6 @@ export function evaluateStrategySignal(
   const score = Math.max(5, Math.min(95, rawScore));
 
   let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
-  // Require strong directional bias and efficiency to prevent false whipsaws
   if (score >= 60 && efficiencyRatio >= 0.25) {
     direction = 'UP';
   } else if (score <= 40 && efficiencyRatio >= 0.25) {
@@ -194,61 +193,138 @@ export function getAssetSymbol(assetName: string): string {
 }
 
 /**
- * Safely mutates existing blocks on the active DBot Blockly workspace in-place
- * without wiping event hooks or crashing the runner.
+ * Generates a clean, validated XML blueprint string for fallback injection.
+ */
+function buildCompleteBotXml(
+  strategy: StrategyConfig,
+  assetMapped: { symbol: string }
+): string {
+  const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
+  return `
+    <xml xmlns="http://www.w3.org/1999/xhtml">
+      <block type="trade_definition" id="trade_definition_block" x="0" y="0">
+        <field name="MARKET_LIST">synthetic_index</field>
+        <field name="SUBMARKET_LIST">random_index</field>
+        <field name="SYMBOL_LIST">${assetMapped.symbol}</field>
+        <field name="TRADETYPECAT_LIST">updown</field>
+        <field name="TRADETYPE_LIST">risefall</field>
+        <field name="TYPECAT_LIST">both</field>
+        <field name="CANDLEINTERVAL_LIST">60</field>
+        
+        <statement name="INITIALIZATION">
+          <block type="variables_set">
+            <field name="VAR">target_profit</field>
+            <value name="VALUE">
+              <block type="math_number"><field name="NUM">${strategy.takeProfit}</field></block>
+            </value>
+            <next>
+              <block type="variables_set">
+                <field name="VAR">stop_loss</field>
+                <value name="VALUE">
+                  <block type="math_number"><field name="NUM">${strategy.stopLoss}</field></block>
+                </value>
+                <next>
+                  <block type="variables_set">
+                    <field name="VAR">martingale_size</field>
+                    <value name="VALUE">
+                      <block type="math_number"><field name="NUM">${strategy.martingaleMultiplier ?? 2.0}</field></block>
+                    </value>
+                  </block>
+                </next>
+              </block>
+            </next>
+          </block>
+        </statement>
+
+        <statement name="SUBMARKET">
+          <block type="trade_options" id="trade_options_block">
+            <field name="DURATIONUNIT_LIST">t</field>
+            <value name="DURATION">
+              <block type="math_number"><field name="NUM">1</field></block>
+            </value>
+            <value name="AMOUNT">
+              <block type="math_number"><field name="NUM">${strategy.stake ?? 1}</field></block>
+            </value>
+          </block>
+        </statement>
+
+        <statement name="SUBMARKET_PURCHASE">
+          <block type="purchase" id="purchase_block">
+            <field name="PURCHASE_LIST">${targetDirection}</field>
+          </block>
+        </statement>
+      </block>
+    </xml>
+  `.trim();
+}
+
+/**
+ * Hybrid approach: tries updating existing blocks in place; 
+ * falls back to clean blueprint XML loading if canvas is empty.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
-  if (!workspace || typeof workspace.getAllBlocks !== 'function') {
-    console.error('[Strategies] Blockly workspace is invalid or uninitialized.');
+  if (!workspace) {
+    console.error('[Strategies] Blockly workspace is missing.');
     return false;
   }
 
+  const symbolCode = getAssetSymbol(strategy.asset);
+  const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
+
   try {
-    const blocks = workspace.getAllBlocks(false);
-    const symbolCode = getAssetSymbol(strategy.asset);
-    const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
-
-    let updatedAny = false;
-
-    blocks.forEach((block: any) => {
-      // 1. Update Trade Definition (Symbol & Market)
-      if (block.type === 'trade_definition') {
-        if (typeof block.setFieldValue === 'function') {
-          block.setFieldValue(symbolCode, 'SYMBOL_LIST');
-          updatedAny = true;
-        }
-      }
-
-      // 2. Update Trade Options (Stake Amount)
-      if (block.type === 'trade_options') {
-        const amountInput = block.getInput('AMOUNT');
-        if (amountInput && amountInput.connection && amountInput.connection.targetBlock()) {
-          const numBlock = amountInput.connection.targetBlock();
-          if (numBlock.type === 'math_number' && typeof numBlock.setFieldValue === 'function') {
-            numBlock.setFieldValue(String(strategy.stake), 'NUM');
-            updatedAny = true;
-          }
-        }
-      }
-
-      // 3. Update Purchase Direction Block
-      if (block.type === 'purchase') {
-        if (typeof block.setFieldValue === 'function') {
-          block.setFieldValue(targetDirection, 'PURCHASE_LIST');
-          updatedAny = true;
-        }
-      }
-    });
-
-    if (updatedAny && typeof workspace.render === 'function') {
-      workspace.render();
-      return true;
+    if (typeof workspace.setEnableEvents === 'function') {
+      workspace.setEnableEvents(false);
     }
 
-    console.warn('[Strategies] No matching DBot blocks found to update. Ensure a standard bot template is loaded.');
-    return false;
+    const blocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
+    let updatedViaMutation = false;
+
+    if (blocks.length > 0) {
+      blocks.forEach((block: any) => {
+        if (block.type === 'trade_definition' && typeof block.setFieldValue === 'function') {
+          block.setFieldValue(symbolCode, 'SYMBOL_LIST');
+          updatedViaMutation = true;
+        }
+        if (block.type === 'trade_options') {
+          const amountInput = block.getInput('AMOUNT');
+          if (amountInput?.connection?.targetBlock()) {
+            const numBlock = amountInput.connection.targetBlock();
+            if (numBlock.type === 'math_number' && typeof numBlock.setFieldValue === 'function') {
+              numBlock.setFieldValue(String(strategy.stake), 'NUM');
+              updatedViaMutation = true;
+            }
+          }
+        }
+        if (block.type === 'purchase' && typeof block.setFieldValue === 'function') {
+          block.setFieldValue(targetDirection, 'PURCHASE_LIST');
+          updatedViaMutation = true;
+        }
+      });
+    }
+
+    if (!updatedViaMutation && window.Blockly && window.Blockly.Xml) {
+      if (typeof workspace.clear === 'function') {
+        workspace.clear();
+      }
+      const xmlString = buildCompleteBotXml(strategy, { symbol: symbolCode });
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlString, 'text/xml');
+      window.Blockly.Xml.domToWorkspace(doc.documentElement, workspace);
+    }
+
+    if (typeof workspace.setEnableEvents === 'function') {
+      workspace.setEnableEvents(true);
+    }
+    if (typeof workspace.render === 'function') {
+      workspace.render();
+    }
+
+    return true;
   } catch (error) {
-    console.error('[Strategies] In-place workspace update failed:', error);
+    if (typeof workspace.setEnableEvents === 'function') {
+      workspace.setEnableEvents(true);
+    }
+    console.error('[Strategies] Failed to update workspace:', error);
     return false;
   }
 }
