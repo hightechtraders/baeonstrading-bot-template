@@ -261,8 +261,8 @@ function buildCompleteBotXml(
 }
 
 /**
- * Directly clears and injects the blueprint XML into the Blockly workspace 
- * to guarantee that market symbols, stakes, and purchase directions load perfectly.
+ * Safely updates existing workspace blocks or injects the XML blueprint 
+ * without causing block registration mismatches.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) {
@@ -271,23 +271,43 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
   }
 
   const symbolCode = getAssetSymbol(strategy.asset);
+  const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
+  const BlocklyRef = (window as any).Blockly;
 
   try {
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(false);
     }
 
-    if (window.Blockly && window.Blockly.Xml) {
+    // 1. Attempt updating existing block fields directly on the canvas first
+    const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks() : [];
+    let updatedViaBlocks = false;
+
+    for (const block of allBlocks) {
+      if (block.type === 'trade_definition' && typeof block.setFieldValue === 'function') {
+        block.setFieldValue(symbolCode, 'SYMBOL_LIST');
+        updatedViaBlocks = true;
+      } else if (block.type === 'trade_options' && typeof block.setFieldValue === 'function') {
+        block.setFieldValue(String(strategy.stake ?? 1), 'AMOUNT');
+        updatedViaBlocks = true;
+      } else if (block.type === 'purchase' && typeof block.setFieldValue === 'function') {
+        block.setFieldValue(targetDirection, 'PURCHASE_LIST');
+        updatedViaBlocks = true;
+      }
+    }
+
+    // 2. Fallback to clean XML blueprint injection if no blocks exist yet
+    if (!updatedViaBlocks && BlocklyRef && BlocklyRef.Xml) {
       if (typeof workspace.clear === 'function') {
         workspace.clear();
       }
       const xmlString = buildCompleteBotXml(strategy, symbolCode);
       const parser = new DOMParser();
       const doc = parser.parseFromString(xmlString, 'text/xml');
-      window.Blockly.Xml.domToWorkspace(doc.documentElement, workspace);
-    } else {
-      console.error('[Strategies] Blockly.Xml not found on window.');
-      return false;
+      
+      if (doc.getElementsByTagName('parsererror').length === 0) {
+        BlocklyRef.Xml.domToWorkspace(doc.documentElement, workspace);
+      }
     }
 
     if (typeof workspace.setEnableEvents === 'function') {
@@ -299,10 +319,10 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
 
     return true;
   } catch (error) {
-    if (typeof workspace.setEnableEvents === 'function') {
+    if (workspace && typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(true);
     }
-    console.error('[Strategies] Failed to update workspace:', error);
+    console.error('[Strategies] Failed to apply strategy to workspace safely:', error);
     return false;
   }
 }
