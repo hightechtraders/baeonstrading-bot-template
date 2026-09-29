@@ -11,7 +11,6 @@ class ScannerBridgeClass {
     if (this.isListening) return;
 
     const globalWin = window as any;
-    
     const api = globalWin.LiveApi || globalWin.BinarySocket || globalWin.api;
     const rawWs = api?.ws || globalWin.ws || globalWin.appCtx?.websocketInstance;
 
@@ -42,7 +41,6 @@ class ScannerBridgeClass {
     }
   }
 
-  // Helper to map market names / volatility labels to valid Deriv API symbol codes
   private normalizeSymbol(marketOrVol: string): string {
     if (!marketOrVol) return '1HZ50';
     const text = marketOrVol.toLowerCase();
@@ -59,17 +57,20 @@ class ScannerBridgeClass {
     if (text.includes('75')) return 'R_75';
     if (text.includes('100')) return 'R_100';
 
-    return '1HZ50'; // Default fallback
+    return '1HZ50';
   }
 
   public loadStrategyToWorkspace(strategy: any, options: { stake: number; stopLoss: number; takeProfit?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
     console.log(`[AI Scanner] Injecting parameters into workspace:`, strategy, options);
 
     const globalWin = window as any;
-    
-    // Resolve proper target symbol from options or strategy metadata
     const targetSymbol = options.symbol || this.normalizeSymbol(strategy.market || strategy.volatility);
-    globalWin.tredapendingParams = { ...options, symbol: targetSymbol, strategy };
+    
+    // Determine contract type based on strategy direction (UP = CALL, DOWN = PUT for Rise/Fall)
+    const direction = strategy.direction || 'UP';
+    const targetContract = options.contractType || (direction === 'UP' ? 'CALL' : 'PUT');
+
+    globalWin.tredapendingParams = { ...options, symbol: targetSymbol, contractType: targetContract, strategy };
 
     let workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
 
@@ -82,34 +83,39 @@ class ScannerBridgeClass {
         let blockInjectionCounter = 0;
 
         allBlocks.forEach((block: any) => {
+          // 1. Configure Trade Definition (Market & Trade Type)
           if (block.type === 'trade_definition') {
             const symbolField = block.getField('SYMBOL_LIST');
             if (symbolField) {
               symbolField.setValue(targetSymbol);
               blockInjectionCounter++;
             }
+            
             const tradeTypeField = block.getField('TRADE_TYPE_LIST');
-            if (tradeTypeField && options.tradeType) {
-              tradeTypeField.setValue(options.tradeType);
+            if (tradeTypeField) {
+              // Set to standard high_low / callput type depending on platform dropdown values
+              tradeTypeField.setValue('callput'); 
               blockInjectionCounter++;
             }
           }
 
-          if (block.type === 'purchase' || block.type.includes('purchase')) {
-            const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE');
-            if (purchaseField && (strategy.contractType || options.contractType)) {
-              purchaseField.setValue(strategy.contractType || options.contractType);
+          // 2. Configure Purchase / Contract Type block (CALL / PUT)
+          if (block.type === 'purchase' || block.type.includes('purchase') || block.type === 'trade_definition_purchase') {
+            const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE') || block.getField('CB_List');
+            if (purchaseField) {
+              purchaseField.setValue(targetContract);
               blockInjectionCounter++;
             }
           }
 
+          // 3. Configure Stake, Amount, and Duration options
           if (block.type === 'trade_definition_tradeoptions' || block.type.includes('trade') || block.type.includes('amount')) {
             ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
               const field = block.getField(fieldName);
               if (field) {
-                if (fieldName === 'DURATION' && options.duration !== undefined) {
-                  const clampedDuration = Math.min(Math.max(options.duration, 1), 10);
-                  field.setValue(String(clampedDuration));
+                if (fieldName === 'DURATION') {
+                  const safeDuration = options.duration !== undefined ? Math.min(Math.max(options.duration, 1), 10) : 5;
+                  field.setValue(String(safeDuration));
                   blockInjectionCounter++;
                 } else if (fieldName !== 'DURATION' && options.stake !== undefined) {
                   field.setValue(String(options.stake));
@@ -145,7 +151,7 @@ class ScannerBridgeClass {
           ));
           console.log(`[AI Scanner] Successfully updated ${blockInjectionCounter} fields on workspace blocks.`);
         } else {
-          console.warn('[AI Scanner] No matching block fields found to update.');
+          console.warn('[AI Scanner] No matching block fields found to update. Check block type structures.');
         }
       } catch (err) {
         console.error('[AI Scanner] Error injecting block parameters:', err);
