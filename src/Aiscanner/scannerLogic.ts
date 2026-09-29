@@ -1,6 +1,6 @@
 // src/Aiscanner/scannerLogic.ts
 import { StrategyConfig, evaluateStrategySignal } from './strategies';
-
+ 
 export function rankAndSortStrategies(
   strategies: StrategyConfig[],
   ticksBuffer: Record<string, number[]>
