@@ -83,7 +83,6 @@ export class ScannerLogicManager {
   ): StrategyConfig[] {
     if (!this.strategies.length || !ticksBuffer) return this.strategies;
 
-    // If a circuit breaker has already tripped, halt processing new cycles
     if (this.circuitBreakerState.triggered) {
       return this.strategies;
     }
@@ -96,12 +95,10 @@ export class ScannerLogicManager {
         return strat;
       }
 
-      // Automatically looks up live ticks across ALL configured symbols in ASSET_TO_SYMBOL
       const ticks = this.getTicksForAsset(strat.asset, ticksBuffer, symbolMap);
       const signal = evaluateStrategySignal(strat, ticks);
       const satisfiesRisk = isTradeProfitable(signal.confidence);
 
-      // Check for user-defined take profit or stop loss limits on the active strategy
       this.checkCircuitBreakers(strat);
 
       return {
@@ -227,12 +224,21 @@ export class ScannerLogicManager {
       return false;
     }
 
+    // Enhanced workspace locator checking global instances and DOM elements
     const activeWorkspace =
       (window as any).Blockly?.getMainWorkspace?.() ||
       (window as any).DBot?.workspace ||
-      (window as any).workspace;
+      (window as any).workspace ||
+      ((window as any).Blockly?.Workspace?.svgWorkspace && (window as any).Blockly.Workspace.svgWorkspace.get?.());
 
     if (!activeWorkspace) {
+      const svgElement = document.querySelector('.blocklyWorkspace');
+      if (svgElement && (window as any).Blockly) {
+        const foundWs = (window as any).Blockly.Workspace?.get?.(svgElement.id);
+        if (foundWs) {
+          return applyStrategyToWorkspace(foundWs, strategy);
+        }
+      }
       console.error('[ScannerLogic] Blockly workspace instance not found on window.');
       return false;
     }
