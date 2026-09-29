@@ -11,11 +11,31 @@ export const isTradeProfitable = (
   return confidence >= breakEvenRate + safetyMargin;
 };
 
+export interface CircuitBreakerState {
+  triggered: boolean;
+  type: 'PROFIT' | 'DRAWDOWN' | null;
+  sessionBalance: number;
+  triggerTarget: number;
+  totalCycles: number;
+}
+
 export class ScannerLogicManager {
   private strategies: StrategyConfig[] = [];
   private activeHighId: string | null = null;
   private lastSwitchTime = 0;
   private readonly MIN_HOLD_DURATION_MS = 2000;
+  
+  // Circuit breaker state management
+  private sessionBalance = 0;
+  private totalCyclesRun = 0;
+  private circuitBreakerState: CircuitBreakerState = {
+    triggered: false,
+    type: null,
+    sessionBalance: 0,
+    triggerTarget: 0,
+    totalCycles: 0,
+  };
+  private circuitBreakerListeners: Array<(state: CircuitBreakerState) => void> = [];
 
   constructor(initialStrategies: StrategyConfig[] = []) {
     if (initialStrategies.length > 0) {
@@ -63,17 +83,26 @@ export class ScannerLogicManager {
   ): StrategyConfig[] {
     if (!this.strategies.length || !ticksBuffer) return this.strategies;
 
+    // If a circuit breaker has already tripped, halt processing new cycles
+    if (this.circuitBreakerState.triggered) {
+      return this.strategies;
+    }
+
     const now = Date.now();
+    this.totalCyclesRun += 1;
 
     const evaluated = this.strategies.map((strat) => {
-      // If this specific strategy card is expanded/locked, preserve its current metrics and skip recalculation
       if (activeExpandedId !== null && String(strat.id) === String(activeExpandedId)) {
         return strat;
       }
 
+      // Automatically looks up live ticks across ALL configured symbols in ASSET_TO_SYMBOL
       const ticks = this.getTicksForAsset(strat.asset, ticksBuffer, symbolMap);
       const signal = evaluateStrategySignal(strat, ticks);
       const satisfiesRisk = isTradeProfitable(signal.confidence);
+
+      // Check for user-defined take profit or stop loss limits on the active strategy
+      this.checkCircuitBreakers(strat);
 
       return {
         ...strat,
@@ -117,6 +146,58 @@ export class ScannerLogicManager {
     });
 
     return [...this.strategies];
+  }
+
+  public updateSessionBalance(balance: number) {
+    this.sessionBalance = balance;
+  }
+
+  private checkCircuitBreakers(strategy: StrategyConfig) {
+    if (this.circuitBreakerState.triggered) return;
+
+    const takeProfitTarget = strategy.takeProfit ?? 8.0;
+    const stopLossTarget = strategy.stopLoss ?? 4.0;
+
+    if (this.sessionBalance >= takeProfitTarget) {
+      this.triggerCircuitBreaker({
+        triggered: true,
+        type: 'PROFIT',
+        sessionBalance: this.sessionBalance,
+        triggerTarget: takeProfitTarget,
+        totalCycles: this.totalCyclesRun,
+      });
+    } else if (this.sessionBalance <= -Math.abs(stopLossTarget)) {
+      this.triggerCircuitBreaker({
+        triggered: true,
+        type: 'DRAWDOWN',
+        sessionBalance: this.sessionBalance,
+        triggerTarget: stopLossTarget,
+        totalCycles: this.totalCyclesRun,
+      });
+    }
+  }
+
+  private triggerCircuitBreaker(state: CircuitBreakerState) {
+    this.circuitBreakerState = state;
+    this.circuitBreakerListeners.forEach((listener) => listener(state));
+  }
+
+  public subscribeCircuitBreaker(listener: (state: CircuitBreakerState) => void) {
+    this.circuitBreakerListeners.push(listener);
+    listener(this.circuitBreakerState);
+    return () => {
+      this.circuitBreakerListeners = this.circuitBreakerListeners.filter((l) => l !== listener);
+    };
+  }
+
+  public resetCircuitBreaker() {
+    this.circuitBreakerState = {
+      triggered: false,
+      type: null,
+      sessionBalance: 0,
+      triggerTarget: 0,
+      totalCycles: 0,
+    };
   }
 
   public updateStrategyParams(
