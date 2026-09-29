@@ -10,8 +10,8 @@ export const FloatingAI: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   
-  // Track which card index is expanded (default to 0 so the top global winner starts open)
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
+  // Set to null by default so no cards are open initially when opening the scanner
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   // Configuration parameter states
   const [stake, setStake] = useState<number>(10);
@@ -21,6 +21,7 @@ export const FloatingAI: React.FC = () => {
   useEffect(() => {
     if (isOpen) {
       setStrategies(scanner.runScan());
+      setExpandedIndex(null); // Reset expansion whenever modal reopens
 
       const globalWin = window as any;
       const ws = globalWin.ws || globalWin.BinarySocket || globalWin.LiveApi?.ws;
