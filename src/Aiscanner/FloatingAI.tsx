@@ -108,11 +108,6 @@ export const FloatingAI = () => {
 
   const handleLoadStrategy = (strat: StrategyConfig, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (strat.priority !== 'HIGH') {
-      alert('Only the active high-priority strategy can be loaded into Blockly.');
-      return;
-    }
-
     const success = scannerLogic.loadHighStrategyToWorkspace(strat.id);
     if (success) {
       alert('Successfully loaded strategy parameters & Martingale into Blockly canvas!');
@@ -192,7 +187,6 @@ export const FloatingAI = () => {
               const stratId = strat.id;
               const isExpanded = expandedId === stratId;
               const rankNum = index + 1;
-              const isHighPriority = strat.priority === 'HIGH';
 
               const title = strat.name || `Strategy ${rankNum}`;
               const volatility = strat.asset || 'VOLATILITY 100 (1s)';
@@ -207,42 +201,28 @@ export const FloatingAI = () => {
               return (
                 <div
                   key={stratId}
-                  className={`strategy-card ${isExpanded ? 'expanded' : ''} ${
-                    isHighPriority ? 'high-active' : 'read-only locked-card'
-                  }`}
-                  onClick={() => isHighPriority && setExpandedId(isExpanded ? null : stratId)}
+                  className={`strategy-card ${isExpanded ? 'expanded' : ''} high-active`}
+                  onClick={() => setExpandedId(isExpanded ? null : stratId)}
                 >
-                  {!isHighPriority && (
-                    <span className="padlock-badge" title="Asset feed locked to primary engine">
-                      🔒
-                    </span>
-                  )}
-
                   <div className="card-top-row">
                     <span className="rank-badge">#{rankNum}</span>
                     <div className="card-main-info">
                       <div className="card-title-row">
-                        <span className="strat-title">
-                          {title} {isExpanded && '🔒 [LOCKED]'}
-                        </span>
+                        <span className="strat-title">{title}</span>
                         <div className="tags-group">
                           <span className="tag volatility">{volatility}</span>
                           <span className="tag contract">{contractType}</span>
                           <span className="tag type">{strategyType}</span>
-                          <span className={`tag risk ${isHighPriority ? 'high' : 'medium'}`}>
-                            {isHighPriority ? 'ACTIVE' : 'LOCKED'}
-                          </span>
+                          <span className="tag risk high">ACTIVE</span>
                         </div>
                       </div>
                       <div className="card-sub-metrics">
-                        {isHighPriority
-                          ? `Score ${score}% · Confidence ${confidence}% · Direction: ${directionText}`
-                          : `Feed Locked · Inactive Asset Stream`}
+                        {`Score ${score}% · Confidence ${confidence}% · Direction: ${directionText}`}
                       </div>
                     </div>
                   </div>
 
-                  {isExpanded && isHighPriority && (
+                  {isExpanded && (
                     <div
                       className="card-expandable"
                       onClick={(e) => e.stopPropagation()}
