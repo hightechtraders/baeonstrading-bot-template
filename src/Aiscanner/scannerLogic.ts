@@ -224,7 +224,7 @@ export class ScannerLogicManager {
       return false;
     }
 
-    // Enhanced workspace locator checking global instances and DOM elements
+    // Comprehensive workspace locator checking global instances and DOM elements
     const activeWorkspace =
       (window as any).Blockly?.getMainWorkspace?.() ||
       (window as any).DBot?.workspace ||
