@@ -165,7 +165,6 @@ export function evaluateStrategySignal(
 
   let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
   
-  // Optimized thresholds to capture high-probability directional breakouts
   if (score >= 58 && efficiencyRatio >= 0.22) {
     direction = 'UP';
   } else if (score <= 42 && efficiencyRatio >= 0.22) {
@@ -195,7 +194,8 @@ export function getAssetSymbol(assetName: string): string {
 }
 
 /**
- * Generates a clean, validated XML blueprint string for full workspace injection.
+ * Generates a clean XML blueprint mapping your exact DBot block structure:
+ * 1. Trade Parameters -> 2. Run once at start & Trade options -> 3. Purchase conditions.
  */
 function buildCompleteBotXml(
   strategy: StrategyConfig,
