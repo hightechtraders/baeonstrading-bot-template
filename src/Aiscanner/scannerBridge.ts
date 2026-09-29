@@ -66,7 +66,6 @@ class ScannerBridgeClass {
     const globalWin = window as any;
     const targetSymbol = options.symbol || this.normalizeSymbol(strategy.market || strategy.volatility);
     
-    // Determine contract type based on strategy direction (UP = CALL, DOWN = PUT for Rise/Fall)
     const direction = strategy.direction || 'UP';
     const targetContract = options.contractType || (direction === 'UP' ? 'CALL' : 'PUT');
 
@@ -83,8 +82,20 @@ class ScannerBridgeClass {
         let blockInjectionCounter = 0;
 
         allBlocks.forEach((block: any) => {
-          // 1. Configure Trade Definition (Market & Trade Type)
+          // 1. Configure Trade Definition (Market, Submarket, Symbol, and Trade Type)
           if (block.type === 'trade_definition') {
+            const marketField = block.getField('MARKET_LIST');
+            if (marketField) {
+              marketField.setValue('synthetic_index');
+              blockInjectionCounter++;
+            }
+
+            const submarketField = block.getField('SUBMARKET_LIST');
+            if (submarketField) {
+              submarketField.setValue('continuous_indices');
+              blockInjectionCounter++;
+            }
+
             const symbolField = block.getField('SYMBOL_LIST');
             if (symbolField) {
               symbolField.setValue(targetSymbol);
@@ -93,7 +104,6 @@ class ScannerBridgeClass {
             
             const tradeTypeField = block.getField('TRADE_TYPE_LIST');
             if (tradeTypeField) {
-              // Set to standard high_low / callput type depending on platform dropdown values
               tradeTypeField.setValue('callput'); 
               blockInjectionCounter++;
             }
@@ -136,7 +146,6 @@ class ScannerBridgeClass {
                     } else if (input.name === 'DURATION') {
                       const safeDuration = options.duration !== undefined ? Math.min(Math.max(options.duration, 1), 10) : 5;
                       numField.setValue(String(safeDuration));
-                      blockInjectionCounter++;
                     }
                   }
                 });
@@ -151,7 +160,7 @@ class ScannerBridgeClass {
           ));
           console.log(`[AI Scanner] Successfully updated ${blockInjectionCounter} fields on workspace blocks.`);
         } else {
-          console.warn('[AI Scanner] No matching block fields found to update. Check block type structures.');
+          console.warn('[AI Scanner] No matching block fields found to update.');
         }
       } catch (err) {
         console.error('[AI Scanner] Error injecting block parameters:', err);
