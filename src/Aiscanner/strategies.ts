@@ -133,17 +133,17 @@ export function enforceSingleHighPriority(
 }
 
 /**
- * Robust Signal Engine with Trend Filtering
+ * High-Performance Trend-Efficiency Signal Engine for Rise & Fall
  */
 export function evaluateStrategySignal(
   strategy: StrategyConfig,
   ticks: number[]
 ): { direction: 'UP' | 'DOWN' | 'HOLD'; confidence: number; score: number } {
-  if (!ticks || ticks.length < 15) {
+  if (!ticks || ticks.length < 20) {
     return { direction: 'HOLD', confidence: 50, score: 50 };
   }
 
-  const window = ticks.slice(-20);
+  const window = ticks.slice(-25);
   let netDisplacement = 0;
   let totalAbsoluteVolatility = 0;
   let upTicks = 0;
@@ -164,13 +164,15 @@ export function evaluateStrategySignal(
   const score = Math.max(5, Math.min(95, rawScore));
 
   let direction: 'UP' | 'DOWN' | 'HOLD' = 'HOLD';
-  if (score >= 60 && efficiencyRatio >= 0.25) {
+  
+  // Optimized thresholds to capture high-probability directional breakouts
+  if (score >= 58 && efficiencyRatio >= 0.22) {
     direction = 'UP';
-  } else if (score <= 40 && efficiencyRatio >= 0.25) {
+  } else if (score <= 42 && efficiencyRatio >= 0.22) {
     direction = 'DOWN';
   }
 
-  const confidence = Math.round(50 + Math.abs(score - 50) * 0.9 + efficiencyRatio * 15);
+  const confidence = Math.round(50 + Math.abs(score - 50) * 0.9 + efficiencyRatio * 20);
 
   return { direction, confidence: Math.min(95, confidence), score };
 }
@@ -275,7 +277,6 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
       workspace.setEnableEvents(false);
     }
 
-    // Always clear and reload via XML blueprint to avoid stale partial mutations
     if (window.Blockly && window.Blockly.Xml) {
       if (typeof workspace.clear === 'function') {
         workspace.clear();
