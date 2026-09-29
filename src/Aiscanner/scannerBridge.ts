@@ -61,6 +61,7 @@ class ScannerBridgeClass {
         let blockInjectionCounter = 0;
 
         allBlocks.forEach((block: any) => {
+          // 1. Update Trade Parameters (Market, Symbol, Trade Type)
           if (block.type === 'trade_definition') {
             const symbolField = block.getField('SYMBOL_LIST');
             if (symbolField && options.symbol) {
@@ -74,6 +75,7 @@ class ScannerBridgeClass {
             }
           }
 
+          // 2. Update Purchase Conditions (e.g., Rise/Fall contract types)
           if (block.type === 'purchase' || block.type.includes('purchase')) {
             const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE');
             if (purchaseField && (strategy.contractType || options.contractType)) {
@@ -82,6 +84,7 @@ class ScannerBridgeClass {
             }
           }
 
+          // 3. Update Stake, Amount, and Duration fields across trade option blocks and their child inputs
           if (block.type === 'trade_definition_tradeoptions' || block.type.includes('trade') || block.type.includes('amount')) {
             ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
               const field = block.getField(fieldName);
