@@ -1,5 +1,6 @@
 // src/Aiscanner/scannerBridge.ts
 import { ASSET_TO_SYMBOL } from './useDerivTicks';
+import { StrategyConfig, getAssetSymbol } from './strategies';
 
 export class ScannerBridge {
   private ticksBuffer: Record<string, number[]> = {};
@@ -49,13 +50,11 @@ export class ScannerBridge {
     const sendSubscriptions = () => {
       if (!this.activeWS || this.activeWS.readyState !== WebSocket.OPEN) return;
 
-      // Extract all unique market symbols mapping from your configuration dictionary
       const symbols = Array.from(new Set(Object.values(ASSET_TO_SYMBOL)));
       
       symbols.forEach((symbol) => {
         if (!this.subscribedSymbols.has(symbol)) {
           this.subscribedSymbols.add(symbol);
-          // Directly push live tick subscription requests to Deriv's core pipeline
           this.activeWS?.send(JSON.stringify({ ticks: symbol }));
         }
       });
@@ -72,7 +71,6 @@ export class ScannerBridge {
     ws.addEventListener('message', (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
-        // Capture official pricing packets directly from primary servers
         if (data.msg_type === 'tick' && data.tick) {
           const symbol = data.tick.symbol;
           const price = Number(data.tick.quote);
@@ -94,7 +92,6 @@ export class ScannerBridge {
       [symbol]: updatedSymbolTicks,
     };
 
-    // Synchronize across all multi-asset mappings defined in your config
     Object.entries(ASSET_TO_SYMBOL).forEach(([assetName, sym]) => {
       if (sym === symbol) {
         mappedEntries[assetName] = updatedSymbolTicks;
@@ -124,6 +121,70 @@ export class ScannerBridge {
 
   public getTicksBuffer() {
     return this.ticksBuffer;
+  }
+
+  /**
+   * Directly injects or updates strategy parameters into the active Blockly workspace.
+   */
+  public injectDataToBlockly(strategy: StrategyConfig): boolean {
+    const globalWin = window as any;
+    const workspace =
+      globalWin.Blockly?.getMainWorkspace?.() ||
+      globalWin.DBot?.workspace ||
+      globalWin.workspace;
+
+    if (!workspace) {
+      console.error('[ScannerBridge] Blockly workspace is not currently open.');
+      return false;
+    }
+
+    try {
+      if (typeof workspace.setEnableEvents === 'function') {
+        workspace.setEnableEvents(false);
+      }
+
+      const symbolCode = getAssetSymbol(strategy.asset);
+      const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
+      const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks() : [];
+      let blockInjectionCounter = 0;
+
+      allBlocks.forEach((block: any) => {
+        if (block.type === 'trade_definition') {
+          const symbolField = block.getField('SYMBOL_LIST');
+          if (symbolField) {
+            symbolField.setValue(symbolCode);
+            blockInjectionCounter++;
+          }
+        } else if (block.type === 'trade_options') {
+          const amountField = block.getField('AMOUNT');
+          if (amountField) {
+            amountField.setValue(String(strategy.stake ?? 1));
+            blockInjectionCounter++;
+          }
+        } else if (block.type === 'purchase') {
+          const purchaseField = block.getField('PURCHASE_LIST');
+          if (purchaseField) {
+            purchaseField.setValue(targetDirection);
+            blockInjectionCounter++;
+          }
+        }
+      });
+
+      if (typeof workspace.setEnableEvents === 'function') {
+        workspace.setEnableEvents(true);
+      }
+      if (typeof workspace.render === 'function') {
+        workspace.render();
+      }
+
+      return blockInjectionCounter > 0;
+    } catch (err) {
+      if (typeof workspace?.setEnableEvents === 'function') {
+        workspace.setEnableEvents(true);
+      }
+      console.error('[ScannerBridge] Failed to inject data into Blockly:', err);
+      return false;
+    }
   }
 }
 
