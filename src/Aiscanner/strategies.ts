@@ -132,9 +132,6 @@ export function enforceSingleHighPriority(
   }));
 }
 
-/**
- * High-Performance Trend-Efficiency Signal Engine for Rise & Fall
- */
 export function evaluateStrategySignal(
   strategy: StrategyConfig,
   ticks: number[]
@@ -176,9 +173,6 @@ export function evaluateStrategySignal(
   return { direction, confidence: Math.min(95, confidence), score };
 }
 
-/**
- * Maps asset names to DBot symbol internal keys.
- */
 export function getAssetSymbol(assetName: string): string {
   const normalized = assetName.toLowerCase();
   if (normalized.includes('100 (1s)')) return '1HZ100V';
@@ -191,138 +185,4 @@ export function getAssetSymbol(assetName: string): string {
   if (normalized.includes('25')) return 'R_25';
   if (normalized.includes('10')) return 'R_10';
   return 'R_100';
-}
-
-/**
- * Generates a clean XML blueprint mapping your exact DBot block structure:
- * 1. Trade Parameters -> 2. Run once at start & Trade options -> 3. Purchase conditions.
- */
-function buildCompleteBotXml(
-  strategy: StrategyConfig,
-  symbolCode: string
-): string {
-  const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
-  return `
-    <xml xmlns="http://www.w3.org/1999/xhtml">
-      <block type="trade_definition" id="trade_definition_block" x="20" y="20">
-        <field name="MARKET_LIST">synthetic_index</field>
-        <field name="SUBMARKET_LIST">random_index</field>
-        <field name="SYMBOL_LIST">${symbolCode}</field>
-        <field name="TRADETYPECAT_LIST">updown</field>
-        <field name="TRADETYPE_LIST">risefall</field>
-        <field name="TYPECAT_LIST">both</field>
-        <field name="CANDLEINTERVAL_LIST">60</field>
-        
-        <statement name="INITIALIZATION">
-          <block type="variables_set">
-            <field name="VAR">target_profit</field>
-            <value name="VALUE">
-              <block type="math_number"><field name="NUM">${strategy.takeProfit}</field></block>
-            </value>
-            <next>
-              <block type="variables_set">
-                <field name="VAR">stop_loss</field>
-                <value name="VALUE">
-                  <block type="math_number"><field name="NUM">${strategy.stopLoss}</field></block>
-                </value>
-                <next>
-                  <block type="variables_set">
-                    <field name="VAR">martingale_size</field>
-                    <value name="VALUE">
-                      <block type="math_number"><field name="NUM">${strategy.martingaleMultiplier ?? 2.0}</field></block>
-                    </value>
-                  </block>
-                </next>
-              </block>
-            </next>
-          </block>
-        </statement>
-
-        <statement name="SUBMARKET">
-          <block type="trade_options" id="trade_options_block">
-            <field name="DURATIONUNIT_LIST">t</field>
-            <value name="DURATION">
-              <block type="math_number"><field name="NUM">1</field></block>
-            </value>
-            <value name="AMOUNT">
-              <block type="math_number"><field name="NUM">${strategy.stake ?? 1}</field></block>
-            </value>
-          </block>
-        </statement>
-
-        <statement name="SUBMARKET_PURCHASE">
-          <block type="purchase" id="purchase_block">
-            <field name="PURCHASE_LIST">${targetDirection}</field>
-          </block>
-        </statement>
-      </block>
-    </xml>
-  `.trim();
-}
-
-/**
- * Safely updates existing workspace blocks or injects the XML blueprint 
- * without causing block registration mismatches.
- */
-export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
-  if (!workspace) {
-    console.error('[Strategies] Blockly workspace is missing.');
-    return false;
-  }
-
-  const symbolCode = getAssetSymbol(strategy.asset);
-  const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
-  const BlocklyRef = (window as any).Blockly;
-
-  try {
-    if (typeof workspace.setEnableEvents === 'function') {
-      workspace.setEnableEvents(false);
-    }
-
-    // 1. Attempt updating existing block fields directly on the canvas first
-    const allBlocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks() : [];
-    let updatedViaBlocks = false;
-
-    for (const block of allBlocks) {
-      if (block.type === 'trade_definition' && typeof block.setFieldValue === 'function') {
-        block.setFieldValue(symbolCode, 'SYMBOL_LIST');
-        updatedViaBlocks = true;
-      } else if (block.type === 'trade_options' && typeof block.setFieldValue === 'function') {
-        block.setFieldValue(String(strategy.stake ?? 1), 'AMOUNT');
-        updatedViaBlocks = true;
-      } else if (block.type === 'purchase' && typeof block.setFieldValue === 'function') {
-        block.setFieldValue(targetDirection, 'PURCHASE_LIST');
-        updatedViaBlocks = true;
-      }
-    }
-
-    // 2. Fallback to clean XML blueprint injection if no blocks exist yet
-    if (!updatedViaBlocks && BlocklyRef && BlocklyRef.Xml) {
-      if (typeof workspace.clear === 'function') {
-        workspace.clear();
-      }
-      const xmlString = buildCompleteBotXml(strategy, symbolCode);
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(xmlString, 'text/xml');
-      
-      if (doc.getElementsByTagName('parsererror').length === 0) {
-        BlocklyRef.Xml.domToWorkspace(doc.documentElement, workspace);
-      }
-    }
-
-    if (typeof workspace.setEnableEvents === 'function') {
-      workspace.setEnableEvents(true);
-    }
-    if (typeof workspace.render === 'function') {
-      workspace.render();
-    }
-
-    return true;
-  } catch (error) {
-    if (workspace && typeof workspace.setEnableEvents === 'function') {
-      workspace.setEnableEvents(true);
-    }
-    console.error('[Strategies] Failed to apply strategy to workspace safely:', error);
-    return false;
-  }
 }
