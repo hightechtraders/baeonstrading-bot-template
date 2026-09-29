@@ -193,19 +193,19 @@ export function getAssetSymbol(assetName: string): string {
 }
 
 /**
- * Generates a clean, validated XML blueprint string for fallback injection.
+ * Generates a clean, validated XML blueprint string for full workspace injection.
  */
 function buildCompleteBotXml(
   strategy: StrategyConfig,
-  assetMapped: { symbol: string }
+  symbolCode: string
 ): string {
   const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
   return `
     <xml xmlns="http://www.w3.org/1999/xhtml">
-      <block type="trade_definition" id="trade_definition_block" x="0" y="0">
+      <block type="trade_definition" id="trade_definition_block" x="20" y="20">
         <field name="MARKET_LIST">synthetic_index</field>
         <field name="SUBMARKET_LIST">random_index</field>
-        <field name="SYMBOL_LIST">${assetMapped.symbol}</field>
+        <field name="SYMBOL_LIST">${symbolCode}</field>
         <field name="TRADETYPECAT_LIST">updown</field>
         <field name="TRADETYPE_LIST">risefall</field>
         <field name="TYPECAT_LIST">both</field>
@@ -259,8 +259,8 @@ function buildCompleteBotXml(
 }
 
 /**
- * Hybrid approach: tries updating existing blocks in place; 
- * falls back to clean blueprint XML loading if canvas is empty.
+ * Directly clears and injects the blueprint XML into the Blockly workspace 
+ * to guarantee that market symbols, stakes, and purchase directions load perfectly.
  */
 export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfig): boolean {
   if (!workspace) {
@@ -269,47 +269,24 @@ export function applyStrategyToWorkspace(workspace: any, strategy: StrategyConfi
   }
 
   const symbolCode = getAssetSymbol(strategy.asset);
-  const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
 
   try {
     if (typeof workspace.setEnableEvents === 'function') {
       workspace.setEnableEvents(false);
     }
 
-    const blocks = typeof workspace.getAllBlocks === 'function' ? workspace.getAllBlocks(false) : [];
-    let updatedViaMutation = false;
-
-    if (blocks.length > 0) {
-      blocks.forEach((block: any) => {
-        if (block.type === 'trade_definition' && typeof block.setFieldValue === 'function') {
-          block.setFieldValue(symbolCode, 'SYMBOL_LIST');
-          updatedViaMutation = true;
-        }
-        if (block.type === 'trade_options') {
-          const amountInput = block.getInput('AMOUNT');
-          if (amountInput?.connection?.targetBlock()) {
-            const numBlock = amountInput.connection.targetBlock();
-            if (numBlock.type === 'math_number' && typeof numBlock.setFieldValue === 'function') {
-              numBlock.setFieldValue(String(strategy.stake), 'NUM');
-              updatedViaMutation = true;
-            }
-          }
-        }
-        if (block.type === 'purchase' && typeof block.setFieldValue === 'function') {
-          block.setFieldValue(targetDirection, 'PURCHASE_LIST');
-          updatedViaMutation = true;
-        }
-      });
-    }
-
-    if (!updatedViaMutation && window.Blockly && window.Blockly.Xml) {
+    // Always clear and reload via XML blueprint to avoid stale partial mutations
+    if (window.Blockly && window.Blockly.Xml) {
       if (typeof workspace.clear === 'function') {
         workspace.clear();
       }
-      const xmlString = buildCompleteBotXml(strategy, { symbol: symbolCode });
+      const xmlString = buildCompleteBotXml(strategy, symbolCode);
       const parser = new DOMParser();
       const doc = parser.parseFromString(xmlString, 'text/xml');
       window.Blockly.Xml.domToWorkspace(doc.documentElement, workspace);
+    } else {
+      console.error('[Strategies] Blockly.Xml not found on window.');
+      return false;
     }
 
     if (typeof workspace.setEnableEvents === 'function') {
