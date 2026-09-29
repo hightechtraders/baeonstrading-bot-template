@@ -1,43 +1,42 @@
 import { Strategy } from './strategies';
 
 class ScannerBridgeClass {
-  private ws: any = null;
   private isListening = false;
 
   public pushTick(assetName: string, price: number, strategies: Strategy[]) {
     console.log(`[AI Scanner] Tick received -> ${assetName}: ${price}`);
   }
 
-  // Hook into the active app context WebSocket instance securely
   public initLiveTickStream(onTickCallback?: (symbol: string, price: number) => void) {
     if (this.isListening) return;
 
     const globalWin = window as any;
     
-    // Access the active WebSocket instance from your app context or global definitions
-    this.ws = globalWin.appCtx?.websocketInstance || globalWin.ws || globalWin.BinarySocket;
+    // Check if the official API helper or app core is ready
+    const api = globalWin.LiveApi || globalWin.BinarySocket || globalWin.api;
 
-    if (this.ws && typeof this.ws.addEventListener === 'function') {
-      this.ws.addEventListener('message', (event: MessageEvent) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.msg_type === 'tick' && data.tick) {
-            const { symbol, quote } = data.tick;
-            this.pushTick(symbol, quote, []);
+    if (api && typeof api.send === 'function') {
+      const symbols = ['R_10', 'R_25', 'R_50', 'R_75', 'R_100', '1HZ50', '1HZ100'];
+
+      // Use official API request syntax instead of raw socket stringifying
+      symbols.forEach((symbol) => {
+        api.send({ ticks: symbol, subscribe: 1 }).then((response: any) => {
+          if (response && response.tick) {
+            this.pushTick(response.tick.symbol, response.tick.quote, []);
             if (onTickCallback) {
-              onTickCallback(symbol, quote);
+              onTickCallback(response.tick.symbol, response.tick.quote);
             }
           }
-        } catch (err) {
-          console.error('[AI Scanner] Error parsing incoming tick stream:', err);
-        }
+        }).catch((err: any) => {
+          console.error('[AI Scanner] Tick subscription error:', err);
+        });
       });
 
       this.isListening = true;
-      console.log('[AI Scanner] Successfully hooked into appContext websocketInstance.');
+      console.log('[AI Scanner] Successfully subscribed via official Deriv API client.');
     } else {
-      console.warn('[AI Scanner] websocketInstance not ready yet. Retrying...');
-      setTimeout(() => this.initLiveTickStream(onTickCallback), 1500);
+      // Fallback: If api isn't initialized yet, wait for the main app to finish booting
+      setTimeout(() => this.initLiveTickStream(onTickCallback), 2000);
     }
   }
 
