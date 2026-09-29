@@ -12,11 +12,9 @@ class ScannerBridgeClass {
 
     const globalWin = window as any;
     
-    // Safely check for the official API helper or app core
     const api = globalWin.LiveApi || globalWin.BinarySocket || globalWin.api;
     const rawWs = api?.ws || globalWin.ws || globalWin.appCtx?.websocketInstance;
 
-    // Ensure the API and underlying socket are completely open (readyState 1) before subscribing
     if (api && typeof api.send === 'function' && (!rawWs || rawWs.readyState === 1)) {
       const symbols = ['R_10', 'R_25', 'R_50', 'R_75', 'R_100', '1HZ50', '1HZ100'];
 
@@ -40,16 +38,38 @@ class ScannerBridgeClass {
       this.isListening = true;
       console.log('[AI Scanner] Successfully subscribed via official Deriv API client.');
     } else {
-      // Back off and wait for the main app connection to stabilize
       setTimeout(() => this.initLiveTickStream(onTickCallback), 3000);
     }
+  }
+
+  // Helper to map market names / volatility labels to valid Deriv API symbol codes
+  private normalizeSymbol(marketOrVol: string): string {
+    if (!marketOrVol) return '1HZ50';
+    const text = marketOrVol.toLowerCase();
+    
+    if (text.includes('10s') || text.includes('1hz10')) return '1HZ10';
+    if (text.includes('25s') || text.includes('1hz25')) return '1HZ25';
+    if (text.includes('50s') || text.includes('1hz50')) return '1HZ50';
+    if (text.includes('75s') || text.includes('1hz75')) return '1HZ75';
+    if (text.includes('100s') || text.includes('1hz100')) return '1HZ100';
+
+    if (text.includes('10')) return 'R_10';
+    if (text.includes('25')) return 'R_25';
+    if (text.includes('50')) return 'R_50';
+    if (text.includes('75')) return 'R_75';
+    if (text.includes('100')) return 'R_100';
+
+    return '1HZ50'; // Default fallback
   }
 
   public loadStrategyToWorkspace(strategy: any, options: { stake: number; stopLoss: number; takeProfit?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
     console.log(`[AI Scanner] Injecting parameters into workspace:`, strategy, options);
 
     const globalWin = window as any;
-    globalWin.tredapendingParams = { ...options, strategy };
+    
+    // Resolve proper target symbol from options or strategy metadata
+    const targetSymbol = options.symbol || this.normalizeSymbol(strategy.market || strategy.volatility);
+    globalWin.tredapendingParams = { ...options, symbol: targetSymbol, strategy };
 
     let workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
 
@@ -64,8 +84,8 @@ class ScannerBridgeClass {
         allBlocks.forEach((block: any) => {
           if (block.type === 'trade_definition') {
             const symbolField = block.getField('SYMBOL_LIST');
-            if (symbolField && options.symbol) {
-              symbolField.setValue(options.symbol);
+            if (symbolField) {
+              symbolField.setValue(targetSymbol);
               blockInjectionCounter++;
             }
             const tradeTypeField = block.getField('TRADE_TYPE_LIST');
