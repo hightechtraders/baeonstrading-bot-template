@@ -122,130 +122,69 @@ export class ScannerBridge {
   }
 
   /**
-   * Generates the complete DBot XML template matching Deriv's exact block schema.
-   */
-  private buildBotXml(strategy: StrategyConfig, symbolCode: string): string {
-    const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
-    return `
-      <xml xmlns="http://www.w3.org/1999/xhtml">
-        <block type="trade_definition" id="trade_definition_block" x="20" y="20">
-          <field name="MARKET_LIST">synthetic_index</field>
-          <field name="SUBMARKET_LIST">random_index</field>
-          <field name="SYMBOL_LIST">${symbolCode}</field>
-          <field name="TRADETYPECAT_LIST">updown</field>
-          <field name="TRADETYPE_LIST">risefall</field>
-          <field name="TYPECAT_LIST">both</field>
-          <field name="CANDLEINTERVAL_LIST">60</field>
-          
-          <statement name="INITIALIZATION">
-            <block type="variables_set">
-              <field name="VAR">target_profit</field>
-              <value name="VALUE">
-                <block type="math_number"><field name="NUM">${strategy.takeProfit}</field></block>
-              </value>
-              <next>
-                <block type="variables_set">
-                  <field name="VAR">stop_loss</field>
-                  <value name="VALUE">
-                    <block type="math_number"><field name="NUM">${strategy.stopLoss}</field></block>
-                  </value>
-                  <next>
-                    <block type="variables_set">
-                      <field name="VAR">martingale_size</field>
-                      <value name="VALUE">
-                        <block type="math_number"><field name="NUM">${strategy.martingaleMultiplier ?? 2.0}</field></block>
-                      </value>
-                    </block>
-                  </next>
-                </block>
-              </next>
-            </block>
-          </statement>
-
-          <statement name="SUBMARKET">
-            <block type="trade_options" id="trade_options_block">
-              <field name="DURATIONUNIT_LIST">t</field>
-              <value name="DURATION">
-                <block type="math_number"><field name="NUM">1</field></block>
-              </value>
-              <value name="AMOUNT">
-                <block type="math_number"><field name="NUM">${strategy.stake ?? 1}</field></block>
-              </value>
-            </block>
-          </statement>
-
-          <statement name="SUBMARKET_PURCHASE">
-            <block type="purchase" id="purchase_block">
-              <field name="PURCHASE_LIST">${targetDirection}</field>
-            </block>
-          </statement>
-        </block>
-      </xml>
-    `.trim();
-  }
-
-  /**
-   * Locates the active workspace across globals or DOM and injects the XML blueprint.
+   * Safely updates active workspace blocks in-place with scanner parameters.
    */
   public injectDataToBlockly(strategy: StrategyConfig): boolean {
     const globalWin = window as any;
     
-    // 1. Comprehensive workspace locator across known DBot / Blockly globals
     let workspace =
       globalWin.Blockly?.getMainWorkspace?.() ||
       globalWin.DBot?.workspace ||
-      globalWin.workspace ||
-      (globalWin.Blockly?.Workspace?.svgWorkspace && globalWin.Blockly.Workspace.svgWorkspace.get?.());
+      globalWin.workspace;
 
-    // 2. DOM-based fallback if globals are uninitialized
-    if (!workspace && globalWin.Blockly) {
-      const svgElement = document.querySelector('.blocklyWorkspace') || document.querySelector('svg.blocklySvg');
-      if (svgElement && svgElement.id) {
-        workspace = globalWin.Blockly.Workspace?.get?.(svgElement.id);
-      }
-      if (!workspace && globalWin.Blockly.Workspace?.getAllWorkspaces) {
-        const allWs = globalWin.Blockly.Workspace.getAllWorkspaces();
-        if (allWs && allWs.length > 0) {
-          workspace = allWs[0];
-        }
+    if (!workspace && globalWin.Blockly?.Workspace?.getAllWorkspaces) {
+      const allWs = globalWin.Blockly.Workspace.getAllWorkspaces();
+      if (allWs && allWs.length > 0) {
+        workspace = allWs[0];
       }
     }
 
-    const BlocklyRef = globalWin.Blockly;
-
-    if (!workspace) {
-      console.error('[ScannerBridge] Blockly workspace instance could not be located.');
+    if (!workspace || typeof workspace.getAllBlocks !== 'function') {
+      console.error('[ScannerBridge] Active Blockly workspace or blocks unavailable.');
       return false;
     }
 
     try {
-      if (typeof workspace.clear === 'function') {
-        workspace.clear();
-      }
-
+      const blocks = workspace.getAllBlocks();
       const symbolCode = getAssetSymbol(strategy.asset);
-      const xmlString = this.buildBotXml(strategy, symbolCode);
+      const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
+      let updatedCount = 0;
 
-      if (BlocklyRef && BlocklyRef.Xml) {
-        const dom = BlocklyRef.Xml.textToDom(xmlString);
-        BlocklyRef.Xml.domToWorkspace(dom, workspace);
-      } else {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(xmlString, 'text/xml');
-        if (doc.getElementsByTagName('parsererror').length === 0 && BlocklyRef?.Xml) {
-          BlocklyRef.Xml.domToWorkspace(doc.documentElement, workspace);
-        } else {
-          return false;
+      for (const block of blocks) {
+        // 1. Update Asset Symbol on Trade Definition block
+        if (block.type === 'trade_definition') {
+          block.setFieldValue(symbolCode, 'SYMBOL_LIST');
+          updatedCount++;
+        }
+
+        // 2. Update Stake Amount on Trade Options block
+        if (block.type === 'trade_options') {
+          const amountField = block.getField('AMOUNT');
+          if (amountField) {
+            amountField.setValue(String(strategy.stake ?? 1));
+            updatedCount++;
+          }
+        }
+
+        // 3. Update Purchase Direction block
+        if (block.type === 'purchase') {
+          block.setFieldValue(targetDirection, 'PURCHASE_LIST');
+          updatedCount++;
         }
       }
 
-      if (typeof workspace.render === 'function') {
-        workspace.render();
+      if (updatedCount > 0) {
+        if (typeof workspace.render === 'function') {
+          workspace.render();
+        }
+        console.log(`[ScannerBridge] Successfully updated ${updatedCount} block parameters!`);
+        return true;
       }
 
-      return true;
+      console.warn('[ScannerBridge] No matching strategy blocks found on the canvas.');
+      return false;
     } catch (err) {
-      console.error('[ScannerBridge] Failed to inject XML into Blockly workspace:', err);
+      console.error('[ScannerBridge] Failed to patch block parameters:', err);
       return false;
     }
   }
