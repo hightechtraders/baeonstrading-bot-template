@@ -1,7 +1,7 @@
 // src/Aiscanner/scannerLogic.ts
 import { StrategyConfig, enforceSingleHighPriority, evaluateStrategySignal } from './strategies';
-import { ASSET_TO_SYMBOL, resolveSymbol } from './useDerivTicks';
-import { scannerBridge } from './scannerBridge'; // Import scannerBridge
+import { resolveSymbol } from './useDerivTicks';
+import { scannerBridge } from './scannerBridge';
 
 export const isTradeProfitable = (
   confidence: number,
@@ -26,7 +26,6 @@ export class ScannerLogicManager {
   private lastSwitchTime = 0;
   private readonly MIN_HOLD_DURATION_MS = 2000;
   
-  // Circuit breaker state management
   private sessionBalance = 0;
   private totalCyclesRun = 0;
   private circuitBreakerState: CircuitBreakerState = {
@@ -225,7 +224,6 @@ export class ScannerLogicManager {
       return false;
     }
 
-    // Delegate direct Blockly canvas mutation to scannerBridge
     return scannerBridge.injectDataToBlockly(strategy);
   }
 
