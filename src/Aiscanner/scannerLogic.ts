@@ -1,6 +1,7 @@
 // src/Aiscanner/scannerLogic.ts
-import { StrategyConfig, enforceSingleHighPriority, evaluateStrategySignal, applyStrategyToWorkspace } from './strategies';
+import { StrategyConfig, enforceSingleHighPriority, evaluateStrategySignal } from './strategies';
 import { ASSET_TO_SYMBOL, resolveSymbol } from './useDerivTicks';
+import { scannerBridge } from './scannerBridge'; // Import scannerBridge
 
 export const isTradeProfitable = (
   confidence: number,
@@ -224,26 +225,8 @@ export class ScannerLogicManager {
       return false;
     }
 
-    // Comprehensive workspace locator checking global instances and DOM elements
-    const activeWorkspace =
-      (window as any).Blockly?.getMainWorkspace?.() ||
-      (window as any).DBot?.workspace ||
-      (window as any).workspace ||
-      ((window as any).Blockly?.Workspace?.svgWorkspace && (window as any).Blockly.Workspace.svgWorkspace.get?.());
-
-    if (!activeWorkspace) {
-      const svgElement = document.querySelector('.blocklyWorkspace');
-      if (svgElement && (window as any).Blockly) {
-        const foundWs = (window as any).Blockly.Workspace?.get?.(svgElement.id);
-        if (foundWs) {
-          return applyStrategyToWorkspace(foundWs, strategy);
-        }
-      }
-      console.error('[ScannerLogic] Blockly workspace instance not found on window.');
-      return false;
-    }
-
-    return applyStrategyToWorkspace(activeWorkspace, strategy);
+    // Delegate direct Blockly canvas mutation to scannerBridge
+    return scannerBridge.injectDataToBlockly(strategy);
   }
 
   public getStrategies(): StrategyConfig[] {
