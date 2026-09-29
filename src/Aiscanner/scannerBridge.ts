@@ -11,6 +11,7 @@ export class ScannerBridge {
   public init() {
     if (this.isHooked) return;
 
+    // 1. Hook into existing global instances if available
     const globalWS =
       (window as any)._derivWebSocket ||
       (window as any).appWebSocket ||
@@ -24,6 +25,7 @@ export class ScannerBridge {
       return;
     }
 
+    // 2. Fallback to native WebSocket runtime interception
     const NativeWebSocket = window.WebSocket;
     const self = this;
 
@@ -47,10 +49,13 @@ export class ScannerBridge {
     const sendSubscriptions = () => {
       if (!this.activeWS || this.activeWS.readyState !== WebSocket.OPEN) return;
 
+      // Extract all unique market symbols mapping from your configuration dictionary
       const symbols = Array.from(new Set(Object.values(ASSET_TO_SYMBOL)));
+      
       symbols.forEach((symbol) => {
         if (!this.subscribedSymbols.has(symbol)) {
           this.subscribedSymbols.add(symbol);
+          // Directly push live tick subscription requests to Deriv's core pipeline
           this.activeWS?.send(JSON.stringify({ ticks: symbol }));
         }
       });
@@ -67,6 +72,7 @@ export class ScannerBridge {
     ws.addEventListener('message', (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
+        // Capture official pricing packets directly from primary servers
         if (data.msg_type === 'tick' && data.tick) {
           const symbol = data.tick.symbol;
           const price = Number(data.tick.quote);
@@ -75,7 +81,7 @@ export class ScannerBridge {
           }
         }
       } catch (e) {
-        // Ignored non-JSON frames
+        // Drop non-JSON framing safely
       }
     });
   }
@@ -88,6 +94,7 @@ export class ScannerBridge {
       [symbol]: updatedSymbolTicks,
     };
 
+    // Synchronize across all multi-asset mappings defined in your config
     Object.entries(ASSET_TO_SYMBOL).forEach(([assetName, sym]) => {
       if (sym === symbol) {
         mappedEntries[assetName] = updatedSymbolTicks;
