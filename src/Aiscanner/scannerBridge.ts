@@ -1,7 +1,7 @@
 // src/Aiscanner/scannerBridge.ts
 import { StrategyConfig, applyStrategyToWorkspace } from './strategies';
 
-// Unified asset to Deriv symbol mapping for real-time WebSocket tick listening
+// Complete asset-to-symbol map covering all core strategies and variants
 export const ASSET_TO_SYMBOL: Record<string, string> = {
   'Volatility 10': 'R_10',
   'Volatility 25': 'R_25',
@@ -10,6 +10,9 @@ export const ASSET_TO_SYMBOL: Record<string, string> = {
   'Volatility 100': 'R_100',
   'Volatility 100 (1s)': '1HZ100V',
   'Volatility 25 (1s)': '1HZ25V',
+  'Volatility 10 (1s)': '1HZ10V',
+  'Volatility 50 (1s)': '1HZ50V',
+  'Volatility 75 (1s)': '1HZ75V',
 };
 
 export class ScannerBridge {
@@ -22,7 +25,6 @@ export class ScannerBridge {
   public init() {
     if (this.isHooked) return;
 
-    // Detect existing global Deriv WebSocket instances cleanly
     const globalWS =
       (window as any)._derivWebSocket ||
       (window as any).appWebSocket ||
@@ -36,7 +38,6 @@ export class ScannerBridge {
       return;
     }
 
-    // Fallback to proxying native WebSocket connections
     const NativeWebSocket = window.WebSocket;
     const self = this;
 
@@ -58,7 +59,11 @@ export class ScannerBridge {
 
   public subscribeAllAssets() {
     const sendSubscriptions = () => {
-      if (!this.activeWS || this.activeWS.readyState !== WebSocket.OPEN) return;
+      if (!this.activeWS || this.activeWS.readyState !== WebSocket.OPEN) {
+        // Retry if socket isn't open yet
+        setTimeout(sendSubscriptions, 1500);
+        return;
+      }
 
       const symbols = Array.from(new Set(Object.values(ASSET_TO_SYMBOL)));
 
@@ -70,11 +75,7 @@ export class ScannerBridge {
       });
     };
 
-    if (this.activeWS && this.activeWS.readyState === WebSocket.OPEN) {
-      sendSubscriptions();
-    } else {
-      setTimeout(sendSubscriptions, 1000);
-    }
+    sendSubscriptions();
   }
 
   private attachWSListener(ws: WebSocket) {
@@ -133,9 +134,6 @@ export class ScannerBridge {
     return this.ticksBuffer;
   }
 
-  /**
-   * Delegates block modification directly to strategies.ts applyStrategyToWorkspace helper.
-   */
   public injectDataToBlockly(strategy: StrategyConfig): boolean {
     const Blockly = (window as any).Blockly;
     const workspace = Blockly?.getMainWorkspace?.();
