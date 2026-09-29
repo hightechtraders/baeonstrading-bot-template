@@ -122,25 +122,14 @@ export class ScannerBridge {
   }
 
   /**
-   * Patches pre-existing blocks on the active workspace canvas in-place.
+   * Directly updates pre-existing Blockly blocks on the canvas.
    */
   public injectDataToBlockly(strategy: StrategyConfig): boolean {
-    const globalWin = window as any;
-    
-    let workspace =
-      globalWin.Blockly?.getMainWorkspace?.() ||
-      globalWin.DBot?.workspace ||
-      globalWin.workspace;
+    const Blockly = (window as any).Blockly;
+    const workspace = Blockly?.getMainWorkspace?.();
 
-    if (!workspace && globalWin.Blockly?.Workspace?.getAllWorkspaces) {
-      const allWs = globalWin.Blockly.Workspace.getAllWorkspaces();
-      if (allWs && allWs.length > 0) {
-        workspace = allWs[0];
-      }
-    }
-
-    if (!workspace || typeof workspace.getAllBlocks !== 'function') {
-      console.error('[ScannerBridge] Active Blockly workspace or blocks unavailable.');
+    if (!workspace) {
+      console.error('[ScannerBridge] Main workspace not found.');
       return false;
     }
 
@@ -148,43 +137,33 @@ export class ScannerBridge {
       const blocks = workspace.getAllBlocks();
       const symbolCode = getAssetSymbol(strategy.asset);
       const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
-      let updatedCount = 0;
+      let success = false;
 
       for (const block of blocks) {
-        // 1. Update Asset Symbol on Trade Definition block
         if (block.type === 'trade_definition') {
           block.setFieldValue(symbolCode, 'SYMBOL_LIST');
-          updatedCount++;
+          success = true;
         }
-
-        // 2. Update Stake Amount on Trade Options block
         if (block.type === 'trade_options') {
           const amountField = block.getField('AMOUNT');
           if (amountField) {
             amountField.setValue(String(strategy.stake ?? 1));
-            updatedCount++;
+            success = true;
           }
         }
-
-        // 3. Update Purchase Direction block
         if (block.type === 'purchase') {
           block.setFieldValue(targetDirection, 'PURCHASE_LIST');
-          updatedCount++;
+          success = true;
         }
       }
 
-      if (updatedCount > 0) {
-        if (typeof workspace.render === 'function') {
-          workspace.render();
-        }
-        console.log(`[ScannerBridge] Successfully patched ${updatedCount} existing block parameters!`);
-        return true;
+      if (success && typeof workspace.render === 'function') {
+        workspace.render();
       }
 
-      console.warn('[ScannerBridge] No matching bot blocks found on the canvas.');
-      return false;
+      return success;
     } catch (err) {
-      console.error('[ScannerBridge] Failed to patch existing block parameters:', err);
+      console.error('[ScannerBridge] Error updating blocks:', err);
       return false;
     }
   }
