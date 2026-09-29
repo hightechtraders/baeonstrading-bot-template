@@ -12,6 +12,7 @@ import { OAuthTokenExchangeService } from '@/services/oauth-token-exchange.servi
 import { initializeI18n, localize, TranslationProvider } from '@deriv-com/translations';
 import { scannerBridge } from '@/Aiscanner/scannerBridge';
 import { CORE_7_STRATEGIES } from '@/Aiscanner/strategies';
+import { FloatingAI } from '@/Aiscanner/FloatingAI'; // Added FloatingAI import
 import CoreStoreProvider from './CoreStoreProvider';
 import './app-root.scss';
 
@@ -100,6 +101,8 @@ const router = createBrowserRouter(
                                     <CoreStoreProvider>
                                         <ScannerTickSubscriber />
                                         <Layout />
+                                        {/* Floating AI Scanner Button & Modal */}
+                                        <FloatingAI />
                                     </CoreStoreProvider>
                                 </LocalStorageSyncWrapper>
                             </StoreProvider>
