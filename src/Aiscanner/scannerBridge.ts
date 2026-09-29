@@ -122,7 +122,45 @@ export class ScannerBridge {
   }
 
   /**
-   * Directly updates pre-existing Blockly blocks on the canvas.
+   * Generates valid DBot XML schema for strategy injection.
+   */
+  private buildBotXml(strategy: StrategyConfig, symbolCode: string): string {
+    const targetDirection = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
+    return `
+      <xml xmlns="http://www.w3.org/1999/xhtml">
+        <block type="trade_definition" id="trade_definition_block" x="20" y="20">
+          <field name="MARKET_LIST">synthetic_index</field>
+          <field name="SUBMARKET_LIST">random_index</field>
+          <field name="SYMBOL_LIST">${symbolCode}</field>
+          <field name="TRADETYPECAT_LIST">updown</field>
+          <field name="TRADETYPE_LIST">risefall</field>
+          <field name="TYPECAT_LIST">both</field>
+          <field name="CANDLEINTERVAL_LIST">60</field>
+          
+          <statement name="SUBMARKET">
+            <block type="trade_options" id="trade_options_block">
+              <field name="DURATIONUNIT_LIST">t</field>
+              <value name="DURATION">
+                <block type="math_number"><field name="NUM">1</field></block>
+              </value>
+              <value name="AMOUNT">
+                <block type="math_number"><field name="NUM">${strategy.stake ?? 1}</field></block>
+              </value>
+            </block>
+          </statement>
+
+          <statement name="SUBMARKET_PURCHASE">
+            <block type="purchase" id="purchase_block">
+              <field name="PURCHASE_LIST">${targetDirection}</field>
+            </block>
+          </statement>
+        </block>
+      </xml>
+    `.trim();
+  }
+
+  /**
+   * Patches existing blocks or falls back to clean XML workspace loading.
    */
   public injectDataToBlockly(strategy: StrategyConfig): boolean {
     const Blockly = (window as any).Blockly;
@@ -134,39 +172,48 @@ export class ScannerBridge {
     }
 
     try {
-      const blocks = workspace.getAllBlocks();
       const symbolCode = ASSET_TO_SYMBOL[strategy.asset] || '1HZ100V';
       const targetDirection = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
-      let success = false;
+      const blocks = workspace.getAllBlocks();
+      let patched = false;
 
-      for (const block of blocks) {
-        if (block.type === 'trade_definition_market' || block.type === 'trade_definition') {
-          block.setFieldValue(symbolCode, 'SYMBOL_LIST');
-          success = true;
-        }
-        if (block.type === 'trade_definition_tradeoptions' || block.type === 'trade_options') {
-          const amountInput = block.getInput('AMOUNT');
-          if (amountInput && amountInput.connection && amountInput.connection.targetBlock()) {
-            const shadowBlock = amountInput.connection.targetBlock();
-            if (typeof shadowBlock.setFieldValue === 'function') {
-              shadowBlock.setFieldValue(String(strategy.stake ?? 1), 'NUM');
-              success = true;
+      // 1. Try in-place patching first if blocks exist
+      if (blocks && blocks.length > 0) {
+        for (const block of blocks) {
+          if (block.type === 'trade_definition_market' || block.type === 'trade_definition') {
+            block.setFieldValue(symbolCode, 'SYMBOL_LIST');
+            patched = true;
+          }
+          if (block.type === 'trade_options') {
+            const amountField = block.getField('AMOUNT');
+            if (amountField) {
+              amountField.setValue(String(strategy.stake ?? 1));
+              patched = true;
             }
           }
-        }
-        if (block.type === 'purchase') {
-          block.setFieldValue(targetDirection, 'PURCHASE_LIST');
-          success = true;
+          if (block.type === 'purchase') {
+            block.setFieldValue(targetDirection, 'PURCHASE_LIST');
+            patched = true;
+          }
         }
       }
 
-      if (success && typeof workspace.render === 'function') {
+      // 2. If no blocks were patched or canvas was empty, load via workspace XML
+      if (!patched && Blockly.Xml) {
+        workspace.clear();
+        const xmlString = this.buildBotXml(strategy, symbolCode);
+        const dom = Blockly.Xml.textToDom(xmlString);
+        Blockly.Xml.domToWorkspace(dom, workspace);
+        patched = true;
+      }
+
+      if (patched && typeof workspace.render === 'function') {
         workspace.render();
       }
 
-      return success;
+      return patched;
     } catch (err) {
-      console.error('[ScannerBridge] Error updating blocks:', err);
+      console.error('[ScannerBridge] Error injecting strategy:', err);
       return false;
     }
   }
