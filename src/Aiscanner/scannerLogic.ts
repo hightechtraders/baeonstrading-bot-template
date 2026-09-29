@@ -20,14 +20,20 @@ export class ScannerLogic {
     const prevPrice = prices[prices.length - 2];
     const diff = latestPrice - prevPrice;
 
-    // Dynamically update strategy confidence based on real price momentum
+    // Determine live direction based on actual price change
+    const liveDirection: 'UP' | 'DOWN' = diff >= 0 ? 'UP' : 'DOWN';
+
+    // Dynamically update strategy confidence and direction based on real price momentum
     this.strategies = this.strategies.map((strat) => {
-      // Map strategy market name to symbol prefix
       const matchesMarket = strat.market.toLowerCase().includes(symbol.toLowerCase().replace('r_', 'volatility ').replace('1hz', 'volatility '));
       if (matchesMarket) {
         const momentumBonus = diff !== 0 ? Math.min(20, Math.abs(diff) * 100) : 0;
         const newConfidence = Math.min(99, Math.max(60, Math.round(75 + momentumBonus)));
-        return { ...strat, confidence: newConfidence };
+        return { 
+          ...strat, 
+          confidence: newConfidence,
+          direction: liveDirection // Updates direction dynamically!
+        };
       }
       return strat;
     });
@@ -40,7 +46,14 @@ export class ScannerLogic {
     this.strategies = this.strategies.map((strat) => {
       const randomJitter = Math.floor(Math.random() * 7) - 3;
       const newConfidence = Math.min(99, Math.max(60, strat.confidence + randomJitter));
-      return { ...strat, confidence: newConfidence };
+      // Optionally randomize or alternate direction slightly during fallback simulation
+      const randomDirection: 'UP' | 'DOWN' = Math.random() > 0.5 ? 'UP' : 'DOWN';
+      
+      return { 
+        ...strat, 
+        confidence: newConfidence,
+        direction: randomDirection 
+      };
     });
     return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
   }
