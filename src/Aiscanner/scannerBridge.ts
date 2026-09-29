@@ -1,6 +1,6 @@
 // src/Aiscanner/scannerBridge.ts
 import { ASSET_TO_SYMBOL } from './useDerivTicks';
-import { StrategyConfig, getAssetSymbol } from './strategies';
+import { StrategyConfig } from './strategies';
 
 export class ScannerBridge {
   private ticksBuffer: Record<string, number[]> = {};
@@ -135,20 +135,23 @@ export class ScannerBridge {
 
     try {
       const blocks = workspace.getAllBlocks();
-      const symbolCode = getAssetSymbol(strategy.asset);
-      const targetDirection = strategy.direction === 'DOWN' ? 'DOWN' : 'UP';
+      const symbolCode = ASSET_TO_SYMBOL[strategy.asset] || '1HZ100V';
+      const targetDirection = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
       let success = false;
 
       for (const block of blocks) {
-        if (block.type === 'trade_definition') {
+        if (block.type === 'trade_definition_market' || block.type === 'trade_definition') {
           block.setFieldValue(symbolCode, 'SYMBOL_LIST');
           success = true;
         }
-        if (block.type === 'trade_options') {
-          const amountField = block.getField('AMOUNT');
-          if (amountField) {
-            amountField.setValue(String(strategy.stake ?? 1));
-            success = true;
+        if (block.type === 'trade_definition_tradeoptions' || block.type === 'trade_options') {
+          const amountInput = block.getInput('AMOUNT');
+          if (amountInput && amountInput.connection && amountInput.connection.targetBlock()) {
+            const shadowBlock = amountInput.connection.targetBlock();
+            if (typeof shadowBlock.setFieldValue === 'function') {
+              shadowBlock.setFieldValue(String(strategy.stake ?? 1), 'NUM');
+              success = true;
+            }
           }
         }
         if (block.type === 'purchase') {
