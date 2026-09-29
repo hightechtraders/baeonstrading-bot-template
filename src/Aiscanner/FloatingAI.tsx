@@ -10,10 +10,8 @@ export const FloatingAI: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   
-  // Set to null by default so no cards are open initially when opening the scanner
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
-  // Configuration parameter states
   const [stake, setStake] = useState<number>(10);
   const [stopLoss, setStopLoss] = useState<number>(20);
   const [takeProfit, setTakeProfit] = useState<number>(50);
@@ -21,7 +19,7 @@ export const FloatingAI: React.FC = () => {
   useEffect(() => {
     if (isOpen) {
       setStrategies(scanner.runScan());
-      setExpandedIndex(null); // Reset expansion whenever modal reopens
+      setExpandedIndex(null);
 
       const globalWin = window as any;
       const ws = globalWin.ws || globalWin.BinarySocket || globalWin.LiveApi?.ws;
@@ -58,7 +56,6 @@ export const FloatingAI: React.FC = () => {
     }
   }, [isOpen]);
 
-  // Sort strategies from highest to lowest confidence score
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
   const topWinner = sortedStrategies[0];
   const otherStrategies = sortedStrategies.slice(1);
@@ -91,7 +88,7 @@ export const FloatingAI: React.FC = () => {
             </div>
             <p className="scanner-instruction">Balanced strategies rank below. Tap card to edit.</p>
 
-            {/* TOP GLOBAL WINNER CARD (Always HIGH) */}
+            {/* TOP GLOBAL WINNER CARD */}
             {topWinner && (
               <div className="global-winner-section">
                 <div className="global-winner-meta">
@@ -107,7 +104,14 @@ export const FloatingAI: React.FC = () => {
                     <span className="badge-rank">#1</span>
                     <div className="strategy-info">
                       <strong>{topWinner.name}</strong>
-                      <span className="market-tag">{topWinner.market}</span>
+                      <div className="card-tags-row">
+                        <span className="market-tag">{topWinner.market}</span>
+                        {topWinner.direction && (
+                          <span className={`direction-tag ${topWinner.direction.toLowerCase()}`}>
+                            {topWinner.direction}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <span className="badge-high">HIGH</span>
                     <span className="toggle-arrow">{expandedIndex === 0 ? '▲' : '▼'}</span>
@@ -140,7 +144,7 @@ export const FloatingAI: React.FC = () => {
               </div>
             )}
 
-            {/* REMAINING STRATEGIES LIST (All marked MEDIUM) */}
+            {/* REMAINING STRATEGIES LIST */}
             <div className="strategy-list">
               {otherStrategies.map((strat, idx) => {
                 const actualIndex = idx + 1;
@@ -156,7 +160,14 @@ export const FloatingAI: React.FC = () => {
                       <span className="badge-rank">#{actualIndex + 1}</span>
                       <div className="strategy-info">
                         <strong>{strat.name}</strong>
-                        <span className="market-tag">{strat.market}</span>
+                        <div className="card-tags-row">
+                          <span className="market-tag">{strat.market}</span>
+                          {strat.direction && (
+                            <span className={`direction-tag ${strat.direction.toLowerCase()}`}>
+                              {strat.direction}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <span className="badge-medium">MEDIUM</span>
                       <span className="toggle-arrow">{isExpanded ? '▲' : '▼'}</span>
