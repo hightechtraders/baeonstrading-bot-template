@@ -5,7 +5,7 @@ class ScannerBridgeClass {
     console.log(`[AI Scanner] Tick received -> ${assetName}: ${price}`);
   }
 
-  public loadStrategyToWorkspace(strategy: any, options: { stake: number; stopLoss: number; takeProfit?: number; symbol?: string; [key: string]: any }) {
+  public loadStrategyToWorkspace(strategy: any, options: { stake: number; stopLoss: number; takeProfit?: number; duration?: number; symbol?: string; [key: string]: any }) {
     console.log(`[AI Scanner] Injecting parameters into workspace:`, strategy, options);
 
     const globalWin = window as any;
@@ -31,14 +31,20 @@ class ScannerBridgeClass {
             }
           }
 
-          // 2. Update Stake / Amount fields across trade option blocks and their child inputs
+          // 2. Update Stake, Amount, and Duration fields across trade option blocks and their child inputs
           if (block.type === 'trade_definition_tradeoptions' || block.type.includes('trade') || block.type.includes('amount')) {
             // Check direct fields
-            ['AMOUNT', 'VALUE', 'NUM', 'STAKE'].forEach(fieldName => {
+            ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
               const field = block.getField(fieldName);
-              if (field && options.stake !== undefined) {
-                field.setValue(String(options.stake));
-                blockInjectionCounter++;
+              if (field) {
+                if (fieldName === 'DURATION' && options.duration !== undefined) {
+                  const clampedDuration = Math.min(Math.max(options.duration, 1), 10);
+                  field.setValue(String(clampedDuration));
+                  blockInjectionCounter++;
+                } else if (fieldName !== 'DURATION' && options.stake !== undefined) {
+                  field.setValue(String(options.stake));
+                  blockInjectionCounter++;
+                }
               }
             });
 
@@ -48,9 +54,15 @@ class ScannerBridgeClass {
               if (targetBlock) {
                 ['NUM', 'AMOUNT', 'VALUE'].forEach(numFieldName => {
                   const numField = targetBlock.getField(numFieldName);
-                  if (numField && options.stake !== undefined) {
-                    numField.setValue(String(options.stake));
-                    blockInjectionCounter++;
+                  if (numField) {
+                    if (input.name === 'AMOUNT' && options.stake !== undefined) {
+                      numField.setValue(String(options.stake));
+                      blockInjectionCounter++;
+                    } else if (input.name === 'DURATION') {
+                      const safeDuration = options.duration !== undefined ? Math.min(Math.max(options.duration, 1), 10) : 5;
+                      numField.setValue(String(safeDuration));
+                      blockInjectionCounter++;
+                    }
                   }
                 });
               }
