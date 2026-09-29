@@ -1,8 +1,47 @@
 import { Strategy } from './strategies';
 
 class ScannerBridgeClass {
+  private isListening = false;
+
   public pushTick(assetName: string, price: number, strategies: Strategy[]) {
     console.log(`[AI Scanner] Tick received -> ${assetName}: ${price}`);
+  }
+
+  // Initialize live WebSocket tick subscriptions across volatility indices
+  public initLiveTickStream(onTickCallback?: (symbol: string, price: number) => void) {
+    if (this.isListening) return;
+
+    const globalWin = window as any;
+    const ws = globalWin.ws || globalWin.BinarySocket || globalWin.LiveApi?.ws;
+
+    if (ws && typeof ws.send === 'function') {
+      const symbols = ['R_10', 'R_25', 'R_50', 'R_75', 'R_100', '1HZ50', '1HZ100'];
+      
+      symbols.forEach((symbol) => {
+        ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+      });
+
+      ws.addEventListener('message', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.msg_type === 'tick' && data.tick) {
+            const { symbol, quote } = data.tick;
+            this.pushTick(symbol, quote, []);
+            if (onTickCallback) {
+              onTickCallback(symbol, quote);
+            }
+          }
+        } catch (err) {
+          console.error('[AI Scanner] Error parsing incoming tick stream:', err);
+        }
+      });
+
+      this.isListening = true;
+      console.log('[AI Scanner] Successfully hooked into live Deriv WebSocket tick stream.');
+    } else {
+      console.warn('[AI Scanner] Active WebSocket connection not found yet. Retrying...');
+      setTimeout(() => this.initLiveTickStream(onTickCallback), 2000);
+    }
   }
 
   public loadStrategyToWorkspace(strategy: any, options: { stake: number; stopLoss: number; takeProfit?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
@@ -22,7 +61,6 @@ class ScannerBridgeClass {
         let blockInjectionCounter = 0;
 
         allBlocks.forEach((block: any) => {
-          // 1. Update Trade Parameters (Market, Symbol, Trade Type)
           if (block.type === 'trade_definition') {
             const symbolField = block.getField('SYMBOL_LIST');
             if (symbolField && options.symbol) {
@@ -36,7 +74,6 @@ class ScannerBridgeClass {
             }
           }
 
-          // 2. Update Purchase Conditions (e.g., Rise/Fall contract types)
           if (block.type === 'purchase' || block.type.includes('purchase')) {
             const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE');
             if (purchaseField && (strategy.contractType || options.contractType)) {
@@ -45,7 +82,6 @@ class ScannerBridgeClass {
             }
           }
 
-          // 3. Update Stake, Amount, and Duration fields across trade option blocks and their child inputs
           if (block.type === 'trade_definition_tradeoptions' || block.type.includes('trade') || block.type.includes('amount')) {
             ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
               const field = block.getField(fieldName);
