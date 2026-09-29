@@ -6,37 +6,59 @@ class ScannerBridgeClass {
   }
 
   public loadStrategyToWorkspace(strategy: any, options: { stake: number; stopLoss: number; takeProfit?: number; [key: string]: any }) {
-    console.log(`[AI Scanner] Injecting strategy parameters into Blockly workspace:`, strategy, options);
+    console.log(`[AI Scanner] Loading strategy into Blockly workspace:`, strategy, options);
 
-    // Access the global Blockly instance injected by Deriv / dBot
-    const workspace = (window as any).Blockly?.getMainWorkspace?.();
+    const Blockly = (window as any).Blockly;
+    const workspace = Blockly?.getMainWorkspace?.();
+
     if (!workspace) {
       console.warn('[AI Scanner] Blockly workspace not found on window object.');
       return;
     }
 
-    // Traverse workspace blocks to find trade parameter inputs (e.g., stake, stop loss, take profit)
-    const blocks = workspace.getAllBlocks(false);
-    for (const block of blocks) {
-      // Look for standard Deriv/dBot block types (like trade definition or purchase blocks)
-      if (block.type === 'trade_definition' || block.type === 'trade_definition_stake' || block.type === 'math_number') {
-        // Example: Update specific fields if they match trade parameters
-        if (options.stake !== undefined && block.getField('STAKE')) {
-          block.getField('STAKE').setValue(String(options.stake));
-        }
-        if (options.stopLoss !== undefined && block.getField('STOP_LOSS')) {
-          block.getField('STOP_LOSS').setValue(String(options.stopLoss));
-        }
-        if (options.takeProfit !== undefined && block.getField('TAKE_PROFIT')) {
-          block.getField('TAKE_PROFIT').setValue(String(options.takeProfit));
-        }
-      }
-    }
+    try {
+      // 1. Clear existing workspace blocks if needed, or generate trade XML block template
+      workspace.clear();
 
-    // Trigger workspace event notification so Blockly re-renders
-    workspace.fireChangeListener(new (window as any).Blockly.Events.BlockChange(
-      null, 'edit', '', {}, {}
-    ));
+      // 2. Build or load strategy XML block structure for Deriv Bot
+      // If the strategy contains a custom block template or xml string, use it. Otherwise, generate standard trade blocks.
+      const strategyXml = strategy.xml || `
+        <xml xmlns="http://www.w3.org/1999/xhtml">
+          <block type="trade_definition" x="0" y="0">
+            <statement name="SUBMARKET">
+              <block type="trade_definition_market">
+                <field name="MARKET_LIST">synthetic_index</field>
+                <field name="SUBMARKET_LIST">random_index</field>
+                <field name="SYMBOL_LIST">R_100</field>
+                <statement name="STRATEGY_LIST">
+                  <block type="trade_definition_tradeoptions">
+                    <field name="DURATION_TYPE_LIST">t</field>
+                    <value name="DURATION">
+                      <shadow type="math_number">
+                        <field name="NUM">1</field>
+                      </shadow>
+                    </value>
+                    <value name="AMOUNT">
+                      <shadow type="math_number">
+                        <field name="NUM">${options.stake || 1}</field>
+                      </shadow>
+                    </value>
+                  </block>
+                </statement>
+              </block>
+            </statement>
+          </block>
+        </xml>
+      `;
+
+      // 3. Parse and load the XML into the active Blockly workspace
+      const dom = Blockly.Xml.textToDom(strategyXml);
+      Blockly.Xml.domToWorkspace(dom, workspace);
+
+      console.log('[AI Scanner] Successfully loaded strategy XML into workspace.');
+    } catch (error) {
+      console.error('[AI Scanner] Failed to inject strategy into workspace:', error);
+    }
   }
 }
 
