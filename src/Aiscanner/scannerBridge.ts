@@ -1,5 +1,5 @@
 // src/Aiscanner/scannerBridge.ts
-import { CORE_7_STRATEGIES, StrategyConfig, applyStrategyToWorkspace } from './strategies';
+import { StrategyConfig, applyStrategyToWorkspace } from './strategies';
 
 // Unified asset to Deriv symbol mapping for real-time WebSocket tick listening
 export const ASSET_TO_SYMBOL: Record<string, string> = {
