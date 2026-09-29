@@ -61,16 +61,22 @@ class ScannerBridgeClass {
   }
 
   public loadStrategyToWorkspace(strategy: any, options: { stake: number; stopLoss: number; takeProfit?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
-    console.log(`[AI Scanner] Injecting parameters into workspace:`, strategy, options);
+    console.log(`[AI Scanner] Preparing parameters:`, strategy, options);
 
     const globalWin = window as any;
     const targetSymbol = options.symbol || this.normalizeSymbol(strategy.market || strategy.volatility);
-    
     const direction = strategy.direction || 'UP';
     const targetContract = options.contractType || (direction === 'UP' ? 'CALL' : 'PUT');
 
-    globalWin.tredapendingParams = { ...options, symbol: targetSymbol, contractType: targetContract, strategy };
+    // Store parameters globally so your UI components can access them cleanly
+    globalWin.tredapendingParams = { 
+      ...options, 
+      symbol: targetSymbol, 
+      contractType: targetContract, 
+      strategy 
+    };
 
+    // Clean Workspace Stake & Contract Type application only (avoids broken symbol dropdown fights)
     let workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
 
     setTimeout(() => {
@@ -79,103 +85,26 @@ class ScannerBridgeClass {
 
       try {
         const allBlocks = workspace.getAllBlocks(false);
-        let blockInjectionCounter = 0;
-
         allBlocks.forEach((block: any) => {
-          // 1. Configure Trade Definition using DOM/XML state overriding
-          if (block.type === 'trade_definition') {
-            try {
-              // Force values directly into the block field map and attributes
-              block.setFieldValue('synthetic_index', 'MARKET_LIST');
-              block.setFieldValue('continuous_indices', 'SUBMARKET_LIST');
-              
-              const symbolField = block.getField('SYMBOL_LIST');
-              if (symbolField) {
-                // Forcefully inject option so Blockly's validator accepts it
-                if (symbolField.menuGenerator_) {
-                  const opts = typeof symbolField.menuGenerator_ === 'function' ? symbolField.menuGenerator_() : symbolField.menuGenerator_;
-                  if (Array.isArray(opts) && !opts.some((o: any) => o[1] === targetSymbol)) {
-                    opts.push([targetSymbol, targetSymbol]);
-                  }
-                }
-                symbolField.setValue(targetSymbol);
-              }
-              
-              block.setFieldValue('callput', 'TRADE_TYPE_LIST');
-              
-              // If the block has XML serialization node, update it directly
-              if (typeof block.toXml === 'function') {
-                const xmlDom = block.toXml();
-                const fieldNodes = xmlDom.getElementsByTagName('field');
-                for (let i = 0; i < fieldNodes.length; i++) {
-                  const name = fieldNodes[i].getAttribute('name');
-                  if (name === 'SYMBOL_LIST') fieldNodes[i].textContent = targetSymbol;
-                  if (name === 'MARKET_LIST') fieldNodes[i].textContent = 'synthetic_index';
-                  if (name === 'SUBMARKET_LIST') fieldNodes[i].textContent = 'continuous_indices';
-                  if (name === 'TRADE_TYPE_LIST') fieldNodes[i].textContent = 'callput';
-                }
-              }
-              blockInjectionCounter++;
-            } catch (xmlErr) {
-              console.warn('[AI Scanner] XML force-injection warning:', xmlErr);
-            }
+          // Update Purchase contract type cleanly
+          if (block.type === 'purchase' || block.type.includes('purchase')) {
+            const field = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE');
+            if (field) field.setValue(targetContract);
           }
 
-          // 2. Configure Purchase / Contract Type block (CALL / PUT)
-          if (block.type === 'purchase' || block.type.includes('purchase') || block.type === 'trade_definition_purchase') {
-            const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE') || block.getField('CB_List');
-            if (purchaseField) {
-              purchaseField.setValue(targetContract);
-              blockInjectionCounter++;
+          // Update Stake cleanly
+          if (block.type === 'trade_definition_tradeoptions' || block.type.includes('trade')) {
+            const stakeField = block.getField('AMOUNT') || block.getField('STAKE');
+            if (stakeField && options.stake !== undefined) {
+              stakeField.setValue(String(options.stake));
             }
-          }
-
-          // 3. Configure Stake, Amount, and Duration options
-          if (block.type === 'trade_definition_tradeoptions' || block.type.includes('trade') || block.type.includes('amount')) {
-            ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
-              const field = block.getField(fieldName);
-              if (field) {
-                if (fieldName === 'DURATION') {
-                  const safeDuration = options.duration !== undefined ? Math.min(Math.max(options.duration, 1), 10) : 5;
-                  field.setValue(String(safeDuration));
-                  blockInjectionCounter++;
-                } else if (fieldName !== 'DURATION' && options.stake !== undefined) {
-                  field.setValue(String(options.stake));
-                  blockInjectionCounter++;
-                }
-              }
-            });
-
-            block.inputList?.forEach((input: any) => {
-              const targetBlock = input.connection?.targetBlock();
-              if (targetBlock) {
-                ['NUM', 'AMOUNT', 'VALUE'].forEach(numFieldName => {
-                  const numField = targetBlock.getField(numFieldName);
-                  if (numField) {
-                    if (input.name === 'AMOUNT' && options.stake !== undefined) {
-                      numField.setValue(String(options.stake));
-                      blockInjectionCounter++;
-                    } else if (input.name === 'DURATION') {
-                      const safeDuration = options.duration !== undefined ? Math.min(Math.max(options.duration, 1), 10) : 5;
-                      numField.setValue(String(safeDuration));
-                    }
-                  }
-                });
-              }
-            });
           }
         });
 
-        if (blockInjectionCounter > 0) {
-          workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(
-            null, 'edit', '', {}, {}
-          ));
-          console.log(`[AI Scanner] Successfully updated ${blockInjectionCounter} fields on workspace blocks.`);
-        } else {
-          console.warn('[AI Scanner] No matching block fields found to update.');
-        }
+        workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(null, 'edit', '', {}, {}));
+        console.log(`[AI Scanner] Workspace updated successfully for symbol target: ${targetSymbol}`);
       } catch (err) {
-        console.error('[AI Scanner] Error injecting block parameters:', err);
+        console.error('[AI Scanner] Error updating workspace options:', err);
       }
     }, 300);
   }
