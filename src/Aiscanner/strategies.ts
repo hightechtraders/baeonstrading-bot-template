@@ -18,3 +18,6 @@ export const INITIAL_STRATEGIES: Strategy[] = [
   { id: '6', name: 'Support/Resistance Bounce', market: 'Volatility 10 Index', volatility: '10', confidence: 79, recommendedStake: 10, recommendedStopLoss: 15, recommendedTakeProfit: 30 },
   { id: '7', name: 'High-Frequency Scalper', market: 'Volatility 75 (1s) Index', volatility: '75s', confidence: 94, recommendedStake: 25, recommendedStopLoss: 40, recommendedTakeProfit: 100 },
 ];
+
+// Alias required by App.tsx imports
+export const CORE_7_STRATEGIES = INITIAL_STRATEGIES;
