@@ -61,22 +61,15 @@ class ScannerBridgeClass {
   }
 
   public loadStrategyToWorkspace(strategy: any, options: { stake: number; stopLoss: number; takeProfit?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
-    console.log(`[AI Scanner] Preparing parameters:`, strategy, options);
+    console.log(`[AI Scanner] Injecting parameters into workspace:`, strategy, options);
 
     const globalWin = window as any;
     const targetSymbol = options.symbol || this.normalizeSymbol(strategy.market || strategy.volatility);
     const direction = strategy.direction || 'UP';
     const targetContract = options.contractType || (direction === 'UP' ? 'CALL' : 'PUT');
 
-    // Store parameters globally so your UI components can access them cleanly
-    globalWin.tredapendingParams = { 
-      ...options, 
-      symbol: targetSymbol, 
-      contractType: targetContract, 
-      strategy 
-    };
+    globalWin.tredapendingParams = { ...options, symbol: targetSymbol, contractType: targetContract, strategy };
 
-    // Clean Workspace Stake & Contract Type application only (avoids broken symbol dropdown fights)
     let workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
 
     setTimeout(() => {
@@ -85,24 +78,60 @@ class ScannerBridgeClass {
 
       try {
         const allBlocks = workspace.getAllBlocks(false);
+        let updateCount = 0;
+
         allBlocks.forEach((block: any) => {
-          // Update Purchase contract type cleanly
+          // 1. Update Purchase Contract Type (CALL / PUT)
           if (block.type === 'purchase' || block.type.includes('purchase')) {
-            const field = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE');
-            if (field) field.setValue(targetContract);
+            const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE') || block.getField('CB_List');
+            if (purchaseField) {
+              purchaseField.setValue(targetContract);
+              updateCount++;
+            }
           }
 
-          // Update Stake cleanly
-          if (block.type === 'trade_definition_tradeoptions' || block.type.includes('trade')) {
-            const stakeField = block.getField('AMOUNT') || block.getField('STAKE');
-            if (stakeField && options.stake !== undefined) {
-              stakeField.setValue(String(options.stake));
-            }
+          // 2. Update Trade Options (Stake, Amount, Duration) on trade blocks and child connections
+          if (block.type.includes('trade') || block.type.includes('amount') || block.type.includes('option')) {
+            ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
+              const field = block.getField(fieldName);
+              if (field) {
+                if (fieldName === 'DURATION' && options.duration !== undefined) {
+                  field.setValue(String(options.duration));
+                  updateCount++;
+                } else if (fieldName !== 'DURATION' && options.stake !== undefined) {
+                  field.setValue(String(options.stake));
+                  updateCount++;
+                }
+              }
+            });
+
+            // Inspect connected math/number blocks nested inside inputs
+            block.inputList?.forEach((input: any) => {
+              const targetBlock = input.connection?.targetBlock();
+              if (targetBlock) {
+                ['NUM', 'AMOUNT', 'VALUE'].forEach(numFieldName => {
+                  const numField = targetBlock.getField(numFieldName);
+                  if (numField) {
+                    if (input.name === 'AMOUNT' && options.stake !== undefined) {
+                      numField.setValue(String(options.stake));
+                      updateCount++;
+                    } else if (input.name === 'DURATION' && options.duration !== undefined) {
+                      numField.setValue(String(options.duration));
+                      updateCount++;
+                    }
+                  }
+                });
+              }
+            });
           }
         });
 
-        workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(null, 'edit', '', {}, {}));
-        console.log(`[AI Scanner] Workspace updated successfully for symbol target: ${targetSymbol}`);
+        if (updateCount > 0) {
+          workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(null, 'edit', '', {}, {}));
+          console.log(`[AI Scanner] Successfully updated ${updateCount} parameters on workspace blocks.`);
+        } else {
+          console.warn('[AI Scanner] No matching stake/duration blocks found to update.');
+        }
       } catch (err) {
         console.error('[AI Scanner] Error updating workspace options:', err);
       }
