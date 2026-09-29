@@ -27,20 +27,21 @@ export function resolveSymbol(assetName: string): string {
   return ASSET_TO_SYMBOL[clean] || ASSET_TO_SYMBOL[`${clean} Index`] || clean;
 }
 
-export function useDerivTicks(_assets?: string[]) {
+export function useDerivTicks(assets?: string[]) {
   const [ticksBuffer, setTicksBuffer] = useState<Record<string, number[]>>({});
 
   useEffect(() => {
     scannerBridge.init();
 
     const unsubscribe = scannerBridge.subscribe((buffer) => {
+      // Ensure we pass a clean shallow copy to trigger React reactivity properly
       setTicksBuffer({ ...buffer });
     });
 
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [assets]);
 
   return { ticksBuffer };
 }
