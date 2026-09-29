@@ -1,6 +1,16 @@
 // src/Aiscanner/scannerBridge.ts
-import { ASSET_TO_SYMBOL } from './useDerivTicks';
-import { StrategyConfig } from './strategies';
+import { CORE_7_STRATEGIES, StrategyConfig, applyStrategyToWorkspace } from './strategies';
+
+// Unified asset to Deriv symbol mapping for real-time WebSocket tick listening
+export const ASSET_TO_SYMBOL: Record<string, string> = {
+  'Volatility 10': 'R_10',
+  'Volatility 25': 'R_25',
+  'Volatility 50': 'R_50',
+  'Volatility 75': 'R_75',
+  'Volatility 100': 'R_100',
+  'Volatility 100 (1s)': '1HZ100V',
+  'Volatility 25 (1s)': '1HZ25V',
+};
 
 export class ScannerBridge {
   private ticksBuffer: Record<string, number[]> = {};
@@ -12,6 +22,7 @@ export class ScannerBridge {
   public init() {
     if (this.isHooked) return;
 
+    // Detect existing global Deriv WebSocket instances cleanly
     const globalWS =
       (window as any)._derivWebSocket ||
       (window as any).appWebSocket ||
@@ -25,6 +36,7 @@ export class ScannerBridge {
       return;
     }
 
+    // Fallback to proxying native WebSocket connections
     const NativeWebSocket = window.WebSocket;
     const self = this;
 
@@ -49,7 +61,7 @@ export class ScannerBridge {
       if (!this.activeWS || this.activeWS.readyState !== WebSocket.OPEN) return;
 
       const symbols = Array.from(new Set(Object.values(ASSET_TO_SYMBOL)));
-      
+
       symbols.forEach((symbol) => {
         if (!this.subscribedSymbols.has(symbol)) {
           this.subscribedSymbols.add(symbol);
@@ -77,7 +89,7 @@ export class ScannerBridge {
           }
         }
       } catch (e) {
-        // Drop non-JSON framing safely
+        // Drop non-JSON frames safely
       }
     });
   }
@@ -122,100 +134,18 @@ export class ScannerBridge {
   }
 
   /**
-   * Generates valid DBot XML schema for strategy injection.
-   */
-  private buildBotXml(strategy: StrategyConfig, symbolCode: string): string {
-    const targetDirection = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
-    return `
-      <xml xmlns="http://www.w3.org/1999/xhtml">
-        <block type="trade_definition" id="trade_definition_block" x="20" y="20">
-          <field name="MARKET_LIST">synthetic_index</field>
-          <field name="SUBMARKET_LIST">random_index</field>
-          <field name="SYMBOL_LIST">${symbolCode}</field>
-          <field name="TRADETYPECAT_LIST">updown</field>
-          <field name="TRADETYPE_LIST">risefall</field>
-          <field name="TYPECAT_LIST">both</field>
-          <field name="CANDLEINTERVAL_LIST">60</field>
-          
-          <statement name="SUBMARKET">
-            <block type="trade_options" id="trade_options_block">
-              <field name="DURATIONUNIT_LIST">t</field>
-              <value name="DURATION">
-                <block type="math_number"><field name="NUM">1</field></block>
-              </value>
-              <value name="AMOUNT">
-                <block type="math_number"><field name="NUM">${strategy.stake ?? 1}</field></block>
-              </value>
-            </block>
-          </statement>
-
-          <statement name="SUBMARKET_PURCHASE">
-            <block type="purchase" id="purchase_block">
-              <field name="PURCHASE_LIST">${targetDirection}</field>
-            </block>
-          </statement>
-        </block>
-      </xml>
-    `.trim();
-  }
-
-  /**
-   * Patches existing blocks or falls back to clean XML workspace loading.
+   * Delegates block modification directly to strategies.ts applyStrategyToWorkspace helper.
    */
   public injectDataToBlockly(strategy: StrategyConfig): boolean {
     const Blockly = (window as any).Blockly;
     const workspace = Blockly?.getMainWorkspace?.();
 
     if (!workspace) {
-      console.error('[ScannerBridge] Main workspace not found.');
+      console.error('[ScannerBridge] Main Blockly workspace not found.');
       return false;
     }
 
-    try {
-      const symbolCode = ASSET_TO_SYMBOL[strategy.asset] || '1HZ100V';
-      const targetDirection = strategy.direction === 'DOWN' ? 'FALL' : 'RISE';
-      const blocks = workspace.getAllBlocks();
-      let patched = false;
-
-      // 1. Try in-place patching first if blocks exist
-      if (blocks && blocks.length > 0) {
-        for (const block of blocks) {
-          if (block.type === 'trade_definition_market' || block.type === 'trade_definition') {
-            block.setFieldValue(symbolCode, 'SYMBOL_LIST');
-            patched = true;
-          }
-          if (block.type === 'trade_options') {
-            const amountField = block.getField('AMOUNT');
-            if (amountField) {
-              amountField.setValue(String(strategy.stake ?? 1));
-              patched = true;
-            }
-          }
-          if (block.type === 'purchase') {
-            block.setFieldValue(targetDirection, 'PURCHASE_LIST');
-            patched = true;
-          }
-        }
-      }
-
-      // 2. If no blocks were patched or canvas was empty, load via workspace XML
-      if (!patched && Blockly.Xml) {
-        workspace.clear();
-        const xmlString = this.buildBotXml(strategy, symbolCode);
-        const dom = Blockly.Xml.textToDom(xmlString);
-        Blockly.Xml.domToWorkspace(dom, workspace);
-        patched = true;
-      }
-
-      if (patched && typeof workspace.render === 'function') {
-        workspace.render();
-      }
-
-      return patched;
-    } catch (err) {
-      console.error('[ScannerBridge] Error injecting strategy:', err);
-      return false;
-    }
+    return applyStrategyToWorkspace(workspace, strategy);
   }
 }
 
