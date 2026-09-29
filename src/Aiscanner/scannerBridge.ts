@@ -6,59 +6,50 @@ class ScannerBridgeClass {
   }
 
   public loadStrategyToWorkspace(strategy: any, options: { stake: number; stopLoss: number; takeProfit?: number; [key: string]: any }) {
-    console.log(`[AI Scanner] Loading strategy into Blockly workspace:`, strategy, options);
+    console.log(`[AI Scanner] Injecting parameters into workspace:`, strategy, options);
 
-    const Blockly = (window as any).Blockly;
-    const workspace = Blockly?.getMainWorkspace?.();
+    const globalWin = window as any;
+    globalWin.tredapendingParams = { ...options, strategy };
 
-    if (!workspace) {
-      console.warn('[AI Scanner] Blockly workspace not found on window object.');
-      return;
-    }
+    let workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
 
-    try {
-      // 1. Clear existing workspace blocks if needed, or generate trade XML block template
-      workspace.clear();
+    setTimeout(() => {
+      workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
+      if (!workspace) return;
 
-      // 2. Build or load strategy XML block structure for Deriv Bot
-      // If the strategy contains a custom block template or xml string, use it. Otherwise, generate standard trade blocks.
-      const strategyXml = strategy.xml || `
-        <xml xmlns="http://www.w3.org/1999/xhtml">
-          <block type="trade_definition" x="0" y="0">
-            <statement name="SUBMARKET">
-              <block type="trade_definition_market">
-                <field name="MARKET_LIST">synthetic_index</field>
-                <field name="SUBMARKET_LIST">random_index</field>
-                <field name="SYMBOL_LIST">R_100</field>
-                <statement name="STRATEGY_LIST">
-                  <block type="trade_definition_tradeoptions">
-                    <field name="DURATION_TYPE_LIST">t</field>
-                    <value name="DURATION">
-                      <shadow type="math_number">
-                        <field name="NUM">1</field>
-                      </shadow>
-                    </value>
-                    <value name="AMOUNT">
-                      <shadow type="math_number">
-                        <field name="NUM">${options.stake || 1}</field>
-                      </shadow>
-                    </value>
-                  </block>
-                </statement>
-              </block>
-            </statement>
-          </block>
-        </xml>
-      `;
+      try {
+        const allBlocks = workspace.getAllBlocks(false);
+        let blockInjectionCounter = 0;
 
-      // 3. Parse and load the XML into the active Blockly workspace
-      const dom = Blockly.Xml.textToDom(strategyXml);
-      Blockly.Xml.domToWorkspace(dom, workspace);
+        allBlocks.forEach((block: any) => {
+          if (block.type === 'trade_definition') {
+            // Prepopulate existing blocks safely without clearing workspace
+            const symbolField = block.getField('SYMBOL_LIST');
+            if (symbolField && options.symbol) {
+              symbolField.setValue(options.symbol);
+              blockInjectionCounter++;
+            }
+          }
+          // Match amount/stake or risk parameters on existing blocks
+          if (block.type === 'trade_definition_tradeoptions' || block.type.includes('amount') || block.type.includes('stake')) {
+            const numField = block.getField('AMOUNT') || block.getField('VALUE') || block.getField('NUM');
+            if (numField && options.stake !== undefined) {
+              numField.setValue(String(options.stake));
+              blockInjectionCounter++;
+            }
+          }
+        });
 
-      console.log('[AI Scanner] Successfully loaded strategy XML into workspace.');
-    } catch (error) {
-      console.error('[AI Scanner] Failed to inject strategy into workspace:', error);
-    }
+        if (blockInjectionCounter > 0) {
+          workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(
+            null, 'edit', '', {}, {}
+          ));
+          console.log(`[AI Scanner] Successfully prepopulated ${blockInjectionCounter} existing blocks.`);
+        }
+      } catch (err) {
+        console.error('[AI Scanner] Error injecting block parameters:', err);
+      }
+    }, 300);
   }
 }
 
