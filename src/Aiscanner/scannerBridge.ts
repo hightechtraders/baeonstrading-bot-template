@@ -185,19 +185,36 @@ export class ScannerBridge {
   }
 
   /**
-   * Clears the workspace and injects the new strategy XML so DBot renders the updated blocks instantly.
+   * Locates the active workspace across globals or DOM and injects the XML blueprint.
    */
   public injectDataToBlockly(strategy: StrategyConfig): boolean {
     const globalWin = window as any;
-    const workspace =
+    
+    // 1. Comprehensive workspace locator across known DBot / Blockly globals
+    let workspace =
       globalWin.Blockly?.getMainWorkspace?.() ||
       globalWin.DBot?.workspace ||
-      globalWin.workspace;
+      globalWin.workspace ||
+      (globalWin.Blockly?.Workspace?.svgWorkspace && globalWin.Blockly.Workspace.svgWorkspace.get?.());
+
+    // 2. DOM-based fallback if globals are uninitialized
+    if (!workspace && globalWin.Blockly) {
+      const svgElement = document.querySelector('.blocklyWorkspace') || document.querySelector('svg.blocklySvg');
+      if (svgElement && svgElement.id) {
+        workspace = globalWin.Blockly.Workspace?.get?.(svgElement.id);
+      }
+      if (!workspace && globalWin.Blockly.Workspace?.getAllWorkspaces) {
+        const allWs = globalWin.Blockly.Workspace.getAllWorkspaces();
+        if (allWs && allWs.length > 0) {
+          workspace = allWs[0];
+        }
+      }
+    }
 
     const BlocklyRef = globalWin.Blockly;
 
     if (!workspace) {
-      console.error('[ScannerBridge] Blockly workspace is not currently open.');
+      console.error('[ScannerBridge] Blockly workspace instance could not be located.');
       return false;
     }
 
@@ -213,7 +230,6 @@ export class ScannerBridge {
         const dom = BlocklyRef.Xml.textToDom(xmlString);
         BlocklyRef.Xml.domToWorkspace(dom, workspace);
       } else {
-        // Fallback parser if Blockly.Xml wrapper differs
         const parser = new DOMParser();
         const doc = parser.parseFromString(xmlString, 'text/xml');
         if (doc.getElementsByTagName('parsererror').length === 0 && BlocklyRef?.Xml) {
