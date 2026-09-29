@@ -1,27 +1,24 @@
 import { Strategy } from './strategies';
 
 class ScannerBridgeClass {
+  private ws: any = null;
   private isListening = false;
 
   public pushTick(assetName: string, price: number, strategies: Strategy[]) {
     console.log(`[AI Scanner] Tick received -> ${assetName}: ${price}`);
   }
 
-  // Initialize live WebSocket tick subscriptions across volatility indices
+  // Hook into the active app context WebSocket instance securely
   public initLiveTickStream(onTickCallback?: (symbol: string, price: number) => void) {
     if (this.isListening) return;
 
     const globalWin = window as any;
-    const ws = globalWin.ws || globalWin.BinarySocket || globalWin.LiveApi?.ws;
+    
+    // Access the active WebSocket instance from your app context or global definitions
+    this.ws = globalWin.appCtx?.websocketInstance || globalWin.ws || globalWin.BinarySocket;
 
-    if (ws && typeof ws.send === 'function') {
-      const symbols = ['R_10', 'R_25', 'R_50', 'R_75', 'R_100', '1HZ50', '1HZ100'];
-      
-      symbols.forEach((symbol) => {
-        ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
-      });
-
-      ws.addEventListener('message', (event: MessageEvent) => {
+    if (this.ws && typeof this.ws.addEventListener === 'function') {
+      this.ws.addEventListener('message', (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
           if (data.msg_type === 'tick' && data.tick) {
@@ -37,10 +34,10 @@ class ScannerBridgeClass {
       });
 
       this.isListening = true;
-      console.log('[AI Scanner] Successfully hooked into live Deriv WebSocket tick stream.');
+      console.log('[AI Scanner] Successfully hooked into appContext websocketInstance.');
     } else {
-      console.warn('[AI Scanner] Active WebSocket connection not found yet. Retrying...');
-      setTimeout(() => this.initLiveTickStream(onTickCallback), 2000);
+      console.warn('[AI Scanner] websocketInstance not ready yet. Retrying...');
+      setTimeout(() => this.initLiveTickStream(onTickCallback), 1500);
     }
   }
 
@@ -61,7 +58,6 @@ class ScannerBridgeClass {
         let blockInjectionCounter = 0;
 
         allBlocks.forEach((block: any) => {
-          // 1. Update Trade Parameters (Market, Symbol, Trade Type)
           if (block.type === 'trade_definition') {
             const symbolField = block.getField('SYMBOL_LIST');
             if (symbolField && options.symbol) {
@@ -75,7 +71,6 @@ class ScannerBridgeClass {
             }
           }
 
-          // 2. Update Purchase Conditions (e.g., Rise/Fall contract types)
           if (block.type === 'purchase' || block.type.includes('purchase')) {
             const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE');
             if (purchaseField && (strategy.contractType || options.contractType)) {
@@ -84,7 +79,6 @@ class ScannerBridgeClass {
             }
           }
 
-          // 3. Update Stake, Amount, and Duration fields across trade option blocks and their child inputs
           if (block.type === 'trade_definition_tradeoptions' || block.type.includes('trade') || block.type.includes('amount')) {
             ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
               const field = block.getField(fieldName);
