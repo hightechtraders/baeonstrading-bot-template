@@ -98,7 +98,17 @@ class ScannerBridgeClass {
 
             const symbolField = block.getField('SYMBOL_LIST');
             if (symbolField) {
-              symbolField.setValue(targetSymbol);
+              // Ensure dropdown options are initialized or forced to accept the value
+              if (typeof symbolField.setValue === 'function') {
+                symbolField.setValue(targetSymbol);
+              }
+              // Trigger visual re-render/dropdown refresh if method exists
+              if (typeof symbolField.forceRerender === 'function') {
+                symbolField.forceRerender();
+              } else if (typeof symbolField.beginEdit === 'function' && typeof symbolField.endEdit === 'function') {
+                symbolField.beginEdit();
+                symbolField.endEdit();
+              }
               blockInjectionCounter++;
             }
             
