@@ -122,7 +122,7 @@ export class ScannerBridge {
   }
 
   /**
-   * Safely updates active workspace blocks in-place with scanner parameters.
+   * Patches pre-existing blocks on the active workspace canvas in-place.
    */
   public injectDataToBlockly(strategy: StrategyConfig): boolean {
     const globalWin = window as any;
@@ -177,14 +177,14 @@ export class ScannerBridge {
         if (typeof workspace.render === 'function') {
           workspace.render();
         }
-        console.log(`[ScannerBridge] Successfully updated ${updatedCount} block parameters!`);
+        console.log(`[ScannerBridge] Successfully patched ${updatedCount} existing block parameters!`);
         return true;
       }
 
-      console.warn('[ScannerBridge] No matching strategy blocks found on the canvas.');
+      console.warn('[ScannerBridge] No matching bot blocks found on the canvas.');
       return false;
     } catch (err) {
-      console.error('[ScannerBridge] Failed to patch block parameters:', err);
+      console.error('[ScannerBridge] Failed to patch existing block parameters:', err);
       return false;
     }
   }
