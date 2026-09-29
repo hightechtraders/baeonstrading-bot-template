@@ -82,40 +82,42 @@ class ScannerBridgeClass {
         let blockInjectionCounter = 0;
 
         allBlocks.forEach((block: any) => {
-          // 1. Configure Trade Definition (Market, Submarket, Symbol, and Trade Type)
+          // 1. Configure Trade Definition using DOM/XML state overriding
           if (block.type === 'trade_definition') {
-            const marketField = block.getField('MARKET_LIST');
-            if (marketField) {
-              marketField.setValue('synthetic_index');
-              blockInjectionCounter++;
-            }
-
-            const submarketField = block.getField('SUBMARKET_LIST');
-            if (submarketField) {
-              submarketField.setValue('continuous_indices');
-              blockInjectionCounter++;
-            }
-
-            const symbolField = block.getField('SYMBOL_LIST');
-            if (symbolField) {
-              // Ensure dropdown options are initialized or forced to accept the value
-              if (typeof symbolField.setValue === 'function') {
+            try {
+              // Force values directly into the block field map and attributes
+              block.setFieldValue('synthetic_index', 'MARKET_LIST');
+              block.setFieldValue('continuous_indices', 'SUBMARKET_LIST');
+              
+              const symbolField = block.getField('SYMBOL_LIST');
+              if (symbolField) {
+                // Forcefully inject option so Blockly's validator accepts it
+                if (symbolField.menuGenerator_) {
+                  const opts = typeof symbolField.menuGenerator_ === 'function' ? symbolField.menuGenerator_() : symbolField.menuGenerator_;
+                  if (Array.isArray(opts) && !opts.some((o: any) => o[1] === targetSymbol)) {
+                    opts.push([targetSymbol, targetSymbol]);
+                  }
+                }
                 symbolField.setValue(targetSymbol);
               }
-              // Trigger visual re-render/dropdown refresh if method exists
-              if (typeof symbolField.forceRerender === 'function') {
-                symbolField.forceRerender();
-              } else if (typeof symbolField.beginEdit === 'function' && typeof symbolField.endEdit === 'function') {
-                symbolField.beginEdit();
-                symbolField.endEdit();
+              
+              block.setFieldValue('callput', 'TRADE_TYPE_LIST');
+              
+              // If the block has XML serialization node, update it directly
+              if (typeof block.toXml === 'function') {
+                const xmlDom = block.toXml();
+                const fieldNodes = xmlDom.getElementsByTagName('field');
+                for (let i = 0; i < fieldNodes.length; i++) {
+                  const name = fieldNodes[i].getAttribute('name');
+                  if (name === 'SYMBOL_LIST') fieldNodes[i].textContent = targetSymbol;
+                  if (name === 'MARKET_LIST') fieldNodes[i].textContent = 'synthetic_index';
+                  if (name === 'SUBMARKET_LIST') fieldNodes[i].textContent = 'continuous_indices';
+                  if (name === 'TRADE_TYPE_LIST') fieldNodes[i].textContent = 'callput';
+                }
               }
               blockInjectionCounter++;
-            }
-            
-            const tradeTypeField = block.getField('TRADE_TYPE_LIST');
-            if (tradeTypeField) {
-              tradeTypeField.setValue('callput'); 
-              blockInjectionCounter++;
+            } catch (xmlErr) {
+              console.warn('[AI Scanner] XML force-injection warning:', xmlErr);
             }
           }
 
