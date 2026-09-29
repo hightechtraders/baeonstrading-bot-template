@@ -12,31 +12,36 @@ class ScannerBridgeClass {
 
     const globalWin = window as any;
     
-    // Check if the official API helper or app core is ready
+    // Safely check for the official API helper or app core
     const api = globalWin.LiveApi || globalWin.BinarySocket || globalWin.api;
+    const rawWs = api?.ws || globalWin.ws || globalWin.appCtx?.websocketInstance;
 
-    if (api && typeof api.send === 'function') {
+    // Ensure the API and underlying socket are completely open (readyState 1) before subscribing
+    if (api && typeof api.send === 'function' && (!rawWs || rawWs.readyState === 1)) {
       const symbols = ['R_10', 'R_25', 'R_50', 'R_75', 'R_100', '1HZ50', '1HZ100'];
 
-      // Use official API request syntax instead of raw socket stringifying
       symbols.forEach((symbol) => {
-        api.send({ ticks: symbol, subscribe: 1 }).then((response: any) => {
-          if (response && response.tick) {
-            this.pushTick(response.tick.symbol, response.tick.quote, []);
-            if (onTickCallback) {
-              onTickCallback(response.tick.symbol, response.tick.quote);
+        try {
+          api.send({ ticks: symbol, subscribe: 1 }).then((response: any) => {
+            if (response && response.tick) {
+              this.pushTick(response.tick.symbol, response.tick.quote, []);
+              if (onTickCallback) {
+                onTickCallback(response.tick.symbol, response.tick.quote);
+              }
             }
-          }
-        }).catch((err: any) => {
-          console.error('[AI Scanner] Tick subscription error:', err);
-        });
+          }).catch((err: any) => {
+            console.warn('[AI Scanner] Subscribing deferred for symbol:', symbol, err);
+          });
+        } catch (e) {
+          console.error('[AI Scanner] Error calling api.send:', e);
+        }
       });
 
       this.isListening = true;
       console.log('[AI Scanner] Successfully subscribed via official Deriv API client.');
     } else {
-      // Fallback: If api isn't initialized yet, wait for the main app to finish booting
-      setTimeout(() => this.initLiveTickStream(onTickCallback), 2000);
+      // Back off and wait for the main app connection to stabilize
+      setTimeout(() => this.initLiveTickStream(onTickCallback), 3000);
     }
   }
 
