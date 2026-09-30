@@ -44,7 +44,6 @@ class ScannerBridgeClass {
   private resolveMarketConfig(marketOrVol: string): { market: string; submarket: string; symbol: string } {
     const text = (marketOrVol || '').toLowerCase();
 
-    // Distinguish between 1-second indices (Continuous Indices) vs regular volatility indices
     if (text.includes('10s') || text.includes('1hz10')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ10' };
     if (text.includes('25s') || text.includes('1hz25')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ25' };
     if (text.includes('50s') || text.includes('1hz50')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ50' };
@@ -72,10 +71,9 @@ class ScannerBridgeClass {
 
     globalWin.tredapendingParams = { ...options, duration: safeDuration, stake: safeStake, ...config, contractType: targetContract, strategy };
 
-    let workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
-
+    // Warm-up delay lets the workspace DOM and block registries fully mount before loading
     setTimeout(() => {
-      workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
+      const workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
       if (!workspace) return;
 
       try {
@@ -83,7 +81,7 @@ class ScannerBridgeClass {
         let updateCount = 0;
 
         allBlocks.forEach((block: any) => {
-          // 1. Update Trade Parameters Block (Market, Submarket, Symbol, Contract Type)
+          // 1. Cascading Market -> Submarket -> Symbol alignment on trade definition block
           if (block.type === 'trade_definition') {
             try {
               block.setFieldValue(config.market, 'MARKET_LIST');
@@ -91,14 +89,19 @@ class ScannerBridgeClass {
               
               const symbolField = block.getField('SYMBOL_LIST');
               if (symbolField) {
-                if (typeof symbolField.setValue === 'function') {
-                  symbolField.setValue(config.symbol);
+                if (typeof symbolField.menuGenerator_ === 'function') {
+                  const opts = symbolField.menuGenerator_();
+                  if (Array.isArray(opts) && !opts.some((o: any) => o[1] === config.symbol)) {
+                    opts.push([config.symbol, config.symbol]);
+                  }
                 }
+                symbolField.setValue(config.symbol);
               }
-              block.setFieldValue(targetContract, 'TRADE_TYPE_LIST');
+
+              block.setFieldValue('callput', 'TRADE_TYPE_LIST');
               updateCount++;
             } catch (e) {
-              console.warn('[AI Scanner] Trade definition field update warning:', e);
+              console.warn('[AI Scanner] Trade definition field cascade warning:', e);
             }
           }
 
@@ -147,12 +150,12 @@ class ScannerBridgeClass {
 
         if (updateCount > 0) {
           workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(null, 'edit', '', {}, {}));
-          console.log(`[AI Scanner] Successfully aligned market (${config.symbol}) and parameters.`);
+          console.log(`[AI Scanner] Successfully loaded and aligned market (${config.symbol}) and parameters.`);
         }
       } catch (err) {
-        console.error('[AI Scanner] Error aligning workspace blocks:', err);
+        console.error('[AI Scanner] Error loading workspace blocks:', err);
       }
-    }, 300);
+    }, 600);
   }
 }
 
