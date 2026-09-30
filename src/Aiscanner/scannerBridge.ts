@@ -150,22 +150,18 @@ export class ScannerBridge {
     }
   }
 
-  // Wrapper for strategies.ts compatibility with dynamic workspace fallback
+  /**
+   * Fixed compatibility wrapper that cleanly extracts dynamic values from your scanner 
+   * without hardcoding unintended fallbacks.
+   */
   public static loadStrategyToWorkspace(strategy: any, options: { stake?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
-    const activeWorkspaceSymbol = (window as any).Blockly?.mainWorkspace
-      ?.getAllBlocks(false)
-      ?.find((b: any) => b.getField('SYMBOL_LIST'))
-      ?.getField('SYMBOL_LIST')
-      ?.getValue();
-
     const payload: AIScannerPayload = {
-      symbol: options?.symbol || strategy?.symbol || strategy?.volatility || strategy?.asset || activeWorkspaceSymbol || '1HZ100V',
+      symbol: options?.symbol || strategy?.symbol || strategy?.volatility || strategy?.asset || '1HZ100V',
       stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
       duration: options?.duration || strategy?.duration || 5,
       tradeType: options?.contractType || strategy?.contractType || 'rise_fall',
       durationUnit: options?.durationUnit || 't'
     };
-
     return this.injectViaStore(payload);
   }
 }
