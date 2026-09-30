@@ -48,53 +48,68 @@ export class ScannerBridge {
   }
 
   /**
-   * Safe parameter injector targeting the native store and Blockly canvas workspace.
+   * Safe parameter injector directly mutating the Blockly canvas blocks.
    */
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
-    
-    console.log(`[ScannerBridge] Mapping input "${payload.symbol}" -> Verified API Code: "${strictDerivSymbol}"`);
+    console.log(`[ScannerBridge] Forcing mapping input "${payload.symbol}" -> Verified API Code: "${strictDerivSymbol}"`);
 
-    // 1. Try mutating the quick strategy store if available
-    if (rootStore?.quick_strategy) {
-      const quickStrategy = rootStore.quick_strategy;
-      try {
-        if (typeof quickStrategy.setValue === 'function') {
-          quickStrategy.setValue('symbol', strictDerivSymbol);
-          quickStrategy.setValue('duration', payload.duration);
-          quickStrategy.setValue('amount', payload.stake);
-        }
-        
-        const mockFormData = {
-          symbol: strictDerivSymbol, 
-          durationtype: payload.durationUnit || 't', 
-          duration: payload.duration,
-          stake: payload.stake,
-          amount: payload.stake,
-          tradetype: payload.tradeType || 'rise_fall',
-          type: payload.tradeType || 'rise_fall'
-        };
-
-        if (typeof quickStrategy.onSubmit === 'function') {
-          quickStrategy.onSubmit(mockFormData);
-          console.log("[ScannerBridge] Successfully compiled via quickStrategy.onSubmit()");
-          return true;
-        } else if (typeof quickStrategy.createStrategy === 'function') {
-          quickStrategy.createStrategy(mockFormData);
-          console.log("[ScannerBridge] Successfully compiled via quickStrategy.createStrategy()");
-          return true;
-        }
-      } catch (error) {
-        console.warn("[ScannerBridge] Quick strategy store method failed, falling back to workspace injection...", error);
-      }
+    const workspace = (window as any).Blockly?.mainWorkspace;
+    if (!workspace) {
+      console.error("[ScannerBridge] No active Blockly workspace context found.");
+      return false;
     }
 
-    // 2. Fallback: Direct Blockly workspace XML construction
-    return this.injectDataLegacy({
-      ...payload,
-      symbol: strictDerivSymbol
-    });
+    try {
+      let updated = false;
+      const blocks = workspace.getAllBlocks(false);
+
+      // Directly update existing blocks on the active canvas without triggering form resets
+      blocks.forEach((block: any) => {
+        if (block.type === 'trade_definition_market' || block.getField('SYMBOL_LIST')) {
+          const symbolField = block.getField('SYMBOL_LIST');
+          if (symbolField) {
+            symbolField.setValue(strictDerivSymbol);
+            updated = true;
+          }
+          const tradeTypeField = block.getField('TRADETYPE_LIST');
+          if (tradeTypeField && payload.tradeType) {
+            tradeTypeField.setValue(payload.tradeType);
+          }
+        }
+
+        if (block.type === 'trade_definition_options' || block.getField('AMOUNT') || block.getField('DURATION')) {
+          const amountField = block.getField('AMOUNT');
+          if (amountField) {
+            amountField.setValue?.(payload.stake.toString());
+            updated = true;
+          }
+          const durationField = block.getField('DURATION');
+          if (durationField) {
+            durationField.setValue?.(payload.duration.toString());
+            updated = true;
+          }
+        }
+      });
+
+      // If no blocks exist on canvas yet, inject via legacy XML structure
+      if (!updated) {
+        return this.injectDataLegacy({
+          ...payload,
+          symbol: strictDerivSymbol
+        });
+      }
+
+      workspace.render();
+      console.log(`[ScannerBridge] Successfully forced canvas update to symbol: ${strictDerivSymbol}`);
+      return true;
+    } catch (error) {
+      console.warn("[ScannerBridge] Direct block mutation failed, falling back to legacy XML injection...", error);
+      return this.injectDataLegacy({
+        ...payload,
+        symbol: strictDerivSymbol
+      });
+    }
   }
 
   /**
@@ -151,8 +166,7 @@ export class ScannerBridge {
   }
 
   /**
-   * Fixed compatibility wrapper that cleanly extracts dynamic values from your scanner 
-   * without hardcoding unintended fallbacks.
+   * Cleanly extracts dynamic values from your scanner without fallbacks.
    */
   public static loadStrategyToWorkspace(strategy: any, options: { stake?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
     const rawSymbol = 
