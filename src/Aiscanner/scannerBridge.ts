@@ -67,8 +67,10 @@ class ScannerBridgeClass {
     const targetSymbol = options.symbol || this.normalizeSymbol(strategy.market || strategy.volatility);
     const direction = strategy.direction || 'UP';
     const targetContract = options.contractType || (direction === 'UP' ? 'CALL' : 'PUT');
+    const safeDuration = options.duration !== undefined ? Math.min(Math.max(options.duration, 1), 10) : 5;
+    const safeStake = options.stake !== undefined ? options.stake : 10;
 
-    globalWin.tredapendingParams = { ...options, symbol: targetSymbol, contractType: targetContract, strategy };
+    globalWin.tredapendingParams = { ...options, duration: safeDuration, stake: safeStake, symbol: targetSymbol, contractType: targetContract, strategy };
 
     let workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
 
@@ -90,37 +92,43 @@ class ScannerBridgeClass {
             }
           }
 
-          // 2. Update Trade Options (Stake, Amount, Duration) on trade blocks and child connections
-          if (block.type.includes('trade') || block.type.includes('amount') || block.type.includes('option')) {
-            ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
+          // 2. Update Trade Options & Nested Math/Number Blocks for Stake and Duration
+          if (block.type.includes('trade') || block.type.includes('amount') || block.type.includes('option') || block.type.includes('duration')) {
+            
+            // Check direct block fields
+            ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION', 'BARRIER_OFFSET'].forEach(fieldName => {
               const field = block.getField(fieldName);
               if (field) {
-                if (fieldName === 'DURATION' && options.duration !== undefined) {
-                  field.setValue(String(options.duration));
+                if (fieldName === 'DURATION') {
+                  field.setValue(String(safeDuration));
                   updateCount++;
-                } else if (fieldName !== 'DURATION' && options.stake !== undefined) {
-                  field.setValue(String(options.stake));
+                } else {
+                  field.setValue(String(safeStake));
                   updateCount++;
                 }
               }
             });
 
-            // Inspect connected math/number blocks nested inside inputs
+            // Deep inspect child blocks connected via block inputs (e.g., math_number blocks plugging into stake/duration)
             block.inputList?.forEach((input: any) => {
-              const targetBlock = input.connection?.targetBlock();
-              if (targetBlock) {
-                ['NUM', 'AMOUNT', 'VALUE'].forEach(numFieldName => {
+              let targetBlock = input.connection?.targetBlock();
+              while (targetBlock) {
+                ['NUM', 'AMOUNT', 'VALUE', 'TEXT'].forEach(numFieldName => {
                   const numField = targetBlock.getField(numFieldName);
                   if (numField) {
-                    if (input.name === 'AMOUNT' && options.stake !== undefined) {
-                      numField.setValue(String(options.stake));
-                      updateCount++;
-                    } else if (input.name === 'DURATION' && options.duration !== undefined) {
-                      numField.setValue(String(options.duration));
+                    if (input.name === 'DURATION' || targetBlock.type === 'math_number_positive' || targetBlock.type === 'math_number') {
+                      // Check context: if input name or parent implies duration vs stake
+                      if (input.name === 'DURATION') {
+                        numField.setValue(String(safeDuration));
+                      } else {
+                        numField.setValue(String(safeStake));
+                      }
                       updateCount++;
                     }
                   }
                 });
+                // Traverse down if there's any chained sub-block
+                targetBlock = targetBlock.outputConnection?.targetBlock();
               }
             });
           }
@@ -128,7 +136,7 @@ class ScannerBridgeClass {
 
         if (updateCount > 0) {
           workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(null, 'edit', '', {}, {}));
-          console.log(`[AI Scanner] Successfully updated ${updateCount} parameters on workspace blocks.`);
+          console.log(` [AI Scanner] Successfully updated ${updateCount} parameters on workspace blocks.`);
         } else {
           console.warn('[AI Scanner] No matching stake/duration blocks found to update.');
         }
