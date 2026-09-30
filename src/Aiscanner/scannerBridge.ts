@@ -70,47 +70,85 @@ class ScannerBridgeClass {
 
       allBlocks.forEach((block: any) => {
         if (block.type === 'run_once' || block.type.includes('run_once')) {
-          let nextBlock = block.getInputTargetBlock('DO') || block.getInputTargetBlock('STATEMENTS');
-          
-          while (nextBlock) {
-            if (nextBlock.type === 'variables_set') {
-              const varField = nextBlock.getField('VAR');
-              const varName = varField ? varField.getText().toLowerCase() : '';
+          let statementInput = block.getInput('DO') || block.getInput('STATEMENTS');
+          if (!statementInput) return;
 
-              if (varName.includes('stop') || varName.includes('loss')) {
-                this.setVariableValue(nextBlock, riskOptions.stopLoss);
-              } else if (varName.includes('profit') || varName.includes('target')) {
-                this.setVariableValue(nextBlock, riskOptions.takeProfit);
-              } else if (varName.includes('multiplier') || varName.includes('martingale')) {
-                this.setVariableValue(nextBlock, multiplier);
-              }
-            }
-            nextBlock = nextBlock.getNextBlock();
+          let existingChild = statementInput.connection?.targetBlock();
+          if (existingChild) {
+            this.updateExistingRunOnceVariables(existingChild, riskOptions, multiplier);
+            return;
           }
+
+          const variablesToCreate = [
+            { name: 'Stop Loss', value: riskOptions.stopLoss },
+            { name: 'Take Profit', value: riskOptions.takeProfit },
+            { name: 'Martingale Multiplier', value: multiplier }
+          ];
+
+          let previousConnection: any = null;
+
+          variablesToCreate.forEach((item) => {
+            const setBlock = workspace.newBlock('variables_set');
+            const varField = setBlock.getField('VAR');
+            if (varField) {
+              varField.setValue(item.name);
+            }
+
+            const numBlock = workspace.newBlock('math_number');
+            const numField = numBlock.getField('NUM');
+            if (numField) {
+              numField.setValue(String(item.value));
+            }
+
+            numBlock.initSvg();
+            numBlock.render();
+
+            const valInput = setBlock.getInput('VALUE');
+            if (valInput && valInput.connection && numBlock.outputConnection) {
+              valInput.connection.connect(numBlock.outputConnection);
+            }
+
+            setBlock.initSvg();
+            setBlock.render();
+
+            if (!previousConnection) {
+              statementInput.connection.connect(setBlock.previousConnection);
+            } else {
+              previousConnection.connect(setBlock.previousConnection);
+            }
+
+            previousConnection = setBlock.nextConnection;
+          });
         }
       });
-      console.log(`[AI Scanner] Run-once risk parameters synchronized (Stop Loss: ${riskOptions.stopLoss}, Take Profit: ${riskOptions.takeProfit}, Martingale: ${multiplier})`);
+
+      console.log(`[AI Scanner] Explicitly built Run-once risk variables (Stop Loss: ${riskOptions.stopLoss}, Take Profit: ${riskOptions.takeProfit}, Multiplier: ${multiplier})`);
     } catch (err) {
-      console.error('[AI Scanner] Error setting run-once parameters:', err);
+      console.error('[AI Scanner] Error building run-once parameters:', err);
     }
   }
 
-  private setVariableValue(setBlock: any, value: number) {
-    const targetInput = setBlock.getInput('VALUE');
-    if (targetInput && targetInput.connection) {
-      let numBlock = targetInput.connection.targetBlock();
-      if (numBlock && (numBlock.type === 'math_number' || numBlock.type === 'math_number_positive')) {
-        const field = numBlock.getField('NUM');
-        if (field) field.setValue(String(value));
-      } else {
-        const ws = setBlock.workspace;
-        const newNumBlock = ws.newBlock('math_number');
-        const field = newNumBlock.getField('NUM');
-        if (field) field.setValue(String(value));
-        newNumBlock.initSvg();
-        newNumBlock.render();
-        targetInput.connection.connect(newNumBlock.outputConnection);
+  private updateExistingRunOnceVariables(firstBlock: any, riskOptions: { stopLoss: number; takeProfit: number }, multiplier: number) {
+    let current = firstBlock;
+    while (current) {
+      if (current.type === 'variables_set') {
+        const varField = current.getField('VAR');
+        const varName = varField ? varField.getText().toLowerCase() : '';
+        const targetInput = current.getInput('VALUE');
+        const numBlock = targetInput?.connection?.targetBlock();
+        const numField = numBlock?.getField('NUM');
+
+        if (numField) {
+          if (varName.includes('stop') || varName.includes('loss')) {
+            numField.setValue(String(riskOptions.stopLoss));
+          } else if (varName.includes('profit') || varName.includes('target')) {
+            numField.setValue(String(riskOptions.takeProfit));
+          } else if (varName.includes('multiplier') || varName.includes('martingale')) {
+            numField.setValue(String(multiplier));
+          }
+        }
       }
+      current = current.getNextBlock();
     }
   }
 
@@ -205,7 +243,7 @@ class ScannerBridgeClass {
           }
         });
 
-        // 4. Configure run-once parameters for stop loss, take profit, and martingale multiplier (2.1)
+        // 4. Explicitly construct or update run-once parameters (Stop Loss, Take Profit, and Martingale 2.1)
         this.configureRunOnceParameters({
           stopLoss: safeStopLoss,
           takeProfit: safeTakeProfit,
@@ -214,7 +252,7 @@ class ScannerBridgeClass {
 
         if (updateCount > 0) {
           workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(null, 'edit', '', {}, {}));
-          console.log(`[AI Scanner] Successfully loaded and aligned market (${config.symbol}) and risk controls.`);
+          console.log(`[AI Scanner] Successfully loaded and aligned strategy parameters.`);
         }
       } catch (err) {
         console.error('[AI Scanner] Error loading workspace blocks:', err);
