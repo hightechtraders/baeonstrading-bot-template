@@ -44,12 +44,14 @@ class ScannerBridgeClass {
   private resolveMarketConfig(marketOrVol: string): { market: string; submarket: string; symbol: string } {
     const text = (marketOrVol || '').toLowerCase();
 
+    // 1. Check 1-second / 1HZ indices FIRST so they don't get matched by generic numbers like '50'
     if (text.includes('10s') || text.includes('1hz10')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ10' };
     if (text.includes('25s') || text.includes('1hz25')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ25' };
     if (text.includes('50s') || text.includes('1hz50')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ50' };
     if (text.includes('75s') || text.includes('1hz75')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ75' };
     if (text.includes('100s') || text.includes('1hz100')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ100' };
 
+    // 2. Regular random indices checked afterward
     if (text.includes('10')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_10' };
     if (text.includes('25')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_25' };
     if (text.includes('50')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_50' };
@@ -184,7 +186,6 @@ class ScannerBridgeClass {
         const allBlocks = workspace.getAllBlocks(false);
 
         allBlocks.forEach((block: any) => {
-          // Target trade_definition and child sub-blocks/market blocks where symbol dropdowns reside
           if (block.type === 'trade_definition' || block.type === 'trade_definition_market' || block.type.includes('market')) {
             try {
               block.setFieldValue(config.market, 'MARKET_LIST');
