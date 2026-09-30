@@ -79,52 +79,66 @@ class ScannerBridgeClass {
             return;
           }
 
-          const variablesToCreate = [
-            { name: 'Stop Loss', value: riskOptions.stopLoss },
-            { name: 'Take Profit', value: riskOptions.takeProfit },
-            { name: 'Martingale Multiplier', value: multiplier }
-          ];
-
-          let previousConnection: any = null;
-
-          variablesToCreate.forEach((item) => {
-            const setBlock = workspace.newBlock('variables_set');
-            const varField = setBlock.getField('VAR');
-            if (varField) {
-              varField.setValue(item.name);
+          // Ensure variables exist in workspace model
+          ['Stop Loss', 'Take Profit', 'Martingale Multiplier'].forEach(varName => {
+            if (workspace.getVariable && !workspace.getVariable(varName)) {
+              if (workspace.createVariable) {
+                workspace.createVariable(varName);
+              }
             }
-
-            const numBlock = workspace.newBlock('math_number');
-            const numField = numBlock.getField('NUM');
-            if (numField) {
-              numField.setValue(String(item.value));
-            }
-
-            numBlock.initSvg();
-            numBlock.render();
-
-            const valInput = setBlock.getInput('VALUE');
-            if (valInput && valInput.connection && numBlock.outputConnection) {
-              valInput.connection.connect(numBlock.outputConnection);
-            }
-
-            setBlock.initSvg();
-            setBlock.render();
-
-            if (!previousConnection) {
-              statementInput.connection.connect(setBlock.previousConnection);
-            } else {
-              previousConnection.connect(setBlock.previousConnection);
-            }
-
-            previousConnection = setBlock.nextConnection;
           });
+
+          // XML DOM Template for Stop Loss -> Take Profit -> Martingale Multiplier
+          const xmlString = `
+            <xml xmlns="http://www.w3.org/1999/xhtml">
+              <block type="variables_set" x="0" y="0">
+                <field name="VAR">Stop Loss</field>
+                <value name="VALUE">
+                  <block type="math_number">
+                    <field name="NUM">${riskOptions.stopLoss}</field>
+                  </block>
+                </value>
+                <next>
+                  <block type="variables_set">
+                    <field name="VAR">Take Profit</field>
+                    <value name="VALUE">
+                      <block type="math_number">
+                        <field name="NUM">${riskOptions.takeProfit}</field>
+                      </block>
+                    </value>
+                    <next>
+                      <block type="variables_set">
+                        <field name="VAR">Martingale Multiplier</field>
+                        <value name="VALUE">
+                          <block type="math_number">
+                            <field name="NUM">${multiplier}</field>
+                          </block>
+                        </value>
+                      </block>
+                    </next>
+                  </block>
+                </next>
+              </block>
+            </xml>
+          `;
+
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+          const domElement = xmlDoc.documentElement.children[0];
+
+          if (domElement && globalWin.Blockly.Xml) {
+            const newBlock = globalWin.Blockly.Xml.domToBlock(domElement, workspace);
+            if (newBlock && statementInput.connection && newBlock.previousConnection) {
+              statementInput.connection.connect(newBlock.previousConnection);
+              workspace.fireChangeListener(new globalWin.Blockly.Events.BlockCreate(newBlock));
+            }
+          }
         }
       });
 
-      console.log(`[AI Scanner] Explicitly built Run-once risk variables (Stop Loss: ${riskOptions.stopLoss}, Take Profit: ${riskOptions.takeProfit}, Multiplier: ${multiplier})`);
+      console.log(`[AI Scanner] XML-injected Run-once risk variables successfully.`);
     } catch (err) {
-      console.error('[AI Scanner] Error building run-once parameters:', err);
+      console.error('[AI Scanner] Error building run-once parameters via XML:', err);
     }
   }
 
@@ -166,7 +180,6 @@ class ScannerBridgeClass {
 
     globalWin.tredapendingParams = { ...options, duration: safeDuration, stake: safeStake, stopLoss: safeStopLoss, takeProfit: safeTakeProfit, ...config, contractType: targetContract, strategy };
 
-    // Warm-up delay lets the workspace DOM and block registries fully mount before loading
     setTimeout(() => {
       const workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
       if (!workspace) return;
@@ -176,7 +189,6 @@ class ScannerBridgeClass {
         let updateCount = 0;
 
         allBlocks.forEach((block: any) => {
-          // 1. Cascading Market -> Submarket -> Symbol alignment on trade definition block
           if (block.type === 'trade_definition') {
             try {
               block.setFieldValue(config.market, 'MARKET_LIST');
@@ -200,7 +212,6 @@ class ScannerBridgeClass {
             }
           }
 
-          // 2. Update Purchase Contract Type Block (CALL/PUT)
           if (block.type === 'purchase' || block.type.includes('purchase')) {
             const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE');
             if (purchaseField) {
@@ -209,7 +220,6 @@ class ScannerBridgeClass {
             }
           }
 
-          // 3. Update Stake and Duration Options
           if (block.type.includes('trade') || block.type.includes('amount') || block.type.includes('option')) {
             ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
               const field = block.getField(fieldName);
@@ -219,7 +229,6 @@ class ScannerBridgeClass {
                   updateCount++;
                 } else {
                   field.setValue(String(safeStake));
-                  updateCount++;
                 }
               }
             });
@@ -235,7 +244,6 @@ class ScannerBridgeClass {
                     } else {
                       numField.setValue(String(safeStake));
                     }
-                    updateCount++;
                   }
                 });
               }
@@ -243,17 +251,14 @@ class ScannerBridgeClass {
           }
         });
 
-        // 4. Explicitly construct or update run-once parameters (Stop Loss, Take Profit, and Martingale 2.1)
         this.configureRunOnceParameters({
           stopLoss: safeStopLoss,
           takeProfit: safeTakeProfit,
           martingaleMultiplier: 2.1
         });
 
-        if (updateCount > 0) {
-          workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(null, 'edit', '', {}, {}));
-          console.log(`[AI Scanner] Successfully loaded and aligned strategy parameters.`);
-        }
+        workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(null, 'edit', '', {}, {}));
+        console.log(`[AI Scanner] Successfully loaded and aligned strategy parameters.`);
       } catch (err) {
         console.error('[AI Scanner] Error loading workspace blocks:', err);
       }
