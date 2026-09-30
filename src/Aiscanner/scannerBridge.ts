@@ -79,7 +79,6 @@ class ScannerBridgeClass {
             return;
           }
 
-          // Fallback XML injection if statement slot is completely empty
           ['Stop Loss', 'Take Profit', 'Martingale Multiplier'].forEach(varName => {
             if (workspace.getVariable && !workspace.getVariable(varName)) {
               if (workspace.createVariable) {
@@ -185,7 +184,8 @@ class ScannerBridgeClass {
         const allBlocks = workspace.getAllBlocks(false);
 
         allBlocks.forEach((block: any) => {
-          if (block.type === 'trade_definition') {
+          // Target trade_definition and child sub-blocks/market blocks where symbol dropdowns reside
+          if (block.type === 'trade_definition' || block.type === 'trade_definition_market' || block.type.includes('market')) {
             try {
               block.setFieldValue(config.market, 'MARKET_LIST');
               block.setFieldValue(config.submarket, 'SUBMARKET_LIST');
@@ -199,11 +199,14 @@ class ScannerBridgeClass {
                   }
                 }
                 symbolField.setValue(config.symbol);
+                if (typeof symbolField.forceRerender === 'function') {
+                  symbolField.forceRerender();
+                }
               }
 
               block.setFieldValue('callput', 'TRADE_TYPE_LIST');
             } catch (e) {
-              console.warn('[AI Scanner] Trade definition field cascade warning:', e);
+              console.warn('[AI Scanner] Market update warning:', e);
             }
           }
 
