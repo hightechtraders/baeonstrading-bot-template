@@ -36,14 +36,14 @@ export class ScannerBridge {
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     
+    // Determine the exact trade direction required by the store payload
     const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
     const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
-    const storeTradeType = isFall ? 'fall' : 'rise';
-    const blocklyTradeType = isFall ? 'Fall' : 'Rise';
+    const targetType = isFall ? 'fall' : 'rise';
 
-    console.log(`[ScannerBridge] Symbol: ${strictDerivSymbol} | Purchase Condition: ${blocklyTradeType}`);
+    console.log(`[ScannerBridge] Volatility: ${strictDerivSymbol} | Purchase Type: ${targetType}`);
 
-    // 1. Mutate the quick strategy store safely
+    // 1. Mutate the quick strategy store with both volatility and the exact purchase type
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -51,17 +51,20 @@ export class ScannerBridge {
           quickStrategy.setValue('symbol', strictDerivSymbol);
           quickStrategy.setValue('duration', payload.duration);
           quickStrategy.setValue('amount', payload.stake);
-          quickStrategy.setValue('trade_type', storeTradeType);
+          quickStrategy.setValue('trade_type', targetType);
+          quickStrategy.setValue('type', targetType);
         }
         
+        // Pass the target type natively into form submission so the workspace builds correctly
         const mockFormData = {
           symbol: strictDerivSymbol, 
           durationtype: payload.durationUnit || 't', 
           duration: payload.duration,
           stake: payload.stake,
           amount: payload.stake,
-          tradetype: payload.tradeType || 'rise_fall',
-          type: storeTradeType
+          tradetype: 'rise_fall',
+          type: targetType,
+          trade_type: targetType
         };
 
         if (typeof quickStrategy.onSubmit === 'function') {
@@ -74,7 +77,7 @@ export class ScannerBridge {
       }
     }
 
-    // 2. Safe Canvas Sweep for Symbol & Purchase Condition Block
+    // 2. Minimal symbol canvas sweep (keeps your working volatility sync intact)
     setTimeout(() => {
       try {
         const Blockly = (window as any).Blockly;
@@ -85,7 +88,6 @@ export class ScannerBridge {
           if (Array.isArray(blocks)) {
             blocks.forEach((block: any) => {
               if (block && typeof block.getField === 'function') {
-                // Update Symbol List Field
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField) {
                   if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
@@ -96,34 +98,10 @@ export class ScannerBridge {
                   }
                   symbolField.setValue(strictDerivSymbol);
                 }
-
-                // Update Purchase Condition Dropdown Field (Block #2)
-                const purchaseField = block.getField('PURCHASE_LIST') || block.getField('PURCHASE_TYPE');
-                if (purchaseField && typeof purchaseField.setValue === 'function') {
-                  purchaseField.setValue(blocklyTradeType);
-                  // Force Blockly to fire change events and re-render the dropdown UI
-                  if (typeof purchaseField.onItemSelected === 'function') {
-                    purchaseField.onItemSelected(purchaseField, blocklyTradeType);
-                  }
-                }
-              }
-
-              // Explicit check for purchase block types
-              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
-                const typeField = block.getField('PURCHASE_LIST') || block.getField('PURCHASE_TYPE');
-                if (typeField && typeof typeField.setValue === 'function') {
-                  typeField.setValue(blocklyTradeType);
-                }
               }
             });
-
             if (typeof workspace.render === 'function') {
               workspace.render();
-            }
-
-            // Fire a Blockly UI change event so the canvas reflects the updated block state
-            if (Blockly.Events && typeof Blockly.Events.fire === 'function') {
-              Blockly.Events.fire(new (Blockly.Events.BlockChange || Object)());
             }
           }
         }
@@ -149,7 +127,7 @@ export class ScannerBridge {
       stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
-      durationUnit: options?.durationUnit || 't'
+      durationUnit: 't'
     };
 
     return this.injectViaStore(payload);
