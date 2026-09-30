@@ -155,8 +155,16 @@ export class ScannerBridge {
    * without hardcoding unintended fallbacks.
    */
   public static loadStrategyToWorkspace(strategy: any, options: { stake?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
+    const rawSymbol = 
+      options?.symbol || 
+      strategy?.symbol || 
+      strategy?.market || 
+      strategy?.asset || 
+      strategy?.name || 
+      '1HZ100V';
+
     const payload: AIScannerPayload = {
-      symbol: options?.symbol || strategy?.symbol || strategy?.volatility || strategy?.asset || '1HZ100V',
+      symbol: rawSymbol,
       stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
       duration: options?.duration || strategy?.duration || 5,
       tradeType: options?.contractType || strategy?.contractType || 'rise_fall',
