@@ -41,15 +41,18 @@ class ScannerBridgeClass {
     }
   }
 
-  private resolveMarketConfig(marketOrVol: string): { market: string; submarket: string; symbol: string } {
-    const text = (marketOrVol || '').toLowerCase();
+  private resolveMarketConfig(marketOrVol: any): { market: string; submarket: string; symbol: string } {
+    const rawInput = typeof marketOrVol === 'object' && marketOrVol !== null 
+      ? (marketOrVol.symbol || marketOrVol.volatility || marketOrVol.market || '') 
+      : (marketOrVol || '');
 
-    // Clean, high-compatibility check prioritizing 1s variants first
-    if (text.includes('10s') || text.includes('1hz10') || (text.includes('10') && text.includes('1s'))) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ10' };
-    if (text.includes('25s') || text.includes('1hz25') || (text.includes('25') && text.includes('1s'))) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ25' };
-    if (text.includes('50s') || text.includes('1hz50') || (text.includes('50') && text.includes('1s'))) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ50' };
-    if (text.includes('75s') || text.includes('1hz75') || (text.includes('75') && text.includes('1s'))) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ75' };
-    if (text.includes('100s') || text.includes('1hz100') || (text.includes('100') && text.includes('1s'))) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ100' };
+    const text = String(rawInput).toUpperCase().trim();
+
+    if (text.includes('1HZ10') || text.includes('10 (1S)') || text.includes('10S')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ10' };
+    if (text.includes('1HZ25') || text.includes('25 (1S)') || text.includes('25S')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ25' };
+    if (text.includes('1HZ50') || text.includes('50 (1S)') || text.includes('50S')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ50' };
+    if (text.includes('1HZ75') || text.includes('75 (1S)') || text.includes('75S')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ75' };
+    if (text.includes('1HZ100') || text.includes('100 (1S)') || text.includes('100S')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ100' };
 
     if (text.includes('10')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_10' };
     if (text.includes('25')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_25' };
