@@ -48,7 +48,7 @@ export class ScannerBridge {
   }
 
   /**
-   * Safe parameter injector combining store initialization with direct field overrides.
+   * Safe parameter injector targeting the quick strategy store and forcing correct symbol binding.
    */
   public static injectViaStore(payload: AIScannerPayload): boolean {
     const rootStore = (window as any).derivBotAppStore;
@@ -56,9 +56,7 @@ export class ScannerBridge {
     
     console.log(`[ScannerBridge] Mapping input "${payload.symbol}" -> Verified API Code: "${strictDerivSymbol}"`);
 
-    let storeSuccess = false;
-
-    // 1. Mutate the quick strategy store and force the correct symbol value
+    // 1. Mutate the quick strategy store if available
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -80,19 +78,15 @@ export class ScannerBridge {
 
         if (typeof quickStrategy.onSubmit === 'function') {
           quickStrategy.onSubmit(mockFormData);
-          storeSuccess = true;
-          console.log("[ScannerBridge] Successfully compiled via quickStrategy.onSubmit()");
         } else if (typeof quickStrategy.createStrategy === 'function') {
           quickStrategy.createStrategy(mockFormData);
-          storeSuccess = true;
-          console.log("[ScannerBridge] Successfully compiled via quickStrategy.createStrategy()");
         }
       } catch (error) {
-        console.warn("[ScannerBridge] Quick strategy store method failed, relying on direct canvas override...", error);
+        console.warn("[ScannerBridge] Quick strategy store method failed, falling back...", error);
       }
     }
 
-    // 2. Post-render canvas sweep: Instantly force-update the active block fields so the UI reflects the selected asset
+    // 2. Direct Canvas Sweep: Instantly update active workspace blocks so the UI matches the chosen asset
     setTimeout(() => {
       const workspace = (window as any).Blockly?.mainWorkspace;
       if (workspace) {
@@ -107,77 +101,18 @@ export class ScannerBridge {
             }
           });
           workspace.render();
-          console.log(`[ScannerBridge] Post-render sweep successfully verified symbol: ${strictDerivSymbol}`);
+          console.log(`[ScannerBridge] Canvas sync forced symbol: ${strictDerivSymbol}`);
         } catch (e) {
-          console.warn("[ScannerBridge] Post-render sweep warning:", e);
+          console.warn("[ScannerBridge] Canvas sync warning:", e);
         }
       }
-    }, 100);
+    }, 50);
 
-    if (storeSuccess) return true;
-
-    // 3. Fallback to legacy XML injection if store is unavailable
-    return this.injectDataLegacy({
-      ...payload,
-      symbol: strictDerivSymbol
-    });
+    return true;
   }
 
   /**
-   * Direct Blockly workspace XML builder fallback
-   */
-  private static injectDataLegacy(payload: AIScannerPayload): boolean {
-    const workspace = (window as any).Blockly?.mainWorkspace;
-    if (!workspace) {
-      console.error("[ScannerBridge] No active Blockly workspace context found.");
-      return false;
-    }
-
-    try {
-      const xmlString = `
-        <xml xmlns="http://www.w3.org/1999/xhtml" collection="false">
-          <block type="trade_definition" id="root_trade_parameters" x="0" y="0">
-            <statement name="TRADE_OPTIONS">
-              <block type="trade_definition_market">
-                <field name="MARKET_LIST">synthetic_index</field>
-                <field name="SUBMARKET_LIST">random_index</field>
-                <field name="SYMBOL_LIST">${payload.symbol}</field>
-                <field name="TRADETYPE_LIST">${payload.tradeType || 'rise_fall'}</field>
-                <next>
-                  <block type="trade_definition_options">
-                    <field name="DURATIONUNIT_LIST">${payload.durationUnit || 't'}</field>
-                    <value name="DURATION">
-                      <shadow type="math_number">
-                        <field name="NUM">${payload.duration}</field>
-                      </shadow>
-                    </value>
-                    <value name="AMOUNT">
-                      <shadow type="math_number">
-                        <field name="NUM">${payload.stake}</field>
-                      </shadow>
-                    </value>
-                  </block>
-                </next>
-              </block>
-            </statement>
-          </block>
-        </xml>
-      `.trim();
-
-      workspace.clear();
-      const dom = (window as any).Blockly.Xml.textToDom(xmlString);
-      (window as any).Blockly.Xml.domToWorkspace(dom, workspace);
-      workspace.render();
-      console.log(`[ScannerBridge] Successfully injected XML workspace for symbol: ${payload.symbol}`);
-      return true;
-    } catch (e) {
-      console.error("[ScannerBridge] Legacy XML injection failed:", e);
-      return false;
-    }
-  }
-
-  /**
-   * Cleanly extracts dynamic values from your scanner without fallbacks.
+   * Cleanly extracts dynamic values from your scanner matching strategy or market properties.
    */
   public static loadStrategyToWorkspace(strategy: any, options: { stake?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
     const rawSymbol = 
@@ -195,6 +130,7 @@ export class ScannerBridge {
       tradeType: options?.contractType || strategy?.contractType || 'rise_fall',
       durationUnit: options?.durationUnit || 't'
     };
+
     return this.injectViaStore(payload);
   }
 }
