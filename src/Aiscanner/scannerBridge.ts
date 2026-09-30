@@ -1,5 +1,15 @@
 import { Strategy } from './strategies';
 
+export interface AIScannerPayload {
+  market: string;          // e.g., 'synthetic_index'
+  submarket: string;       // e.g., 'random_index'
+  symbol: string;          // e.g., 'R_100' or '1HZ75'
+  tradeType: string;       // e.g., 'callput' or 'rise_fall'
+  stake: number;           // e.g., 10
+  duration: number;        // e.g., 5
+  durationUnit: 't' | 'm' | 'h' | 'd'; // Ticks, Minutes, Hours, Days
+}
+
 class ScannerBridgeClass {
   private isListening = false;
 
@@ -41,200 +51,107 @@ class ScannerBridgeClass {
     }
   }
 
-  private resolveMarketConfig(marketOrVol: any): { market: string; submarket: string; symbol: string } {
-    const rawInput = typeof marketOrVol === 'object' && marketOrVol !== null 
-      ? (marketOrVol.symbol || marketOrVol.volatility || marketOrVol.market || '') 
-      : (marketOrVol || '');
-
-    const text = String(rawInput).toUpperCase().trim();
-
-    if (text.includes('1HZ10') || text.includes('10 (1S)') || text.includes('10S')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ10' };
-    if (text.includes('1HZ25') || text.includes('25 (1S)') || text.includes('25S')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ25' };
-    if (text.includes('1HZ50') || text.includes('50 (1S)') || text.includes('50S')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ50' };
-    if (text.includes('1HZ75') || text.includes('75 (1S)') || text.includes('75S')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ75' };
-    if (text.includes('1HZ100') || text.includes('100 (1S)') || text.includes('100S')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ100' };
-
-    if (text.includes('10')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_10' };
-    if (text.includes('25')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_25' };
-    if (text.includes('50')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_50' };
-    if (text.includes('75')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_75' };
-    if (text.includes('100')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_100' };
-
-    return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ75' };
-  }
-
-  private configureRunOnceParameters(riskOptions: { stopLoss: number; takeProfit: number; martingaleMultiplier?: number }) {
+  private getWorkspace(): any {
     const globalWin = window as any;
-    const workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
-    if (!workspace) return;
-
-    try {
-      const allBlocks = workspace.getAllBlocks(false);
-      const multiplier = riskOptions.martingaleMultiplier || 2.1;
-
-      allBlocks.forEach((block: any) => {
-        if (block.type === 'run_once' || block.type.includes('run_once')) {
-          let statementInput = block.getInput('DO') || block.getInput('STATEMENTS');
-          if (!statementInput) return;
-
-          let existingChild = statementInput.connection?.targetBlock();
-          if (existingChild) {
-            this.updateExistingRunOnceVariables(existingChild, riskOptions, multiplier);
-            return;
-          }
-
-          ['Stop Loss', 'Take Profit', 'Martingale Multiplier'].forEach(varName => {
-            if (workspace.getVariable && !workspace.getVariable(varName)) {
-              if (workspace.createVariable) {
-                workspace.createVariable(varName);
-              }
-            }
-          });
-
-          const xmlString = `
-            <xml xmlns="http://www.w3.org/1999/xhtml">
-              <block type="variables_set" x="0" y="0">
-                <field name="VAR">Stop Loss</field>
-                <value name="VALUE">
-                  <block type="math_number">
-                    <field name="NUM">${riskOptions.stopLoss}</field>
-                  </block>
-                </value>
-                <next>
-                  <block type="variables_set">
-                    <field name="VAR">Take Profit</field>
-                    <value name="VALUE">
-                      <block type="math_number">
-                        <field name="NUM">${riskOptions.takeProfit}</field>
-                      </block>
-                    </value>
-                    <next>
-                      <block type="variables_set">
-                        <field name="VAR">Martingale Multiplier</field>
-                        <value name="VALUE">
-                          <block type="math_number">
-                            <field name="NUM">${multiplier}</field>
-                          </block>
-                        </value>
-                      </block>
-                    </next>
-                  </block>
-                </next>
-              </block>
-            </xml>
-          `;
-
-          const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
-          const domElement = xmlDoc.documentElement.children[0];
-
-          if (domElement && globalWin.Blockly.Xml) {
-            const newBlock = globalWin.Blockly.Xml.domToBlock(domElement, workspace);
-            if (newBlock && statementInput.connection && newBlock.previousConnection) {
-              statementInput.connection.connect(newBlock.previousConnection);
-              workspace.fireChangeListener(new globalWin.Blockly.Events.BlockCreate(newBlock));
-            }
-          }
-        }
-      });
-    } catch (err) {
-      console.error('[AI Scanner] Error building run-once parameters:', err);
-    }
-  }
-
-  private updateExistingRunOnceVariables(firstBlock: any, riskOptions: { stopLoss: number; takeProfit: number }, multiplier: number) {
-    let current = firstBlock;
-    while (current) {
-      if (current.type === 'variables_set') {
-        const varField = current.getField('VAR');
-        const varName = varField ? varField.getText().toLowerCase() : '';
-        const targetInput = current.getInput('VALUE');
-        const numBlock = targetInput?.connection?.targetBlock();
-        const numField = numBlock?.getField('NUM');
-
-        if (numField) {
-          if (varName.includes('stop') || varName.includes('loss')) {
-            numField.setValue(String(riskOptions.stopLoss));
-          } else if (varName.includes('profit') || varName.includes('target')) {
-            numField.setValue(String(riskOptions.takeProfit));
-          } else if (varName.includes('multiplier') || varName.includes('martingale')) {
-            numField.setValue(String(multiplier));
-          }
-        }
-      }
-      current = current.getNextBlock();
-    }
-  }
-
-  public loadStrategyToWorkspace(strategy: any, options: { stake?: number; stopLoss?: number; takeProfit?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
-    console.log(`[AI Scanner] Injecting strategy data into workspace:`, strategy, options);
-
-    const globalWin = window as any;
-    const config = this.resolveMarketConfig(options.symbol || strategy.market || strategy.volatility);
-    const direction = strategy.direction || 'UP';
-    const targetContract = options.contractType || (direction === 'UP' ? 'CALL' : 'PUT');
-    const safeDuration = options.duration !== undefined ? Math.min(Math.max(options.duration, 1), 10) : 5;
-    const safeStake = options.stake !== undefined ? options.stake : (strategy.recommendedStake || 10);
-    const safeStopLoss = options.stopLoss !== undefined ? options.stopLoss : (strategy.recommendedStopLoss || 20);
-    const safeTakeProfit = options.takeProfit !== undefined ? options.takeProfit : (strategy.recommendedTakeProfit || 50);
-
-    const workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
+    const workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.mainWorkspace || globalWin.Blockly?.getMainWorkspace?.();
     if (!workspace) {
-      console.warn('[AI Scanner] Blockly workspace not found yet.');
-      return;
+      console.warn('[ScannerBridge] Active Blockly workspace context not found.');
+      return null;
     }
+    return workspace;
+  }
+
+  public injectData(payload: AIScannerPayload): boolean {
+    const workspace = this.getWorkspace();
+    const globalWin = window as any;
+    if (!workspace) return false;
 
     try {
+      if (typeof workspace.setResamplable === 'function') workspace.setResamplable(false);
+      if (globalWin.Blockly?.Events) globalWin.Blockly.Events.disable();
+
       const allBlocks = workspace.getAllBlocks(false);
 
-      allBlocks.forEach((block: any) => {
-        // Direct injection into trade definition block using mutation updates if available
-        if (block.type === 'trade_definition' || block.type === 'trade_definition_market' || block.type.includes('market')) {
-          try {
-            block.setFieldValue(config.market, 'MARKET_LIST');
-            block.setFieldValue(config.submarket, 'SUBMARKET_LIST');
-            block.setFieldValue(config.symbol, 'SYMBOL_LIST');
-            block.setFieldValue('callput', 'TRADE_TYPE_LIST');
+      this.updateMarketSettings(allBlocks, payload);
+      this.updateTradeTypeSettings(allBlocks, payload);
+      this.updateTradeNumericalOptions(allBlocks, payload);
 
-            // Force block mutation update to tell Deriv's builder to redraw dependent fields
-            if (typeof block.updateShape_ === 'function') {
-              block.updateShape_();
-            } else if (typeof block.onchange === 'function') {
-              block.onchange({ type: 'ui' });
-            }
-          } catch (e) {
-            console.warn('[AI Scanner] Field assignment warning:', e);
-          }
-        }
+      if (globalWin.Blockly?.Events) globalWin.Blockly.Events.enable();
+      if (typeof workspace.setResamplable === 'function') workspace.setResamplable(true);
 
-        if (block.type === 'purchase' || block.type.includes('purchase')) {
-          const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE');
-          if (purchaseField) {
-            purchaseField.setValue(targetContract);
-          }
-        }
-
-        if (block.type.includes('trade') || block.type.includes('amount') || block.type.includes('option')) {
-          ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
-            const field = block.getField(fieldName);
-            if (field) {
-              field.setValue(String(fieldName === 'DURATION' ? safeDuration : safeStake));
-            }
-          });
-        }
-      });
-
-      this.configureRunOnceParameters({
-        stopLoss: safeStopLoss,
-        takeProfit: safeTakeProfit,
-        martingaleMultiplier: 2.1
-      });
-
-      workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(null, 'edit', '', {}, {}));
-      console.log(`[AI Scanner] Successfully injected parameters for ${config.symbol} (${targetContract}).`);
-    } catch (err) {
-      console.error('[AI Scanner] Error injecting data into workspace blocks:', err);
+      if (typeof workspace.render === 'function') {
+        workspace.render();
+      }
+      
+      console.log('[ScannerBridge] Successfully synchronized parameters to workspace layout.');
+      return true;
+    } catch (error) {
+      const win = window as any;
+      if (win.Blockly?.Events) win.Blockly.Events.enable();
+      const ws = this.getWorkspace();
+      if (ws && typeof ws.setResamplable === 'function') ws.setResamplable(true);
+      console.error('[ScannerBridge] Critical failure during structural data injection:', error);
+      return false;
     }
+  }
+
+  private updateMarketSettings(blocks: any[], payload: AIScannerPayload): void {
+    const marketBlock = blocks.find((b) => b.type === 'trade_definition_market' || b.type === 'trade_definition');
+    if (!marketBlock) return;
+    const marketField = marketBlock.getField('MARKET_LIST');
+    const submarketField = marketBlock.getField('SUBMARKET_LIST');
+    const symbolField = marketBlock.getField('SYMBOL_LIST');
+    if (marketField) marketField.setValue(payload.market);
+    if (submarketField) submarketField.setValue(payload.submarket);
+    if (symbolField) symbolField.setValue(payload.symbol);
+  }
+
+  private updateTradeTypeSettings(blocks: any[], payload: AIScannerPayload): void {
+    const tradeTypeBlock = blocks.find((b) => b.type === 'trade_definition_tradetype' || b.type === 'trade_definition');
+    if (!tradeTypeBlock) return;
+    const typeField = tradeTypeBlock.getField('TRADETYPE_LIST') || tradeTypeBlock.getField('TRADE_TYPE_LIST');
+    if (typeField) typeField.setValue(payload.tradeType);
+  }
+
+  private updateTradeNumericalOptions(blocks: any[], payload: AIScannerPayload): void {
+    const optionsBlock = blocks.find((b) => b.type === 'trade_definition_options' || b.type === 'trade_definition');
+    if (!optionsBlock) return;
+
+    const stakeInput = optionsBlock.getInput('AMOUNT') || optionsBlock.getInput('STAKE');
+    if (stakeInput?.connection) {
+      const targetShadow = stakeInput.connection.targetBlock();
+      if (targetShadow) {
+        targetShadow.setFieldValue(payload.stake.toString(), 'NUM');
+      }
+    }
+
+    const durationInput = optionsBlock.getInput('DURATION');
+    if (durationInput?.connection) {
+      const targetShadow = durationInput.connection.targetBlock();
+      if (targetShadow) {
+        targetShadow.setFieldValue(payload.duration.toString(), 'NUM');
+      }
+    }
+
+    const unitField = optionsBlock.getField('DURATIONUNIT_LIST');
+    if (unitField) {
+      unitField.setValue(payload.durationUnit);
+    }
+  }
+
+  // Backward compatibility wrapper for existing strategy calls
+  public loadStrategyToWorkspace(strategy: any, options: { stake?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
+    const isOneSec = options.symbol?.includes('1HZ') || strategy.market?.includes('1HZ');
+    const payload: AIScannerPayload = {
+      market: 'synthetic_index',
+      submarket: isOneSec ? 'continuous_indices' : 'random_index',
+      symbol: options.symbol || strategy.symbol || '1HZ75',
+      tradeType: options.contractType || (strategy.direction === 'UP' ? 'CALL' : 'PUT'),
+      stake: options.stake || strategy.recommendedStake || 10,
+      duration: options.duration || 5,
+      durationUnit: 't'
+    };
+    this.injectData(payload);
   }
 }
 
