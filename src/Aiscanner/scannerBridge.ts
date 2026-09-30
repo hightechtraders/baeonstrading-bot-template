@@ -1,3 +1,4 @@
+// scannerBridge.ts - Clean and Optimized Implementation
 import { Strategy } from './strategies';
 
 class ScannerBridgeClass {
@@ -70,99 +71,38 @@ class ScannerBridgeClass {
 
       allBlocks.forEach((block: any) => {
         if (block.type === 'run_once' || block.type.includes('run_once')) {
-          let statementInput = block.getInput('DO') || block.getInput('STATEMENTS');
+          const statementInput = block.getInput('DO') || block.getInput('STATEMENTS');
           if (!statementInput) return;
 
-          let existingChild = statementInput.connection?.targetBlock();
-          if (existingChild) {
-            this.updateExistingRunOnceVariables(existingChild, riskOptions, multiplier);
-            return;
-          }
+          let current = statementInput.connection?.targetBlock();
+          
+          // Traverse existing variable blocks inside 'Run once at start' and update their fields in-place
+          while (current) {
+            if (current.type === 'variables_set') {
+              const varField = current.getField('VAR');
+              const varName = varField ? varField.getText().toLowerCase() : '';
+              const targetInput = current.getInput('VALUE');
+              const numBlock = targetInput?.connection?.targetBlock();
+              const numField = numBlock?.getField('NUM');
 
-          // Ensure variables exist in workspace model
-          ['Stop Loss', 'Take Profit', 'Martingale Multiplier'].forEach(varName => {
-            if (workspace.getVariable && !workspace.getVariable(varName)) {
-              if (workspace.createVariable) {
-                workspace.createVariable(varName);
+              if (numField) {
+                if (varName.includes('stop') || varName.includes('loss')) {
+                  numField.setValue(String(riskOptions.stopLoss));
+                } else if (varName.includes('profit') || varName.includes('target')) {
+                  numField.setValue(String(riskOptions.takeProfit));
+                } else if (varName.includes('multiplier') || varName.includes('martingale')) {
+                  numField.setValue(String(multiplier));
+                }
               }
             }
-          });
-
-          // XML DOM Template for Stop Loss -> Take Profit -> Martingale Multiplier
-          const xmlString = `
-            <xml xmlns="http://www.w3.org/1999/xhtml">
-              <block type="variables_set" x="0" y="0">
-                <field name="VAR">Stop Loss</field>
-                <value name="VALUE">
-                  <block type="math_number">
-                    <field name="NUM">${riskOptions.stopLoss}</field>
-                  </block>
-                </value>
-                <next>
-                  <block type="variables_set">
-                    <field name="VAR">Take Profit</field>
-                    <value name="VALUE">
-                      <block type="math_number">
-                        <field name="NUM">${riskOptions.takeProfit}</field>
-                      </block>
-                    </value>
-                    <next>
-                      <block type="variables_set">
-                        <field name="VAR">Martingale Multiplier</field>
-                        <value name="VALUE">
-                          <block type="math_number">
-                            <field name="NUM">${multiplier}</field>
-                          </block>
-                        </value>
-                      </block>
-                    </next>
-                  </block>
-                </next>
-              </block>
-            </xml>
-          `;
-
-          const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
-          const domElement = xmlDoc.documentElement.children[0];
-
-          if (domElement && globalWin.Blockly.Xml) {
-            const newBlock = globalWin.Blockly.Xml.domToBlock(domElement, workspace);
-            if (newBlock && statementInput.connection && newBlock.previousConnection) {
-              statementInput.connection.connect(newBlock.previousConnection);
-              workspace.fireChangeListener(new globalWin.Blockly.Events.BlockCreate(newBlock));
-            }
+            current = current.getNextBlock();
           }
         }
       });
 
-      console.log(`[AI Scanner] XML-injected Run-once risk variables successfully.`);
+      console.log(`[AI Scanner] Updated Run-once parameters successfully.`);
     } catch (err) {
-      console.error('[AI Scanner] Error building run-once parameters via XML:', err);
-    }
-  }
-
-  private updateExistingRunOnceVariables(firstBlock: any, riskOptions: { stopLoss: number; takeProfit: number }, multiplier: number) {
-    let current = firstBlock;
-    while (current) {
-      if (current.type === 'variables_set') {
-        const varField = current.getField('VAR');
-        const varName = varField ? varField.getText().toLowerCase() : '';
-        const targetInput = current.getInput('VALUE');
-        const numBlock = targetInput?.connection?.targetBlock();
-        const numField = numBlock?.getField('NUM');
-
-        if (numField) {
-          if (varName.includes('stop') || varName.includes('loss')) {
-            numField.setValue(String(riskOptions.stopLoss));
-          } else if (varName.includes('profit') || varName.includes('target')) {
-            numField.setValue(String(riskOptions.takeProfit));
-          } else if (varName.includes('multiplier') || varName.includes('martingale')) {
-            numField.setValue(String(multiplier));
-          }
-        }
-      }
-      current = current.getNextBlock();
+      console.error('[AI Scanner] Error updating run-once parameters:', err);
     }
   }
 
