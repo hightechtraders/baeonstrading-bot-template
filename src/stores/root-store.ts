@@ -83,5 +83,10 @@ export default class RootStore {
         this.chart_store = new ChartStore(this);
         this.blockly_store = new BlocklyStore(this);
         this.data_collection_store = new DataCollectionStore(this, this.core);
+
+        // Bind root store reference to global window context
+        if (typeof window !== 'undefined') {
+            (window as any).derivBotAppStore = this;
+        }
     }
 }
