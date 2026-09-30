@@ -1,4 +1,3 @@
-// scannerBridge.ts - Clean and Optimized Implementation
 import { Strategy } from './strategies';
 
 class ScannerBridgeClass {
@@ -71,38 +70,96 @@ class ScannerBridgeClass {
 
       allBlocks.forEach((block: any) => {
         if (block.type === 'run_once' || block.type.includes('run_once')) {
-          const statementInput = block.getInput('DO') || block.getInput('STATEMENTS');
+          let statementInput = block.getInput('DO') || block.getInput('STATEMENTS');
           if (!statementInput) return;
 
-          let current = statementInput.connection?.targetBlock();
-          
-          // Traverse existing variable blocks inside 'Run once at start' and update their fields in-place
-          while (current) {
-            if (current.type === 'variables_set') {
-              const varField = current.getField('VAR');
-              const varName = varField ? varField.getText().toLowerCase() : '';
-              const targetInput = current.getInput('VALUE');
-              const numBlock = targetInput?.connection?.targetBlock();
-              const numField = numBlock?.getField('NUM');
+          let existingChild = statementInput.connection?.targetBlock();
+          if (existingChild) {
+            this.updateExistingRunOnceVariables(existingChild, riskOptions, multiplier);
+            return;
+          }
 
-              if (numField) {
-                if (varName.includes('stop') || varName.includes('loss')) {
-                  numField.setValue(String(riskOptions.stopLoss));
-                } else if (varName.includes('profit') || varName.includes('target')) {
-                  numField.setValue(String(riskOptions.takeProfit));
-                } else if (varName.includes('multiplier') || varName.includes('martingale')) {
-                  numField.setValue(String(multiplier));
-                }
+          // Fallback XML injection if statement slot is completely empty
+          ['Stop Loss', 'Take Profit', 'Martingale Multiplier'].forEach(varName => {
+            if (workspace.getVariable && !workspace.getVariable(varName)) {
+              if (workspace.createVariable) {
+                workspace.createVariable(varName);
               }
             }
-            current = current.getNextBlock();
+          });
+
+          const xmlString = `
+            <xml xmlns="http://www.w3.org/1999/xhtml">
+              <block type="variables_set" x="0" y="0">
+                <field name="VAR">Stop Loss</field>
+                <value name="VALUE">
+                  <block type="math_number">
+                    <field name="NUM">${riskOptions.stopLoss}</field>
+                  </block>
+                </value>
+                <next>
+                  <block type="variables_set">
+                    <field name="VAR">Take Profit</field>
+                    <value name="VALUE">
+                      <block type="math_number">
+                        <field name="NUM">${riskOptions.takeProfit}</field>
+                      </block>
+                    </value>
+                    <next>
+                      <block type="variables_set">
+                        <field name="VAR">Martingale Multiplier</field>
+                        <value name="VALUE">
+                          <block type="math_number">
+                            <field name="NUM">${multiplier}</field>
+                          </block>
+                        </value>
+                      </block>
+                    </next>
+                  </block>
+                </next>
+              </block>
+            </xml>
+          `;
+
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+          const domElement = xmlDoc.documentElement.children[0];
+
+          if (domElement && globalWin.Blockly.Xml) {
+            const newBlock = globalWin.Blockly.Xml.domToBlock(domElement, workspace);
+            if (newBlock && statementInput.connection && newBlock.previousConnection) {
+              statementInput.connection.connect(newBlock.previousConnection);
+              workspace.fireChangeListener(new globalWin.Blockly.Events.BlockCreate(newBlock));
+            }
           }
         }
       });
-
-      console.log(`[AI Scanner] Updated Run-once parameters successfully.`);
     } catch (err) {
-      console.error('[AI Scanner] Error updating run-once parameters:', err);
+      console.error('[AI Scanner] Error building run-once parameters:', err);
+    }
+  }
+
+  private updateExistingRunOnceVariables(firstBlock: any, riskOptions: { stopLoss: number; takeProfit: number }, multiplier: number) {
+    let current = firstBlock;
+    while (current) {
+      if (current.type === 'variables_set') {
+        const varField = current.getField('VAR');
+        const varName = varField ? varField.getText().toLowerCase() : '';
+        const targetInput = current.getInput('VALUE');
+        const numBlock = targetInput?.connection?.targetBlock();
+        const numField = numBlock?.getField('NUM');
+
+        if (numField) {
+          if (varName.includes('stop') || varName.includes('loss')) {
+            numField.setValue(String(riskOptions.stopLoss));
+          } else if (varName.includes('profit') || varName.includes('target')) {
+            numField.setValue(String(riskOptions.takeProfit));
+          } else if (varName.includes('multiplier') || varName.includes('martingale')) {
+            numField.setValue(String(multiplier));
+          }
+        }
+      }
+      current = current.getNextBlock();
     }
   }
 
@@ -126,7 +183,6 @@ class ScannerBridgeClass {
 
       try {
         const allBlocks = workspace.getAllBlocks(false);
-        let updateCount = 0;
 
         allBlocks.forEach((block: any) => {
           if (block.type === 'trade_definition') {
@@ -146,7 +202,6 @@ class ScannerBridgeClass {
               }
 
               block.setFieldValue('callput', 'TRADE_TYPE_LIST');
-              updateCount++;
             } catch (e) {
               console.warn('[AI Scanner] Trade definition field cascade warning:', e);
             }
@@ -156,7 +211,6 @@ class ScannerBridgeClass {
             const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE');
             if (purchaseField) {
               purchaseField.setValue(targetContract);
-              updateCount++;
             }
           }
 
@@ -166,7 +220,6 @@ class ScannerBridgeClass {
               if (field) {
                 if (fieldName === 'DURATION') {
                   field.setValue(String(safeDuration));
-                  updateCount++;
                 } else {
                   field.setValue(String(safeStake));
                 }
