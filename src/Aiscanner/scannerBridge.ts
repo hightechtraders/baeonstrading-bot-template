@@ -1,13 +1,13 @@
 import { Strategy } from './strategies';
 
 export interface AIScannerPayload {
-  market: string;          // e.g., 'synthetic_index'
-  submarket: string;       // e.g., 'random_index'
-  symbol: string;          // e.g., 'R_100' or '1HZ75'
-  tradeType: string;       // e.g., 'callput' or 'rise_fall'
-  stake: number;           // e.g., 10
+  market?: string;
+  submarket?: string;
+  symbol: string;          // e.g., '1HZ100' or 'R_100'
+  tradeType?: string;      // e.g., 'rise_fall'
+  stake: number;           // e.g., 10.00
   duration: number;        // e.g., 5
-  durationUnit: 't' | 'm' | 'h' | 'd'; // Ticks, Minutes, Hours, Days
+  durationUnit?: 't' | 'm' | 'h' | 'd';
 }
 
 class ScannerBridgeClass {
@@ -53,90 +53,95 @@ class ScannerBridgeClass {
 
   private getWorkspace(): any {
     const globalWin = window as any;
-    const workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.mainWorkspace || globalWin.Blockly?.getMainWorkspace?.();
-    if (!workspace) {
-      console.warn('[ScannerBridge] Active Blockly workspace context not found.');
-      return null;
-    }
-    return workspace;
+    return (
+      globalWin.Blockly?.derivWorkspace || 
+      globalWin.Blockly?.mainWorkspace || 
+      globalWin.Blockly?.getMainWorkspace?.() ||
+      globalWin.DBot?.workspace
+    );
   }
 
+  /**
+   * Main entry point called from floatingai.tsx or strategies.ts
+   */
   public injectData(payload: AIScannerPayload): boolean {
     const workspace = this.getWorkspace();
     const globalWin = window as any;
-    if (!workspace) return false;
+    
+    if (!workspace) {
+      console.error('[ScannerBridge] Workspace context missing. Ensure Blockly is mounted.');
+      return false;
+    }
 
     try {
-      if (typeof workspace.setResamplable === 'function') workspace.setResamplable(false);
-      if (globalWin.Blockly?.Events) globalWin.Blockly.Events.disable();
+      // 1. Generate clean configuration XML targeting official Blockly schema nodes
+      const strategicXml = this.generateStrategyXml(payload);
+      
+      // 2. Clear existing blocks safely without wiping memory[cite: 3]
+      workspace.clear();
 
-      const allBlocks = workspace.getAllBlocks(false);
+      // 3. Force Blockly to convert the XML string back into active blocks[cite: 3]
+      const dom = globalWin.Blockly.Xml.textToDom(strategicXml);
+      globalWin.Blockly.Xml.domToWorkspace(dom, workspace);
 
-      this.updateMarketSettings(allBlocks, payload);
-      this.updateTradeTypeSettings(allBlocks, payload);
-      this.updateTradeNumericalOptions(allBlocks, payload);
-
-      if (globalWin.Blockly?.Events) globalWin.Blockly.Events.enable();
-      if (typeof workspace.setResamplable === 'function') workspace.setResamplable(true);
-
+      // 4. Force update visual layouts and render[cite: 3]
       if (typeof workspace.render === 'function') {
         workspace.render();
       }
       
-      console.log('[ScannerBridge] Successfully synchronized parameters to workspace layout.');
+      console.log(`[ScannerBridge] Successfully forced state payload injection for ${payload.symbol}`);
       return true;
-    } catch (error) {
-      const win = window as any;
-      if (win.Blockly?.Events) win.Blockly.Events.enable();
-      const ws = this.getWorkspace();
-      if (ws && typeof ws.setResamplable === 'function') ws.setResamplable(true);
-      console.error('[ScannerBridge] Critical failure during structural data injection:', error);
+    } catch (e) {
+      console.error('[ScannerBridge] XML DOM parsing state error:', e);
       return false;
     }
   }
 
-  private updateMarketSettings(blocks: any[], payload: AIScannerPayload): void {
-    const marketBlock = blocks.find((b) => b.type === 'trade_definition_market' || b.type === 'trade_definition');
-    if (!marketBlock) return;
-    const marketField = marketBlock.getField('MARKET_LIST');
-    const submarketField = marketBlock.getField('SUBMARKET_LIST');
-    const symbolField = marketBlock.getField('SYMBOL_LIST');
-    if (marketField) marketField.setValue(payload.market);
-    if (submarketField) submarketField.setValue(payload.submarket);
-    if (symbolField) symbolField.setValue(payload.symbol);
-  }
+  /**
+   * Recreates the layout structure dynamically with AI variables injected[cite: 3].
+   */
+  private generateStrategyXml(payload: AIScannerPayload): string {
+    const market = payload.market || 'synthetic_index';
+    const submarket = payload.submarket || 'random_index';
+    const tradeType = payload.tradeType || 'rise_fall';
+    const durationUnit = payload.durationUnit || 't';
 
-  private updateTradeTypeSettings(blocks: any[], payload: AIScannerPayload): void {
-    const tradeTypeBlock = blocks.find((b) => b.type === 'trade_definition_tradetype' || b.type === 'trade_definition');
-    if (!tradeTypeBlock) return;
-    const typeField = tradeTypeBlock.getField('TRADETYPE_LIST') || tradeTypeBlock.getField('TRADE_TYPE_LIST');
-    if (typeField) typeField.setValue(payload.tradeType);
-  }
-
-  private updateTradeNumericalOptions(blocks: any[], payload: AIScannerPayload): void {
-    const optionsBlock = blocks.find((b) => b.type === 'trade_definition_options' || b.type === 'trade_definition');
-    if (!optionsBlock) return;
-
-    const stakeInput = optionsBlock.getInput('AMOUNT') || optionsBlock.getInput('STAKE');
-    if (stakeInput?.connection) {
-      const targetShadow = stakeInput.connection.targetBlock();
-      if (targetShadow) {
-        targetShadow.setFieldValue(payload.stake.toString(), 'NUM');
-      }
-    }
-
-    const durationInput = optionsBlock.getInput('DURATION');
-    if (durationInput?.connection) {
-      const targetShadow = durationInput.connection.targetBlock();
-      if (targetShadow) {
-        targetShadow.setFieldValue(payload.duration.toString(), 'NUM');
-      }
-    }
-
-    const unitField = optionsBlock.getField('DURATIONUNIT_LIST');
-    if (unitField) {
-      unitField.setValue(payload.durationUnit);
-    }
+    return `
+    <xml xmlns="http://w3.org" collection="false">
+      <block type="trade_definition" id="root_trade_parameters" x="0" y="0">
+        <statement name="TRADE_OPTIONS">
+          <block type="trade_definition_market">
+            <field name="MARKET_LIST">${market}</field>
+            <field name="SUBMARKET_LIST">${submarket}</field>
+            <field name="SYMBOL_LIST">${payload.symbol}</field>
+            <field name="TRADETYPE_LIST">${tradeType}</field>
+            <field name="CONTRACT_TYPE_LIST">both</field>
+            <field name="CANDLEINTERVAL_LIST">60</field>
+            <next>
+              <block type="trade_definition_options">
+                <field name="DURATIONUNIT_LIST">${durationUnit}</field>
+                <value name="DURATION">
+                  <shadow type="math_number">
+                    <field name="NUM">${payload.duration}</field>
+                  </shadow>
+                </value>
+                <value name="AMOUNT">
+                  <shadow type="math_number">
+                    <field name="NUM">${payload.stake}</field>
+                  </shadow>
+                </value>
+              </block>
+            </next>
+          </block>
+        </statement>
+        <statement name="SUBMARKET">
+          <block type="trade_definition_purchase">
+            <field name="PURCHASE_LIST">rise</field>
+          </block>
+        </statement>
+      </block>
+    </xml>
+    `.trim();
   }
 
   // Backward compatibility wrapper for existing strategy calls
@@ -151,7 +156,7 @@ class ScannerBridgeClass {
       duration: options.duration || 5,
       durationUnit: 't'
     };
-    this.injectData(payload);
+    return this.injectData(payload);
   }
 }
 
