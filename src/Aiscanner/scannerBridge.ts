@@ -10,9 +10,11 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   /**
-   * Translates strategy market labels (e.g., "Volatility 75 (1s) Index") into strict Deriv API Codes.
+   * Translates strategy market labels or asset codes into strict Deriv API Codes.
    */
   private static translateSymbol(rawSymbol: string): string {
+    if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
+    
     const clean = rawSymbol
       .toUpperCase()
       .replace(/INDEX/g, '')
@@ -32,11 +34,11 @@ export class ScannerBridge {
       'VOLATILITY100':    'R_100',
     };
 
-    return symbolMap[clean] || rawSymbol;
+    return symbolMap[clean] || '1HZ100V';
   }
 
   /**
-   * Safe parameter injector targeting the quick strategy store and forcing correct symbol binding.
+   * Safe parameter injector targeting the quick strategy store.
    */
   public static injectViaStore(payload: AIScannerPayload): boolean {
     const rootStore = (window as any).derivBotAppStore;
@@ -44,7 +46,7 @@ export class ScannerBridge {
     
     console.log(`[ScannerBridge] Mapping input "${payload.symbol}" -> Verified API Code: "${strictDerivSymbol}"`);
 
-    // 1. Mutate the quick strategy store if available
+    // 1. Mutate the quick strategy store safely if available
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -74,48 +76,51 @@ export class ScannerBridge {
       }
     }
 
-    // 2. Direct Canvas Sweep: Force-update Blockly dropdown options and values
+    // 2. Safe Canvas Sweep with existence checks
     setTimeout(() => {
-      const Blockly = (window as any).Blockly;
-      const workspace = Blockly?.mainWorkspace;
+      try {
+        const Blockly = (window as any).Blockly;
+        const workspace = Blockly?.mainWorkspace;
 
-      if (workspace) {
-        try {
+        if (workspace && typeof workspace.getAllBlocks === 'function') {
           const blocks = workspace.getAllBlocks(false);
-          blocks.forEach((block: any) => {
-            const symbolField = block.getField('SYMBOL_LIST');
-            if (symbolField) {
-              if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
-                const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
-                if (!exists) {
-                  symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
+          if (Array.isArray(blocks)) {
+            blocks.forEach((block: any) => {
+              if (block && typeof block.getField === 'function') {
+                const symbolField = block.getField('SYMBOL_LIST');
+                if (symbolField) {
+                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
+                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                    if (!exists) {
+                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
+                    }
+                  }
+                  symbolField.setValue(strictDerivSymbol);
                 }
               }
-              symbolField.setValue(strictDerivSymbol);
+            });
+            if (typeof workspace.render === 'function') {
+              workspace.render();
             }
-          });
-          workspace.render();
-          console.log(`[ScannerBridge] Canvas sync locked volatility to: ${strictDerivSymbol}`);
-        } catch (e) {
-          console.warn("[ScannerBridge] Canvas sync warning:", e);
+          }
         }
+      } catch (e) {
+        console.warn("[ScannerBridge] Canvas sync warning:", e);
       }
-    }, 100);
+    }, 150);
 
     return true;
   }
 
   /**
-   * Extracts dynamic values from your strategy object, prioritizing 'market' where your asset names live.
+   * Extracts values strictly from strategy market properties, ignoring text labels like names.
    */
   public static loadStrategyToWorkspace(strategy: any, options: { stake?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
     const rawSymbol = 
       options?.symbol || 
-      strategy?.market ||  // <-- Prioritizes your strategies.ts 'market' property
+      strategy?.market || 
       strategy?.symbol || 
-      strategy?.asset || 
-      strategy?.name || 
-      '1HZ100V';
+      '1HZ100V'; // Excludes strategy.name to avoid treating titles like "High-Frequency Scalper" as symbols
 
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
