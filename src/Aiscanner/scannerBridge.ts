@@ -36,12 +36,13 @@ export class ScannerBridge {
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     
-    // Map tradeType/direction to Deriv purchase terms ('rise' or 'fall')
+    // Map tradeType/direction to store terms ('rise' / 'fall') and UI canvas terms ('Rise' / 'Fall')
     const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
     const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
-    const derivPurchaseType = isFall ? 'fall' : 'rise'; // Deriv quick strategy uses 'rise' or 'fall' for block #2
+    const derivPurchaseType = isFall ? 'fall' : 'rise';
+    const blocklyTradeType = isFall ? 'Fall' : 'Rise'; // Blockly canvas requires title-case
 
-    console.log(`[ScannerBridge] Volatility locked to: "${strictDerivSymbol}", Purchase Condition Target: "${derivPurchaseType}"`);
+    console.log(`[ScannerBridge] Volatility locked to: "${strictDerivSymbol}", Purchase Condition Target: "${blocklyTradeType}"`);
 
     // 1. Mutate the quick strategy store with the working volatility and updated trade type
     if (rootStore?.quick_strategy) {
@@ -74,7 +75,7 @@ export class ScannerBridge {
       }
     }
 
-    // 2. Safe Canvas Sweep: Update Block #2 (Purchase Conditions) directly
+    // 2. Safe Canvas Sweep: Update Block #2 (Purchase Conditions) using capitalized option values
     setTimeout(() => {
       try {
         const Blockly = (window as any).Blockly;
@@ -85,18 +86,30 @@ export class ScannerBridge {
           if (Array.isArray(blocks)) {
             blocks.forEach((block: any) => {
               if (block && typeof block.getField === 'function') {
+                // Keep your working symbol list assignment untouched
+                const symbolField = block.getField('SYMBOL_LIST');
+                if (symbolField) {
+                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
+                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                    if (!exists) {
+                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
+                    }
+                  }
+                  symbolField.setValue(strictDerivSymbol);
+                }
+
                 // Target Block #2 Purchase Condition field
                 const purchaseField = block.getField('PURCHASE_LIST') || block.getField('PURCHASE_TYPE');
-                if (purchaseField) {
-                  purchaseField.setValue(derivPurchaseType);
+                if (purchaseField && typeof purchaseField.setValue === 'function') {
+                  purchaseField.setValue(blocklyTradeType);
                 }
               }
 
               // Target purchase blocks explicitly
               if (block.type === 'purchase' || block.type?.includes('purchase')) {
                 const typeField = block.getField('PURCHASE_LIST');
-                if (typeField) {
-                  typeField.setValue(derivPurchaseType);
+                if (typeField && typeof typeField.setValue === 'function') {
+                  typeField.setValue(blocklyTradeType);
                 }
               }
             });
