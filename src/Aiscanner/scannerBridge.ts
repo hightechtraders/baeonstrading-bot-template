@@ -59,6 +59,61 @@ class ScannerBridgeClass {
     return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ50' };
   }
 
+  private configureRunOnceParameters(riskOptions: { stopLoss: number; takeProfit: number; martingaleMultiplier?: number }) {
+    const globalWin = window as any;
+    const workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
+    if (!workspace) return;
+
+    try {
+      const allBlocks = workspace.getAllBlocks(false);
+      const multiplier = riskOptions.martingaleMultiplier || 2.1;
+
+      allBlocks.forEach((block: any) => {
+        if (block.type === 'run_once' || block.type.includes('run_once')) {
+          let nextBlock = block.getInputTargetBlock('DO') || block.getInputTargetBlock('STATEMENTS');
+          
+          while (nextBlock) {
+            if (nextBlock.type === 'variables_set') {
+              const varField = nextBlock.getField('VAR');
+              const varName = varField ? varField.getText().toLowerCase() : '';
+
+              if (varName.includes('stop') || varName.includes('loss')) {
+                this.setVariableValue(nextBlock, riskOptions.stopLoss);
+              } else if (varName.includes('profit') || varName.includes('target')) {
+                this.setVariableValue(nextBlock, riskOptions.takeProfit);
+              } else if (varName.includes('multiplier') || varName.includes('martingale')) {
+                this.setVariableValue(nextBlock, multiplier);
+              }
+            }
+            nextBlock = nextBlock.getNextBlock();
+          }
+        }
+      });
+      console.log(`[AI Scanner] Run-once risk parameters synchronized (Stop Loss: ${riskOptions.stopLoss}, Take Profit: ${riskOptions.takeProfit}, Martingale: ${multiplier})`);
+    } catch (err) {
+      console.error('[AI Scanner] Error setting run-once parameters:', err);
+    }
+  }
+
+  private setVariableValue(setBlock: any, value: number) {
+    const targetInput = setBlock.getInput('VALUE');
+    if (targetInput && targetInput.connection) {
+      let numBlock = targetInput.connection.targetBlock();
+      if (numBlock && (numBlock.type === 'math_number' || numBlock.type === 'math_number_positive')) {
+        const field = numBlock.getField('NUM');
+        if (field) field.setValue(String(value));
+      } else {
+        const ws = setBlock.workspace;
+        const newNumBlock = ws.newBlock('math_number');
+        const field = newNumBlock.getField('NUM');
+        if (field) field.setValue(String(value));
+        newNumBlock.initSvg();
+        newNumBlock.render();
+        targetInput.connection.connect(newNumBlock.outputConnection);
+      }
+    }
+  }
+
   public loadStrategyToWorkspace(strategy: any, options: { stake: number; stopLoss: number; takeProfit?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
     console.log(`[AI Scanner] Loading strategy:`, strategy, options);
 
@@ -67,9 +122,11 @@ class ScannerBridgeClass {
     const direction = strategy.direction || 'UP';
     const targetContract = options.contractType || (direction === 'UP' ? 'CALL' : 'PUT');
     const safeDuration = options.duration !== undefined ? Math.min(Math.max(options.duration, 1), 10) : 5;
-    const safeStake = options.stake !== undefined ? options.stake : 10;
+    const safeStake = options.stake !== undefined ? options.stake : (strategy.recommendedStake || 10);
+    const safeStopLoss = options.stopLoss !== undefined ? options.stopLoss : (strategy.recommendedStopLoss || 20);
+    const safeTakeProfit = options.takeProfit !== undefined ? options.takeProfit : (strategy.recommendedTakeProfit || 50);
 
-    globalWin.tredapendingParams = { ...options, duration: safeDuration, stake: safeStake, ...config, contractType: targetContract, strategy };
+    globalWin.tredapendingParams = { ...options, duration: safeDuration, stake: safeStake, stopLoss: safeStopLoss, takeProfit: safeTakeProfit, ...config, contractType: targetContract, strategy };
 
     // Warm-up delay lets the workspace DOM and block registries fully mount before loading
     setTimeout(() => {
@@ -148,9 +205,16 @@ class ScannerBridgeClass {
           }
         });
 
+        // 4. Configure run-once parameters for stop loss, take profit, and martingale multiplier (2.1)
+        this.configureRunOnceParameters({
+          stopLoss: safeStopLoss,
+          takeProfit: safeTakeProfit,
+          martingaleMultiplier: 2.1
+        });
+
         if (updateCount > 0) {
           workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(null, 'edit', '', {}, {}));
-          console.log(`[AI Scanner] Successfully loaded and aligned market (${config.symbol}) and parameters.`);
+          console.log(`[AI Scanner] Successfully loaded and aligned market (${config.symbol}) and risk controls.`);
         }
       } catch (err) {
         console.error('[AI Scanner] Error loading workspace blocks:', err);
