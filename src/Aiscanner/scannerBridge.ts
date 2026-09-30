@@ -48,68 +48,79 @@ export class ScannerBridge {
   }
 
   /**
-   * Safe parameter injector directly mutating the Blockly canvas blocks.
+   * Safe parameter injector combining store initialization with direct field overrides.
    */
   public static injectViaStore(payload: AIScannerPayload): boolean {
+    const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
-    console.log(`[ScannerBridge] Forcing mapping input "${payload.symbol}" -> Verified API Code: "${strictDerivSymbol}"`);
+    
+    console.log(`[ScannerBridge] Mapping input "${payload.symbol}" -> Verified API Code: "${strictDerivSymbol}"`);
 
-    const workspace = (window as any).Blockly?.mainWorkspace;
-    if (!workspace) {
-      console.error("[ScannerBridge] No active Blockly workspace context found.");
-      return false;
-    }
+    let storeSuccess = false;
 
-    try {
-      let updated = false;
-      const blocks = workspace.getAllBlocks(false);
-
-      // Directly update existing blocks on the active canvas without triggering form resets
-      blocks.forEach((block: any) => {
-        if (block.type === 'trade_definition_market' || block.getField('SYMBOL_LIST')) {
-          const symbolField = block.getField('SYMBOL_LIST');
-          if (symbolField) {
-            symbolField.setValue(strictDerivSymbol);
-            updated = true;
-          }
-          const tradeTypeField = block.getField('TRADETYPE_LIST');
-          if (tradeTypeField && payload.tradeType) {
-            tradeTypeField.setValue(payload.tradeType);
-          }
+    // 1. Mutate the quick strategy store and force the correct symbol value
+    if (rootStore?.quick_strategy) {
+      const quickStrategy = rootStore.quick_strategy;
+      try {
+        if (typeof quickStrategy.setValue === 'function') {
+          quickStrategy.setValue('symbol', strictDerivSymbol);
+          quickStrategy.setValue('duration', payload.duration);
+          quickStrategy.setValue('amount', payload.stake);
         }
+        
+        const mockFormData = {
+          symbol: strictDerivSymbol, 
+          durationtype: payload.durationUnit || 't', 
+          duration: payload.duration,
+          stake: payload.stake,
+          amount: payload.stake,
+          tradetype: payload.tradeType || 'rise_fall',
+          type: payload.tradeType || 'rise_fall'
+        };
 
-        if (block.type === 'trade_definition_options' || block.getField('AMOUNT') || block.getField('DURATION')) {
-          const amountField = block.getField('AMOUNT');
-          if (amountField) {
-            amountField.setValue?.(payload.stake.toString());
-            updated = true;
-          }
-          const durationField = block.getField('DURATION');
-          if (durationField) {
-            durationField.setValue?.(payload.duration.toString());
-            updated = true;
-          }
+        if (typeof quickStrategy.onSubmit === 'function') {
+          quickStrategy.onSubmit(mockFormData);
+          storeSuccess = true;
+          console.log("[ScannerBridge] Successfully compiled via quickStrategy.onSubmit()");
+        } else if (typeof quickStrategy.createStrategy === 'function') {
+          quickStrategy.createStrategy(mockFormData);
+          storeSuccess = true;
+          console.log("[ScannerBridge] Successfully compiled via quickStrategy.createStrategy()");
         }
-      });
-
-      // If no blocks exist on canvas yet, inject via legacy XML structure
-      if (!updated) {
-        return this.injectDataLegacy({
-          ...payload,
-          symbol: strictDerivSymbol
-        });
+      } catch (error) {
+        console.warn("[ScannerBridge] Quick strategy store method failed, relying on direct canvas override...", error);
       }
-
-      workspace.render();
-      console.log(`[ScannerBridge] Successfully forced canvas update to symbol: ${strictDerivSymbol}`);
-      return true;
-    } catch (error) {
-      console.warn("[ScannerBridge] Direct block mutation failed, falling back to legacy XML injection...", error);
-      return this.injectDataLegacy({
-        ...payload,
-        symbol: strictDerivSymbol
-      });
     }
+
+    // 2. Post-render canvas sweep: Instantly force-update the active block fields so the UI reflects the selected asset
+    setTimeout(() => {
+      const workspace = (window as any).Blockly?.mainWorkspace;
+      if (workspace) {
+        try {
+          const blocks = workspace.getAllBlocks(false);
+          blocks.forEach((block: any) => {
+            if (block.type === 'trade_definition_market' || block.getField('SYMBOL_LIST')) {
+              const symbolField = block.getField('SYMBOL_LIST');
+              if (symbolField) {
+                symbolField.setValue(strictDerivSymbol);
+              }
+            }
+          });
+          workspace.render();
+          console.log(`[ScannerBridge] Post-render sweep successfully verified symbol: ${strictDerivSymbol}`);
+        } catch (e) {
+          console.warn("[ScannerBridge] Post-render sweep warning:", e);
+        }
+      }
+    }, 100);
+
+    if (storeSuccess) return true;
+
+    // 3. Fallback to legacy XML injection if store is unavailable
+    return this.injectDataLegacy({
+      ...payload,
+      symbol: strictDerivSymbol
+    });
   }
 
   /**
