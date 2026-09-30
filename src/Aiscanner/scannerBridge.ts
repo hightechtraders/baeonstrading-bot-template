@@ -63,111 +63,8 @@ class ScannerBridgeClass {
     return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ75' };
   }
 
-  private configureRunOnceParameters(riskOptions: { stopLoss: number; takeProfit: number; martingaleMultiplier?: number }) {
-    const globalWin = window as any;
-    const workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
-    if (!workspace) return;
-
-    try {
-      const allBlocks = workspace.getAllBlocks(false);
-      const multiplier = riskOptions.martingaleMultiplier || 2.1;
-
-      allBlocks.forEach((block: any) => {
-        if (block.type === 'run_once' || block.type.includes('run_once')) {
-          let statementInput = block.getInput('DO') || block.getInput('STATEMENTS');
-          if (!statementInput) return;
-
-          let existingChild = statementInput.connection?.targetBlock();
-          if (existingChild) {
-            this.updateExistingRunOnceVariables(existingChild, riskOptions, multiplier);
-            return;
-          }
-
-          ['Stop Loss', 'Take Profit', 'Martingale Multiplier'].forEach(varName => {
-            if (workspace.getVariable && !workspace.getVariable(varName)) {
-              if (workspace.createVariable) {
-                workspace.createVariable(varName);
-              }
-            }
-          });
-
-          const xmlString = `
-            <xml xmlns="http://www.w3.org/1999/xhtml">
-              <block type="variables_set" x="0" y="0">
-                <field name="VAR">Stop Loss</field>
-                <value name="VALUE">
-                  <block type="math_number">
-                    <field name="NUM">${riskOptions.stopLoss}</field>
-                  </block>
-                </value>
-                <next>
-                  <block type="variables_set">
-                    <field name="VAR">Take Profit</field>
-                    <value name="VALUE">
-                      <block type="math_number">
-                        <field name="NUM">${riskOptions.takeProfit}</field>
-                      </block>
-                    </value>
-                    <next>
-                      <block type="variables_set">
-                        <field name="VAR">Martingale Multiplier</field>
-                        <value name="VALUE">
-                          <block type="math_number">
-                            <field name="NUM">${multiplier}</field>
-                          </block>
-                        </value>
-                      </block>
-                    </next>
-                  </block>
-                </next>
-              </block>
-            </xml>
-          `;
-
-          const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
-          const domElement = xmlDoc.documentElement.children[0];
-
-          if (domElement && globalWin.Blockly.Xml) {
-            const newBlock = globalWin.Blockly.Xml.domToBlock(domElement, workspace);
-            if (newBlock && statementInput.connection && newBlock.previousConnection) {
-              statementInput.connection.connect(newBlock.previousConnection);
-              workspace.fireChangeListener(new globalWin.Blockly.Events.BlockCreate(newBlock));
-            }
-          }
-        }
-      });
-    } catch (err) {
-      console.error('[AI Scanner] Error building run-once parameters:', err);
-    }
-  }
-
-  private updateExistingRunOnceVariables(firstBlock: any, riskOptions: { stopLoss: number; takeProfit: number }, multiplier: number) {
-    let current = firstBlock;
-    while (current) {
-      if (current.type === 'variables_set') {
-        const varField = current.getField('VAR');
-        const varName = varField ? varField.getText().toLowerCase() : '';
-        const targetInput = current.getInput('VALUE');
-        const numBlock = targetInput?.connection?.targetBlock();
-        const numField = numBlock?.getField('NUM');
-
-        if (numField) {
-          if (varName.includes('stop') || varName.includes('loss')) {
-            numField.setValue(String(riskOptions.stopLoss));
-          } else if (varName.includes('profit') || varName.includes('target')) {
-            numField.setValue(String(riskOptions.takeProfit));
-          } else if (varName.includes('multiplier') || varName.includes('martingale')) {
-            numField.setValue(String(multiplier));
-          }
-        }
-      }
-      current = current.getNextBlock();
-    }
-  }
-
-  public loadStrategyToWorkspace(strategy: any, options: { stake: number; stopLoss: number; takeProfit?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
-    console.log(`[AI Scanner] Loading strategy:`, strategy, options);
+  public loadStrategyToWorkspace(strategy: any, options: { stake?: number; stopLoss?: number; takeProfit?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
+    console.log(`[AI Scanner] Injecting strategy data into workspace:`, strategy, options);
 
     const globalWin = window as any;
     const config = this.resolveMarketConfig(options.symbol || strategy.market || strategy.volatility);
@@ -178,90 +75,53 @@ class ScannerBridgeClass {
     const safeStopLoss = options.stopLoss !== undefined ? options.stopLoss : (strategy.recommendedStopLoss || 20);
     const safeTakeProfit = options.takeProfit !== undefined ? options.takeProfit : (strategy.recommendedTakeProfit || 50);
 
-    globalWin.tredapendingParams = { ...options, duration: safeDuration, stake: safeStake, stopLoss: safeStopLoss, takeProfit: safeTakeProfit, ...config, contractType: targetContract, strategy };
+    const workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
+    if (!workspace) {
+      console.warn('[AI Scanner] Blockly workspace not found yet.');
+      return;
+    }
 
-    setTimeout(() => {
-      const workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
-      if (!workspace) return;
+    try {
+      const allBlocks = workspace.getAllBlocks(false);
 
-      try {
-        const allBlocks = workspace.getAllBlocks(false);
+      allBlocks.forEach((block: any) => {
+        // 1. Inject Trade Parameters (Market, Submarket, Symbol, Trade Type)
+        if (block.type === 'trade_definition' || block.type === 'trade_definition_market' || block.type.includes('market')) {
+          try {
+            block.setFieldValue(config.market, 'MARKET_LIST');
+            block.setFieldValue(config.submarket, 'SUBMARKET_LIST');
+            block.setFieldValue(config.symbol, 'SYMBOL_LIST');
+            block.setFieldValue('callput', 'TRADE_TYPE_LIST');
+          } catch (e) {
+            console.warn('[AI Scanner] Field assignment warning:', e);
+          }
+        }
 
-        allBlocks.forEach((block: any) => {
-          if (block.type === 'trade_definition' || block.type === 'trade_definition_market' || block.type.includes('market')) {
-            try {
-              block.setFieldValue(config.market, 'MARKET_LIST');
-              block.setFieldValue(config.submarket, 'SUBMARKET_LIST');
-              
-              const symbolField = block.getField('SYMBOL_LIST');
-              if (symbolField) {
-                if (typeof symbolField.menuGenerator_ === 'function') {
-                  const opts = symbolField.menuGenerator_();
-                  if (Array.isArray(opts) && !opts.some((o: any) => o[1] === config.symbol)) {
-                    opts.push([config.symbol, config.symbol]);
-                  }
-                }
-                symbolField.setValue(config.symbol);
-                if (typeof symbolField.forceRerender === 'function') {
-                  symbolField.forceRerender();
-                }
-              }
+        // 2. Inject Purchase Contract Type (Call/Put)
+        if (block.type === 'purchase' || block.type.includes('purchase')) {
+          const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE');
+          if (purchaseField) {
+            purchaseField.setValue(targetContract);
+          }
+        }
 
-              block.setFieldValue('callput', 'TRADE_TYPE_LIST');
-            } catch (e) {
-              console.warn('[AI Scanner] Market update warning:', e);
+        // 3. Inject Stake and Duration values directly into parameter fields
+        if (block.type.includes('trade') || block.type.includes('amount') || block.type.includes('option')) {
+          ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
+            const field = block.getField(fieldName);
+            if (field) {
+              field.setValue(String(fieldName === 'DURATION' ? safeDuration : safeStake));
             }
-          }
+          });
+        }
+      });
 
-          if (block.type === 'purchase' || block.type.includes('purchase')) {
-            const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE');
-            if (purchaseField) {
-              purchaseField.setValue(targetContract);
-            }
-          }
-
-          if (block.type.includes('trade') || block.type.includes('amount') || block.type.includes('option')) {
-            ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
-              const field = block.getField(fieldName);
-              if (field) {
-                if (fieldName === 'DURATION') {
-                  field.setValue(String(safeDuration));
-                } else {
-                  field.setValue(String(safeStake));
-                }
-              }
-            });
-
-            block.inputList?.forEach((input: any) => {
-              const targetBlock = input.connection?.targetBlock();
-              if (targetBlock) {
-                ['NUM', 'AMOUNT', 'VALUE'].forEach(numFieldName => {
-                  const numField = targetBlock.getField(numFieldName);
-                  if (numField) {
-                    if (input.name === 'DURATION') {
-                      numField.setValue(String(safeDuration));
-                    } else {
-                      numField.setValue(String(safeStake));
-                    }
-                  }
-                });
-              }
-            });
-          }
-        });
-
-        this.configureRunOnceParameters({
-          stopLoss: safeStopLoss,
-          takeProfit: safeTakeProfit,
-          martingaleMultiplier: 2.1
-        });
-
-        workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(null, 'edit', '', {}, {}));
-        console.log(`[AI Scanner] Successfully loaded and aligned strategy parameters.`);
-      } catch (err) {
-        console.error('[AI Scanner] Error loading workspace blocks:', err);
-      }
-    }, 600);
+      // Fire change event so Deriv's template UI updates instantly
+      workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(null, 'edit', '', {}, {}));
+      console.log(`[AI Scanner] Successfully injected parameters for ${config.symbol} (${targetContract}).`);
+    } catch (err) {
+      console.error('[AI Scanner] Error injecting data into workspace blocks:', err);
+    }
   }
 }
 
