@@ -17,6 +17,10 @@ export class ScannerBridge {
     
     const symbolMap: Record<string, string> = {
       // 1-Second (1s) High-Speed Series
+      'VOLATILITY10(1S)':  '1HZ10V',
+      'VOL101S':           '1HZ10V',
+      'V101S':             '1HZ10V',
+      '1HZ10V':            '1HZ10V',
       'VOLATILITY50(1S)': '1HZ50V',
       'VOL501S':           '1HZ50V',
       'V501S':            '1HZ50V',
@@ -30,6 +34,9 @@ export class ScannerBridge {
       'V1001S':           '1HZ100V',
       '1HZ100V':          '1HZ100V',
       // Standard Volatility Indices
+      'VOLATILITY10':     'R_10',
+      'VOL10':            'R_10',
+      'R_10':             'R_10',
       'VOLATILITY50':     'R_50',
       'VOL50':            'R_50',
       'R_50':             'R_50',
@@ -143,15 +150,22 @@ export class ScannerBridge {
     }
   }
 
-  // Wrapper for strategies.ts compatibility
+  // Wrapper for strategies.ts compatibility with dynamic workspace fallback
   public static loadStrategyToWorkspace(strategy: any, options: { stake?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
+    const activeWorkspaceSymbol = (window as any).Blockly?.mainWorkspace
+      ?.getAllBlocks(false)
+      ?.find((b: any) => b.getField('SYMBOL_LIST'))
+      ?.getField('SYMBOL_LIST')
+      ?.getValue();
+
     const payload: AIScannerPayload = {
-      symbol: options.symbol || strategy.symbol || '1HZ75',
-      stake: options.stake || strategy.recommendedStake || 10,
-      duration: options.duration || 5,
-      tradeType: options.contractType || 'rise_fall',
-      durationUnit: options.durationUnit || 't'
+      symbol: options?.symbol || strategy?.symbol || strategy?.volatility || strategy?.asset || activeWorkspaceSymbol || '1HZ100V',
+      stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
+      duration: options?.duration || strategy?.duration || 5,
+      tradeType: options?.contractType || strategy?.contractType || 'rise_fall',
+      durationUnit: options?.durationUnit || 't'
     };
+
     return this.injectViaStore(payload);
   }
 }
