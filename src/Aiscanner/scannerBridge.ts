@@ -3,47 +3,35 @@
 export interface AIScannerPayload {
   stake: number;
   duration: number;
-  symbol: string;          // Accepts readable text or direct API symbols like '1HZ100V'
-  tradeType?: string;      // e.g., 'rise_fall'
-  durationUnit?: string;   // e.g., 't'
+  symbol: string;          
+  tradeType?: string;      
+  durationUnit?: string;   
 }
 
 export class ScannerBridge {
   /**
-   * Translates incoming AI strategy terms into strict, non-strippable Deriv API Codes.
+   * Translates strategy market labels (e.g., "Volatility 75 (1s) Index") into strict Deriv API Codes.
    */
   private static translateSymbol(rawSymbol: string): string {
-    const clean = rawSymbol.toUpperCase().replace(/\s+/g, '');
+    const clean = rawSymbol
+      .toUpperCase()
+      .replace(/INDEX/g, '')
+      .replace(/[\s\(\)]+/g, '');
     
     const symbolMap: Record<string, string> = {
       // 1-Second (1s) High-Speed Series
-      'VOLATILITY10(1S)':  '1HZ10V',
-      'VOL101S':           '1HZ10V',
-      'V101S':             '1HZ10V',
-      '1HZ10V':            '1HZ10V',
-      'VOLATILITY50(1S)': '1HZ50V',
-      'VOL501S':           '1HZ50V',
-      'V501S':            '1HZ50V',
-      '1HZ50V':           '1HZ50V',
-      'VOLATILITY75(1S)': '1HZ75V',
-      'VOL751S':           '1HZ75V',
-      'V751S':            '1HZ75V',
-      '1HZ75V':           '1HZ75V',
-      'VOLATILITY100(1S)':'1HZ100V',
-      'VOL1001S':          '1HZ100V',
-      'V1001S':           '1HZ100V',
-      '1HZ100V':          '1HZ100V',
+      'VOLATILITY101S':  '1HZ10V',
+      'VOLATILITY501S': '1HZ50V',
+      'VOLATILITY751S': '1HZ75V',
+      'VOLATILITY1001S':'1HZ100V',
       // Standard Volatility Indices
       'VOLATILITY10':     'R_10',
-      'VOL10':            'R_10',
-      'R_10':             'R_10',
+      'VOLATILITY25':     'R_25',
       'VOLATILITY50':     'R_50',
-      'VOL50':            'R_50',
-      'R_50':             'R_50',
       'VOLATILITY75':     'R_75',
-      'VOL75':            'R_75',
-      'R_75':             'R_75',
+      'VOLATILITY100':    'R_100',
     };
+
     return symbolMap[clean] || rawSymbol;
   }
 
@@ -82,43 +70,49 @@ export class ScannerBridge {
           quickStrategy.createStrategy(mockFormData);
         }
       } catch (error) {
-        console.warn("[ScannerBridge] Quick strategy store method failed, falling back...", error);
+        console.warn("[ScannerBridge] Quick strategy store method failed:", error);
       }
     }
 
-    // 2. Direct Canvas Sweep: Instantly update active workspace blocks so the UI matches the chosen asset
+    // 2. Direct Canvas Sweep: Force-update Blockly dropdown options and values
     setTimeout(() => {
-      const workspace = (window as any).Blockly?.mainWorkspace;
+      const Blockly = (window as any).Blockly;
+      const workspace = Blockly?.mainWorkspace;
+
       if (workspace) {
         try {
           const blocks = workspace.getAllBlocks(false);
           blocks.forEach((block: any) => {
-            if (block.type === 'trade_definition_market' || block.getField('SYMBOL_LIST')) {
-              const symbolField = block.getField('SYMBOL_LIST');
-              if (symbolField) {
-                symbolField.setValue(strictDerivSymbol);
+            const symbolField = block.getField('SYMBOL_LIST');
+            if (symbolField) {
+              if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
+                const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                if (!exists) {
+                  symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
+                }
               }
+              symbolField.setValue(strictDerivSymbol);
             }
           });
           workspace.render();
-          console.log(`[ScannerBridge] Canvas sync forced symbol: ${strictDerivSymbol}`);
+          console.log(`[ScannerBridge] Canvas sync locked volatility to: ${strictDerivSymbol}`);
         } catch (e) {
           console.warn("[ScannerBridge] Canvas sync warning:", e);
         }
       }
-    }, 50);
+    }, 100);
 
     return true;
   }
 
   /**
-   * Cleanly extracts dynamic values from your scanner matching strategy or market properties.
+   * Extracts dynamic values from your strategy object, prioritizing 'market' where your asset names live.
    */
   public static loadStrategyToWorkspace(strategy: any, options: { stake?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
     const rawSymbol = 
       options?.symbol || 
+      strategy?.market ||  // <-- Prioritizes your strategies.ts 'market' property
       strategy?.symbol || 
-      strategy?.market || 
       strategy?.asset || 
       strategy?.name || 
       '1HZ100V';
