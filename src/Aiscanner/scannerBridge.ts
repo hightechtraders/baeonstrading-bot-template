@@ -4,7 +4,7 @@ export interface AIScannerPayload {
   stake: number;
   duration: number;
   symbol: string;          
-  tradeType?: string;      
+  tradeType?: string;      // e.g., 'call', 'put', 'rise', 'fall', or strategy direction ('UP' / 'DOWN')
   durationUnit?: string;   
 }
 
@@ -38,13 +38,18 @@ export class ScannerBridge {
   }
 
   /**
-   * Safe parameter injector targeting the quick strategy store.
+   * Safe parameter injector targeting the quick strategy store and canvas blocks.
    */
   public static injectViaStore(payload: AIScannerPayload): boolean {
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     
-    console.log(`[ScannerBridge] Mapping input "${payload.symbol}" -> Verified API Code: "${strictDerivSymbol}"`);
+    // Convert incoming direction/tradeType to Deriv purchase terms ('call' = Rise, 'put' = Fall)
+    const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
+    const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
+    const derivPurchaseType = isFall ? 'put' : 'call';
+
+    console.log(`[ScannerBridge] Mapping input "${payload.symbol}" -> Verified API Code: "${strictDerivSymbol}", Purchase Type: "${derivPurchaseType}"`);
 
     // 1. Mutate the quick strategy store safely if available
     if (rootStore?.quick_strategy) {
@@ -54,6 +59,7 @@ export class ScannerBridge {
           quickStrategy.setValue('symbol', strictDerivSymbol);
           quickStrategy.setValue('duration', payload.duration);
           quickStrategy.setValue('amount', payload.stake);
+          quickStrategy.setValue('trade_type', derivPurchaseType);
         }
         
         const mockFormData = {
@@ -62,8 +68,8 @@ export class ScannerBridge {
           duration: payload.duration,
           stake: payload.stake,
           amount: payload.stake,
-          tradetype: payload.tradeType || 'rise_fall',
-          type: payload.tradeType || 'rise_fall'
+          tradetype: 'rise_fall',
+          type: derivPurchaseType
         };
 
         if (typeof quickStrategy.onSubmit === 'function') {
@@ -76,7 +82,7 @@ export class ScannerBridge {
       }
     }
 
-    // 2. Safe Canvas Sweep with existence checks
+    // 2. Safe Canvas Sweep: Update symbol fields and purchase condition fields dynamically
     setTimeout(() => {
       try {
         const Blockly = (window as any).Blockly;
@@ -87,6 +93,7 @@ export class ScannerBridge {
           if (Array.isArray(blocks)) {
             blocks.forEach((block: any) => {
               if (block && typeof block.getField === 'function') {
+                // Handle Symbol field list
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField) {
                   if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
@@ -97,8 +104,23 @@ export class ScannerBridge {
                   }
                   symbolField.setValue(strictDerivSymbol);
                 }
+
+                // Handle Purchase Condition fields (Rise/Fall)
+                const purchaseField = block.getField('PURCHASE_LIST') || block.getField('PURCHASE_TYPE');
+                if (purchaseField) {
+                  purchaseField.setValue(derivPurchaseType);
+                }
+              }
+
+              // Also target specialized purchase blocks directly
+              if (block.type === 'purchase' || block.type?.includes('purchase')) {
+                const typeField = block.getField('PURCHASE_LIST');
+                if (typeField) {
+                  typeField.setValue(derivPurchaseType);
+                }
               }
             });
+
             if (typeof workspace.render === 'function') {
               workspace.render();
             }
@@ -113,21 +135,24 @@ export class ScannerBridge {
   }
 
   /**
-   * Extracts values strictly from strategy market properties, ignoring text labels like names.
+   * Extracts values strictly from strategy market properties and direction mappings.
    */
   public static loadStrategyToWorkspace(strategy: any, options: { stake?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
     const rawSymbol = 
       options?.symbol || 
       strategy?.market || 
       strategy?.symbol || 
-      '1HZ100V'; // Excludes strategy.name to avoid treating titles like "High-Frequency Scalper" as symbols
+      '1HZ100V'; 
+
+    // Extract live direction ('UP' / 'DOWN') from your strategy object
+    const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
 
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
       duration: options?.duration || strategy?.duration || 5,
-      tradeType: options?.contractType || strategy?.contractType || 'rise_fall',
-      durationUnit: options?.durationUnit || 't'
+      tradeType: strategyDirection,
+      durationUnit: 't'
     };
 
     return this.injectViaStore(payload);
