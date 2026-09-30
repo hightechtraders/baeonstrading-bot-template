@@ -41,36 +41,36 @@ class ScannerBridgeClass {
     }
   }
 
-  private normalizeSymbol(marketOrVol: string): string {
-    if (!marketOrVol) return '1HZ50';
-    const text = marketOrVol.toLowerCase();
-    
-    if (text.includes('10s') || text.includes('1hz10')) return '1HZ10';
-    if (text.includes('25s') || text.includes('1hz25')) return '1HZ25';
-    if (text.includes('50s') || text.includes('1hz50')) return '1HZ50';
-    if (text.includes('75s') || text.includes('1hz75')) return '1HZ75';
-    if (text.includes('100s') || text.includes('1hz100')) return '1HZ100';
+  private resolveMarketConfig(marketOrVol: string): { market: string; submarket: string; symbol: string } {
+    const text = (marketOrVol || '').toLowerCase();
 
-    if (text.includes('10')) return 'R_10';
-    if (text.includes('25')) return 'R_25';
-    if (text.includes('50')) return 'R_50';
-    if (text.includes('75')) return 'R_75';
-    if (text.includes('100')) return 'R_100';
+    // Distinguish between 1-second indices (Continuous Indices) vs regular volatility indices
+    if (text.includes('10s') || text.includes('1hz10')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ10' };
+    if (text.includes('25s') || text.includes('1hz25')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ25' };
+    if (text.includes('50s') || text.includes('1hz50')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ50' };
+    if (text.includes('75s') || text.includes('1hz75')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ75' };
+    if (text.includes('100s') || text.includes('1hz100')) return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ100' };
 
-    return '1HZ50';
+    if (text.includes('10')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_10' };
+    if (text.includes('25')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_25' };
+    if (text.includes('50')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_50' };
+    if (text.includes('75')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_75' };
+    if (text.includes('100')) return { market: 'synthetic_index', submarket: 'random_index', symbol: 'R_100' };
+
+    return { market: 'synthetic_index', submarket: 'continuous_indices', symbol: '1HZ50' };
   }
 
   public loadStrategyToWorkspace(strategy: any, options: { stake: number; stopLoss: number; takeProfit?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
-    console.log(`[AI Scanner] Injecting parameters into workspace:`, strategy, options);
+    console.log(`[AI Scanner] Loading strategy:`, strategy, options);
 
     const globalWin = window as any;
-    const targetSymbol = options.symbol || this.normalizeSymbol(strategy.market || strategy.volatility);
+    const config = this.resolveMarketConfig(options.symbol || strategy.market || strategy.volatility);
     const direction = strategy.direction || 'UP';
     const targetContract = options.contractType || (direction === 'UP' ? 'CALL' : 'PUT');
     const safeDuration = options.duration !== undefined ? Math.min(Math.max(options.duration, 1), 10) : 5;
     const safeStake = options.stake !== undefined ? options.stake : 10;
 
-    globalWin.tredapendingParams = { ...options, duration: safeDuration, stake: safeStake, symbol: targetSymbol, contractType: targetContract, strategy };
+    globalWin.tredapendingParams = { ...options, duration: safeDuration, stake: safeStake, ...config, contractType: targetContract, strategy };
 
     let workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
 
@@ -83,20 +83,37 @@ class ScannerBridgeClass {
         let updateCount = 0;
 
         allBlocks.forEach((block: any) => {
-          // 1. Update Purchase Contract Type (CALL / PUT)
+          // 1. Update Trade Parameters Block (Market, Submarket, Symbol, Contract Type)
+          if (block.type === 'trade_definition') {
+            try {
+              block.setFieldValue(config.market, 'MARKET_LIST');
+              block.setFieldValue(config.submarket, 'SUBMARKET_LIST');
+              
+              const symbolField = block.getField('SYMBOL_LIST');
+              if (symbolField) {
+                if (typeof symbolField.setValue === 'function') {
+                  symbolField.setValue(config.symbol);
+                }
+              }
+              block.setFieldValue(targetContract, 'TRADE_TYPE_LIST');
+              updateCount++;
+            } catch (e) {
+              console.warn('[AI Scanner] Trade definition field update warning:', e);
+            }
+          }
+
+          // 2. Update Purchase Contract Type Block (CALL/PUT)
           if (block.type === 'purchase' || block.type.includes('purchase')) {
-            const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE') || block.getField('CB_List');
+            const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE');
             if (purchaseField) {
               purchaseField.setValue(targetContract);
               updateCount++;
             }
           }
 
-          // 2. Update Trade Options & Nested Math/Number Blocks for Stake and Duration
-          if (block.type.includes('trade') || block.type.includes('amount') || block.type.includes('option') || block.type.includes('duration')) {
-            
-            // Check direct block fields
-            ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION', 'BARRIER_OFFSET'].forEach(fieldName => {
+          // 3. Update Stake and Duration Options
+          if (block.type.includes('trade') || block.type.includes('amount') || block.type.includes('option')) {
+            ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
               const field = block.getField(fieldName);
               if (field) {
                 if (fieldName === 'DURATION') {
@@ -109,26 +126,20 @@ class ScannerBridgeClass {
               }
             });
 
-            // Deep inspect child blocks connected via block inputs (e.g., math_number blocks plugging into stake/duration)
             block.inputList?.forEach((input: any) => {
-              let targetBlock = input.connection?.targetBlock();
-              while (targetBlock) {
-                ['NUM', 'AMOUNT', 'VALUE', 'TEXT'].forEach(numFieldName => {
+              const targetBlock = input.connection?.targetBlock();
+              if (targetBlock) {
+                ['NUM', 'AMOUNT', 'VALUE'].forEach(numFieldName => {
                   const numField = targetBlock.getField(numFieldName);
                   if (numField) {
-                    if (input.name === 'DURATION' || targetBlock.type === 'math_number_positive' || targetBlock.type === 'math_number') {
-                      // Check context: if input name or parent implies duration vs stake
-                      if (input.name === 'DURATION') {
-                        numField.setValue(String(safeDuration));
-                      } else {
-                        numField.setValue(String(safeStake));
-                      }
-                      updateCount++;
+                    if (input.name === 'DURATION') {
+                      numField.setValue(String(safeDuration));
+                    } else {
+                      numField.setValue(String(safeStake));
                     }
+                    updateCount++;
                   }
                 });
-                // Traverse down if there's any chained sub-block
-                targetBlock = targetBlock.outputConnection?.targetBlock();
               }
             });
           }
@@ -136,12 +147,10 @@ class ScannerBridgeClass {
 
         if (updateCount > 0) {
           workspace.fireChangeListener(new globalWin.Blockly.Events.BlockChange(null, 'edit', '', {}, {}));
-          console.log(` [AI Scanner] Successfully updated ${updateCount} parameters on workspace blocks.`);
-        } else {
-          console.warn('[AI Scanner] No matching stake/duration blocks found to update.');
+          console.log(`[AI Scanner] Successfully aligned market (${config.symbol}) and parameters.`);
         }
       } catch (err) {
-        console.error('[AI Scanner] Error updating workspace options:', err);
+        console.error('[AI Scanner] Error aligning workspace blocks:', err);
       }
     }, 300);
   }
