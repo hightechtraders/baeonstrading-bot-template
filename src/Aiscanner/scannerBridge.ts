@@ -4,11 +4,14 @@ export interface AIScannerPayload {
   stake: number;
   duration: number;
   symbol: string;          
-  tradeType?: string;      // Strategy direction: 'UP' / 'DOWN' or 'rise' / 'fall'
+  tradeType?: string;      
   durationUnit?: string;   
 }
 
 export class ScannerBridge {
+  /**
+   * Translates strategy market labels or asset codes into strict Deriv API Codes.
+   */
   private static translateSymbol(rawSymbol: string): string {
     if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
     
@@ -18,10 +21,12 @@ export class ScannerBridge {
       .replace(/[\s\(\)]+/g, '');
     
     const symbolMap: Record<string, string> = {
+      // 1-Second (1s) High-Speed Series
       'VOLATILITY101S':  '1HZ10V',
       'VOLATILITY501S': '1HZ50V',
       'VOLATILITY751S': '1HZ75V',
       'VOLATILITY1001S':'1HZ100V',
+      // Standard Volatility Indices
       'VOLATILITY10':     'R_10',
       'VOLATILITY25':     'R_25',
       'VOLATILITY50':     'R_50',
@@ -32,19 +37,21 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
+  /**
+   * Safe parameter injector targeting the quick strategy store.
+   */
   public static injectViaStore(payload: AIScannerPayload): boolean {
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     
-    // Map tradeType/direction to store terms ('rise' / 'fall') and UI canvas terms ('Rise' / 'Fall')
+    // Determine trade direction for purchase condition display ('Rise' or 'Fall')
     const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
     const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
-    const derivPurchaseType = isFall ? 'fall' : 'rise';
-    const blocklyTradeType = isFall ? 'Fall' : 'Rise'; // Blockly canvas requires title-case
+    const blocklyTradeType = isFall ? 'Fall' : 'Rise';
 
-    console.log(`[ScannerBridge] Volatility locked to: "${strictDerivSymbol}", Purchase Condition Target: "${blocklyTradeType}"`);
+    console.log(`[ScannerBridge] Mapping input "${payload.symbol}" -> Verified API Code: "${strictDerivSymbol}", Direction: "${blocklyTradeType}"`);
 
-    // 1. Mutate the quick strategy store with the working volatility and updated trade type
+    // 1. Mutate the quick strategy store safely if available
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -52,7 +59,7 @@ export class ScannerBridge {
           quickStrategy.setValue('symbol', strictDerivSymbol);
           quickStrategy.setValue('duration', payload.duration);
           quickStrategy.setValue('amount', payload.stake);
-          quickStrategy.setValue('trade_type', derivPurchaseType);
+          quickStrategy.setValue('trade_type', isFall ? 'fall' : 'rise');
         }
         
         const mockFormData = {
@@ -61,8 +68,8 @@ export class ScannerBridge {
           duration: payload.duration,
           stake: payload.stake,
           amount: payload.stake,
-          tradetype: 'rise_fall',
-          type: derivPurchaseType
+          tradetype: payload.tradeType || 'rise_fall',
+          type: payload.tradeType || 'rise_fall'
         };
 
         if (typeof quickStrategy.onSubmit === 'function') {
@@ -75,7 +82,7 @@ export class ScannerBridge {
       }
     }
 
-    // 2. Safe Canvas Sweep: Update Block #2 (Purchase Conditions) using capitalized option values
+    // 2. Safe Canvas Sweep for Symbol and Purchase Condition
     setTimeout(() => {
       try {
         const Blockly = (window as any).Blockly;
@@ -86,7 +93,7 @@ export class ScannerBridge {
           if (Array.isArray(blocks)) {
             blocks.forEach((block: any) => {
               if (block && typeof block.getField === 'function') {
-                // Keep your working symbol list assignment untouched
+                // Symbol update (your exact working code)
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField) {
                   if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
@@ -98,22 +105,13 @@ export class ScannerBridge {
                   symbolField.setValue(strictDerivSymbol);
                 }
 
-                // Target Block #2 Purchase Condition field
+                // Purchase condition update for Block #2
                 const purchaseField = block.getField('PURCHASE_LIST') || block.getField('PURCHASE_TYPE');
                 if (purchaseField && typeof purchaseField.setValue === 'function') {
                   purchaseField.setValue(blocklyTradeType);
                 }
               }
-
-              // Target purchase blocks explicitly
-              if (block.type === 'purchase' || block.type?.includes('purchase')) {
-                const typeField = block.getField('PURCHASE_LIST');
-                if (typeField && typeof typeField.setValue === 'function') {
-                  typeField.setValue(blocklyTradeType);
-                }
-              }
             });
-
             if (typeof workspace.render === 'function') {
               workspace.render();
             }
@@ -127,6 +125,9 @@ export class ScannerBridge {
     return true;
   }
 
+  /**
+   * Extracts values strictly from strategy market properties, ignoring text labels like names.
+   */
   public static loadStrategyToWorkspace(strategy: any, options: { stake?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
     const rawSymbol = 
       options?.symbol || 
@@ -141,7 +142,7 @@ export class ScannerBridge {
       stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
-      durationUnit: 't'
+      durationUnit: options?.durationUnit || 't'
     };
 
     return this.injectViaStore(payload);
