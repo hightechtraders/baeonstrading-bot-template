@@ -3,80 +3,154 @@
 export interface AIScannerPayload {
   stake: number;
   duration: number;
-  symbol: string;          // e.g., '1HZ100V'
+  symbol: string;          // Accepts readable text or direct API symbols like '1HZ100V'
   tradeType?: string;      // e.g., 'rise_fall'
   durationUnit?: string;   // e.g., 't'
 }
 
 export class ScannerBridge {
-  public static injectViaStore(payload: AIScannerPayload): boolean {
-    const workspace = (window as any).Blockly?.mainWorkspace;
+  /**
+   * Translates incoming AI strategy terms into strict, non-strippable Deriv API Codes.
+   */
+  private static translateSymbol(rawSymbol: string): string {
+    const clean = rawSymbol.toUpperCase().replace(/\s+/g, '');
     
+    const symbolMap: Record<string, string> = {
+      // 1-Second (1s) High-Speed Series
+      'VOLATILITY50(1S)': '1HZ50V',
+      'VOL501S':           '1HZ50V',
+      'V501S':            '1HZ50V',
+      '1HZ50V':           '1HZ50V',
+      'VOLATILITY75(1S)': '1HZ75V',
+      'VOL751S':           '1HZ75V',
+      'V751S':            '1HZ75V',
+      '1HZ75V':           '1HZ75V',
+      'VOLATILITY100(1S)':'1HZ100V',
+      'VOL1001S':          '1HZ100V',
+      'V1001S':           '1HZ100V',
+      '1HZ100V':          '1HZ100V',
+      // Standard Volatility Indices
+      'VOLATILITY50':     'R_50',
+      'VOL50':            'R_50',
+      'R_50':             'R_50',
+      'VOLATILITY75':     'R_75',
+      'VOL75':            'R_75',
+      'R_75':             'R_75',
+    };
+    return symbolMap[clean] || rawSymbol;
+  }
+
+  /**
+   * Safe parameter injector targeting the native store and Blockly canvas workspace.
+   */
+  public static injectViaStore(payload: AIScannerPayload): boolean {
+    const rootStore = (window as any).derivBotAppStore;
+    const strictDerivSymbol = this.translateSymbol(payload.symbol);
+    
+    console.log(`[ScannerBridge] Mapping input "${payload.symbol}" -> Verified API Code: "${strictDerivSymbol}"`);
+
+    // 1. Try mutating the quick strategy store if available
+    if (rootStore?.quick_strategy) {
+      const quickStrategy = rootStore.quick_strategy;
+      try {
+        if (typeof quickStrategy.setValue === 'function') {
+          quickStrategy.setValue('symbol', strictDerivSymbol);
+          quickStrategy.setValue('duration', payload.duration);
+          quickStrategy.setValue('amount', payload.stake);
+        }
+        
+        const mockFormData = {
+          symbol: strictDerivSymbol, 
+          durationtype: payload.durationUnit || 't', 
+          duration: payload.duration,
+          stake: payload.stake,
+          amount: payload.stake,
+          tradetype: payload.tradeType || 'rise_fall',
+          type: payload.tradeType || 'rise_fall'
+        };
+
+        if (typeof quickStrategy.onSubmit === 'function') {
+          quickStrategy.onSubmit(mockFormData);
+          console.log("[ScannerBridge] Successfully compiled via quickStrategy.onSubmit()");
+          return true;
+        } else if (typeof quickStrategy.createStrategy === 'function') {
+          quickStrategy.createStrategy(mockFormData);
+          console.log("[ScannerBridge] Successfully compiled via quickStrategy.createStrategy()");
+          return true;
+        }
+      } catch (error) {
+        console.warn("[ScannerBridge] Quick strategy store method failed, falling back to workspace injection...", error);
+      }
+    }
+
+    // 2. Fallback: Direct Blockly workspace XML construction
+    return this.injectDataLegacy({
+      ...payload,
+      symbol: strictDerivSymbol
+    });
+  }
+
+  /**
+   * Direct Blockly workspace XML builder fallback
+   */
+  private static injectDataLegacy(payload: AIScannerPayload): boolean {
+    const workspace = (window as any).Blockly?.mainWorkspace;
     if (!workspace) {
-      console.error("[ScannerBridge] Blockly workspace not found.");
+      console.error("[ScannerBridge] No active Blockly workspace context found.");
       return false;
     }
 
     try {
-      let updated = false;
-      const blocks = workspace.getAllBlocks(false);
+      const xmlString = `
+        <xml xmlns="http://www.w3.org/1999/xhtml" collection="false">
+          <block type="trade_definition" id="root_trade_parameters" x="0" y="0">
+            <statement name="TRADE_OPTIONS">
+              <block type="trade_definition_market">
+                <field name="MARKET_LIST">synthetic_index</field>
+                <field name="SUBMARKET_LIST">random_index</field>
+                <field name="SYMBOL_LIST">${payload.symbol}</field>
+                <field name="TRADETYPE_LIST">${payload.tradeType || 'rise_fall'}</field>
+                <next>
+                  <block type="trade_definition_options">
+                    <field name="DURATIONUNIT_LIST">${payload.durationUnit || 't'}</field>
+                    <value name="DURATION">
+                      <shadow type="math_number">
+                        <field name="NUM">${payload.duration}</field>
+                      </shadow>
+                    </value>
+                    <value name="AMOUNT">
+                      <shadow type="math_number">
+                        <field name="NUM">${payload.stake}</field>
+                      </shadow>
+                    </value>
+                  </block>
+                </next>
+              </block>
+            </statement>
+          </block>
+        </xml>
+      `.trim();
 
-      // Iterate through active blocks to find trade definition fields and mutate them live
-      blocks.forEach((block: any) => {
-        // Update Symbol
-        if (block.type === 'trade_definition_market' || block.getField('SYMBOL_LIST')) {
-          const symbolField = block.getField('SYMBOL_LIST');
-          if (symbolField) {
-            symbolField.setValue(payload.symbol);
-            updated = true;
-          }
-        }
-
-        // Update Stake & Duration options
-        if (block.type === 'trade_definition_options' || block.getField('AMOUNT') || block.getField('DURATION')) {
-          const amountField = block.getField('AMOUNT');
-          if (amountField) {
-            // Some versions use shadow blocks or direct values
-            amountField.setValue?.(payload.stake.toString());
-            updated = true;
-          }
-          const durationField = block.getField('DURATION');
-          if (durationField) {
-            durationField.setValue?.(payload.duration.toString());
-            updated = true;
-          }
-        }
-      });
-
-      // If fields weren't found on existing blocks, fallback to the root store quick strategy trigger
-      if (!updated) {
-        const rootStore = (window as any).derivBotAppStore;
-        if (rootStore?.quick_strategy) {
-          const qs = rootStore.quick_strategy;
-          if (typeof qs.setValue === 'function') {
-            qs.setValue('symbol', payload.symbol);
-            qs.setValue('amount', payload.stake);
-            qs.setValue('duration', payload.duration);
-            updated = true;
-          }
-        }
-      }
-
+      workspace.clear();
+      const dom = (window as any).Blockly.Xml.textToDom(xmlString);
+      (window as any).Blockly.Xml.domToWorkspace(dom, workspace);
       workspace.render();
-      console.log(`[ScannerBridge] Successfully updated workspace parameters for: ${payload.symbol}`);
-      return updated;
-    } catch (error) {
-      console.error("[ScannerBridge] Failed to update workspace blocks:", error);
+      console.log(`[ScannerBridge] Successfully injected XML workspace for symbol: ${payload.symbol}`);
+      return true;
+    } catch (e) {
+      console.error("[ScannerBridge] Legacy XML injection failed:", e);
       return false;
     }
   }
 
+  // Wrapper for strategies.ts compatibility
   public static loadStrategyToWorkspace(strategy: any, options: { stake?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
     const payload: AIScannerPayload = {
       symbol: options.symbol || strategy.symbol || '1HZ75',
       stake: options.stake || strategy.recommendedStake || 10,
       duration: options.duration || 5,
-      tradeType: options.contractType || 'rise_fall'
+      tradeType: options.contractType || 'rise_fall',
+      durationUnit: options.durationUnit || 't'
     };
     return this.injectViaStore(payload);
   }
