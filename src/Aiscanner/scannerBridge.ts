@@ -108,18 +108,36 @@ export class ScannerBridge {
                   symbolField.setValue(strictDerivSymbol);
                 }
 
-                // Purchase condition block field target
-                const purchaseField = block.getField('PURCHASE_LIST') || block.getField('PURCHASE_TYPE');
+                // Purchase condition block field target with dropdown option check
+                const purchaseField = block.getField('PURCHASE_LIST') || 
+                                      block.getField('PURCHASE_TYPE') || 
+                                      block.getField('PURCHASE_CONDITIONS_LIST');
+
                 if (purchaseField && typeof purchaseField.setValue === 'function') {
-                  purchaseField.setValue(blocklyTradeType);
+                  const options = typeof purchaseField.getOptions === 'function' ? purchaseField.getOptions() : [];
+                  const matchedOption = options.find((opt: any) => 
+                    opt[0].toLowerCase().includes(targetType) || 
+                    opt[1].toLowerCase().includes(targetType)
+                  );
+                  const valueToSet = matchedOption ? matchedOption[1] : blocklyTradeType;
+                  purchaseField.setValue(valueToSet);
                 }
               }
 
               // Explicit block type sweep for purchase condition blocks
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
-                const typeField = block.getField('PURCHASE_LIST') || block.getField('PURCHASE_TYPE');
+                const typeField = block.getField('PURCHASE_LIST') || 
+                                  block.getField('PURCHASE_TYPE') || 
+                                  block.getField('PURCHASE_CONDITIONS_LIST');
+
                 if (typeField && typeof typeField.setValue === 'function') {
-                  typeField.setValue(blocklyTradeType);
+                  const options = typeof typeField.getOptions === 'function' ? typeField.getOptions() : [];
+                  const matchedOption = options.find((opt: any) => 
+                    opt[0].toLowerCase().includes(targetType) || 
+                    opt[1].toLowerCase().includes(targetType)
+                  );
+                  const valueToSet = matchedOption ? matchedOption[1] : blocklyTradeType;
+                  typeField.setValue(valueToSet);
                 }
               }
             });
@@ -132,7 +150,7 @@ export class ScannerBridge {
       } catch (e) {
         console.warn("[ScannerBridge] Canvas sync warning:", e);
       }
-    }, 150);
+    }, 250); // Extended timeout to allow Deriv template rendering to finish completely
 
     return true;
   }
