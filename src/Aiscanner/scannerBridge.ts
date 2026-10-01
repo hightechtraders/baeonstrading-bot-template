@@ -43,8 +43,9 @@ export class ScannerBridge {
     
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
+    const martingaleMultiplier = 2.4;
 
-    console.log(`[ScannerBridge] Locking Strategy -> Symbol: ${strictDerivSymbol} | Direction: ${storeContractType}`);
+    console.log(`[ScannerBridge] Locking Strategy -> Symbol: ${strictDerivSymbol} | Direction: ${storeContractType} | Martingale: ${martingaleMultiplier}`);
 
     // 1. Update the Quick Strategy Store State
     if (rootStore?.quick_strategy) {
@@ -56,6 +57,7 @@ export class ScannerBridge {
           quickStrategy.setValue('amount', payload.stake);
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
+          quickStrategy.setValue('size', martingaleMultiplier);
         }
         
         const mockFormData = {
@@ -66,7 +68,8 @@ export class ScannerBridge {
           amount: payload.stake,
           tradetype: 'rise_fall',
           contract_type: storeContractType,
-          type: storeType
+          type: storeType,
+          size: martingaleMultiplier
         };
 
         const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
@@ -132,6 +135,21 @@ export class ScannerBridge {
                       updated = true;
                     }
                   }
+                });
+              }
+
+              // Martingale Multiplier Enforcement (2.4)
+              if (block.type === 'trade_again' || block.type?.includes('restart') || block.type?.includes('martingale')) {
+                block.inputList?.forEach((input: any) => {
+                  input.fieldRow?.forEach((field: any) => {
+                    if (field && typeof field.setValue === 'function' && (field.name === 'VALUE' || field.name === 'MULTIPLIER' || field.EDITABLE)) {
+                      const val = Number(field.getValue());
+                      if (val === 3 || isNaN(val) || field.getValue() === '3') {
+                        field.setValue(String(martingaleMultiplier));
+                        updated = true;
+                      }
+                    }
+                  });
                 });
               }
             });
