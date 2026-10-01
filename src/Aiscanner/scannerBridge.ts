@@ -66,8 +66,10 @@ class ScannerBridgeClass {
     const globalWin = window as any;
     const targetSymbol = options.symbol || this.normalizeSymbol(strategy.market || strategy.volatility);
     
-    const direction = strategy.direction || 'UP';
-    const targetContract = options.contractType || (direction === 'UP' ? 'CALL' : 'PUT');
+    // Explicitly derive clean uppercase direction mapping for purchase conditions
+    const rawDirection = String(options.contractType || strategy.direction || strategy.tradeType || 'UP').toUpperCase();
+    const isFall = rawDirection.includes('DOWN') || rawDirection.includes('PUT') || rawDirection.includes('FALL');
+    const targetContract = isFall ? 'PUT' : 'CALL';
 
     globalWin.tredapendingParams = { ...options, symbol: targetSymbol, contractType: targetContract, strategy };
 
@@ -98,11 +100,9 @@ class ScannerBridgeClass {
 
             const symbolField = block.getField('SYMBOL_LIST');
             if (symbolField) {
-              // Ensure dropdown options are initialized or forced to accept the value
               if (typeof symbolField.setValue === 'function') {
                 symbolField.setValue(targetSymbol);
               }
-              // Trigger visual re-render/dropdown refresh if method exists
               if (typeof symbolField.forceRerender === 'function') {
                 symbolField.forceRerender();
               } else if (typeof symbolField.beginEdit === 'function' && typeof symbolField.endEdit === 'function') {
@@ -119,10 +119,10 @@ class ScannerBridgeClass {
             }
           }
 
-          // 2. Configure Purchase / Contract Type block (CALL / PUT)
+          // 2. Configure Purchase / Contract Type block (CALL / PUT) directly and reliably
           if (block.type === 'purchase' || block.type.includes('purchase') || block.type === 'trade_definition_purchase') {
             const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE') || block.getField('CB_List');
-            if (purchaseField) {
+            if (purchaseField && typeof purchaseField.setValue === 'function') {
               purchaseField.setValue(targetContract);
               blockInjectionCounter++;
             }
