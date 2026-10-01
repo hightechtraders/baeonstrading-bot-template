@@ -9,6 +9,8 @@ export interface AIScannerPayload {
 }
 
 export class ScannerBridge {
+  private static activeListener: any = null;
+
   private static translateSymbol(rawSymbol: string): string {
     if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
     
@@ -42,8 +44,9 @@ export class ScannerBridge {
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
 
-    console.log(`[ScannerBridge] Forcing Strategy -> Symbol: ${strictDerivSymbol} | Direction: ${storeContractType}`);
+    console.log(`[ScannerBridge] Locking Strategy -> Symbol: ${strictDerivSymbol} | Direction: ${storeContractType}`);
 
+    // 1. Update the Quick Strategy Store State
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -77,8 +80,8 @@ export class ScannerBridge {
       }
     }
 
-    // Multi-pass enforcement loop to beat the framework's async reset cycle
-    const enforceDirection = () => {
+    // 2. Helper function to apply field values directly on the blocks
+    const applyBlockMutations = () => {
       try {
         const Blockly = (window as any).Blockly;
         const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
@@ -86,18 +89,27 @@ export class ScannerBridge {
         if (workspace && typeof workspace.getAllBlocks === 'function') {
           const blocks = workspace.getAllBlocks(false);
           if (Array.isArray(blocks)) {
+            let updated = false;
+
             blocks.forEach((block: any) => {
               if (!block) return;
 
-              // 1. Maintain Symbol
+              // Symbol Update
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
-                if (symbolField) {
+                if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
+                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
+                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                    if (!exists) {
+                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
+                    }
+                  }
                   symbolField.setValue(strictDerivSymbol);
+                  updated = true;
                 }
               }
 
-              // 2. Aggressively lock purchase condition block
+              // Purchase Condition Enforcement
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
@@ -114,31 +126,54 @@ export class ScannerBridge {
                       }
                     });
 
-                    if (targetMatch) {
-                      field.setValue(targetMatch[1]);
-                    } else {
-                      field.setValue(isFall ? 'Fall' : 'Rise');
+                    const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
+                    if (field.getValue() !== desiredVal) {
+                      field.setValue(desiredVal);
+                      updated = true;
                     }
                   }
                 });
               }
             });
 
-            if (typeof workspace.render === 'function') {
+            if (updated && typeof workspace.render === 'function') {
               workspace.render();
             }
           }
         }
       } catch (e) {
-        // silent catch during polling passes
+        // silent
       }
     };
 
-    // Run enforcement immediately and follow up across the framework's render timeline
-    enforceDirection();
-    setTimeout(enforceDirection, 150);
-    setTimeout(enforceDirection, 350);
-    setTimeout(enforceDirection, 600);
+    // 3. Bind directly to Blockly workspace events to catch post-render assembly and prevent bounce-back
+    try {
+      const Blockly = (window as any).Blockly;
+      const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
+      
+      if (workspace && workspace.addChangeListener) {
+        if (ScannerBridge.activeListener) {
+          workspace.removeChangeListener(ScannerBridge.activeListener);
+        }
+        
+        ScannerBridge.activeListener = (event: any) => {
+          // Listen for block creation or UI changes to instantly override any default resets
+          if (event && (event.type === Blockly.Events.BLOCK_CREATE || event.type === Blockly.Events.FINISHED_LOADING || event.type === Blockly.Events.UI)) {
+            applyBlockMutations();
+          }
+        };
+        workspace.addChangeListener(ScannerBridge.activeListener);
+      }
+    } catch (err) {
+      console.warn("[ScannerBridge] Event listener binding warning:", err);
+    }
+
+    // 4. Run immediate bursts to cover initial rendering frames
+    applyBlockMutations();
+    setTimeout(applyBlockMutations, 100);
+    setTimeout(applyBlockMutations, 300);
+    setTimeout(applyBlockMutations, 600);
+    setTimeout(applyBlockMutations, 1000); // Catches the final late framework render pipeline
 
     return true;
   }
