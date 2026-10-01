@@ -10,7 +10,7 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static activeListener: any = null;
-  private static isScannerActive: boolean = false; // Flag to control activation
+  private static isScannerActive: boolean = false; // Keeps workspace untouched on initial boot
 
   private static translateSymbol(rawSymbol: string): string {
     if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
@@ -36,7 +36,7 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    // Activate scanner mode since user explicitly triggered an AI scanner action
+    // Explicitly activate scanner modifications only now that the user triggered a signal
     ScannerBridge.isScannerActive = true;
 
     const rootStore = (window as any).derivBotAppStore;
@@ -49,7 +49,7 @@ export class ScannerBridge {
     const storeType = isFall ? 'fall' : 'rise';
     const martingaleMultiplier = 2.4;
 
-    console.log(`[ScannerBridge] Activating Scanner Strategy -> Symbol: ${strictDerivSymbol} | Direction: ${storeContractType} | Martingale: ${martingaleMultiplier}`);
+    console.log(`[ScannerBridge] Activating Strategy -> Symbol: ${strictDerivSymbol} | Direction: ${storeContractType} | Martingale: ${martingaleMultiplier}`);
 
     // 1. Update the Quick Strategy Store State
     if (rootStore?.quick_strategy) {
@@ -87,9 +87,9 @@ export class ScannerBridge {
       }
     }
 
-    // 2. Helper function to apply field values directly on the blocks (Only runs if scanner is active)
+    // 2. Helper function to apply field values directly on the blocks
     const applyBlockMutations = () => {
-      if (!ScannerBridge.isScannerActive) return; // Skip if scanner hasn't been triggered yet
+      if (!ScannerBridge.isScannerActive) return; // Do nothing if scanner hasn't been triggered
 
       try {
         const Blockly = (window as any).Blockly;
@@ -170,7 +170,7 @@ export class ScannerBridge {
       }
     };
 
-    // 3. Bind directly to Blockly workspace events only after scanner activation
+    // 3. Bind directly to Blockly workspace events post-activation
     try {
       const Blockly = (window as any).Blockly;
       const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
