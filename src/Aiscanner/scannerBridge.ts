@@ -86,79 +86,72 @@ export class ScannerBridge {
       }
     }
 
-    // 2. Safe Canvas Sweep for Symbol and Purchase Condition Block #2
+    // 2. Safe Canvas Sweep for Symbol and Purchase Condition Block #2 (Without Workspace Wiping)
     setTimeout(() => {
       try {
         const Blockly = (window as any).Blockly;
         const workspace = Blockly?.mainWorkspace;
 
-        if (workspace) {
-          // Clear preloaded templates cleanly to prevent conflicts
-          if (typeof workspace.clear === 'function') {
-            workspace.clear();
-          }
-
-          if (typeof workspace.getAllBlocks === 'function') {
-            const blocks = workspace.getAllBlocks(false);
-            if (Array.isArray(blocks)) {
-              blocks.forEach((block: any) => {
-                if (block && typeof block.getField === 'function') {
-                  // Working symbol field update
-                  const symbolField = block.getField('SYMBOL_LIST');
-                  if (symbolField) {
-                    if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
-                      const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
-                      if (!exists) {
-                        symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
-                      }
+        if (workspace && typeof workspace.getAllBlocks === 'function') {
+          const blocks = workspace.getAllBlocks(false);
+          if (Array.isArray(blocks)) {
+            blocks.forEach((block: any) => {
+              if (block && typeof block.getField === 'function') {
+                // Working symbol field update
+                const symbolField = block.getField('SYMBOL_LIST');
+                if (symbolField) {
+                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
+                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                    if (!exists) {
+                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
                     }
-                    symbolField.setValue(strictDerivSymbol);
                   }
-
-                  // Purchase condition block field target with dropdown option check
-                  const purchaseField = block.getField('PURCHASE_LIST') || 
-                                        block.getField('PURCHASE_TYPE') || 
-                                        block.getField('PURCHASE_CONDITIONS_LIST');
-
-                  if (purchaseField && typeof purchaseField.setValue === 'function') {
-                    const options = typeof purchaseField.getOptions === 'function' ? purchaseField.getOptions() : [];
-                    const matchedOption = options.find((opt: any) => 
-                      opt[0].toLowerCase().includes(targetType) || 
-                      opt[1].toLowerCase().includes(targetType)
-                    );
-                    const valueToSet = matchedOption ? matchedOption[1] : blocklyTradeType;
-                    purchaseField.setValue(valueToSet);
-                  }
+                  symbolField.setValue(strictDerivSymbol);
                 }
 
-                // Explicit block type sweep for purchase condition blocks
-                if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
-                  const typeField = block.getField('PURCHASE_LIST') || 
-                                    block.getField('PURCHASE_TYPE') || 
-                                    block.getField('PURCHASE_CONDITIONS_LIST');
+                // Purchase condition block field target with dropdown option check
+                const purchaseField = block.getField('PURCHASE_LIST') || 
+                                      block.getField('PURCHASE_TYPE') || 
+                                      block.getField('PURCHASE_CONDITIONS_LIST');
 
-                  if (typeField && typeof typeField.setValue === 'function') {
-                    const options = typeof typeField.getOptions === 'function' ? typeField.getOptions() : [];
-                    const matchedOption = options.find((opt: any) => 
-                      opt[0].toLowerCase().includes(targetType) || 
-                      opt[1].toLowerCase().includes(targetType)
-                    );
-                    const valueToSet = matchedOption ? matchedOption[1] : blocklyTradeType;
-                    typeField.setValue(valueToSet);
-                  }
+                if (purchaseField && typeof purchaseField.setValue === 'function') {
+                  const options = typeof purchaseField.getOptions === 'function' ? purchaseField.getOptions() : [];
+                  const matchedOption = options.find((opt: any) => 
+                    opt[0].toLowerCase().includes(targetType) || 
+                    opt[1].toLowerCase().includes(targetType)
+                  );
+                  const valueToSet = matchedOption ? matchedOption[1] : blocklyTradeType;
+                  purchaseField.setValue(valueToSet);
                 }
-              });
-
-              if (typeof workspace.render === 'function') {
-                workspace.render();
               }
+
+              // Explicit block type sweep for purchase condition blocks
+              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
+                const typeField = block.getField('PURCHASE_LIST') || 
+                                  block.getField('PURCHASE_TYPE') || 
+                                  block.getField('PURCHASE_CONDITIONS_LIST');
+
+                if (typeField && typeof typeField.setValue === 'function') {
+                  const options = typeof typeField.getOptions === 'function' ? typeField.getOptions() : [];
+                  const matchedOption = options.find((opt: any) => 
+                    opt[0].toLowerCase().includes(targetType) || 
+                    opt[1].toLowerCase().includes(targetType)
+                  );
+                  const valueToSet = matchedOption ? matchedOption[1] : blocklyTradeType;
+                  typeField.setValue(valueToSet);
+                }
+              }
+            });
+
+            if (typeof workspace.render === 'function') {
+              workspace.render();
             }
           }
         }
       } catch (e) {
         console.warn("[ScannerBridge] Canvas sync warning:", e);
       }
-    }, 250); // Extended timeout to allow Deriv template rendering to finish completely
+    }, 250);
 
     return true;
   }
