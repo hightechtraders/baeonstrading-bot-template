@@ -9,9 +9,6 @@ export interface AIScannerPayload {
 }
 
 export class ScannerBridge {
-  /**
-   * Translates strategy market labels or asset codes into strict Deriv API Codes.
-   */
   private static translateSymbol(rawSymbol: string): string {
     if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
     
@@ -21,12 +18,10 @@ export class ScannerBridge {
       .replace(/[\s\(\)]+/g, '');
     
     const symbolMap: Record<string, string> = {
-      // 1-Second (1s) High-Speed Series
       'VOLATILITY101S':  '1HZ10V',
       'VOLATILITY501S': '1HZ50V',
       'VOLATILITY751S': '1HZ75V',
       'VOLATILITY1001S':'1HZ100V',
-      // Standard Volatility Indices
       'VOLATILITY10':     'R_10',
       'VOLATILITY25':     'R_25',
       'VOLATILITY50':     'R_50',
@@ -38,38 +33,23 @@ export class ScannerBridge {
   }
 
   /**
-   * Safe parameter injector targeting the quick strategy store and canvas blocks 
-   * while preserving existing store fields (like martingale multipliers).
+   * Pure canvas field updater that changes parameters in-place,
+   * leaving attached child blocks (like Martingale multipliers) completely untouched.
    */
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     
-    // Determine the exact trade direction required by the store and blockly canvas
     const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
     const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
     const targetType = isFall ? 'fall' : 'rise';
-    const blocklyTradeType = isFall ? 'Fall' : 'Rise'; // UI title-case for canvas block #2
+    const blocklyTradeType = isFall ? 'Fall' : 'Rise';
 
     console.log(`[ScannerBridge] Volatility: ${strictDerivSymbol} | Purchase Type: ${blocklyTradeType}`);
 
-    // 1. Mutate only specific store values cleanly without overwriting the whole form state
-    if (rootStore?.quick_strategy) {
-      const quickStrategy = rootStore.quick_strategy;
-      try {
-        if (typeof quickStrategy.setValue === 'function') {
-          quickStrategy.setValue('symbol', strictDerivSymbol);
-          quickStrategy.setValue('duration', payload.duration);
-          quickStrategy.setValue('amount', payload.stake);
-          quickStrategy.setValue('contract_type', blocklyTradeType);
-          quickStrategy.setValue('type', targetType);
-        }
-      } catch (error) {
-        console.warn("[ScannerBridge] Quick strategy store method failed:", error);
-      }
-    }
+    // EXPLICITLY SKIPPED: quick_strategy store mutations and form submissions 
+    // because they clear out custom workspace child blocks like Martingale.
 
-    // 2. Safe Canvas Sweep for Symbol and Purchase Condition Block (Without Workspace Wiping)
+    // Safely update existing canvas blocks in-place
     setTimeout(() => {
       try {
         const Blockly = (window as any).Blockly;
@@ -79,21 +59,33 @@ export class ScannerBridge {
           const blocks = workspace.getAllBlocks(false);
           if (Array.isArray(blocks)) {
             blocks.forEach((block: any) => {
-              if (block && typeof block.getField === 'function') {
-                // Working symbol field update
-                const symbolField = block.getField('SYMBOL_LIST');
-                if (symbolField) {
-                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
-                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
-                    if (!exists) {
-                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
-                    }
+              if (!block || typeof block.getField !== 'function') return;
+
+              // 1. Update Symbol
+              const symbolField = block.getField('SYMBOL_LIST');
+              if (symbolField) {
+                if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
+                  const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                  if (!exists) {
+                    symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
                   }
-                  symbolField.setValue(strictDerivSymbol);
                 }
+                symbolField.setValue(strictDerivSymbol);
               }
 
-              // Explicit block type sweep for purchase condition blocks
+              // 2. Update Stake and Duration fields
+              ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
+                const field = block.getField(fieldName);
+                if (field && typeof field.setValue === 'function') {
+                  if (fieldName === 'DURATION') {
+                    field.setValue(String(payload.duration || 5));
+                  } else if (fieldName !== 'DURATION' && payload.stake !== undefined) {
+                    field.setValue(String(payload.stake));
+                  }
+                }
+              });
+
+              // 3. Update Purchase Conditions (Rise/Fall)
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const typeField = block.getField('PURCHASE_LIST') || 
                                   block.getField('PURCHASE_TYPE') || 
@@ -125,9 +117,6 @@ export class ScannerBridge {
     return true;
   }
 
-  /**
-   * Extracts values strictly from strategy market properties, ignoring text labels like names.
-   */
   public static loadStrategyToWorkspace(strategy: any, options: { stake?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
     const rawSymbol = 
       options?.symbol || 
