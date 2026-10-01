@@ -159,6 +159,17 @@ class ScannerBridgeClass {
             const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE') || block.getField('CB_List');
             if (purchaseField && typeof purchaseField.setValue === 'function') {
               purchaseField.setValue(targetContract);
+
+              if (typeof purchaseField.forceRerender === 'function') {
+                purchaseField.forceRerender();
+              }
+
+              if (typeof block.updateShape === 'function') {
+                block.updateShape();
+              } else if (typeof block.render === 'function') {
+                block.render();
+              }
+
               blockInjectionCounter++;
             }
           }
@@ -187,7 +198,6 @@ class ScannerBridgeClass {
                   if (numField) {
                     if (input.name === 'AMOUNT' && options.stake !== undefined) {
                       numField.setValue(String(options.stake));
-                      blockInjectionCounter++;
                     } else if (input.name === 'DURATION') {
                       const safeDuration = options.duration !== undefined ? Math.min(Math.max(options.duration, 1), 10) : 5;
                       numField.setValue(String(safeDuration));
