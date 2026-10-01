@@ -32,10 +32,6 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
-  /**
-   * Pure canvas field updater that changes parameters in-place,
-   * leaving attached child blocks (like Martingale multipliers) completely untouched.
-   */
   public static injectViaStore(payload: AIScannerPayload): boolean {
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     
@@ -46,10 +42,6 @@ export class ScannerBridge {
 
     console.log(`[ScannerBridge] Volatility: ${strictDerivSymbol} | Purchase Type: ${blocklyTradeType}`);
 
-    // EXPLICITLY SKIPPED: quick_strategy store mutations and form submissions 
-    // because they clear out custom workspace child blocks like Martingale.
-
-    // Safely update existing canvas blocks in-place
     setTimeout(() => {
       try {
         const Blockly = (window as any).Blockly;
@@ -58,10 +50,23 @@ export class ScannerBridge {
         if (workspace && typeof workspace.getAllBlocks === 'function') {
           const blocks = workspace.getAllBlocks(false);
           if (Array.isArray(blocks)) {
+            // Keep track of any existing Martingale / after-purchase child block before updating
+            let savedMartingaleChild = null;
+
+            blocks.forEach((block: any) => {
+              if (block && (block.type === 'trade_again' || block.type?.includes('trade_again'))) {
+                const nextConnection = block.nextConnection || block.outputConnection;
+                if (nextConnection && nextConnection.targetBlock()) {
+                  savedMartingaleChild = nextConnection.targetBlock();
+                }
+              }
+            });
+
+            // Update fields in-place
             blocks.forEach((block: any) => {
               if (!block || typeof block.getField !== 'function') return;
 
-              // 1. Update Symbol
+              // 1. Symbol update
               const symbolField = block.getField('SYMBOL_LIST');
               if (symbolField) {
                 if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
@@ -73,7 +78,7 @@ export class ScannerBridge {
                 symbolField.setValue(strictDerivSymbol);
               }
 
-              // 2. Update Stake and Duration fields
+              // 2. Stake and Duration update
               ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
                 const field = block.getField(fieldName);
                 if (field && typeof field.setValue === 'function') {
@@ -85,7 +90,7 @@ export class ScannerBridge {
                 }
               });
 
-              // 3. Update Purchase Conditions (Rise/Fall)
+              // 3. Purchase conditions update with option matching
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const typeField = block.getField('PURCHASE_LIST') || 
                                   block.getField('PURCHASE_TYPE') || 
@@ -103,6 +108,18 @@ export class ScannerBridge {
                 }
               }
             });
+
+            // Restore the Martingale child block to the Trade Again block if it got unlinked
+            if (savedMartingaleChild) {
+              blocks.forEach((block: any) => {
+                if (block && (block.type === 'trade_again' || block.type?.includes('trade_again'))) {
+                  const nextConn = block.nextConnection;
+                  if (nextConn && !nextConn.targetConnection && savedMartingaleChild.previousConnection) {
+                    nextConn.connect(savedMartingaleChild.previousConnection);
+                  }
+                }
+              });
+            }
 
             if (typeof workspace.render === 'function') {
               workspace.render();
