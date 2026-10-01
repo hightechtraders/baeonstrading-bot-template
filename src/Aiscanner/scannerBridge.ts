@@ -3,56 +3,62 @@
 export interface AIScannerPayload {
   stake: number;
   duration: number;
-  symbol: string;          
-  tradeType?: string;      
-  durationUnit?: string;   
+  symbol: string;          // Accepts readable text or direct API symbols like '1HZ100V'
+  tradeType?: string;      // e.g., 'rise_fall'
+  durationUnit?: string;   // e.g., 't'
 }
 
 export class ScannerBridge {
   /**
-   * Translates strategy market labels or asset codes into strict Deriv API Codes.
+   * Translates incoming AI strategy terms into strict, non-strippable Deriv API Codes.
    */
   private static translateSymbol(rawSymbol: string): string {
-    if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
-    
-    const clean = rawSymbol
-      .toUpperCase()
-      .replace(/INDEX/g, '')
-      .replace(/[\s\(\)]+/g, '');
+    const clean = rawSymbol.toUpperCase().replace(/\s+/g, '');
     
     const symbolMap: Record<string, string> = {
       // 1-Second (1s) High-Speed Series
-      'VOLATILITY101S':  '1HZ10V',
-      'VOLATILITY501S': '1HZ50V',
-      'VOLATILITY751S': '1HZ75V',
-      'VOLATILITY1001S':'1HZ100V',
+      'VOLATILITY10(1S)':  '1HZ10V',
+      'VOL101S':           '1HZ10V',
+      'V101S':             '1HZ10V',
+      '1HZ10V':            '1HZ10V',
+      'VOLATILITY50(1S)': '1HZ50V',
+      'VOL501S':           '1HZ50V',
+      'V501S':            '1HZ50V',
+      '1HZ50V':           '1HZ50V',
+      'VOLATILITY75(1S)': '1HZ75V',
+      'VOL751S':           '1HZ75V',
+      'V751S':            '1HZ75V',
+      '1HZ75V':           '1HZ75V',
+      'VOLATILITY100(1S)':'1HZ100V',
+      'VOL1001S':          '1HZ100V',
+      'V1001S':           '1HZ100V',
+      '1HZ100V':          '1HZ100V',
       // Standard Volatility Indices
       'VOLATILITY10':     'R_10',
-      'VOLATILITY25':     'R_25',
+      'VOL10':            'R_10',
+      'R_10':             'R_10',
       'VOLATILITY50':     'R_50',
+      'VOL50':            'R_50',
+      'R_50':             'R_50',
       'VOLATILITY75':     'R_75',
-      'VOLATILITY100':    'R_100',
+      'VOL75':            'R_75',
+      'R_75':             'R_75',
     };
-
-    return symbolMap[clean] || '1HZ100V';
+    return symbolMap[clean] || rawSymbol;
   }
 
   /**
-   * Safe parameter injector targeting the quick strategy store and canvas blocks.
+   * Safe parameter injector combining store initialization with direct field overrides.
    */
   public static injectViaStore(payload: AIScannerPayload): boolean {
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     
-    // Determine the exact trade direction required by the store and blockly canvas
-    const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
-    const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
-    const targetType = isFall ? 'fall' : 'rise';
-    const blocklyTradeType = isFall ? 'Fall' : 'Rise'; // UI title-case for canvas block #2
+    console.log(`[ScannerBridge] Mapping input "${payload.symbol}" -> Verified API Code: "${strictDerivSymbol}"`);
 
-    console.log(`[ScannerBridge] Volatility: ${strictDerivSymbol} | Purchase Type: ${blocklyTradeType}`);
+    let storeSuccess = false;
 
-    // 1. Mutate the quick strategy store with volatility and the precise contract type
+    // 1. Mutate the quick strategy store and force the correct symbol value
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -60,8 +66,6 @@ export class ScannerBridge {
           quickStrategy.setValue('symbol', strictDerivSymbol);
           quickStrategy.setValue('duration', payload.duration);
           quickStrategy.setValue('amount', payload.stake);
-          quickStrategy.setValue('contract_type', blocklyTradeType);
-          quickStrategy.setValue('type', targetType);
         }
         
         const mockFormData = {
@@ -70,111 +74,127 @@ export class ScannerBridge {
           duration: payload.duration,
           stake: payload.stake,
           amount: payload.stake,
-          tradetype: 'rise_fall',
-          contract_type: blocklyTradeType,
-          type: targetType
+          tradetype: payload.tradeType || 'rise_fall',
+          type: payload.tradeType || 'rise_fall'
         };
 
-        const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
-        if (typeof submitAction === 'function') {
-          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).catch(err => {
-            console.warn("[ScannerBridge] Store submission caught warning:", err);
-          });
+        if (typeof quickStrategy.onSubmit === 'function') {
+          quickStrategy.onSubmit(mockFormData);
+          storeSuccess = true;
+          console.log("[ScannerBridge] Successfully compiled via quickStrategy.onSubmit()");
+        } else if (typeof quickStrategy.createStrategy === 'function') {
+          quickStrategy.createStrategy(mockFormData);
+          storeSuccess = true;
+          console.log("[ScannerBridge] Successfully compiled via quickStrategy.createStrategy()");
         }
       } catch (error) {
-        console.warn("[ScannerBridge] Quick strategy store method failed:", error);
+        console.warn("[ScannerBridge] Quick strategy store method failed, relying on direct canvas override...", error);
       }
     }
 
-    // 2. Safe Canvas Sweep for Symbol and Purchase Condition Block #2 (Without Workspace Wiping)
+    // 2. Post-render canvas sweep: Instantly force-update the active block fields so the UI reflects the selected asset
     setTimeout(() => {
-      try {
-        const Blockly = (window as any).Blockly;
-        const workspace = Blockly?.mainWorkspace;
-
-        if (workspace && typeof workspace.getAllBlocks === 'function') {
+      const workspace = (window as any).Blockly?.mainWorkspace;
+      if (workspace) {
+        try {
           const blocks = workspace.getAllBlocks(false);
-          if (Array.isArray(blocks)) {
-            blocks.forEach((block: any) => {
-              if (block && typeof block.getField === 'function') {
-                // Working symbol field update
-                const symbolField = block.getField('SYMBOL_LIST');
-                if (symbolField) {
-                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
-                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
-                    if (!exists) {
-                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
-                    }
-                  }
-                  symbolField.setValue(strictDerivSymbol);
-                }
+          blocks.forEach((block: any) => {
+            if (block.type === 'trade_definition_market' || block.getField('SYMBOL_LIST')) {
+              const symbolField = block.getField('SYMBOL_LIST');
+              if (symbolField) {
+                symbolField.setValue(strictDerivSymbol);
               }
-
-              // Purchase condition block field target with robust dropdown mapping check
-              if (
-                block.type === 'purchase' || 
-                block.type?.includes('purchase') || 
-                block.type === 'trade_definition_purchase' ||
-                typeof block.getField === 'function'
-              ) {
-                const purchaseField = block.getField('PURCHASE_LIST') || 
-                                      block.getField('PURCHASE_TYPE') || 
-                                      block.getField('PURCHASE_CONDITIONS_LIST');
-
-                if (purchaseField && typeof purchaseField.setValue === 'function') {
-                  const options = typeof purchaseField.getOptions === 'function' ? purchaseField.getOptions() : [];
-                  
-                  // Match target type safely against label or code option arrays
-                  const matchedOption = options.find((opt: any) => {
-                    const label = String(opt[0] || '').toLowerCase();
-                    const val = String(opt[1] || '').toLowerCase();
-                    return label.includes(targetType) || val.includes(targetType);
-                  });
-
-                  const valueToSet = matchedOption ? matchedOption[1] : (targetType === 'fall' ? 'fall' : 'rise');
-
-                  try {
-                    purchaseField.setValue(valueToSet);
-                  } catch (err) {
-                    purchaseField.setValue(blocklyTradeType);
-                  }
-                }
-              }
-            });
-
-            if (typeof workspace.render === 'function') {
-              workspace.render();
             }
-          }
+          });
+          workspace.render();
+          console.log(`[ScannerBridge] Post-render sweep successfully verified symbol: ${strictDerivSymbol}`);
+        } catch (e) {
+          console.warn("[ScannerBridge] Post-render sweep warning:", e);
         }
-      } catch (e) {
-        console.warn("[ScannerBridge] Canvas sync warning:", e);
       }
-    }, 250);
+    }, 100);
 
-    return true;
+    if (storeSuccess) return true;
+
+    // 3. Fallback to legacy XML injection if store is unavailable
+    return this.injectDataLegacy({
+      ...payload,
+      symbol: strictDerivSymbol
+    });
   }
 
   /**
-   * Extracts values strictly from strategy market properties, ignoring text labels like names.
+   * Direct Blockly workspace XML builder fallback
+   */
+  private static injectDataLegacy(payload: AIScannerPayload): boolean {
+    const workspace = (window as any).Blockly?.mainWorkspace;
+    if (!workspace) {
+      console.error("[ScannerBridge] No active Blockly workspace context found.");
+      return false;
+    }
+
+    try {
+      const xmlString = `
+        <xml xmlns="http://www.w3.org/1999/xhtml" collection="false">
+          <block type="trade_definition" id="root_trade_parameters" x="0" y="0">
+            <statement name="TRADE_OPTIONS">
+              <block type="trade_definition_market">
+                <field name="MARKET_LIST">synthetic_index</field>
+                <field name="SUBMARKET_LIST">random_index</field>
+                <field name="SYMBOL_LIST">${payload.symbol}</field>
+                <field name="TRADETYPE_LIST">${payload.tradeType || 'rise_fall'}</field>
+                <next>
+                  <block type="trade_definition_options">
+                    <field name="DURATIONUNIT_LIST">${payload.durationUnit || 't'}</field>
+                    <value name="DURATION">
+                      <shadow type="math_number">
+                        <field name="NUM">${payload.duration}</field>
+                      </shadow>
+                    </value>
+                    <value name="AMOUNT">
+                      <shadow type="math_number">
+                        <field name="NUM">${payload.stake}</field>
+                      </shadow>
+                    </value>
+                  </block>
+                </next>
+              </block>
+            </statement>
+          </block>
+        </xml>
+      `.trim();
+
+      workspace.clear();
+      const dom = (window as any).Blockly.Xml.textToDom(xmlString);
+      (window as any).Blockly.Xml.domToWorkspace(dom, workspace);
+      workspace.render();
+      console.log(`[ScannerBridge] Successfully injected XML workspace for symbol: ${payload.symbol}`);
+      return true;
+    } catch (e) {
+      console.error("[ScannerBridge] Legacy XML injection failed:", e);
+      return false;
+    }
+  }
+
+  /**
+   * Cleanly extracts dynamic values from your scanner without fallbacks.
    */
   public static loadStrategyToWorkspace(strategy: any, options: { stake?: number; duration?: number; symbol?: string; contractType?: string; [key: string]: any }) {
     const rawSymbol = 
       options?.symbol || 
-      strategy?.market || 
       strategy?.symbol || 
-      '1HZ100V'; 
-
-    const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
+      strategy?.market || 
+      strategy?.asset || 
+      strategy?.name || 
+      '1HZ100V';
 
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
       duration: options?.duration || strategy?.duration || 5,
-      tradeType: strategyDirection,
+      tradeType: options?.contractType || strategy?.contractType || 'rise_fall',
       durationUnit: options?.durationUnit || 't'
     };
-
     return this.injectViaStore(payload);
   }
 }
