@@ -39,11 +39,11 @@ export class ScannerBridge {
     const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
     const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
     
-    // Correct store internal keys for Rise/Fall contract types
+    // Explicit mappings for Deriv Quick Strategy engine
     const storeContractType = isFall ? 'PUT' : 'CALL';
-    const blocklyTradeType = isFall ? 'Fall' : 'Rise';
+    const storeType = isFall ? 'fall' : 'rise';
 
-    console.log(`[ScannerBridge] Volatility: ${strictDerivSymbol} | Contract: ${storeContractType}`);
+    console.log(`[ScannerBridge] Processing Strategy -> Symbol: ${strictDerivSymbol} | Direction: ${storeContractType}`);
 
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
@@ -53,7 +53,7 @@ export class ScannerBridge {
           quickStrategy.setValue('duration', payload.duration);
           quickStrategy.setValue('amount', payload.stake);
           quickStrategy.setValue('contract_type', storeContractType);
-          quickStrategy.setValue('type', storeContractType.toLowerCase());
+          quickStrategy.setValue('type', storeType);
         }
         
         const mockFormData = {
@@ -64,7 +64,7 @@ export class ScannerBridge {
           amount: payload.stake,
           tradetype: 'rise_fall',
           contract_type: storeContractType,
-          type: storeContractType.toLowerCase()
+          type: storeType
         };
 
         const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
@@ -78,17 +78,20 @@ export class ScannerBridge {
       }
     }
 
-    // Safe Canvas Sweep to ensure the block field matches the store state
+    // Delayed deep sweep to override any default reset back to Rise
     setTimeout(() => {
       try {
         const Blockly = (window as any).Blockly;
-        const workspace = Blockly?.mainWorkspace;
+        const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
 
         if (workspace && typeof workspace.getAllBlocks === 'function') {
           const blocks = workspace.getAllBlocks(false);
           if (Array.isArray(blocks)) {
             blocks.forEach((block: any) => {
-              if (block && typeof block.getField === 'function') {
+              if (!block) return;
+
+              // 1. Update Symbol Fields
+              if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField) {
                   if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
@@ -101,21 +104,31 @@ export class ScannerBridge {
                 }
               }
 
+              // 2. Force-update Purchase Condition blocks (Rise / Fall / Put / Call)
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
-                const purchaseField = block.getField('PURCHASE_LIST') || 
-                                      block.getField('PURCHASE_TYPE') || 
-                                      block.getField('PURCHASE_CONDITIONS_LIST');
+                const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
+                fieldNames.forEach(name => {
+                  const field = block.getField(name);
+                  if (field && typeof field.setValue === 'function') {
+                    const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
+                    // Look for an option matching the target direction
+                    const targetMatch = options.find((opt: any) => {
+                      const label = String(opt[0] || '').toLowerCase();
+                      const val = String(opt[1] || '').toLowerCase();
+                      if (isFall) {
+                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
+                      } else {
+                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
+                      }
+                    });
 
-                if (purchaseField && typeof purchaseField.setValue === 'function') {
-                  const options = typeof purchaseField.getOptions === 'function' ? purchaseField.getOptions() : [];
-                  const matchedOption = options.find((opt: any) => 
-                    opt[0].toLowerCase().includes(isFall ? 'fall' : 'rise') || 
-                    opt[1].toLowerCase().includes(isFall ? 'put' : 'call')
-                  );
-                  if (matchedOption) {
-                    purchaseField.setValue(matchedOption[1]);
+                    if (targetMatch) {
+                      field.setValue(targetMatch[1]);
+                    } else {
+                      field.setValue(isFall ? 'Fall' : 'Rise');
+                    }
                   }
-                }
+                });
               }
             });
 
@@ -125,9 +138,9 @@ export class ScannerBridge {
           }
         }
       } catch (e) {
-        console.warn("[ScannerBridge] Canvas sync warning:", e);
+        console.warn("[ScannerBridge] Final sync pass warning:", e);
       }
-    }, 250);
+    }, 350);
 
     return true;
   }
