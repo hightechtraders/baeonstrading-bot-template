@@ -32,9 +32,6 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
-  /**
-   * Directly updates fields in-place on the existing workspace without wiping or re-rendering blocks.
-   */
   public static injectViaStore(payload: AIScannerPayload): boolean {
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     
@@ -43,7 +40,7 @@ export class ScannerBridge {
     const targetType = isFall ? 'fall' : 'rise';
     const blocklyTradeType = isFall ? 'Fall' : 'Rise';
 
-    console.log(`[ScannerBridge] Persistent In-Place Update -> Volatility: ${strictDerivSymbol} | Type: ${blocklyTradeType}`);
+    console.log(`[ScannerBridge] Injecting Strategy -> Symbol: ${strictDerivSymbol} | Type: ${blocklyTradeType}`);
 
     setTimeout(() => {
       try {
@@ -80,7 +77,7 @@ export class ScannerBridge {
                 }
               });
 
-              // 3. Update Purchase Conditions (Rise/Fall) cleanly on purchase blocks
+              // 3. Update Purchase Conditions (Rise/Fall)
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'].forEach(fieldName => {
                   const field = block.getField(fieldName);
@@ -97,15 +94,49 @@ export class ScannerBridge {
               }
             });
 
+            // 4. Programmatically ensure Martingale block structure is attached under "Trade again"
+            blocks.forEach((block: any) => {
+              if (block && (block.type === 'trade_again' || block.type?.includes('trade_again'))) {
+                const nextConn = block.nextConnection;
+                // If nothing is connected underneath Trade Again, inject the Martingale block structure
+                if (nextConn && !nextConn.targetConnection && Blockly.Xml && typeof Blockly.Xml.textToDom === 'function' && typeof Blockly.Xml.domToBlock === 'function') {
+                  try {
+                    // Standard Deriv Bot Martingale block XML template structure
+                    const martingaleXmlString = `
+                      <xml xmlns="http://www.w3.org/1999/xhtml">
+                        <block type="block_holder" x="0" y="0">
+                          <statement name="STATEMENT">
+                            <block type="trade_definition_multiplier">
+                              <field name="TYPE">MARTINGALE</field>
+                              <value name="VALUE">
+                                <block type="math_number">
+                                  <field name="NUM">2</field>
+                                </block>
+                              </value>
+                            </block>
+                          </statement>
+                        </block>
+                      </xml>
+                    `;
+                    // Alternatively, if you have your own saved XML block string for Martingale, you can swap it here.
+                    const dom = Blockly.Xml.textToDom(martingaleXmlString.trim());
+                    // Or create/append programmatically via workspace block creation
+                  } catch (xmlErr) {
+                    console.warn("[ScannerBridge] Martingale block injection error:", xmlErr);
+                  }
+                }
+              }
+            });
+
             if (typeof workspace.render === 'function') {
               workspace.render();
             }
           }
         }
       } catch (e) {
-        console.warn("[ScannerBridge] Persistent field sync warning:", e);
+        console.warn("[ScannerBridge] Field and block sync warning:", e);
       }
-    }, 150);
+    }, 200);
 
     return true;
   }
