@@ -39,11 +39,10 @@ export class ScannerBridge {
     const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
     const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
     
-    // Explicit mappings for Deriv Quick Strategy engine
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
 
-    console.log(`[ScannerBridge] Processing Strategy -> Symbol: ${strictDerivSymbol} | Direction: ${storeContractType}`);
+    console.log(`[ScannerBridge] Forcing Strategy -> Symbol: ${strictDerivSymbol} | Direction: ${storeContractType}`);
 
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
@@ -78,8 +77,8 @@ export class ScannerBridge {
       }
     }
 
-    // Delayed deep sweep to override any default reset back to Rise
-    setTimeout(() => {
+    // Multi-pass enforcement loop to beat the framework's async reset cycle
+    const enforceDirection = () => {
       try {
         const Blockly = (window as any).Blockly;
         const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
@@ -90,28 +89,21 @@ export class ScannerBridge {
             blocks.forEach((block: any) => {
               if (!block) return;
 
-              // 1. Update Symbol Fields
+              // 1. Maintain Symbol
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField) {
-                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
-                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
-                    if (!exists) {
-                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
-                    }
-                  }
                   symbolField.setValue(strictDerivSymbol);
                 }
               }
 
-              // 2. Force-update Purchase Condition blocks (Rise / Fall / Put / Call)
+              // 2. Aggressively lock purchase condition block
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
                   const field = block.getField(name);
                   if (field && typeof field.setValue === 'function') {
                     const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
-                    // Look for an option matching the target direction
                     const targetMatch = options.find((opt: any) => {
                       const label = String(opt[0] || '').toLowerCase();
                       const val = String(opt[1] || '').toLowerCase();
@@ -138,9 +130,15 @@ export class ScannerBridge {
           }
         }
       } catch (e) {
-        console.warn("[ScannerBridge] Final sync pass warning:", e);
+        // silent catch during polling passes
       }
-    }, 350);
+    };
+
+    // Run enforcement immediately and follow up across the framework's render timeline
+    enforceDirection();
+    setTimeout(enforceDirection, 150);
+    setTimeout(enforceDirection, 350);
+    setTimeout(enforceDirection, 600);
 
     return true;
   }
