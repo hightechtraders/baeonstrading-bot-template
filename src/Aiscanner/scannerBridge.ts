@@ -108,37 +108,36 @@ export class ScannerBridge {
                   }
                   symbolField.setValue(strictDerivSymbol);
                 }
+              }
 
-                // Purchase condition block field target with dropdown option check
+              // Purchase condition block field target with robust dropdown mapping check
+              if (
+                block.type === 'purchase' || 
+                block.type?.includes('purchase') || 
+                block.type === 'trade_definition_purchase' ||
+                typeof block.getField === 'function'
+              ) {
                 const purchaseField = block.getField('PURCHASE_LIST') || 
                                       block.getField('PURCHASE_TYPE') || 
                                       block.getField('PURCHASE_CONDITIONS_LIST');
 
                 if (purchaseField && typeof purchaseField.setValue === 'function') {
                   const options = typeof purchaseField.getOptions === 'function' ? purchaseField.getOptions() : [];
-                  const matchedOption = options.find((opt: any) => 
-                    opt[0].toLowerCase().includes(targetType) || 
-                    opt[1].toLowerCase().includes(targetType)
-                  );
-                  const valueToSet = matchedOption ? matchedOption[1] : blocklyTradeType;
-                  purchaseField.setValue(valueToSet);
-                }
-              }
+                  
+                  // Match target type safely against label or code option arrays
+                  const matchedOption = options.find((opt: any) => {
+                    const label = String(opt[0] || '').toLowerCase();
+                    const val = String(opt[1] || '').toLowerCase();
+                    return label.includes(targetType) || val.includes(targetType);
+                  });
 
-              // Explicit block type sweep for purchase condition blocks
-              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
-                const typeField = block.getField('PURCHASE_LIST') || 
-                                  block.getField('PURCHASE_TYPE') || 
-                                  block.getField('PURCHASE_CONDITIONS_LIST');
+                  const valueToSet = matchedOption ? matchedOption[1] : (targetType === 'fall' ? 'fall' : 'rise');
 
-                if (typeField && typeof typeField.setValue === 'function') {
-                  const options = typeof typeField.getOptions === 'function' ? typeField.getOptions() : [];
-                  const matchedOption = options.find((opt: any) => 
-                    opt[0].toLowerCase().includes(targetType) || 
-                    opt[1].toLowerCase().includes(targetType)
-                  );
-                  const valueToSet = matchedOption ? matchedOption[1] : blocklyTradeType;
-                  typeField.setValue(valueToSet);
+                  try {
+                    purchaseField.setValue(valueToSet);
+                  } catch (err) {
+                    purchaseField.setValue(blocklyTradeType);
+                  }
                 }
               }
             });
