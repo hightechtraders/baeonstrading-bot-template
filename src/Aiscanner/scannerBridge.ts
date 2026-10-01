@@ -45,15 +45,16 @@ class ScannerBridgeClass {
     if (!marketOrVol) return '1HZ50';
     const text = marketOrVol.toLowerCase();
     
-    if (text.includes('10s') || text.includes('1hz10')) return '1HZ10';
-    if (text.includes('25s') || text.includes('1hz25')) return '1HZ25';
-    if (text.includes('50s') || text.includes('1hz50')) return '1HZ50';
-    if (text.includes('75s') || text.includes('1hz75')) return '1HZ75';
-    if (text.includes('100s') || text.includes('1hz100')) return '1HZ100';
+    // Strict 1-second matching first, checking exact numbers before generic substrings
+    if (text.includes('1hz50') || text.includes('50 (1s)') || (text.includes('50') && text.includes('1s'))) return '1HZ50';
+    if (text.includes('1hz10') || text.includes('10 (1s)') || (text.includes('10') && text.includes('1s'))) return '1HZ10';
+    if (text.includes('1hz25') || text.includes('25 (1s)') || (text.includes('25') && text.includes('1s'))) return '1HZ25';
+    if (text.includes('1hz75') || text.includes('75 (1s)') || (text.includes('75') && text.includes('1s'))) return '1HZ75';
+    if (text.includes('1hz100') || text.includes('100 (1s)') || (text.includes('100') && text.includes('1s'))) return '1HZ100';
 
+    if (text.includes('50')) return 'R_50';
     if (text.includes('10')) return 'R_10';
     if (text.includes('25')) return 'R_25';
-    if (text.includes('50')) return 'R_50';
     if (text.includes('75')) return 'R_75';
     if (text.includes('100')) return 'R_100';
 
@@ -64,13 +65,15 @@ class ScannerBridgeClass {
     console.log(`[AI Scanner] Injecting parameters into workspace:`, strategy, options);
 
     const globalWin = window as any;
-    const targetSymbol = options.symbol || this.normalizeSymbol(strategy.market || strategy.volatility);
+    const targetSymbol = options.symbol || this.normalizeSymbol(strategy.market || strategy.volatility || strategy.name);
     
     const direction = strategy.direction || options.contractType || 'UP';
-    const targetContract = (String(direction).toUpperCase().includes('DOWN') || String(direction).toUpperCase().includes('PUT') || String(direction).toUpperCase().includes('FALL')) ? 'PUT' : 'CALL';
+    const isFall = String(direction).toUpperCase().includes('DOWN') || String(direction).toUpperCase().includes('PUT') || String(direction).toUpperCase().includes('FALL');
+    const targetContract = isFall ? 'PUT' : 'CALL';
 
     globalWin.tredapendingParams = { ...options, symbol: targetSymbol, contractType: targetContract, strategy };
 
+    // 1. Sync store data model cleanly
     const rootStore = globalWin.derivBotAppStore;
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
@@ -79,14 +82,15 @@ class ScannerBridgeClass {
           quickStrategy.setValue('symbol', targetSymbol);
           quickStrategy.setValue('duration', options.duration || 5);
           quickStrategy.setValue('amount', options.stake);
-          quickStrategy.setValue('contract_type', targetContract === 'PUT' ? 'Fall' : 'Rise');
-          quickStrategy.setValue('type', targetContract === 'PUT' ? 'fall' : 'rise');
+          quickStrategy.setValue('contract_type', isFall ? 'Fall' : 'Rise');
+          quickStrategy.setValue('type', isFall ? 'fall' : 'rise');
         }
       } catch (error) {
         console.warn("[ScannerBridge] Quick strategy store method failed:", error);
       }
     }
 
+    // 2. Canvas Field Sweep
     setTimeout(() => {
       const workspace = globalWin.Blockly?.derivWorkspace || globalWin.Blockly?.getMainWorkspace?.();
       if (!workspace) return;
@@ -113,7 +117,6 @@ class ScannerBridgeClass {
             if (tradeTypeField) { tradeTypeField.setValue('callput'); blockInjectionCounter++; }
           }
 
-          // Exact clean purchase condition implementation:
           if (block.type === 'purchase' || block.type.includes('purchase') || block.type === 'trade_definition_purchase') {
             const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE') || block.getField('CB_List');
             if (purchaseField) {
