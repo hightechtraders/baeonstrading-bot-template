@@ -32,6 +32,9 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
+  /**
+   * Directly updates fields in-place on the existing workspace without wiping or re-rendering blocks.
+   */
   public static injectViaStore(payload: AIScannerPayload): boolean {
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     
@@ -40,9 +43,8 @@ export class ScannerBridge {
     const targetType = isFall ? 'fall' : 'rise';
     const blocklyTradeType = isFall ? 'Fall' : 'Rise';
 
-    console.log(`[ScannerBridge] Pure Field Injection -> Volatility: ${strictDerivSymbol} | Type: ${blocklyTradeType}`);
+    console.log(`[ScannerBridge] Persistent In-Place Update -> Volatility: ${strictDerivSymbol} | Type: ${blocklyTradeType}`);
 
-    // Update canvas fields strictly in-place without triggering store resets or workspace wipes
     setTimeout(() => {
       try {
         const Blockly = (window as any).Blockly;
@@ -54,7 +56,7 @@ export class ScannerBridge {
             blocks.forEach((block: any) => {
               if (!block || typeof block.getField !== 'function') return;
 
-              // 1. Update Symbol Field
+              // 1. Update Asset / Symbol List
               const symbolField = block.getField('SYMBOL_LIST');
               if (symbolField) {
                 if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
@@ -66,7 +68,7 @@ export class ScannerBridge {
                 symbolField.setValue(strictDerivSymbol);
               }
 
-              // 2. Update Stake & Duration Fields
+              // 2. Update Stake, Amount, and Duration Fields
               ['AMOUNT', 'VALUE', 'NUM', 'STAKE', 'DURATION'].forEach(fieldName => {
                 const field = block.getField(fieldName);
                 if (field && typeof field.setValue === 'function') {
@@ -78,22 +80,20 @@ export class ScannerBridge {
                 }
               });
 
-              // 3. Update Purchase Conditions (Rise/Fall)
+              // 3. Update Purchase Conditions (Rise/Fall) cleanly on purchase blocks
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
-                const typeField = block.getField('PURCHASE_LIST') || 
-                                  block.getField('PURCHASE_TYPE') || 
-                                  block.getField('PURCHASE_CONDITIONS_LIST') ||
-                                  block.getField('CONTRACT_TYPE');
-
-                if (typeField && typeof typeField.setValue === 'function') {
-                  const options = typeof typeField.getOptions === 'function' ? typeField.getOptions() : [];
-                  const matchedOption = options.find((opt: any) => 
-                    opt[0].toLowerCase().includes(targetType) || 
-                    opt[1].toLowerCase().includes(targetType)
-                  );
-                  const valueToSet = matchedOption ? matchedOption[1] : blocklyTradeType;
-                  typeField.setValue(valueToSet);
-                }
+                ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'].forEach(fieldName => {
+                  const field = block.getField(fieldName);
+                  if (field && typeof field.setValue === 'function') {
+                    const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
+                    const matchedOption = options.find((opt: any) => 
+                      opt[0]?.toLowerCase().includes(targetType) || 
+                      opt[1]?.toLowerCase().includes(targetType)
+                    );
+                    const valueToSet = matchedOption ? matchedOption[1] : blocklyTradeType;
+                    field.setValue(valueToSet);
+                  }
+                });
               }
             });
 
@@ -103,9 +103,9 @@ export class ScannerBridge {
           }
         }
       } catch (e) {
-        console.warn("[ScannerBridge] Canvas field sync warning:", e);
+        console.warn("[ScannerBridge] Persistent field sync warning:", e);
       }
-    }, 200);
+    }, 150);
 
     return true;
   }
