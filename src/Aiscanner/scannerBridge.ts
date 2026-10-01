@@ -70,6 +70,8 @@ class ScannerBridgeClass {
     const direction = strategy.direction || options.contractType || 'UP';
     const isFall = String(direction).toUpperCase().includes('DOWN') || String(direction).toUpperCase().includes('PUT') || String(direction).toUpperCase().includes('FALL');
     const targetContract = isFall ? 'PUT' : 'CALL';
+    const targetType = isFall ? 'fall' : 'rise';
+    const blocklyTradeType = isFall ? 'Fall' : 'Rise';
 
     globalWin.tredapendingParams = { ...options, symbol: targetSymbol, contractType: targetContract, strategy };
 
@@ -82,8 +84,8 @@ class ScannerBridgeClass {
           quickStrategy.setValue('symbol', targetSymbol);
           quickStrategy.setValue('duration', options.duration || 5);
           quickStrategy.setValue('amount', options.stake);
-          quickStrategy.setValue('contract_type', isFall ? 'Fall' : 'Rise');
-          quickStrategy.setValue('type', isFall ? 'fall' : 'rise');
+          quickStrategy.setValue('contract_type', blocklyTradeType);
+          quickStrategy.setValue('type', targetType);
         }
       } catch (error) {
         console.warn("[ScannerBridge] Quick strategy store method failed:", error);
@@ -117,10 +119,24 @@ class ScannerBridgeClass {
             if (tradeTypeField) { tradeTypeField.setValue('callput'); blockInjectionCounter++; }
           }
 
+          // Updated purchase condition logic with dropdown option matching
           if (block.type === 'purchase' || block.type.includes('purchase') || block.type === 'trade_definition_purchase') {
-            const purchaseField = block.getField('PURCHASE_LIST') || block.getField('CONTRACT_TYPE') || block.getField('CB_List');
-            if (purchaseField) {
-              purchaseField.setValue(targetContract);
+            const purchaseField = block.getField('PURCHASE_LIST') || 
+                                  block.getField('CONTRACT_TYPE') || 
+                                  block.getField('CB_List') || 
+                                  block.getField('PURCHASE_TYPE') || 
+                                  block.getField('PURCHASE_CONDITIONS_LIST');
+
+            if (purchaseField && typeof purchaseField.setValue === 'function') {
+              const options = typeof purchaseField.getOptions === 'function' ? purchaseField.getOptions() : [];
+              const matchedOption = options.find((opt: any) => 
+                opt[0].toLowerCase().includes(targetType) || 
+                opt[1].toLowerCase().includes(targetType) ||
+                opt[0].toUpperCase().includes(targetContract) ||
+                opt[1].toUpperCase().includes(targetContract)
+              );
+              const valueToSet = matchedOption ? matchedOption[1] : blocklyTradeType;
+              purchaseField.setValue(valueToSet);
               blockInjectionCounter++;
             }
           }
