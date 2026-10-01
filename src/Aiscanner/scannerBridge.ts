@@ -10,6 +10,7 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static activeListener: any = null;
+  private static isScannerActive: boolean = false; // Flag to control activation
 
   private static translateSymbol(rawSymbol: string): string {
     if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
@@ -35,6 +36,9 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
+    // Activate scanner mode since user explicitly triggered an AI scanner action
+    ScannerBridge.isScannerActive = true;
+
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     
@@ -45,7 +49,7 @@ export class ScannerBridge {
     const storeType = isFall ? 'fall' : 'rise';
     const martingaleMultiplier = 2.4;
 
-    console.log(`[ScannerBridge] Locking Strategy -> Symbol: ${strictDerivSymbol} | Direction: ${storeContractType} | Martingale: ${martingaleMultiplier}`);
+    console.log(`[ScannerBridge] Activating Scanner Strategy -> Symbol: ${strictDerivSymbol} | Direction: ${storeContractType} | Martingale: ${martingaleMultiplier}`);
 
     // 1. Update the Quick Strategy Store State
     if (rootStore?.quick_strategy) {
@@ -83,8 +87,10 @@ export class ScannerBridge {
       }
     }
 
-    // 2. Helper function to apply field values directly on the blocks
+    // 2. Helper function to apply field values directly on the blocks (Only runs if scanner is active)
     const applyBlockMutations = () => {
+      if (!ScannerBridge.isScannerActive) return; // Skip if scanner hasn't been triggered yet
+
       try {
         const Blockly = (window as any).Blockly;
         const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
@@ -164,7 +170,7 @@ export class ScannerBridge {
       }
     };
 
-    // 3. Bind directly to Blockly workspace events to catch post-render assembly and prevent bounce-back
+    // 3. Bind directly to Blockly workspace events only after scanner activation
     try {
       const Blockly = (window as any).Blockly;
       const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
@@ -175,7 +181,7 @@ export class ScannerBridge {
         }
         
         ScannerBridge.activeListener = (event: any) => {
-          // Listen for block creation or UI changes to instantly override any default resets
+          if (!ScannerBridge.isScannerActive) return;
           if (event && (event.type === Blockly.Events.BLOCK_CREATE || event.type === Blockly.Events.FINISHED_LOADING || event.type === Blockly.Events.UI)) {
             applyBlockMutations();
           }
@@ -186,12 +192,12 @@ export class ScannerBridge {
       console.warn("[ScannerBridge] Event listener binding warning:", err);
     }
 
-    // 4. Run immediate bursts to cover initial rendering frames
+    // 4. Run immediate bursts to apply scanner parameters
     applyBlockMutations();
     setTimeout(applyBlockMutations, 100);
     setTimeout(applyBlockMutations, 300);
     setTimeout(applyBlockMutations, 600);
-    setTimeout(applyBlockMutations, 1000); // Catches the final late framework render pipeline
+    setTimeout(applyBlockMutations, 1000);
 
     return true;
   }
