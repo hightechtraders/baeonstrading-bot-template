@@ -12,8 +12,20 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static activeListener: any = null;
-  // This starts false so the app loads normally with Deriv's default blocks untouched
+  // Starts false on every fresh page load / refresh
   private static isScannerActive: boolean = false; 
+
+  static {
+    // Static initializer block: Runs once when the module first loads (on page load/refresh)
+    // This ensures any persistent browser storage of the scanner state is wiped on a fresh page reload
+    if (typeof window !== 'undefined') {
+      const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
+      if (!sessionStarted) {
+        // Fresh browser tab or page refresh detected: clear any lingering cache
+        localStorage.removeItem('deriv_ai_scanner_persistent_strategy');
+      }
+    }
+  }
 
   private static translateSymbol(rawSymbol: string): string {
     if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
@@ -39,7 +51,7 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    // If the scanner hasn't been activated by user click, block everything
+    // If the scanner hasn't been activated by user click in this session, block everything
     if (!ScannerBridge.isScannerActive) return false;
 
     const rootStore = (window as any).derivBotAppStore;
@@ -175,8 +187,11 @@ export class ScannerBridge {
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // Only set to true right when the user explicitly clicks load from the scanner
+    // Mark scanner active for this session and set the flag
     ScannerBridge.isScannerActive = true;
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
+    }
 
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
