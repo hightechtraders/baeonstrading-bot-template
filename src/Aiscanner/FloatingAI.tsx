@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ScannerLogic } from './scannerLogic';
 import { ScannerBridge } from './scannerBridge';
+import { RiskManager } from './riskManager'; // <-- 1. Import RiskManager
 import { Strategy } from './strategies';
 import './FloatingAI.css';
 
@@ -57,8 +58,13 @@ export const FloatingAI: React.FC = () => {
   const otherStrategies = sortedStrategies.slice(1);
 
   const handleRunBot = (strat: Strategy) => {
+    // Load parameters into Blockly and Quick Strategy Store
     ScannerBridge.loadStrategyToWorkspace(strat, { stake, stopLoss, takeProfit });
-    alert(`Strategy "${strat.name}" successfully loaded! Click the main platform run button to execute.`);
+    
+    // 2. Arm the Risk Manager circuit breaker pipeline using your input states
+    RiskManager.configure(stopLoss, takeProfit);
+
+    alert(`Strategy "${strat.name}" successfully loaded & Risk circuit breaker armed! Click the main platform run button to execute.`);
     setIsOpen(false);
   };
 
