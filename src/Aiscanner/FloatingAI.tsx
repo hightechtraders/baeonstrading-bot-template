@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ScannerLogic } from './scannerLogic';
 import { ScannerBridge } from './scannerBridge';
-import { RiskManager } from './riskManager'; // <-- 1. Import RiskManager
+import { RiskManager } from './riskManager';
 import { Strategy } from './strategies';
 import './FloatingAI.css';
 
@@ -15,7 +15,6 @@ export const FloatingAI: React.FC = () => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const expandedIndexRef = useRef<number | null>(null);
 
-  // Keep ref synchronized with state so intervals can read it instantly
   useEffect(() => {
     expandedIndexRef.current = expandedIndex;
   }, [expandedIndex]);
@@ -26,23 +25,20 @@ export const FloatingAI: React.FC = () => {
 
   useEffect(() => {
     if (isOpen) {
-      // 1. Reset state only when modal first opens
       setIsScanning(true);
       setExpandedIndex(null);
 
-      // 2. Initial 2-second scan delay
       const scanTimeout = setTimeout(() => {
         setStrategies(scanner.runScan());
         setIsScanning(false);
       }, 2000);
 
-      // 3. Continuous background updates (pauses if a card is expanded/editing)
       const interval = setInterval(() => {
         setStrategies((prevStrategies) => {
           if (expandedIndexRef.current === null) {
             return scanner.runScan();
           }
-          return prevStrategies; // Freeze sorting/updates while editing a card
+          return prevStrategies;
         });
       }, 4000);
 
@@ -51,17 +47,14 @@ export const FloatingAI: React.FC = () => {
         clearInterval(interval);
       };
     }
-  }, [isOpen]); // Depend ONLY on isOpen so clicking cards never restarts the scan
+  }, [isOpen]);
 
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
   const topWinner = sortedStrategies[0];
   const otherStrategies = sortedStrategies.slice(1);
 
   const handleRunBot = (strat: Strategy) => {
-    // Load parameters into Blockly and Quick Strategy Store
     ScannerBridge.loadStrategyToWorkspace(strat, { stake, stopLoss, takeProfit });
-    
-    // 2. Arm the Risk Manager circuit breaker pipeline using your input states
     RiskManager.configure(stopLoss, takeProfit);
 
     alert(`Strategy "${strat.name}" successfully loaded & Risk circuit breaker armed! Click the main platform run button to execute.`);
@@ -91,7 +84,6 @@ export const FloatingAI: React.FC = () => {
             </div>
             <p className="scanner-instruction">Balanced strategies rank below. Tap card to edit.</p>
 
-            {/* SCANNING STATE HEADER OR TOP GLOBAL WINNER */}
             {isScanning ? (
               <div className="global-winner-section">
                 <div className="global-winner-meta">
@@ -169,7 +161,6 @@ export const FloatingAI: React.FC = () => {
               )
             )}
 
-            {/* REMAINING STRATEGIES LIST */}
             {!isScanning && (
               <div className="strategy-list">
                 {otherStrategies.map((strat, idx) => {
@@ -183,7 +174,8 @@ export const FloatingAI: React.FC = () => {
                       onClick={() => handleCardClick(strat, actualIndex)}
                     >
                       <div className="card-main-row">
-                        <span className="badge-rank">#{actualIndex + 1}</span>
+                        {/* FIXED: Removed unwanted + 1 offset so ranking shows correctly as #2, #3... */}
+                        <span className="badge-rank">#{actualIndex}</span>
                         <div className="strategy-info">
                           <strong>{strat.name}</strong>
                           <div className="card-tags-row">
