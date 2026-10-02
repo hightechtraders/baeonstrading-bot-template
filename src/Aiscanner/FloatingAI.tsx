@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ScannerLogic } from './scannerLogic';
 import { ScannerBridge } from './scannerBridge';
 import { Strategy } from './strategies';
@@ -12,6 +12,12 @@ export const FloatingAI: React.FC = () => {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const expandedIndexRef = useRef<number | null>(null);
+
+  // Keep ref synchronized with state so intervals can read it instantly
+  useEffect(() => {
+    expandedIndexRef.current = expandedIndex;
+  }, [expandedIndex]);
 
   const [stake, setStake] = useState<number>(10);
   const [stopLoss, setStopLoss] = useState<number>(20);
@@ -19,7 +25,7 @@ export const FloatingAI: React.FC = () => {
 
   useEffect(() => {
     if (isOpen) {
-      // 1. Reset state on modal open
+      // 1. Reset state only when modal first opens
       setIsScanning(true);
       setExpandedIndex(null);
 
@@ -32,7 +38,7 @@ export const FloatingAI: React.FC = () => {
       // 3. Continuous background updates (pauses if a card is expanded/editing)
       const interval = setInterval(() => {
         setStrategies((prevStrategies) => {
-          if (expandedIndex === null) {
+          if (expandedIndexRef.current === null) {
             return scanner.runScan();
           }
           return prevStrategies; // Freeze sorting/updates while editing a card
@@ -44,7 +50,7 @@ export const FloatingAI: React.FC = () => {
         clearInterval(interval);
       };
     }
-  }, [isOpen, expandedIndex]); // Removed isScanning from dependencies to prevent infinite re-triggers
+  }, [isOpen]); // Depend ONLY on isOpen so clicking cards never restarts the scan
 
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
   const topWinner = sortedStrategies[0];
