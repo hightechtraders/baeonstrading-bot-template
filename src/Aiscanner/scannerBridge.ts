@@ -38,6 +38,7 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
+    // 1. Explicitly activate flag ONLY when user explicitly triggers a load
     ScannerBridge.isScannerActive = true;
 
     const rootStore = (window as any).derivBotAppStore;
@@ -50,7 +51,7 @@ export class ScannerBridge {
     const storeType = isFall ? 'fall' : 'rise';
     const martingaleMultiplier = 2.4;
 
-    // 1. Update the Quick Strategy Store State
+    // 2. Update the Quick Strategy Store State
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -86,7 +87,7 @@ export class ScannerBridge {
       }
     }
 
-    // 2. Safe Block Field Mutations
+    // 3. Safe Block Field Mutations (Guarded by isScannerActive check)
     const applyBlockMutations = () => {
       if (!ScannerBridge.isScannerActive) return;
 
