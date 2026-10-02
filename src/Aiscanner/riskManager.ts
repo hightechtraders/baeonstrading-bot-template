@@ -57,10 +57,23 @@ export class RiskManager {
 
   private static handleSettlement(contractNode: any): void {
     const profit = parseFloat(contractNode.profit) || 0;
-    this.cumulativeSessionPnL += profit;
+    
+    // Synchronize with the live platform summary element if available to prevent double-counting drift
+    const summaryProfitEl = document.querySelector('[class*="total-profit"], [class*="pnl"]');
+    if (summaryProfitEl && summaryProfitEl.textContent) {
+      const parsedSummary = parseFloat(summaryProfitEl.textContent.replace(/[^0-9.-]+/g, ""));
+      if (!isNaN(parsedSummary)) {
+        this.cumulativeSessionPnL = parsedSummary;
+      } else {
+        this.cumulativeSessionPnL += profit;
+      }
+    } else {
+      this.cumulativeSessionPnL += profit;
+    }
+
     this.totalCycles += 1;
 
-    console.log(`[RiskManager] Cycle ${this.totalCycles} Settled: $${profit.toFixed(2)} | Cumulative PnL: $${this.cumulativeSessionPnL.toFixed(2)}`);
+    console.log(`[RiskManager] Cycle ${this.totalCycles} Settled: $${profit.toFixed(2)} | Synchronized PnL: $${this.cumulativeSessionPnL.toFixed(2)}`);
 
     if (this.monitoredTakeProfit > 0 && this.cumulativeSessionPnL >= this.monitoredTakeProfit) {
       AudioAlerts.showModal('PROFIT', this.cumulativeSessionPnL, this.monitoredTakeProfit, this.totalCycles);
