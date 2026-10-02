@@ -12,20 +12,7 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static activeListener: any = null;
-  // Starts false on every fresh page load / refresh
   private static isScannerActive: boolean = false; 
-
-  static {
-    // Static initializer block: Runs once when the module first loads (on page load/refresh)
-    // This ensures any persistent browser storage of the scanner state is wiped on a fresh page reload
-    if (typeof window !== 'undefined') {
-      const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
-      if (!sessionStarted) {
-        // Fresh browser tab or page refresh detected: clear any lingering cache
-        localStorage.removeItem('deriv_ai_scanner_persistent_strategy');
-      }
-    }
-  }
 
   private static translateSymbol(rawSymbol: string): string {
     if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
@@ -51,7 +38,7 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    // If the scanner hasn't been activated by user click in this session, block everything
+    // Hard gate: If the user hasn't clicked load from the scanner, abort entirely.
     if (!ScannerBridge.isScannerActive) return false;
 
     const rootStore = (window as any).derivBotAppStore;
@@ -164,7 +151,7 @@ export class ScannerBridge {
       
       if (workspace && workspace.addChangeListener) {
         if (ScannerBridge.activeListener) {
-          workspace.removeChangeListener(ScannerBridge.activeListener);
+          workspace.removeWorkspaceChangeListener?.(ScannerBridge.activeListener) || workspace.removeChangeListener(ScannerBridge.activeListener);
         }
         
         ScannerBridge.activeListener = (event: any) => {
@@ -187,11 +174,8 @@ export class ScannerBridge {
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // Mark scanner active for this session and set the flag
+    // Explicitly flip the flag ONLY when user clicks a strategy from the scanner
     ScannerBridge.isScannerActive = true;
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
-    }
 
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
