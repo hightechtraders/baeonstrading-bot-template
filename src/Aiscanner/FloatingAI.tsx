@@ -18,15 +18,38 @@ export const FloatingAI: React.FC = () => {
 
   useEffect(() => {
     if (isOpen) {
+      // Initialize with a baseline scan
       setStrategies(scanner.runScan());
       setExpandedIndex(null);
 
-      // Clean interval fallback loop — ensures zero 404 errors and smooth UI background updates
+      // Safe global message interception from the active platform runtime
+      const handleGlobalMessage = (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.msg_type === 'tick' && data.tick) {
+            const { symbol, quote } = data.tick;
+            
+            // Pass the live quote straight into your ScannerLogic calculation engine!
+            const updated = scanner.processLiveTick(symbol, Number(quote));
+            setStrategies([...updated]);
+          }
+        } catch (err) {
+          // Ignore non-json or unparseable background messages silently
+        }
+      };
+
+      // Listen to window-level message events if the runtime broadcasts them
+      window.addEventListener('message', handleGlobalMessage);
+
+      // Fallback backup tick simulation interval in case market ticks are quiet
       const interval = setInterval(() => {
         setStrategies(scanner.runScan());
       }, 4000);
 
-      return () => clearInterval(interval);
+      return () => {
+        window.removeEventListener('message', handleGlobalMessage);
+        clearInterval(interval);
+      };
     }
   }, [isOpen]);
 
