@@ -12,6 +12,8 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static activeListener: any = null;
+  // This starts false so the app loads normally with Deriv's default blocks untouched
+  private static isScannerActive: boolean = false; 
 
   private static translateSymbol(rawSymbol: string): string {
     if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
@@ -37,11 +39,8 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    // ABSOLUTE GUARD: If the global user-action flag is not true, completely block execution
-    if (typeof window !== 'undefined' && !(window as any).__AI_SCANNER_LOAD_REQUESTED__) {
-      console.warn("[ScannerBridge] Blocked unauthorized background injection.");
-      return false;
-    }
+    // If the scanner hasn't been activated by user click, block everything
+    if (!ScannerBridge.isScannerActive) return false;
 
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
@@ -53,7 +52,6 @@ export class ScannerBridge {
     const storeType = isFall ? 'fall' : 'rise';
     const martingaleMultiplier = 2.4;
 
-    // 1. Update the Quick Strategy Store State
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -85,9 +83,8 @@ export class ScannerBridge {
       } catch (error) {}
     }
 
-    // 2. Safe Block Field Mutations
     const applyBlockMutations = () => {
-      if (typeof window !== 'undefined' && !(window as any).__AI_SCANNER_LOAD_REQUESTED__) return;
+      if (!ScannerBridge.isScannerActive) return;
 
       try {
         const Blockly = (window as any).Blockly;
@@ -159,7 +156,7 @@ export class ScannerBridge {
         }
         
         ScannerBridge.activeListener = (event: any) => {
-          if (typeof window !== 'undefined' && !(window as any).__AI_SCANNER_LOAD_REQUESTED__) return;
+          if (!ScannerBridge.isScannerActive) return;
           if (event && (event.type === Blockly.Events.BLOCK_CREATE || event.type === Blockly.Events.FINISHED_LOADING || event.type === Blockly.Events.UI)) {
             applyBlockMutations();
           }
@@ -178,10 +175,8 @@ export class ScannerBridge {
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // ONLY set this to true when the user actually clicks load from the scanner modal
-    if (typeof window !== 'undefined') {
-      (window as any).__AI_SCANNER_LOAD_REQUESTED__ = true;
-    }
+    // Only set to true right when the user explicitly clicks load from the scanner
+    ScannerBridge.isScannerActive = true;
 
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
