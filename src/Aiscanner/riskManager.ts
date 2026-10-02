@@ -6,6 +6,7 @@ export class RiskManager {
   private static monitoredTakeProfit: number = 0;
   private static cumulativeSessionPnL: number = 0;
   private static totalCycles: number = 0;
+  private static processedContractIds: Set<string> = new Set();
   public static liveExecutionLock: boolean = false;
   private static isInitialized: boolean = false;
   private static boundMessageHandler: ((event: MessageEvent) => void) | null = null;
@@ -17,9 +18,10 @@ export class RiskManager {
     if (takeProfit !== undefined) {
       this.monitoredTakeProfit = Number(takeProfit);
     }
-    // Reset session stats on new configuration
+    // Reset session stats and history on new configuration
     this.cumulativeSessionPnL = 0;
     this.totalCycles = 0;
+    this.processedContractIds.clear();
     this.liveExecutionLock = false;
     
     this.initPipeline();
@@ -34,7 +36,6 @@ export class RiskManager {
         try {
           const incomingFrame = JSON.parse(event.data);
           
-          // Track proposal settlements or balance updates from Deriv API
           if (incomingFrame.msg_type === 'proposal_open_contract') {
             const contract = incomingFrame.proposal_open_contract;
             if (contract && (contract.is_expired || contract.status !== 'open')) {
@@ -56,9 +57,19 @@ export class RiskManager {
   }
 
   private static handleSettlement(contractNode: any): void {
+    const contractId = String(contractNode.contract_id || '');
+    
+    // Guard against duplicate WebSocket frames for the exact same contract ID
+    if (contractId && this.processedContractIds.has(contractId)) {
+      return;
+    }
+    if (contractId) {
+      this.processedContractIds.add(contractId);
+    }
+
     const profit = parseFloat(contractNode.profit) || 0;
     
-    // Synchronize with the live platform summary element if available to prevent double-counting drift
+    // Synchronize with the live platform summary element if available
     const summaryProfitEl = document.querySelector('[class*="total-profit"], [class*="pnl"]');
     if (summaryProfitEl && summaryProfitEl.textContent) {
       const parsedSummary = parseFloat(summaryProfitEl.textContent.replace(/[^0-9.-]+/g, ""));
@@ -73,7 +84,7 @@ export class RiskManager {
 
     this.totalCycles += 1;
 
-    console.log(`[RiskManager] Cycle ${this.totalCycles} Settled: $${profit.toFixed(2)} | Synchronized PnL: $${this.cumulativeSessionPnL.toFixed(2)}`);
+    console.log(`[RiskManager] Cycle ${this.totalCycles} Settled (ID: ${contractId}): $${profit.toFixed(2)} | Synchronized PnL: $${this.cumulativeSessionPnL.toFixed(2)}`);
 
     if (this.monitoredTakeProfit > 0 && this.cumulativeSessionPnL >= this.monitoredTakeProfit) {
       AudioAlerts.showModal('PROFIT', this.cumulativeSessionPnL, this.monitoredTakeProfit, this.totalCycles);
