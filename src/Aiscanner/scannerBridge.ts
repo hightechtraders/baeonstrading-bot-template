@@ -14,10 +14,11 @@ export class ScannerBridge {
   private static activeListener: any = null;
   private static isScannerActive: boolean = false; 
 
+  // Circuit Breaker & Execution Tracking State
   public static liveExecutionLock: boolean = false;
   private static monitoredStopLoss: number = 0;
   private static monitoredTakeProfit: number = 0;
-  private static cumulativeSessionPnL: number = 0; // Tracks total session profit/loss
+  private static cumulativeSessionPnL: number = 0;
   private static boundMessageHandler: ((event: MessageEvent) => void) | null = null;
 
   private static translateSymbol(rawSymbol: string): string {
@@ -68,7 +69,7 @@ export class ScannerBridge {
     if (!contractNode) return;
 
     const contractProfit = parseFloat(contractNode.profit) || 0;
-    this.cumulativeSessionPnL += contractProfit; // Accumulate total session P&L
+    this.cumulativeSessionPnL += contractProfit; 
     const activeRunsCount = contractNode.transaction_ids?.length || 8;
 
     this.liveExecutionLock = false;
@@ -201,9 +202,10 @@ export class ScannerBridge {
   public static injectViaStore(payload: AIScannerPayload): boolean {
     ScannerBridge.isScannerActive = true;
 
+    // Set risk parameters safely
     if (payload.stopLoss) {
       this.monitoredStopLoss = Number(payload.stopLoss);
-      this.cumulativeSessionPnL = 0; // Reset session tracking on new strategy boot
+      this.cumulativeSessionPnL = 0; 
     }
     if (payload.takeProfit) this.monitoredTakeProfit = Number(payload.takeProfit);
 
@@ -219,7 +221,9 @@ export class ScannerBridge {
     const storeType = isFall ? 'fall' : 'rise';
     const martingaleMultiplier = 2.4;
 
-    // 1. Update the Quick Strategy Store State (including risk parameters if supported)
+    console.log(`[ScannerBridge] Activating Strategy -> Symbol: ${strictDerivSymbol} | Direction: ${storeContractType} | Martingale: ${martingaleMultiplier}`);
+
+    // 1. Update the Quick Strategy Store State
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -230,15 +234,32 @@ export class ScannerBridge {
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
           quickStrategy.setValue('size', martingaleMultiplier);
-          if (payload.stopLoss) quickStrategy.setValue('loss_threshold', payload.stopLoss);
-          if (payload.takeProfit) quickStrategy.setValue('profit_threshold', payload.takeProfit);
+        }
+        
+        const mockFormData = {
+          symbol: strictDerivSymbol, 
+          durationtype: payload.durationUnit || 't', 
+          duration: payload.duration,
+          stake: payload.stake,
+          amount: payload.stake,
+          tradetype: 'rise_fall',
+          contract_type: storeContractType,
+          type: storeType,
+          size: martingaleMultiplier
+        };
+
+        const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
+        if (typeof submitAction === 'function') {
+          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).catch(err => {
+            console.warn("[ScannerBridge] Store submission caught warning:", err);
+          });
         }
       } catch (error) {
         console.warn("[ScannerBridge] Quick strategy store method failed:", error);
       }
     }
 
-    // 2. Helper function to apply field values directly on the blocks & variables
+    // 2. Safe, non-invasive block field updates (restored from your stable baseline)
     const applyBlockMutations = () => {
       if (!ScannerBridge.isScannerActive) return;
 
@@ -258,34 +279,56 @@ export class ScannerBridge {
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
+                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
+                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                    if (!exists) {
+                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
+                    }
+                  }
                   symbolField.setValue(strictDerivSymbol);
                   updated = true;
                 }
               }
 
-              // Variable Set Injection for Stop Loss / Take Profit / Stake
-              if (block.type === 'variables_set') {
-                const fieldVar = block.getField('VAR');
-                if (fieldVar) {
-                  const variableName = fieldVar.getText().toLowerCase().trim();
-                  const valueInput = block.getInput('VALUE');
-                  
-                  if (valueInput && valueInput.connection) {
-                    const targetBlock = valueInput.connection.targetBlock();
-                    if (targetBlock) {
-                      const numField = targetBlock.getField('NUM');
-                      if (numField) {
-                        if ((variableName.includes('loss') || variableName === 'sl') && payload.stopLoss) {
-                          numField.setValue(Number(payload.stopLoss).toFixed(2));
-                          updated = true;
-                        } else if ((variableName.includes('profit') || variableName === 'tp') && payload.takeProfit) {
-                          numField.setValue(Number(payload.takeProfit).toFixed(2));
-                          updated = true;
-                        }
+              // Purchase Condition Enforcement
+              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
+                const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
+                fieldNames.forEach(name => {
+                  const field = block.getField(name);
+                  if (field && typeof field.setValue === 'function') {
+                    const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
+                    const targetMatch = options.find((opt: any) => {
+                      const label = String(opt[0] || '').toLowerCase();
+                      const val = String(opt[1] || '').toLowerCase();
+                      if (isFall) {
+                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
+                      } else {
+                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
                       }
+                    });
+
+                    const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
+                    if (field.getValue() !== desiredVal) {
+                      field.setValue(desiredVal);
+                      updated = true;
                     }
                   }
-                }
+                });
+              }
+
+              // Martingale Multiplier Enforcement (2.4)
+              if (block.type === 'trade_again' || block.type?.includes('restart') || block.type?.includes('martingale')) {
+                block.inputList?.forEach((input: any) => {
+                  input.fieldRow?.forEach((field: any) => {
+                    if (field && typeof field.setValue === 'function' && (field.name === 'VALUE' || field.name === 'MULTIPLIER' || field.EDITABLE)) {
+                      const val = Number(field.getValue());
+                      if (val === 3 || isNaN(val) || field.getValue() === '3') {
+                        field.setValue(String(martingaleMultiplier));
+                        updated = true;
+                      }
+                    }
+                  });
+                });
               }
             });
 
@@ -297,9 +340,32 @@ export class ScannerBridge {
       } catch (e) {}
     };
 
+    // 3. Bind safely to Blockly change listener
+    try {
+      const Blockly = (window as any).Blockly;
+      const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
+      
+      if (workspace && workspace.addChangeListener) {
+        if (ScannerBridge.activeListener) {
+          workspace.removeChangeListener(ScannerBridge.activeListener);
+        }
+        
+        ScannerBridge.activeListener = (event: any) => {
+          if (!ScannerBridge.isScannerActive) return;
+          if (event && (event.type === Blockly.Events.BLOCK_CREATE || event.type === Blockly.Events.FINISHED_LOADING || event.type === Blockly.Events.UI)) {
+            applyBlockMutations();
+          }
+        };
+        workspace.addChangeListener(ScannerBridge.activeListener);
+      }
+    } catch (err) {}
+
+    // 4. Run immediate bursts
     applyBlockMutations();
+    setTimeout(applyBlockMutations, 100);
     setTimeout(applyBlockMutations, 300);
-    setTimeout(applyBlockMutations, 800);
+    setTimeout(applyBlockMutations, 600);
+    setTimeout(applyBlockMutations, 1000);
 
     return true;
   }
