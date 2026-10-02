@@ -12,7 +12,7 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static activeListener: any = null;
-  // Strictly false on boot — prevents any premature background injection
+  // Strictly false on boot — ensures it never touches anything until the scanner is opened
   private static isScannerActive: boolean = false; 
 
   private static translateSymbol(rawSymbol: string): string {
@@ -39,7 +39,7 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    // Explicitly activate only when user triggers a strategy load from the scanner modal
+    // Explicitly activate ONLY when user triggers a strategy load from the scanner modal
     ScannerBridge.isScannerActive = true;
 
     const rootStore = (window as any).derivBotAppStore;
@@ -88,7 +88,7 @@ export class ScannerBridge {
       }
     }
 
-    // 2. Safe Block Field Mutations (Guarded by isScannerActive flag)
+    // 2. Safe Block Field Mutations (Guarded tightly by isScannerActive flag)
     const applyBlockMutations = () => {
       if (!ScannerBridge.isScannerActive) return;
 
