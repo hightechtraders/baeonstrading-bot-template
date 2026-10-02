@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
 import Text from '@/components/shared_ui/text';
@@ -20,6 +20,15 @@ const DashboardComponent = observer(({ handleTabChange }: TMobileIconGuide) => {
     const { active_tab, active_tour } = dashboard;
     const has_dashboard_strategies = !!dashboard_strategies?.length;
     const { isDesktop, isTablet } = useDevice();
+
+    // Clear stale Deriv bot workspace cache on fresh page loads if scanner hasn't been activated
+    useEffect(() => {
+        const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
+        if (!sessionStarted) {
+            localStorage.removeItem('dbot-workspace');
+            localStorage.removeItem('quick_strategy_preference');
+        }
+    }, []);
 
     return (
         <React.Fragment>
