@@ -174,7 +174,6 @@ export class ScannerBridge {
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // Explicitly flip the flag ONLY when user clicks a strategy from the scanner
     ScannerBridge.isScannerActive = true;
 
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
