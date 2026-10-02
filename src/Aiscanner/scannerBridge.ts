@@ -12,13 +12,12 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static activeListener: any = null;
-  private static isScannerActive: boolean = false; 
+  private static isScannerActive: boolean = false; // Keeps workspace untouched on initial boot
 
   // Circuit Breaker & Execution Tracking State
   public static liveExecutionLock: boolean = false;
   private static monitoredStopLoss: number = 0;
   private static monitoredTakeProfit: number = 0;
-  private static cumulativeSessionPnL: number = 0;
   private static boundMessageHandler: ((event: MessageEvent) => void) | null = null;
 
   private static translateSymbol(rawSymbol: string): string {
@@ -44,6 +43,9 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
+  /**
+   * Initializes the WebSocket listener for live contract settlements and circuit breaker tracking.
+   */
   public static initPipeline(): void {
     const globalWin = window as any;
     const ws = globalWin.derivWebSocket || globalWin.ws || globalWin.socket || globalWin.Blockly?.derivWorkspace?.socket || globalWin.derivBotAppStore?.websocketInstance;
@@ -56,10 +58,13 @@ export class ScannerBridge {
           if (incomingFrame.msg_type === 'proposal_open_contract') {
             const contract = incomingFrame.proposal_open_contract;
             if (contract && (contract.is_expired || contract.status !== 'open')) {
+              console.log(`[ScannerBridge] Contract settlement verified: $${contract.profit}`);
               this.handleContractSettlementEvent(contract);
             }
           }
-        } catch (e) {}
+        } catch (e) {
+          // Silent parse catch
+        }
       };
       ws.addEventListener('message', this.boundMessageHandler);
     }
@@ -68,20 +73,18 @@ export class ScannerBridge {
   public static handleContractSettlementEvent(contractNode: any): void {
     if (!contractNode) return;
 
-    const contractProfit = parseFloat(contractNode.profit) || 0;
-    this.cumulativeSessionPnL += contractProfit; 
+    const currentFloatingPnL = parseFloat(contractNode.profit) || 0;
     const activeRunsCount = contractNode.transaction_ids?.length || 8;
 
+    // Release execution barrier instantly upon cycle settlement
     this.liveExecutionLock = false;
 
-    console.log(`[ScannerBridge] Contract Settled: $${contractProfit.toFixed(2)} | Cumulative PnL: $${this.cumulativeSessionPnL.toFixed(2)}`);
-
-    if (this.monitoredTakeProfit > 0 && this.cumulativeSessionPnL >= this.monitoredTakeProfit) {
-      this.triggerTopTierAlertOverlay('PROFIT', this.cumulativeSessionPnL, this.monitoredTakeProfit, activeRunsCount);
+    if (this.monitoredTakeProfit > 0 && currentFloatingPnL >= this.monitoredTakeProfit) {
+      this.triggerTopTierAlertOverlay('PROFIT', currentFloatingPnL, this.monitoredTakeProfit, activeRunsCount);
       this.emergencyHaltOperations();
     } 
-    else if (this.monitoredStopLoss > 0 && this.cumulativeSessionPnL <= -Math.abs(this.monitoredStopLoss)) {
-      this.triggerTopTierAlertOverlay('LOSS', this.cumulativeSessionPnL, this.monitoredStopLoss, activeRunsCount);
+    else if (this.monitoredStopLoss > 0 && currentFloatingPnL <= -Math.abs(this.monitoredStopLoss)) {
+      this.triggerTopTierAlertOverlay('LOSS', currentFloatingPnL, this.monitoredStopLoss, activeRunsCount);
       this.emergencyHaltOperations();
     }
   }
@@ -202,13 +205,11 @@ export class ScannerBridge {
   public static injectViaStore(payload: AIScannerPayload): boolean {
     ScannerBridge.isScannerActive = true;
 
-    // Set risk parameters safely
-    if (payload.stopLoss) {
-      this.monitoredStopLoss = Number(payload.stopLoss);
-      this.cumulativeSessionPnL = 0; 
-    }
+    // Cache risk limits for the real-time settlement listener
+    if (payload.stopLoss) this.monitoredStopLoss = Number(payload.stopLoss);
     if (payload.takeProfit) this.monitoredTakeProfit = Number(payload.takeProfit);
 
+    // Boot up the live WebSocket listener pipeline
     this.initPipeline();
 
     const rootStore = (window as any).derivBotAppStore;
@@ -221,7 +222,7 @@ export class ScannerBridge {
     const storeType = isFall ? 'fall' : 'rise';
     const martingaleMultiplier = 2.4;
 
-    console.log(`[ScannerBridge] Activating Strategy -> Symbol: ${strictDerivSymbol} | Direction: ${storeContractType} | Martingale: ${martingaleMultiplier}`);
+    console.log(`[ScannerBridge] Activating Strategy -> Symbol: ${strictDerivSymbol} | Direction: ${storeContractType} | TP: ${this.monitoredTakeProfit} | SL: ${this.monitoredStopLoss}`);
 
     // 1. Update the Quick Strategy Store State
     if (rootStore?.quick_strategy) {
@@ -259,7 +260,7 @@ export class ScannerBridge {
       }
     }
 
-    // 2. Safe, non-invasive block field updates (restored from your stable baseline)
+    // 2. Helper function to apply field values directly on the blocks
     const applyBlockMutations = () => {
       if (!ScannerBridge.isScannerActive) return;
 
@@ -337,10 +338,12 @@ export class ScannerBridge {
             }
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        // silent
+      }
     };
 
-    // 3. Bind safely to Blockly change listener
+    // 3. Bind directly to Blockly workspace events post-activation
     try {
       const Blockly = (window as any).Blockly;
       const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
@@ -358,9 +361,11 @@ export class ScannerBridge {
         };
         workspace.addChangeListener(ScannerBridge.activeListener);
       }
-    } catch (err) {}
+    } catch (err) {
+      console.warn("[ScannerBridge] Event listener binding warning:", err);
+    }
 
-    // 4. Run immediate bursts
+    // 4. Run immediate bursts to apply scanner parameters
     applyBlockMutations();
     setTimeout(applyBlockMutations, 100);
     setTimeout(applyBlockMutations, 300);
@@ -371,7 +376,12 @@ export class ScannerBridge {
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: { stake?: number; duration?: number; symbol?: string; contractType?: string; stopLoss?: number; takeProfit?: number; [key: string]: any }) {
-    const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
+    const rawSymbol = 
+      options?.symbol || 
+      strategy?.market || 
+      strategy?.symbol || 
+      '1HZ100V'; 
+
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
 
     const payload: AIScannerPayload = {
@@ -380,7 +390,7 @@ export class ScannerBridge {
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: options?.stopLoss || strategy?.stopLoss || 150,
+      stopLoss: options?.stopLoss || strategy?.stopLoss || 50,
       takeProfit: options?.takeProfit || strategy?.takeProfit || 100
     };
 
