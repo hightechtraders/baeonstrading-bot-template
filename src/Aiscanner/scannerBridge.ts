@@ -12,7 +12,7 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static activeListener: any = null;
-  // Strictly false on boot — ensures it never touches anything until the scanner is opened
+  // Strictly false on boot — nothing loads until the user explicitly picks a strategy
   private static isScannerActive: boolean = false; 
 
   private static translateSymbol(rawSymbol: string): string {
@@ -39,8 +39,11 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    // Explicitly activate ONLY when user triggers a strategy load from the scanner modal
-    ScannerBridge.isScannerActive = true;
+    // If the scanner hasn't been explicitly activated by user action, block execution entirely
+    if (!ScannerBridge.isScannerActive) {
+      console.warn("[ScannerBridge] Blocked premature injection attempt before scanner activation.");
+      return false;
+    }
 
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
@@ -88,7 +91,7 @@ export class ScannerBridge {
       }
     }
 
-    // 2. Safe Block Field Mutations (Guarded tightly by isScannerActive flag)
+    // 2. Safe Block Field Mutations
     const applyBlockMutations = () => {
       if (!ScannerBridge.isScannerActive) return;
 
@@ -181,6 +184,9 @@ export class ScannerBridge {
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
+    // Explicitly toggle the flag to true only when the user selects a strategy from the scanner
+    ScannerBridge.isScannerActive = true;
+
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
 
