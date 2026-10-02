@@ -19,21 +19,24 @@ export const FloatingAI: React.FC = () => {
 
   useEffect(() => {
     if (isOpen) {
-      // 1. Reset and show initial SCANNING... state for 2 seconds
+      // 1. Reset state on modal open
       setIsScanning(true);
       setExpandedIndex(null);
 
+      // 2. Initial 2-second scan delay
       const scanTimeout = setTimeout(() => {
         setStrategies(scanner.runScan());
         setIsScanning(false);
       }, 2000);
 
-      // 2. Continuous updates (Paused automatically if a card is expanded/editing)
+      // 3. Continuous background updates (pauses if a card is expanded/editing)
       const interval = setInterval(() => {
-        // Only update if no card is currently expanded/being edited
-        if (expandedIndex === null && !isScanning) {
-          setStrategies(scanner.runScan());
-        }
+        setStrategies((prevStrategies) => {
+          if (expandedIndex === null) {
+            return scanner.runScan();
+          }
+          return prevStrategies; // Freeze sorting/updates while editing a card
+        });
       }, 4000);
 
       return () => {
@@ -41,9 +44,8 @@ export const FloatingAI: React.FC = () => {
         clearInterval(interval);
       };
     }
-  }, [isOpen, expandedIndex, isScanning]);
+  }, [isOpen, expandedIndex]); // Removed isScanning from dependencies to prevent infinite re-triggers
 
-  // Keep sorting stable when a card is expanded so items don't jump around while editing
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
   const topWinner = sortedStrategies[0];
   const otherStrategies = sortedStrategies.slice(1);
@@ -55,7 +57,6 @@ export const FloatingAI: React.FC = () => {
   };
 
   const handleCardClick = (strat: Strategy, index: number) => {
-    // Toggling expansion freezes updates for this card
     const newIndex = expandedIndex === index ? null : index;
     setExpandedIndex(newIndex);
     setStake(strat.recommendedStake || 10);
