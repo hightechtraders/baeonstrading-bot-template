@@ -11,7 +11,21 @@ export interface AIScannerPayload {
 }
 
 export class ScannerBridge {
+  private static activeListener: any = null;
+  // Starts false on every fresh page load / refresh
   private static isScannerActive: boolean = false; 
+
+  static {
+    // Static initializer block: Runs once when the module first loads (on page load/refresh)
+    // This ensures any persistent browser storage of the scanner state is wiped on a fresh page reload
+    if (typeof window !== 'undefined') {
+      const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
+      if (!sessionStarted) {
+        // Fresh browser tab or page refresh detected: clear any lingering cache
+        localStorage.removeItem('deriv_ai_scanner_persistent_strategy');
+      }
+    }
+  }
 
   private static translateSymbol(rawSymbol: string): string {
     if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
@@ -37,7 +51,7 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    // Absolute gate: If the user hasn't clicked load from the scanner, do nothing.
+    // If the scanner hasn't been activated by user click in this session, block everything
     if (!ScannerBridge.isScannerActive) return false;
 
     const rootStore = (window as any).derivBotAppStore;
@@ -51,8 +65,8 @@ export class ScannerBridge {
     const martingaleMultiplier = 2.4;
 
     if (rootStore?.quick_strategy) {
+      const quickStrategy = rootStore.quick_strategy;
       try {
-        const quickStrategy = rootStore.quick_strategy;
         if (typeof quickStrategy.setValue === 'function') {
           quickStrategy.setValue('symbol', strictDerivSymbol);
           quickStrategy.setValue('duration', payload.duration);
@@ -61,10 +75,29 @@ export class ScannerBridge {
           quickStrategy.setValue('type', storeType);
           quickStrategy.setValue('size', martingaleMultiplier);
         }
+        
+        const mockFormData = {
+          symbol: strictDerivSymbol, 
+          durationtype: payload.durationUnit || 't', 
+          duration: payload.duration,
+          stake: payload.stake,
+          amount: payload.stake,
+          tradetype: 'rise_fall',
+          contract_type: storeContractType,
+          type: storeType,
+          size: martingaleMultiplier
+        };
+
+        const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
+        if (typeof submitAction === 'function') {
+          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).catch(() => {});
+        }
       } catch (error) {}
     }
 
     const applyBlockMutations = () => {
+      if (!ScannerBridge.isScannerActive) return;
+
       try {
         const Blockly = (window as any).Blockly;
         const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
@@ -80,9 +113,40 @@ export class ScannerBridge {
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
+                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
+                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                    if (!exists) {
+                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
+                    }
+                  }
                   symbolField.setValue(strictDerivSymbol);
                   updated = true;
                 }
+              }
+
+              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
+                const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
+                fieldNames.forEach(name => {
+                  const field = block.getField(name);
+                  if (field && typeof field.setValue === 'function') {
+                    const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
+                    const targetMatch = options.find((opt: any) => {
+                      const label = String(opt[0] || '').toLowerCase();
+                      const val = String(opt[1] || '').toLowerCase();
+                      if (isFall) {
+                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
+                      } else {
+                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
+                      }
+                    });
+
+                    const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
+                    if (field.getValue() !== desiredVal) {
+                      field.setValue(desiredVal);
+                      updated = true;
+                    }
+                  }
+                });
               }
             });
 
@@ -94,15 +158,40 @@ export class ScannerBridge {
       } catch (e) {}
     };
 
+    try {
+      const Blockly = (window as any).Blockly;
+      const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
+      
+      if (workspace && workspace.addChangeListener) {
+        if (ScannerBridge.activeListener) {
+          workspace.removeChangeListener(ScannerBridge.activeListener);
+        }
+        
+        ScannerBridge.activeListener = (event: any) => {
+          if (!ScannerBridge.isScannerActive) return;
+          if (event && (event.type === Blockly.Events.BLOCK_CREATE || event.type === Blockly.Events.FINISHED_LOADING || event.type === Blockly.Events.UI)) {
+            applyBlockMutations();
+          }
+        };
+        workspace.addChangeListener(ScannerBridge.activeListener);
+      }
+    } catch (err) {}
+
     applyBlockMutations();
+    setTimeout(applyBlockMutations, 100);
     setTimeout(applyBlockMutations, 300);
+    setTimeout(applyBlockMutations, 600);
+    setTimeout(applyBlockMutations, 1000);
 
     return true;
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // Only set to true right when the user explicitly clicks load from the scanner
+    // Mark scanner active for this session and set the flag
     ScannerBridge.isScannerActive = true;
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
+    }
 
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
@@ -112,6 +201,7 @@ export class ScannerBridge {
       stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
+      durationUnit: options?.durationUnit || 't',
       stopLoss: options?.stopLoss || strategy?.stopLoss || 150,
       takeProfit: options?.takeProfit || strategy?.takeProfit || 100
     };
