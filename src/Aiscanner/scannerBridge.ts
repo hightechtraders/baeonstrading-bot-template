@@ -37,8 +37,23 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
+  // NEW: Explicitly resets Deriv's quick strategy store on a fresh boot
+  public static clearWorkspaceDefault(): void {
+    if (ScannerBridge.isScannerActive) return;
+    const rootStore = (window as any).derivBotAppStore;
+    if (rootStore?.quick_strategy) {
+      try {
+        const quickStrategy = rootStore.quick_strategy;
+        if (typeof quickStrategy.setValue === 'function') {
+          quickStrategy.setValue('symbol', '1HZ100V');
+          quickStrategy.setValue('duration', 5);
+          quickStrategy.setValue('amount', 10);
+        }
+      } catch (e) {}
+    }
+  }
+
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    // Hard gate: If the user hasn't clicked load from the scanner, abort entirely.
     if (!ScannerBridge.isScannerActive) return false;
 
     const rootStore = (window as any).derivBotAppStore;
@@ -175,6 +190,9 @@ export class ScannerBridge {
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
     ScannerBridge.isScannerActive = true;
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
+    }
 
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
