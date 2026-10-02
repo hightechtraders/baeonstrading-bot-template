@@ -91,18 +91,38 @@ export class RiskManager {
       localStorage.setItem('EDASCORE_SYSTEM_RUN_TERMINATED', 'true');
     }
 
-    // 1. Programmatically click Deriv's actual UI stop/red button to kill running trades immediately
-    const nativeStopButtons = document.querySelectorAll(
-      'button[class*="stop"], .cq-btn--red, button.run-btn--stop, .dbot-toolbar__stop-button'
-    );
-    nativeStopButtons.forEach((btn) => (btn as HTMLElement).click());
-
-    // 2. Fallback global stop calls
+    // 1. Target Deriv's core bot application stores directly
     const globalWin = window as any;
+    const botStore = globalWin.derivBotAppStore || globalWin.DBotStore;
+    if (botStore) {
+      try {
+        if (typeof botStore.stopBot === 'function') botStore.stopBot();
+        if (botStore.running_state && typeof botStore.running_state.stop === 'function') {
+          botStore.running_state.stop();
+        }
+      } catch (e) {}
+    }
+
+    // 2. Target Workspace runner state if available
     const coreApp = globalWin.derivRunner || globalWin.DBot || globalWin.Blockly?.derivWorkspace;
     if (coreApp && typeof coreApp.stopBot === 'function') {
       try { coreApp.stopBot(); } catch (e) {}
     }
+
+    // 3. Comprehensive DOM button scan for red stop buttons
+    const stopButtons = document.querySelectorAll(
+      'button[class*="stop"], .cq-btn--red, button.run-btn--stop, .dbot-toolbar__stop-button, [data-testid="stop-button"]'
+    );
+    stopButtons.forEach((btn) => (btn as HTMLElement).click());
+
+    // 4. Broad text-based fallback search for any button labeled "Stop"
+    const allButtons = document.querySelectorAll('button');
+    allButtons.forEach((btn) => {
+      const text = (btn.textContent || '').trim().toLowerCase();
+      if (text === 'stop' || text.includes('stop bot')) {
+        (btn as HTMLElement).click();
+      }
+    });
 
     this.monitoredTakeProfit = 0;
     this.monitoredStopLoss = 0;
