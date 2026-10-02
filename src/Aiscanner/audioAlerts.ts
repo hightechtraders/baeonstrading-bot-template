@@ -54,7 +54,7 @@ export class AudioAlerts {
       background: '#0e111a', border: `1px solid ${primaryColor}`, borderRadius: '14px',
       width: '100%', maxWidth: '340px', padding: '24px 20px', boxSizing: 'border-box',
       textAlign: 'center', boxShadow: `0 10px 40px ${glowColor}`, transform: 'scale(0.9)',
-      transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)`, fontFamily: '-apple-system, sans-serif'
+      transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)', fontFamily: '-apple-system, sans-serif'
     });
 
     card.innerHTML = `
