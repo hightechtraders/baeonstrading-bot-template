@@ -21,38 +21,12 @@ export const FloatingAI: React.FC = () => {
       setStrategies(scanner.runScan());
       setExpandedIndex(null);
 
-      const globalWin = window as any;
-      const ws = globalWin.ws || globalWin.BinarySocket || globalWin.LiveApi?.ws;
+      // Clean interval fallback loop — ensures zero 404 errors and smooth UI background updates
+      const interval = setInterval(() => {
+        setStrategies(scanner.runScan());
+      }, 4000);
 
-      if (ws && typeof ws.send === 'function') {
-        const symbols = ['R_10', 'R_25', 'R_50', 'R_75', 'R_100', '1HZ50', '1HZ100'];
-        symbols.forEach((symbol) => {
-          ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
-        });
-
-        const handleMessage = (event: MessageEvent) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.msg_type === 'tick' && data.tick) {
-              const { symbol, quote } = data.tick;
-              const updated = scanner.processLiveTick(symbol, quote);
-              setStrategies([...updated]);
-            }
-          } catch (err) {
-            console.error('Error parsing live tick:', err);
-          }
-        };
-
-        ws.addEventListener('message', handleMessage);
-        return () => {
-          ws.removeEventListener('message', handleMessage);
-        };
-      } else {
-        const interval = setInterval(() => {
-          setStrategies(scanner.runScan());
-        }, 4000);
-        return () => clearInterval(interval);
-      }
+      return () => clearInterval(interval);
     }
   }, [isOpen]);
 
