@@ -1,8 +1,15 @@
+// src/Aiscanner/scannerLogic.ts
 import { Strategy, INITIAL_STRATEGIES } from './strategies';
+import { AudioAlerts } from './audioAlerts'; // 👈 Import your centralized audio alerts manager
 
 export class ScannerLogic {
   private strategies: Strategy[] = INITIAL_STRATEGIES;
   private priceBuffers: { [symbol: string]: number[] } = {};
+  
+  // 🎯 State tracking for consecutive 99% high-confidence signal lock on Volatility 50 (1s)
+  private consecutiveHighConfidenceCount: number = 0;
+  private readonly CONFIDENCE_THRESHOLD: number = 99;
+  private readonly REQUIRED_CONSECUTIVE_HITS: number = 3;
 
   public processLiveTick(symbol: string, price: number): Strategy[] {
     if (!this.priceBuffers[symbol]) {
@@ -29,6 +36,32 @@ export class ScannerLogic {
       if (matchesMarket) {
         const momentumBonus = diff !== 0 ? Math.min(20, Math.abs(diff) * 100) : 0;
         const newConfidence = Math.min(99, Math.max(60, Math.round(75 + momentumBonus)));
+
+        // 🎯 Check if this is Volatility 50 (1s) Rise setup hitting 99% confidence
+        const isVol501sRise = (symbol === '1HZ50V' || strat.market.toLowerCase().includes('volatility 50 (1s)')) && strat.direction === 'UP';
+        
+        if (isVol501sRise) {
+          if (newConfidence >= this.CONFIDENCE_THRESHOLD) {
+            this.consecutiveHighConfidenceCount++;
+            
+            // Trigger alert ONLY when it rests on high confidence for 3 consecutive ticks
+            if (this.consecutiveHighConfidenceCount === this.REQUIRED_CONSECUTIVE_HITS) {
+              // Play centralized upbeat strong signal chime
+              AudioAlerts.playChime('STRONG_SIGNAL_LOCK');
+              
+              // Update visual signal banner on UI
+              const banner = document.getElementById('ai-signal-banner');
+              if (banner) {
+                banner.textContent = "🎯 99% CONFIDENCE LOCKED (3x Ticks): Ready to Load Strategy";
+                banner.classList.add('signal-active');
+              }
+            }
+          } else {
+            // Reset counter immediately if confidence flickers below threshold
+            this.consecutiveHighConfidenceCount = 0;
+          }
+        }
+
         return { 
           ...strat, 
           confidence: newConfidence,
@@ -46,7 +79,6 @@ export class ScannerLogic {
     this.strategies = this.strategies.map((strat) => {
       const randomJitter = Math.floor(Math.random() * 7) - 3;
       const newConfidence = Math.min(99, Math.max(60, strat.confidence + randomJitter));
-      // Optionally randomize or alternate direction slightly during fallback simulation
       const randomDirection: 'UP' | 'DOWN' = Math.random() > 0.5 ? 'UP' : 'DOWN';
       
       return { 
