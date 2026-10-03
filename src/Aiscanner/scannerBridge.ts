@@ -12,39 +12,15 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static activeListener: any = null;
-  // STRICTLY false on every initial module load or page refresh
+  // STRICTLY false on every initial page load or fresh tab
   private static isScannerActive: boolean = false; 
 
   static {
     if (typeof window !== 'undefined') {
-      const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
-      if (!sessionStarted) {
-        // Aggressively purge lingering workspace, bot, and quick strategy caches left by Deriv on a fresh tab open
-        for (let i = localStorage.length - 1; i >= 0; i--) {
-          const key = localStorage.key(i);
-          if (key && (key.includes('deriv') || key.includes('blockly') || key.includes('quick_strategy') || key.includes('dbot'))) {
-            if (key.includes('workspace') || key.includes('strategy') || key.includes('bot') || key.includes('quick')) {
-              localStorage.removeItem(key);
-            }
-          }
-        }
-        localStorage.removeItem('deriv_ai_scanner_persistent_strategy');
-        ScannerBridge.isScannerActive = false;
-
-        // Force a delayed workspace check to wipe any pre-rendered default template blocks on fresh session load
-        setTimeout(() => {
-          try {
-            const Blockly = (window as any).Blockly;
-            const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
-            if (workspace && !ScannerBridge.isScannerActive && typeof workspace.clear === 'function') {
-              workspace.clear();
-            }
-          } catch (e) {}
-        }, 500);
-
-      } else {
-        ScannerBridge.isScannerActive = true;
-      }
+      // Do NOT purge localStorage keys. Let Deriv manage its standard workspace cache normally.
+      // Reset scanner active state strictly on fresh page boot:
+      ScannerBridge.isScannerActive = false;
+      sessionStorage.removeItem('AI_SCANNER_SESSION_ACTIVE');
     }
   }
 
@@ -72,7 +48,7 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    // HARD GUARD: If the scanner has not been explicitly activated by the user click, completely abort.
+    // HARD GUARD: If the scanner has not been explicitly activated by user click, abort entirely.
     if (!ScannerBridge.isScannerActive) return false;
 
     const rootStore = (window as any).derivBotAppStore;
@@ -97,7 +73,6 @@ export class ScannerBridge {
           quickStrategy.setValue('size', martingaleMultiplier);
         }
         
-        // Triggers Deriv's Quick Strategy engine to render blocks on the canvas
         const mockFormData = {
           symbol: strictDerivSymbol, 
           durationtype: payload.durationUnit || 't', 
@@ -209,7 +184,7 @@ export class ScannerBridge {
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // EXPLICIT USER ACTION: Flip flags true and mark session active when user clicks load
+    // Explicit user action: activate the scanner flag for this session
     ScannerBridge.isScannerActive = true;
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
