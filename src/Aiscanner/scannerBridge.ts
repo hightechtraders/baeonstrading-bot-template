@@ -13,7 +13,7 @@ import InfoPanel from './info-panel';
 type TMobileIconGuide = {
     handleTabChange: (active_number: number) => void;
 };
-
+ 
 const DashboardComponent = observer(({ handleTabChange }: TMobileIconGuide) => {
     const { load_modal, dashboard, client } = useStore();
     const { dashboard_strategies } = load_modal;
