@@ -17,10 +17,34 @@ export class ScannerBridge {
 
   static {
     if (typeof window !== 'undefined') {
-      // Do NOT purge localStorage keys. Let Deriv manage its standard workspace cache normally.
-      // Reset scanner active state strictly on fresh page boot:
-      ScannerBridge.isScannerActive = false;
-      sessionStorage.removeItem('AI_SCANNER_SESSION_ACTIVE');
+      const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
+      if (!sessionStarted) {
+        ScannerBridge.isScannerActive = false;
+
+        // MOUNT-AND-CLEAR RESET: Wait for Deriv to load its cached workspace on boot,
+        // then clear it once to expose a pristine default template state.
+        const resetTimer = setInterval(() => {
+          try {
+            const Blockly = (window as any).Blockly;
+            const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
+            
+            if (workspace) {
+              if (typeof workspace.clear === 'function') {
+                workspace.clear();
+              }
+              clearInterval(resetTimer);
+            }
+          } catch (e) {
+            // Retries until the Blockly workspace is fully mounted in the DOM
+          }
+        }, 200);
+
+        // Safety fallback timer to clear interval after 5 seconds if workspace isn't found
+        setTimeout(() => clearInterval(resetTimer), 5000);
+
+      } else {
+        ScannerBridge.isScannerActive = true;
+      }
     }
   }
 
