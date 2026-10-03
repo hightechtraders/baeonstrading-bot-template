@@ -11,6 +11,10 @@ export const FloatingAI: React.FC = () => {
   const [isScanning, setIsScanning] = useState(true);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   
+  // 🎯 New state for visual signal banner notifications
+  const [signalBannerText, setSignalBannerText] = useState<string>("🔍 Scanning Volatility 50 (1s) for 99% Trend Lock...");
+  const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
+
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const expandedIndexRef = useRef<number | null>(null);
 
@@ -23,11 +27,26 @@ export const FloatingAI: React.FC = () => {
   const [stopLoss, setStopLoss] = useState<number>(20);
   const [takeProfit, setTakeProfit] = useState<number>(50);
 
+  // Listen for signal lock event from scannerLogic
+  useEffect(() => {
+    const handleSignalLock = (e: CustomEvent) => {
+      setSignalBannerText(e.detail?.message || "🎯 99% CONFIDENCE LOCKED (3x Ticks): Ready to Load Strategy");
+      setIsSignalLocked(true);
+    };
+
+    window.addEventListener('ai-signal-locked', handleSignalLock as EventListener);
+    return () => {
+      window.removeEventListener('ai-signal-locked', handleSignalLock as EventListener);
+    };
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       // 1. Reset state only when modal first opens
       setIsScanning(true);
       setExpandedIndex(null);
+      setIsSignalLocked(false);
+      setSignalBannerText("🔍 Scanning Volatility 50 (1s) for 99% Trend Lock...");
 
       // 2. Initial 2-second scan delay
       const scanTimeout = setTimeout(() => {
@@ -83,6 +102,26 @@ export const FloatingAI: React.FC = () => {
               <h2>AI Multi-Asset Scanner</h2>
               <button className="close-btn" onClick={() => setIsOpen(false)}>×</button>
             </div>
+            
+            {/* 🎯 VISUAL SIGNAL BANNER */}
+            <div 
+              id="ai-signal-banner"
+              style={{
+                background: isSignalLocked ? 'rgba(46, 212, 121, 0.15)' : '#141824',
+                border: `1px solid ${isSignalLocked ? '#2ed479' : '#1e2335'}`,
+                borderRadius: '8px',
+                padding: '10px 14px',
+                margin: '10px 0 16px 0',
+                color: isSignalLocked ? '#2ed479' : '#6c718c',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                textAlign: 'center',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {signalBannerText}
+            </div>
+
             <p className="scanner-instruction">Balanced strategies rank below. Tap card to edit.</p>
 
             {/* SCANNING STATE HEADER OR TOP GLOBAL WINNER */}
