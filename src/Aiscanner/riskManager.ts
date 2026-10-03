@@ -28,8 +28,14 @@ export class RiskManager {
   }
 
   public static initPipeline(): void {
-    if (this.isInitialized) return;
+    if (this.isInitialized) {
+      this.suppressNativeAlerts();
+      return;
+    }
     this.isInitialized = true;
+
+    // Suppress unwanted native browser alerts globally
+    this.suppressNativeAlerts();
 
     if (!this.boundMessageHandler) {
       this.boundMessageHandler = (event: MessageEvent) => {
@@ -54,6 +60,26 @@ export class RiskManager {
         return originalSend.apply(this, args);
       };
     }
+  }
+
+  private static suppressNativeAlerts(): void {
+    if (typeof window === 'undefined') return;
+    const originalAlert = window.alert;
+    window.alert = function (message?: any) {
+      const msgStr = String(message || '').toLowerCase();
+      // Block native browser popups so only the custom UI renders
+      if (
+        msgStr.includes('profit threshold') || 
+        msgStr.includes('drawdown') || 
+        msgStr.includes('circuit breaker') ||
+        msgStr.includes('profit') ||
+        msgStr.includes('loss')
+      ) {
+        console.log('[RiskManager] Suppressed native browser alert:', message);
+        return;
+      }
+      return originalAlert.apply(window, arguments);
+    };
   }
 
   private static handleSettlement(contractNode: any): void {
