@@ -12,7 +12,27 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static activeListener: any = null;
+  // STRICTLY false until user explicitly clicks a strategy on the scanner
   private static isScannerActive: boolean = false; 
+
+  static {
+    if (typeof window !== 'undefined') {
+      const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
+      if (!sessionStarted) {
+        ScannerBridge.isScannerActive = false;
+        
+        // FRESH BOOT CACHE WIPE: Clear persistent workspace cache on fresh tab load 
+        // so stale scanner blocks never render automatically on mount.
+        try {
+          localStorage.removeItem('deriv-workspace');
+          localStorage.removeItem('saved_xml');
+          localStorage.removeItem('quick_strategy_saved_xml');
+        } catch (e) {}
+      } else {
+        ScannerBridge.isScannerActive = true;
+      }
+    }
+  }
 
   private static translateSymbol(rawSymbol: string): string {
     if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
@@ -38,7 +58,10 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    ScannerBridge.isScannerActive = true;
+    // 🛡️ ABSOLUTE HARD GUARD: Aborts instantly if the scanner has not been activated by a user click.
+    if (!ScannerBridge.isScannerActive) {
+      return false;
+    }
 
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
@@ -50,7 +73,6 @@ export class ScannerBridge {
     const storeType = isFall ? 'fall' : 'rise';
     const martingaleMultiplier = 2.4;
 
-    // 1. Update the Quick Strategy Store State
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -77,16 +99,11 @@ export class ScannerBridge {
 
         const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
         if (typeof submitAction === 'function') {
-          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).catch(err => {
-            console.warn("[ScannerBridge] Store submission caught warning:", err);
-          });
+          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).catch(() => {});
         }
-      } catch (error) {
-        console.warn("[ScannerBridge] Quick strategy store method failed:", error);
-      }
+      } catch (error) {}
     }
 
-    // 2. Safe Block Field Mutations
     const applyBlockMutations = () => {
       if (!ScannerBridge.isScannerActive) return;
 
@@ -179,6 +196,12 @@ export class ScannerBridge {
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
+    // 🔓 Explicit unlock: Activates session flag only when user interacts with the scanner
+    ScannerBridge.isScannerActive = true;
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
+    }
+
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
 
