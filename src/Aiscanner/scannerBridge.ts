@@ -16,19 +16,17 @@ export class ScannerBridge {
 
   static {
     if (typeof window !== 'undefined') {
-      const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
-      const isFreshPageLoad = navEntries.length > 0 && navEntries[0].type === 'navigate';
+      const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
 
-      if (isFreshPageLoad) {
-        // On a fresh browser load or tab open, we ensure the bridge starts locked.
-        // We do NOT clear the workspace, allowing Deriv to load its official clean default blocks template naturally.
+      if (!sessionStarted) {
+        // Fresh session or tab load: Lock the scanner and allow clean defaults
         ScannerBridge.isScannerActive = false;
         try {
           sessionStorage.removeItem('AI_SCANNER_SESSION_ACTIVE');
         } catch (e) {}
       } else {
-        const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
-        ScannerBridge.isScannerActive = !!sessionStarted;
+        // Existing active session within the tab
+        ScannerBridge.isScannerActive = true;
       }
     }
   }
