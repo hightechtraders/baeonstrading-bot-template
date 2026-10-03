@@ -3,7 +3,7 @@ import { ScannerLogic } from './scannerLogic';
 import { ScannerBridge } from './scannerBridge';
 import { Strategy } from './strategies';
 import './FloatingAI.css';
-
+ 
 const scanner = new ScannerLogic();
 
 export const FloatingAI: React.FC = () => {
