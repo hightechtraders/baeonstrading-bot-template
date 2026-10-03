@@ -1,7 +1,7 @@
 // src/Aiscanner/audioAlerts.ts
 
 export class AudioAlerts {
-  public static playChime(style: 'SUCCESS_RISE' | 'ALERT_ECHO'): void {
+  public static playChime(style: 'SUCCESS_RISE' | 'ALERT_ECHO' | 'STRONG_SIGNAL_LOCK'): void {
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
@@ -20,6 +20,15 @@ export class AudioAlerts {
         gainNode.gain.setValueAtTime(0.25, now);
         gainNode.gain.linearRampToValueAtTime(0.001, now + 0.55);
         osc.start(now); osc.stop(now + 0.55);
+      } else if (style === 'STRONG_SIGNAL_LOCK') {
+        // Distinct upbeat chime for 3-tick high-confidence signal lock
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, now);       // C5
+        osc.frequency.setValueAtTime(659.25, now + 0.1);  // E5
+        osc.frequency.setValueAtTime(783.99, now + 0.2);  // G5
+        gainNode.gain.setValueAtTime(0.3, now);
+        gainNode.gain.linearRampToValueAtTime(0.001, now + 0.45);
+        osc.start(now); osc.stop(now + 0.45);
       } else {
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(220.00, now); 
