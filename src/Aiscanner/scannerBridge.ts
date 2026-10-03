@@ -11,7 +11,7 @@ export interface AIScannerPayload {
 }
 
 export class ScannerBridge {
-  // STRICTLY false on boot. No background listeners or proactive hooks.
+  // STRICTLY false on boot. No background listeners or automatic injections.
   private static isScannerActive: boolean = false; 
 
   static {
@@ -20,14 +20,11 @@ export class ScannerBridge {
       const isFreshPageLoad = navEntries.length > 0 && navEntries[0].type === 'navigate';
 
       if (isFreshPageLoad) {
-        // Force reset on fresh page loads, hard reloads, or new tabs
+        // On a fresh browser load or tab open, we ensure the bridge starts locked.
+        // We do NOT clear the workspace, allowing Deriv to load its official clean default blocks template naturally.
         ScannerBridge.isScannerActive = false;
         try {
           sessionStorage.removeItem('AI_SCANNER_SESSION_ACTIVE');
-          // Purge Deriv's persistent workspace storage so stale blocks never render on boot
-          localStorage.removeItem('deriv-workspace');
-          localStorage.removeItem('saved_xml');
-          localStorage.removeItem('quick_strategy_saved_xml');
         } catch (e) {}
       } else {
         const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
@@ -60,11 +57,11 @@ export class ScannerBridge {
   }
 
   /**
-   * Called ONLY when the user manually clicks and loads a strategy from the AI scanner.
-   * This is the single entry point that unlocks the bridge and injects parameters.
+   * Called ONLY when the user manually clicks a strategy card on the AI scanner.
+   * This is the single entry point that unlocks the bridge and applies parameters.
    */
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // 🔓 Explicit user action: unlock the bridge and store session flag
+    // 🔓 Explicit user click: unlocks the bridge and flags active session
     ScannerBridge.isScannerActive = true;
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
@@ -125,7 +122,7 @@ export class ScannerBridge {
       } catch (error) {}
     }
 
-    // 2. Immediate block mutation pass (no background listeners)
+    // 2. Immediate block mutation pass to update fields on the default blocks
     const applyBlockMutations = () => {
       try {
         const Blockly = (window as any).Blockly;
