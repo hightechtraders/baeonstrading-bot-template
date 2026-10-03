@@ -1,228 +1,240 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ScannerLogic } from './scannerLogic';
-import { ScannerBridge } from './scannerBridge';
-import { RiskManager } from './riskManager';
-import { Strategy } from './strategies';
-import './FloatingAI.css';
+// src/Aiscanner/scannerBridge.ts
 
-const scanner = new ScannerLogic();
+export interface AIScannerPayload {
+  stake: number;
+  duration: number;
+  symbol: string;          
+  tradeType?: string;      
+  durationUnit?: string;   
+  stopLoss?: number;
+  takeProfit?: number;
+}
 
-export const FloatingAI: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isScanning, setIsScanning] = useState(true);
-  const [strategies, setStrategies] = useState<Strategy[]>([]);
-  
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-  const expandedIndexRef = useRef<number | null>(null);
+export class ScannerBridge {
+  private static activeListener: any = null;
+  // STRICTLY false on every initial module load or page refresh
+  private static isScannerActive: boolean = false; 
 
-  useEffect(() => {
-    expandedIndexRef.current = expandedIndex;
-  }, [expandedIndex]);
-
-  const [stake, setStake] = useState<number>(10);
-  const [stopLoss, setStopLoss] = useState<number>(20);
-  const [takeProfit, setTakeProfit] = useState<number>(50);
-
-  useEffect(() => {
-    if (isOpen) {
-      setIsScanning(true);
-      setExpandedIndex(null);
-
-      const scanTimeout = setTimeout(() => {
-        setStrategies(scanner.runScan());
-        setIsScanning(false);
-      }, 2000);
-
-      const interval = setInterval(() => {
-        setStrategies((prevStrategies) => {
-          if (expandedIndexRef.current === null) {
-            return scanner.runScan();
+  static {
+    if (typeof window !== 'undefined') {
+      const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
+      if (!sessionStarted) {
+        // Purge lingering workspace or quick strategy cache left by Deriv on a fresh tab open
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const key = localStorage.key(i);
+          if (key && (key.includes('deriv') || key.includes('blockly') || key.includes('quick_strategy'))) {
+            if (key.includes('workspace') || key.includes('strategy') || key.includes('bot')) {
+              localStorage.removeItem(key);
+            }
           }
-          return prevStrategies;
-        });
-      }, 4000);
+        }
+        localStorage.removeItem('deriv_ai_scanner_persistent_strategy');
+        ScannerBridge.isScannerActive = false;
+      } else {
+        ScannerBridge.isScannerActive = true;
+      }
 
-      return () => {
-        clearTimeout(scanTimeout);
-        clearInterval(interval);
-      };
+      // Hard reset Deriv's internal Quick Strategy store to default baseline on every fresh mount
+      setTimeout(() => {
+        const rootStore = (window as any).derivBotAppStore;
+        if (!sessionStarted && rootStore?.quick_strategy) {
+          try {
+            const qs = rootStore.quick_strategy;
+            if (typeof qs.setValue === 'function') {
+              qs.setValue('symbol', '1HZ100V');
+              qs.setValue('duration', 5);
+              qs.setValue('amount', 10);
+              qs.setValue('contract_type', 'CALL');
+              qs.setValue('type', 'rise');
+            }
+          } catch (e) {}
+        }
+      }, 500);
     }
-  }, [isOpen]);
+  }
 
-  const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
-  const topWinner = sortedStrategies[0];
-  const otherStrategies = sortedStrategies.slice(1);
+  private static translateSymbol(rawSymbol: string): string {
+    if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
+    
+    const clean = rawSymbol
+      .toUpperCase()
+      .replace(/INDEX/g, '')
+      .replace(/[\s\(\)]+/g, '');
+    
+    const symbolMap: Record<string, string> = {
+      'VOLATILITY101S':  '1HZ10V',
+      'VOLATILITY501S': '1HZ50V',
+      'VOLATILITY751S': '1HZ75V',
+      'VOLATILITY1001S':'1HZ100V',
+      'VOLATILITY10':     'R_10',
+      'VOLATILITY25':     'R_25',
+      'VOLATILITY50':     'R_50',
+      'VOLATILITY75':     'R_75',
+      'VOLATILITY100':    'R_100',
+    };
 
-  const handleRunBot = (strat: Strategy) => {
-    ScannerBridge.loadStrategyToWorkspace(strat, { stake, stopLoss, takeProfit });
-    RiskManager.configure(stopLoss, takeProfit);
+    return symbolMap[clean] || '1HZ100V';
+  }
 
-    alert(`Strategy "${strat.name}" successfully loaded & Risk circuit breaker armed! Click the main platform run button to execute.`);
-    setIsOpen(false);
-  };
+  public static injectViaStore(payload: AIScannerPayload): boolean {
+    // HARD GUARD: If the scanner has not been explicitly activated by the user click, completely abort.
+    if (!ScannerBridge.isScannerActive) return false;
 
-  const handleCardClick = (strat: Strategy, index: number) => {
-    const newIndex = expandedIndex === index ? null : index;
-    setExpandedIndex(newIndex);
-    setStake(strat.recommendedStake || 10);
-    setStopLoss(strat.recommendedStopLoss || 20);
-    setTakeProfit(strat.recommendedTakeProfit || 50);
-  };
+    const rootStore = (window as any).derivBotAppStore;
+    const strictDerivSymbol = this.translateSymbol(payload.symbol);
+    
+    const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
+    const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
+    
+    const storeContractType = isFall ? 'PUT' : 'CALL';
+    const storeType = isFall ? 'fall' : 'rise';
+    const martingaleMultiplier = 2.4;
 
-  return (
-    <div className="floating-ai-container">
-      <button className="dancing-orb" onClick={() => setIsOpen(true)}>
-        🤖 AI
-      </button>
+    if (rootStore?.quick_strategy) {
+      const quickStrategy = rootStore.quick_strategy;
+      try {
+        if (typeof quickStrategy.setValue === 'function') {
+          quickStrategy.setValue('symbol', strictDerivSymbol);
+          quickStrategy.setValue('duration', payload.duration);
+          quickStrategy.setValue('amount', payload.stake);
+          quickStrategy.setValue('contract_type', storeContractType);
+          quickStrategy.setValue('type', storeType);
+          quickStrategy.setValue('size', martingaleMultiplier);
+        }
+        
+        // Triggers Deriv's Quick Strategy engine to render blocks on the canvas
+        const mockFormData = {
+          symbol: strictDerivSymbol, 
+          durationtype: payload.durationUnit || 't', 
+          duration: payload.duration,
+          stake: payload.stake,
+          amount: payload.stake,
+          tradetype: 'rise_fall',
+          contract_type: storeContractType,
+          type: storeType,
+          size: martingaleMultiplier
+        };
 
-      {isOpen && (
-        <div className="ai-modal-backdrop" onClick={() => setIsOpen(false)}>
-          <div className="ai-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="ai-modal-header">
-              <h2>AI Multi-Asset Scanner</h2>
-              <button className="close-btn" onClick={() => setIsOpen(false)}>×</button>
-            </div>
-            <p className="scanner-instruction">Balanced strategies rank below. Tap card to edit.</p>
+        const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
+        if (typeof submitAction === 'function') {
+          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).catch(() => {});
+        }
+      } catch (error) {}
+    }
 
-            {isScanning ? (
-              <div className="global-winner-section">
-                <div className="global-winner-meta">
-                  <span>GLOBAL WINNER</span>
-                  <span>SCANNING...</span>
-                </div>
-                <div className="strategy-card top-card">
-                  <div className="card-main-row">
-                    <span className="badge-rank">#1</span>
-                    <div className="strategy-info">
-                      <strong>Analyzing Market Ticks...</strong>
-                      <div className="card-tags-row">
-                        <span className="market-tag">SYNTHETIC</span>
-                        <span className="direction-tag flat">FLAT</span>
-                      </div>
-                    </div>
-                    <span className="badge-high">50%</span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              topWinner && (
-                <div className="global-winner-section">
-                  <div className="global-winner-meta">
-                    <span>GLOBAL WINNER</span>
-                    <span>CONFIDENCE {topWinner.confidence}%</span>
-                  </div>
+    const applyBlockMutations = () => {
+      if (!ScannerBridge.isScannerActive) return;
 
-                  <div 
-                    className={`strategy-card top-card ${expandedIndex === 0 ? 'expanded' : ''}`}
-                    onClick={() => handleCardClick(topWinner, 0)}
-                  >
-                    <div className="card-main-row">
-                      <span className="badge-rank">#1</span>
-                      <div className="strategy-info">
-                        <strong>{topWinner.name}</strong>
-                        <div className="card-tags-row">
-                          <span className="market-tag">{topWinner.market}</span>
-                          {topWinner.direction && (
-                            <span className={`direction-tag ${topWinner.direction.toLowerCase()}`}>
-                              {topWinner.direction}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <span className="badge-high">HIGH</span>
-                      <span className="toggle-arrow">{expandedIndex === 0 ? '▲' : '▼'}</span>
-                    </div>
-                    <div className="card-sub-row">
-                      <span>Score {topWinner.score || topWinner.confidence}%</span>
-                      <span>Confidence {topWinner.confidence}%</span>
-                    </div>
+      try {
+        const Blockly = (window as any).Blockly;
+        const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
 
-                    {expandedIndex === 0 && (
-                      <div className="parameter-drawer" onClick={(e) => e.stopPropagation()}>
-                        <div className="input-group">
-                          <label>Stake ($):</label>
-                          <input type="number" value={stake} onChange={(e) => setStake(Number(e.target.value))} />
-                        </div>
-                        <div className="input-group">
-                          <label>Stop Loss ($):</label>
-                          <input type="number" value={stopLoss} onChange={(e) => setStopLoss(Number(e.target.value))} />
-                        </div>
-                        <div className="input-group">
-                          <label>Take Profit ($):</label>
-                          <input type="number" value={takeProfit} onChange={(e) => setTakeProfit(Number(e.target.value))} />
-                        </div>
-                        <button className="run-manual-btn" onClick={() => handleRunBot(topWinner)}>
-                          Load Strategy to Workspace
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            )}
+        if (workspace && typeof workspace.getAllBlocks === 'function') {
+          const blocks = workspace.getAllBlocks(false);
+          if (Array.isArray(blocks)) {
+            let updated = false;
 
-            {!isScanning && (
-              <div className="strategy-list">
-                {otherStrategies.map((strat, idx) => {
-                  const actualIndex = idx + 1;
-                  const isExpanded = expandedIndex === actualIndex;
+            blocks.forEach((block: any) => {
+              if (!block) return;
 
-                  return (
-                    <div 
-                      key={strat.id || actualIndex} 
-                      className={`strategy-card ${isExpanded ? 'expanded' : ''}`}
-                      onClick={() => handleCardClick(strat, actualIndex)}
-                    >
-                      <div className="card-main-row">
-                        {/* FIXED: Removed unwanted + 1 offset so ranking shows correctly as #2, #3... */}
-                        <span className="badge-rank">#{actualIndex}</span>
-                        <div className="strategy-info">
-                          <strong>{strat.name}</strong>
-                          <div className="card-tags-row">
-                            <span className="market-tag">{strat.market}</span>
-                            {strat.direction && (
-                              <span className={`direction-tag ${strat.direction.toLowerCase()}`}>
-                                {strat.direction}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <span className="badge-medium">MEDIUM</span>
-                        <span className="toggle-arrow">{isExpanded ? '▲' : '▼'}</span>
-                      </div>
-                      <div className="card-sub-row">
-                        <span>Score {strat.score || strat.confidence}%</span>
-                        <span>Confidence {strat.confidence}%</span>
-                      </div>
+              if (typeof block.getField === 'function') {
+                const symbolField = block.getField('SYMBOL_LIST');
+                if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
+                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
+                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                    if (!exists) {
+                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
+                    }
+                  }
+                  symbolField.setValue(strictDerivSymbol);
+                  updated = true;
+                }
+              }
 
-                      {isExpanded && (
-                        <div className="parameter-drawer" onClick={(e) => e.stopPropagation()}>
-                          <div className="input-group">
-                            <label>Stake ($):</label>
-                            <input type="number" value={stake} onChange={(e) => setStake(Number(e.target.value))} />
-                          </div>
-                          <div className="input-group">
-                            <label>Stop Loss ($):</label>
-                            <input type="number" value={stopLoss} onChange={(e) => setStopLoss(Number(e.target.value))} />
-                          </div>
-                          <div className="input-group">
-                            <label>Take Profit ($):</label>
-                            <input type="number" value={takeProfit} onChange={(e) => setTakeProfit(Number(e.target.value))} />
-                          </div>
-                          <button className="run-manual-btn" onClick={() => handleRunBot(strat)}>
-                            Load Strategy to Workspace
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
+                const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
+                fieldNames.forEach(name => {
+                  const field = block.getField(name);
+                  if (field && typeof field.setValue === 'function') {
+                    const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
+                    const targetMatch = options.find((opt: any) => {
+                      const label = String(opt[0] || '').toLowerCase();
+                      const val = String(opt[1] || '').toLowerCase();
+                      if (isFall) {
+                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
+                      } else {
+                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
+                      }
+                    });
 
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+                    const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
+                    if (field.getValue() !== desiredVal) {
+                      field.setValue(desiredVal);
+                      updated = true;
+                    }
+                  }
+                });
+              }
+            });
+
+            if (updated && typeof workspace.render === 'function') {
+              workspace.render();
+            }
+          }
+        }
+      } catch (e) {}
+    };
+
+    try {
+      const Blockly = (window as any).Blockly;
+      const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
+      
+      if (workspace && workspace.addChangeListener) {
+        if (ScannerBridge.activeListener) {
+          workspace.removeChangeListener(ScannerBridge.activeListener);
+        }
+        
+        ScannerBridge.activeListener = (event: any) => {
+          if (!ScannerBridge.isScannerActive) return;
+          if (event && (event.type === Blockly.Events.BLOCK_CREATE || event.type === Blockly.Events.FINISHED_LOADING || event.type === Blockly.Events.UI)) {
+            applyBlockMutations();
+          }
+        };
+        workspace.addChangeListener(ScannerBridge.activeListener);
+      }
+    } catch (err) {}
+
+    applyBlockMutations();
+    setTimeout(applyBlockMutations, 100);
+    setTimeout(applyBlockMutations, 300);
+    setTimeout(applyBlockMutations, 600);
+    setTimeout(applyBlockMutations, 1000);
+
+    return true;
+  }
+
+  public static loadStrategyToWorkspace(strategy: any, options: any) {
+    // EXPLICIT USER ACTION: Flip flags true and mark session active when user clicks load
+    ScannerBridge.isScannerActive = true;
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
+    }
+
+    const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
+    const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
+
+    const payload: AIScannerPayload = {
+      symbol: rawSymbol,
+      stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
+      duration: options?.duration || strategy?.duration || 5,
+      tradeType: strategyDirection,
+      durationUnit: options?.durationUnit || 't',
+      stopLoss: options?.stopLoss || strategy?.stopLoss || 150,
+      takeProfit: options?.takeProfit || strategy?.takeProfit || 100
+    };
+
+    return this.injectViaStore(payload);
+  }
+}
+
+export const scannerBridge = ScannerBridge;
