@@ -15,6 +15,27 @@ export class ScannerBridge {
   // STRICTLY false on every initial module load or page refresh
   private static isScannerActive: boolean = false; 
 
+  static {
+    if (typeof window !== 'undefined') {
+      const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
+      if (!sessionStarted) {
+        // Purge lingering workspace or quick strategy cache left by Deriv on a fresh tab open
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const key = localStorage.key(i);
+          if (key && (key.includes('deriv') || key.includes('blockly') || key.includes('quick_strategy'))) {
+            if (key.includes('workspace') || key.includes('strategy') || key.includes('bot')) {
+              localStorage.removeItem(key);
+            }
+          }
+        }
+        localStorage.removeItem('deriv_ai_scanner_persistent_strategy');
+        ScannerBridge.isScannerActive = false;
+      } else {
+        ScannerBridge.isScannerActive = true;
+      }
+    }
+  }
+
   private static translateSymbol(rawSymbol: string): string {
     if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
     
@@ -64,7 +85,7 @@ export class ScannerBridge {
           quickStrategy.setValue('size', martingaleMultiplier);
         }
         
-        // RESTORED: This triggers Deriv's Quick Strategy engine to render blocks on the canvas
+        // Triggers Deriv's Quick Strategy engine to render blocks on the canvas
         const mockFormData = {
           symbol: strictDerivSymbol, 
           durationtype: payload.durationUnit || 't', 
@@ -176,8 +197,11 @@ export class ScannerBridge {
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // EXPLICIT USER ACTION: Only flip this flag true when the user actually clicks load from the scanner
+    // EXPLICIT USER ACTION: Flip flags true and mark session active when user clicks load
     ScannerBridge.isScannerActive = true;
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
+    }
 
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
