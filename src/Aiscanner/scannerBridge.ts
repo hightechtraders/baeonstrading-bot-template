@@ -9,7 +9,7 @@ export interface AIScannerPayload {
   stopLoss?: number;
   takeProfit?: number;
 }
-
+ 
 export class ScannerBridge {
   private static activeListener: any = null;
   private static isScannerActive: boolean = false; 
