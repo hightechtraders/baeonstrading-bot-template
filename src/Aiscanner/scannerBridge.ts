@@ -19,17 +19,29 @@ export class ScannerBridge {
     if (typeof window !== 'undefined') {
       const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
       if (!sessionStarted) {
-        // Purge lingering workspace or quick strategy cache left by Deriv on a fresh tab open
+        // Aggressively purge lingering workspace, bot, and quick strategy caches left by Deriv on a fresh tab open
         for (let i = localStorage.length - 1; i >= 0; i--) {
           const key = localStorage.key(i);
-          if (key && (key.includes('deriv') || key.includes('blockly') || key.includes('quick_strategy'))) {
-            if (key.includes('workspace') || key.includes('strategy') || key.includes('bot')) {
+          if (key && (key.includes('deriv') || key.includes('blockly') || key.includes('quick_strategy') || key.includes('dbot'))) {
+            if (key.includes('workspace') || key.includes('strategy') || key.includes('bot') || key.includes('quick')) {
               localStorage.removeItem(key);
             }
           }
         }
         localStorage.removeItem('deriv_ai_scanner_persistent_strategy');
         ScannerBridge.isScannerActive = false;
+
+        // Force a delayed workspace check to wipe any pre-rendered default template blocks on fresh session load
+        setTimeout(() => {
+          try {
+            const Blockly = (window as any).Blockly;
+            const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
+            if (workspace && !ScannerBridge.isScannerActive && typeof workspace.clear === 'function') {
+              workspace.clear();
+            }
+          } catch (e) {}
+        }, 500);
+
       } else {
         ScannerBridge.isScannerActive = true;
       }
