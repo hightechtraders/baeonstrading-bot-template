@@ -63,6 +63,24 @@ export class ScannerBridge {
           quickStrategy.setValue('type', storeType);
           quickStrategy.setValue('size', martingaleMultiplier);
         }
+        
+        // RESTORED: This triggers Deriv's Quick Strategy engine to render blocks on the canvas
+        const mockFormData = {
+          symbol: strictDerivSymbol, 
+          durationtype: payload.durationUnit || 't', 
+          duration: payload.duration,
+          stake: payload.stake,
+          amount: payload.stake,
+          tradetype: 'rise_fall',
+          contract_type: storeContractType,
+          type: storeType,
+          size: martingaleMultiplier
+        };
+
+        const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
+        if (typeof submitAction === 'function') {
+          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).catch(() => {});
+        }
       } catch (error) {}
     }
 
