@@ -11,8 +11,7 @@ export interface AIScannerPayload {
 }
 
 export class ScannerBridge {
-  private static activeListener: any = null;
-  // STRICTLY false until user explicitly clicks a strategy on the scanner
+  // STRICTLY false on boot. No background listeners or proactive hooks.
   private static isScannerActive: boolean = false; 
 
   static {
@@ -21,10 +20,11 @@ export class ScannerBridge {
       const isFreshPageLoad = navEntries.length > 0 && navEntries[0].type === 'navigate';
 
       if (isFreshPageLoad) {
-        // Force reset on any fresh browser page load, hard reload, or new tab
+        // Force reset on fresh page loads, hard reloads, or new tabs
         ScannerBridge.isScannerActive = false;
         try {
           sessionStorage.removeItem('AI_SCANNER_SESSION_ACTIVE');
+          // Purge Deriv's persistent workspace storage so stale blocks never render on boot
           localStorage.removeItem('deriv-workspace');
           localStorage.removeItem('saved_xml');
           localStorage.removeItem('quick_strategy_saved_xml');
@@ -59,12 +59,29 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
-  public static injectViaStore(payload: AIScannerPayload): boolean {
-    // 🛡️ ABSOLUTE HARD GUARD: Aborts instantly if the scanner has not been activated by a manual user click.
-    // Zero communication with rootStore or quick_strategy happens until this evaluates to true.
-    if (!ScannerBridge.isScannerActive) {
-      return false;
+  /**
+   * Called ONLY when the user manually clicks and loads a strategy from the AI scanner.
+   * This is the single entry point that unlocks the bridge and injects parameters.
+   */
+  public static loadStrategyToWorkspace(strategy: any, options: any) {
+    // 🔓 Explicit user action: unlock the bridge and store session flag
+    ScannerBridge.isScannerActive = true;
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
     }
+
+    const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
+    const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
+
+    const payload: AIScannerPayload = {
+      symbol: rawSymbol,
+      stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
+      duration: options?.duration || strategy?.duration || 5,
+      tradeType: strategyDirection,
+      durationUnit: options?.durationUnit || 't',
+      stopLoss: options?.stopLoss || strategy?.stopLoss || 150,
+      takeProfit: options?.takeProfit || strategy?.takeProfit || 100
+    };
 
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
@@ -76,6 +93,7 @@ export class ScannerBridge {
     const storeType = isFall ? 'fall' : 'rise';
     const martingaleMultiplier = 2.4;
 
+    // 1. Push payload to Deriv rootStore on explicit click
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -107,9 +125,8 @@ export class ScannerBridge {
       } catch (error) {}
     }
 
+    // 2. Immediate block mutation pass (no background listeners)
     const applyBlockMutations = () => {
-      if (!ScannerBridge.isScannerActive) return;
-
       try {
         const Blockly = (window as any).Blockly;
         const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
@@ -170,55 +187,11 @@ export class ScannerBridge {
       } catch (e) {}
     };
 
-    try {
-      const Blockly = (window as any).Blockly;
-      const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
-      
-      if (workspace && workspace.addChangeListener) {
-        if (ScannerBridge.activeListener) {
-          workspace.removeChangeListener(ScannerBridge.activeListener);
-        }
-        
-        ScannerBridge.activeListener = (event: any) => {
-          if (!ScannerBridge.isScannerActive) return;
-          if (event && (event.type === Blockly.Events.BLOCK_CREATE || event.type === Blockly.Events.FINISHED_LOADING || event.type === Blockly.Events.UI)) {
-            applyBlockMutations();
-          }
-        };
-        workspace.addChangeListener(ScannerBridge.activeListener);
-      }
-    } catch (err) {}
-
     applyBlockMutations();
-    setTimeout(applyBlockMutations, 100);
-    setTimeout(applyBlockMutations, 300);
-    setTimeout(applyBlockMutations, 600);
-    setTimeout(applyBlockMutations, 1000);
+    setTimeout(applyBlockMutations, 150);
+    setTimeout(applyBlockMutations, 400);
 
     return true;
-  }
-
-  public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // 🔓 Explicit user action: Unlocks the bridge and flags active session only when a strategy is manually selected
-    ScannerBridge.isScannerActive = true;
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
-    }
-
-    const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
-    const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
-
-    const payload: AIScannerPayload = {
-      symbol: rawSymbol,
-      stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
-      duration: options?.duration || strategy?.duration || 5,
-      tradeType: strategyDirection,
-      durationUnit: options?.durationUnit || 't',
-      stopLoss: options?.stopLoss || strategy?.stopLoss || 150,
-      takeProfit: options?.takeProfit || strategy?.takeProfit || 100
-    };
-
-    return this.injectViaStore(payload);
   }
 }
 
