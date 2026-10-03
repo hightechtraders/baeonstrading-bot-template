@@ -20,28 +20,38 @@ export class ScannerBridge {
       const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
       if (!sessionStarted) {
         ScannerBridge.isScannerActive = false;
-
-        // MOUNT-AND-CLEAR RESET: Wait for Deriv to load its cached workspace on boot,
-        // then clear it once to expose a pristine default template state.
-        const resetTimer = setInterval(() => {
-          try {
-            const Blockly = (window as any).Blockly;
-            const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
-            
-            if (workspace) {
-              if (typeof workspace.clear === 'function') {
-                workspace.clear();
-              }
-              clearInterval(resetTimer);
+        
+        // Clear cached quick strategy localStorage on fresh page load to prevent unwanted persistence
+        try {
+          const keysToRemove: string[] = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.includes('quick-strategy') || key.includes('quick_strategy') || key.includes('bot_settings'))) {
+              keysToRemove.push(key);
             }
-          } catch (e) {
-            // Retries until the Blockly workspace is fully mounted in the DOM
           }
-        }, 200);
+          keysToRemove.forEach(k => localStorage.removeItem(k));
+        } catch (e) {}
 
-        // Safety fallback timer to clear interval after 5 seconds if workspace isn't found
-        setTimeout(() => clearInterval(resetTimer), 5000);
+        // Fallback store reset once Deriv stores mount on fresh boot
+        const defaultResetTimer = setInterval(() => {
+          try {
+            const rootStore = (window as any).derivBotAppStore;
+            if (rootStore?.quick_strategy) {
+              const qs = rootStore.quick_strategy;
+              if (typeof qs.setValue === 'function') {
+                qs.setValue('symbol', '1HZ100V');
+                qs.setValue('duration', 5);
+                qs.setValue('amount', 10);
+                qs.setValue('contract_type', 'CALL');
+                qs.setValue('type', 'rise');
+              }
+              clearInterval(defaultResetTimer);
+            }
+          } catch (err) {}
+        }, 250);
 
+        setTimeout(() => clearInterval(defaultResetTimer), 5000);
       } else {
         ScannerBridge.isScannerActive = true;
       }
