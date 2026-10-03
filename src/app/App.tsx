@@ -39,23 +39,6 @@ const i18nInstance = initializeI18n({ cdnUrl: '' });
  */
 const ScannerTickSubscriber = () => {
     useEffect(() => {
-        // Clear any preloaded template blocks on initial page load / mount
-        const cleanupTimer = setTimeout(() => {
-            try {
-                const Blockly = (window as any).Blockly;
-                const workspace = Blockly?.mainWorkspace;
-                if (workspace && typeof workspace.clear === 'function') {
-                    const blocks = workspace.getAllBlocks(false);
-                    // If Deriv preloaded default quick strategy blocks on boot, clear them
-                    if (blocks && blocks.length > 0) {
-                        workspace.clear();
-                    }
-                }
-            } catch (e) {
-                console.warn("[App] Initial workspace clear warning:", e);
-            }
-        }, 600); // 600ms delay to let Deriv's template inject first, then wipe it clean
-
         const handleTickEvent = (e: CustomEvent | MessageEvent) => {
             let detail = (e as CustomEvent).detail;
 
@@ -86,7 +69,6 @@ const ScannerTickSubscriber = () => {
         window.addEventListener('ws:tick' as any, handleTickEvent);
 
         return () => {
-            clearTimeout(cleanupTimer);
             window.removeEventListener('deriv:tick' as any, handleTickEvent);
             window.removeEventListener('ws:tick' as any, handleTickEvent);
         };
