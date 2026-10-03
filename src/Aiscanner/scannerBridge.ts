@@ -12,22 +12,8 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static activeListener: any = null;
-  // Strictly false on every fresh page load or tab open
+  // STRICTLY false on every initial module load or page refresh
   private static isScannerActive: boolean = false; 
-
-  static {
-    if (typeof window !== 'undefined') {
-      const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
-      if (!sessionStarted) {
-        // Fresh browser tab or page refresh detected: clear cache and ensure inactive state
-        localStorage.removeItem('deriv_ai_scanner_persistent_strategy');
-        ScannerBridge.isScannerActive = false;
-      } else {
-        // If session was already marked active previously in this tab session
-        ScannerBridge.isScannerActive = true;
-      }
-    }
-  }
 
   private static translateSymbol(rawSymbol: string): string {
     if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
@@ -53,7 +39,7 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    // HARD GUARD: If the scanner has not been explicitly activated by the user clicking a strategy, do absolutely nothing.
+    // HARD GUARD: If the scanner has not been explicitly activated by the user click, completely abort.
     if (!ScannerBridge.isScannerActive) return false;
 
     const rootStore = (window as any).derivBotAppStore;
@@ -76,23 +62,6 @@ export class ScannerBridge {
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
           quickStrategy.setValue('size', martingaleMultiplier);
-        }
-        
-        const mockFormData = {
-          symbol: strictDerivSymbol, 
-          durationtype: payload.durationUnit || 't', 
-          duration: payload.duration,
-          stake: payload.stake,
-          amount: payload.stake,
-          tradetype: 'rise_fall',
-          contract_type: storeContractType,
-          type: storeType,
-          size: martingaleMultiplier
-        };
-
-        const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
-        if (typeof submitAction === 'function') {
-          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).catch(() => {});
         }
       } catch (error) {}
     }
@@ -189,11 +158,8 @@ export class ScannerBridge {
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // ONLY activate here when the user explicitly clicks a strategy to load
+    // EXPLICIT USER ACTION: Only flip this flag true when the user actually clicks load from the scanner
     ScannerBridge.isScannerActive = true;
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
-    }
 
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
