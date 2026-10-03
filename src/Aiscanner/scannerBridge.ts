@@ -90,7 +90,7 @@ export class ScannerBridge {
     const storeType = isFall ? 'fall' : 'rise';
     const martingaleMultiplier = 2.4;
 
-    // 1. Push payload to Deriv rootStore on explicit click
+    // 1. Push payload including Stop Loss & Take Profit to rootStore quick_strategy on explicit click
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -101,6 +101,15 @@ export class ScannerBridge {
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
           quickStrategy.setValue('size', martingaleMultiplier);
+          
+          if (payload.stopLoss !== undefined) {
+            quickStrategy.setValue('loss', payload.stopLoss);
+            quickStrategy.setValue('stop_loss', payload.stopLoss);
+          }
+          if (payload.takeProfit !== undefined) {
+            quickStrategy.setValue('profit', payload.takeProfit);
+            quickStrategy.setValue('take_profit', payload.takeProfit);
+          }
         }
         
         const mockFormData = {
@@ -112,7 +121,11 @@ export class ScannerBridge {
           tradetype: 'rise_fall',
           contract_type: storeContractType,
           type: storeType,
-          size: martingaleMultiplier
+          size: martingaleMultiplier,
+          loss: payload.stopLoss,
+          stop_loss: payload.stopLoss,
+          profit: payload.takeProfit,
+          take_profit: payload.takeProfit
         };
 
         const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
