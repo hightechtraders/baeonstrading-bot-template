@@ -1,4 +1,5 @@
 // src/Aiscanner/scannerBridge.ts
+import { RiskManager } from './riskManager'; // 👈 1. Import the RiskManager
 
 export interface AIScannerPayload {
   stake: number;
@@ -11,7 +12,6 @@ export interface AIScannerPayload {
 }
 
 export class ScannerBridge {
-  // STRICTLY false on boot. No background listeners or automatic injections.
   private static isScannerActive: boolean = false; 
 
   static {
@@ -20,8 +20,6 @@ export class ScannerBridge {
       const isFreshPageLoad = navEntries.length > 0 && navEntries[0].type === 'navigate';
 
       if (isFreshPageLoad) {
-        // On a fresh browser load or tab open, we ensure the bridge starts locked.
-        // We do NOT clear the workspace, allowing Deriv to load its official clean default blocks template naturally.
         ScannerBridge.isScannerActive = false;
         try {
           sessionStorage.removeItem('AI_SCANNER_SESSION_ACTIVE');
@@ -56,12 +54,7 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
-  /**
-   * Called ONLY when the user manually clicks a strategy card on the AI scanner.
-   * This is the single entry point that unlocks the bridge and applies parameters.
-   */
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // 🔓 Explicit user click: unlocks the bridge and flags active session
     ScannerBridge.isScannerActive = true;
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
@@ -80,6 +73,9 @@ export class ScannerBridge {
       takeProfit: options?.takeProfit || strategy?.takeProfit || 100
     };
 
+    // 🔓 2. Arm the RiskManager with the payload's Stop Loss & Take Profit thresholds
+    RiskManager.configure(payload.stopLoss, payload.takeProfit);
+
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     
@@ -90,7 +86,6 @@ export class ScannerBridge {
     const storeType = isFall ? 'fall' : 'rise';
     const martingaleMultiplier = 2.4;
 
-    // 1. Push payload including Stop Loss & Take Profit to rootStore quick_strategy on explicit click
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -135,7 +130,7 @@ export class ScannerBridge {
       } catch (error) {}
     }
 
-    // 2. Immediate block mutation pass to update fields on the default blocks
+    // Block mutation pass...
     const applyBlockMutations = () => {
       try {
         const Blockly = (window as any).Blockly;
