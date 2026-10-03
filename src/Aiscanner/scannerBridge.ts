@@ -12,7 +12,6 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static activeListener: any = null;
-  // STRICTLY false on every initial page load or fresh tab
   private static isScannerActive: boolean = false; 
 
   static {
@@ -21,37 +20,15 @@ export class ScannerBridge {
       if (!sessionStarted) {
         ScannerBridge.isScannerActive = false;
         
-        // Clear cached quick strategy localStorage on fresh page load to prevent unwanted persistence
+        // SURGICAL CLEANUP: Only clear the specific Blockly workspace cache key 
+        // that Deriv uses to persist block configurations across page loads. 
+        // This leaves the welcome tour and general app settings completely intact.
         try {
-          const keysToRemove: string[] = [];
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && (key.includes('quick-strategy') || key.includes('quick_strategy') || key.includes('bot_settings'))) {
-              keysToRemove.push(key);
-            }
-          }
-          keysToRemove.forEach(k => localStorage.removeItem(k));
+          localStorage.removeItem('deriv-workspace');
+          localStorage.removeItem('saved_xml');
+          localStorage.removeItem('quick_strategy_saved_xml');
         } catch (e) {}
 
-        // Fallback store reset once Deriv stores mount on fresh boot
-        const defaultResetTimer = setInterval(() => {
-          try {
-            const rootStore = (window as any).derivBotAppStore;
-            if (rootStore?.quick_strategy) {
-              const qs = rootStore.quick_strategy;
-              if (typeof qs.setValue === 'function') {
-                qs.setValue('symbol', '1HZ100V');
-                qs.setValue('duration', 5);
-                qs.setValue('amount', 10);
-                qs.setValue('contract_type', 'CALL');
-                qs.setValue('type', 'rise');
-              }
-              clearInterval(defaultResetTimer);
-            }
-          } catch (err) {}
-        }, 250);
-
-        setTimeout(() => clearInterval(defaultResetTimer), 5000);
       } else {
         ScannerBridge.isScannerActive = true;
       }
@@ -82,7 +59,6 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    // HARD GUARD: If the scanner has not been explicitly activated by user click, abort entirely.
     if (!ScannerBridge.isScannerActive) return false;
 
     const rootStore = (window as any).derivBotAppStore;
@@ -218,7 +194,6 @@ export class ScannerBridge {
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // Explicit user action: activate the scanner flag for this session
     ScannerBridge.isScannerActive = true;
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
