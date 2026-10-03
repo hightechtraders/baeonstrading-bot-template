@@ -17,19 +17,21 @@ export class ScannerBridge {
 
   static {
     if (typeof window !== 'undefined') {
-      const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
-      if (!sessionStarted) {
+      const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+      const isFreshPageLoad = navEntries.length > 0 && navEntries[0].type === 'navigate';
+
+      if (isFreshPageLoad) {
+        // Force reset on any fresh browser page load, hard reload, or new tab
         ScannerBridge.isScannerActive = false;
-        
-        // FRESH BOOT CACHE WIPE: Clear persistent workspace cache on fresh tab load 
-        // so stale scanner blocks never render automatically on mount.
         try {
+          sessionStorage.removeItem('AI_SCANNER_SESSION_ACTIVE');
           localStorage.removeItem('deriv-workspace');
           localStorage.removeItem('saved_xml');
           localStorage.removeItem('quick_strategy_saved_xml');
         } catch (e) {}
       } else {
-        ScannerBridge.isScannerActive = true;
+        const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
+        ScannerBridge.isScannerActive = !!sessionStarted;
       }
     }
   }
@@ -58,7 +60,8 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    // 🛡️ ABSOLUTE HARD GUARD: Aborts instantly if the scanner has not been activated by a user click.
+    // 🛡️ ABSOLUTE HARD GUARD: Aborts instantly if the scanner has not been activated by a manual user click.
+    // Zero communication with rootStore or quick_strategy happens until this evaluates to true.
     if (!ScannerBridge.isScannerActive) {
       return false;
     }
@@ -196,7 +199,7 @@ export class ScannerBridge {
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // 🔓 Explicit unlock: Activates session flag only when user interacts with the scanner
+    // 🔓 Explicit user action: Unlocks the bridge and flags active session only when a strategy is manually selected
     ScannerBridge.isScannerActive = true;
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
