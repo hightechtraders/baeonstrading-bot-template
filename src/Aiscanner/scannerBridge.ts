@@ -12,17 +12,19 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static activeListener: any = null;
-  // Starts false on every fresh page load / refresh
+  // Strictly false on every fresh page load or tab open
   private static isScannerActive: boolean = false; 
 
   static {
-    // Static initializer block: Runs once when the module first loads (on page load/refresh)
-    // This ensures any persistent browser storage of the scanner state is wiped on a fresh page reload
     if (typeof window !== 'undefined') {
       const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
       if (!sessionStarted) {
-        // Fresh browser tab or page refresh detected: clear any lingering cache
+        // Fresh browser tab or page refresh detected: clear cache and ensure inactive state
         localStorage.removeItem('deriv_ai_scanner_persistent_strategy');
+        ScannerBridge.isScannerActive = false;
+      } else {
+        // If session was already marked active previously in this tab session
+        ScannerBridge.isScannerActive = true;
       }
     }
   }
@@ -51,7 +53,7 @@ export class ScannerBridge {
   }
 
   public static injectViaStore(payload: AIScannerPayload): boolean {
-    // If the scanner hasn't been activated by user click in this session, block everything
+    // HARD GUARD: If the scanner has not been explicitly activated by the user clicking a strategy, do absolutely nothing.
     if (!ScannerBridge.isScannerActive) return false;
 
     const rootStore = (window as any).derivBotAppStore;
@@ -187,7 +189,7 @@ export class ScannerBridge {
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // Mark scanner active for this session and set the flag
+    // ONLY activate here when the user explicitly clicks a strategy to load
     ScannerBridge.isScannerActive = true;
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
