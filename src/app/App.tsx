@@ -12,6 +12,7 @@ import { OAuthTokenExchangeService } from '@/services/oauth-token-exchange.servi
 import { initializeI18n, localize, TranslationProvider } from '@deriv-com/translations';
 import { scannerBridge } from '@/Aiscanner/scannerBridge';
 import { CORE_7_STRATEGIES } from '@/Aiscanner/strategies';
+import { ScannerLogic } from '@/Aiscanner/scannerLogic';
 import { FloatingAI } from '@/Aiscanner/FloatingAI';
 import CoreStoreProvider from './CoreStoreProvider';
 import './app-root.scss';
@@ -28,14 +29,19 @@ const SYMBOL_MAP: Record<string, string> = {
     'R_100': 'Volatility 100',
     '1HZ100V': 'Volatility 100 (1s)',
     '1HZ25V': 'Volatility 25 (1s)',
+    '1HZ50V': 'Volatility 50 (1s)',
+    '1HZ75V': 'Volatility 75 (1s)',
 };
 
 // Translations CDN configuration
 const i18nInstance = initializeI18n({ cdnUrl: '' });
 
+// Persistent singleton instance of your core scanner logic
+const globalScanner = new ScannerLogic();
+
 /**
  * Global tick listener component that captures market stream events 
- * and feeds price data to the AI Scanner Web Worker.
+ * and feeds price data to both the scanner bridge and logic engine.
  */
 const ScannerTickSubscriber = () => {
     useEffect(() => {
@@ -60,7 +66,12 @@ const ScannerTickSubscriber = () => {
 
             if (rawSymbol && typeof price === 'number') {
                 const assetName = SYMBOL_MAP[rawSymbol] || rawSymbol;
+                
+                // 1. Push tick into your UI bridge
                 scannerBridge.pushTick(assetName, price, CORE_7_STRATEGIES);
+
+                // 2. Feed tick into ScannerLogic to drive buffers, confidence scores, and signal locks
+                globalScanner.processLiveTick(rawSymbol, price);
             }
         };
 
