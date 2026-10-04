@@ -10,54 +10,44 @@ export class ScannerLogic {
   private consecutiveHighConfidenceCount: number = 0;
   private readonly CONFIDENCE_THRESHOLD: number = 99;
   private readonly REQUIRED_CONSECUTIVE_HITS: number = 3;
-  private isSubscribed: boolean = false;
+  private isInitialized: boolean = false;
 
   constructor() {
-    this.initWebSocketSubscription();
+    this.initProductionTickListener();
   }
 
   /**
-   * Subscribes to live Deriv WebSocket tick streams for target synthetic indices
+   * Production-grade listener that hooks into the Deriv Bot template's native messaging pipeline
    */
-  private initWebSocketSubscription() {
-    if (typeof window === 'undefined' || this.isSubscribed) return;
+  private initProductionTickListener() {
+    if (typeof window === 'undefined' || this.isInitialized) return;
+    this.isInitialized = true;
 
-    // Connect to Deriv platform WebSocket or global store
-    const checkAndSubscribe = setInterval(() => {
-      const ws = (window as any).derivWebSocket || (window as any).activeWebsocket || (window as any).ws;
-      
-      if (ws && typeof ws.send === 'function') {
-        // If WebSocket is open, send subscription request for Volatility 50 (1s) -> '1HZ50V'
-        try {
-          ws.send(JSON.stringify({ ticks: '1HZ50V', subscribe: 1 }));
-          this.isSubscribed = true;
-          clearInterval(checkAndSubscribe);
-        } catch (e) {}
-      }
-
-      // Also listen globally in case the platform's socket router broadcasts tick messages
-      window.addEventListener('message', (event) => {
-        try {
-          const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-          if (data?.msg_type === 'tick' && data?.tick) {
-            const symbol = data.tick.symbol;
-            const price = Number(data.tick.quote);
-            if (symbol && !isNaN(price)) {
-              this.processLiveTick(symbol, price);
-            }
+    // 1. Listen to real-time window postMessage data broadcasted by the Deriv platform engine
+    window.addEventListener('message', (event) => {
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        
+        // Match Deriv API tick response structure
+        if (data?.msg_type === 'tick' && data?.tick) {
+          const symbol = data.tick.symbol;
+          const price = Number(data.tick.quote);
+          if (symbol && !isNaN(price)) {
+            this.processLiveTick(symbol, price);
           }
-        } catch (err) {}
-      });
-
-      // Custom event fallback listener for modular platform bridges
-      window.addEventListener('deriv_live_tick' as any, (event: CustomEvent) => {
-        const { symbol, price } = event.detail || {};
-        if (symbol && typeof price === 'number') {
-          this.processLiveTick(symbol, price);
         }
-      });
+      } catch (err) {
+        // Silent catch for cross-origin or unparseable frames
+      }
+    });
 
-    }, 2000);
+    // 2. Custom event bridge listener for seamless component communication
+    window.addEventListener('deriv_live_tick' as any, (event: CustomEvent) => {
+      const { symbol, price } = event.detail || {};
+      if (symbol && typeof price === 'number') {
+        this.processLiveTick(symbol, price);
+      }
+    });
   }
 
   public processLiveTick(symbol: string, price: number): Strategy[] {
@@ -76,10 +66,10 @@ export class ScannerLogic {
     const prevPrice = prices[prices.length - 2];
     const diff = latestPrice - prevPrice;
 
-    // Determine live direction based on actual tick price movement
+    // Determine live direction based on actual price change
     const liveDirection: 'UP' | 'DOWN' = diff >= 0 ? 'UP' : 'DOWN';
 
-    // Dynamically update strategy confidence and direction based on real tick momentum
+    // Dynamically update strategy confidence and direction based on real market momentum
     this.strategies = this.strategies.map((strat) => {
       const matchesMarket = strat.market.toLowerCase().includes(symbol.toLowerCase().replace('r_', 'volatility ').replace('1hz', 'volatility '));
       if (matchesMarket) {
@@ -93,7 +83,7 @@ export class ScannerLogic {
           if (newConfidence >= this.CONFIDENCE_THRESHOLD) {
             this.consecutiveHighConfidenceCount++;
             
-            // Trigger alert ONLY when confidence holds steady for 3 consecutive live ticks
+            // 🚨 SIGNAL TRIGGER: Fires ONLY when confidence holds steady for 3 consecutive live ticks
             if (this.consecutiveHighConfidenceCount === this.REQUIRED_CONSECUTIVE_HITS) {
               // Play centralized upbeat strong signal chime
               AudioAlerts.playChime('STRONG_SIGNAL_LOCK');
@@ -123,7 +113,7 @@ export class ScannerLogic {
     return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
   }
 
-  // Fallback scan if WebSocket ticker stream is idle
+  // Fallback scan if ticker stream is idle
   public runScan(): Strategy[] {
     return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
   }
