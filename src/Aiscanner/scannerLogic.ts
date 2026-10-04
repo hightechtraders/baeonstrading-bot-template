@@ -16,8 +16,8 @@ export class ScannerLogic {
   }
 
   /**
-   * Registers a clean global bridge so your app's main tick loop 
-   * can feed live prices directly into the scanner with zero lag.
+   * Registers a clean global bridge so your platform's native tick loop 
+   * can push live prices directly into the scanner with zero lag.
    */
   private registerGlobalBridge() {
     if (typeof window === 'undefined') return;
@@ -27,7 +27,7 @@ export class ScannerLogic {
       this.processLiveTick(symbol, price);
     };
 
-    // Keep the custom event listener as a backup dispatch option
+    // Custom event listener as a modular fallback dispatch option
     window.addEventListener('deriv_live_tick' as any, (event: CustomEvent) => {
       const { symbol, price } = event.detail || {};
       if (symbol && typeof price === 'number') {
@@ -52,8 +52,10 @@ export class ScannerLogic {
     const prevPrice = prices[prices.length - 2];
     const diff = latestPrice - prevPrice;
 
+    // Determine live direction based on actual tick price movement
     const liveDirection: 'UP' | 'DOWN' = diff >= 0 ? 'UP' : 'DOWN';
 
+    // Dynamically update strategy confidence and direction based on real tick momentum
     this.strategies = this.strategies.map((strat) => {
       const matchesMarket = strat.market.toLowerCase().includes(symbol.toLowerCase().replace('r_', 'volatility ').replace('1hz', 'volatility '));
       if (matchesMarket) {
@@ -78,11 +80,16 @@ export class ScannerLogic {
               }
             }
           } else {
+            // Reset counter immediately if confidence flickers or drops below threshold
             this.consecutiveHighConfidenceCount = 0;
           }
         }
 
-        return { ...strat, confidence: newConfidence, direction: liveDirection };
+        return { 
+          ...strat, 
+          confidence: newConfidence,
+          direction: liveDirection 
+        };
       }
       return strat;
     });
