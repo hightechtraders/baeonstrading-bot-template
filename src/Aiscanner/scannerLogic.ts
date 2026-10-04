@@ -10,38 +10,24 @@ export class ScannerLogic {
   private consecutiveHighConfidenceCount: number = 0;
   private readonly CONFIDENCE_THRESHOLD: number = 99;
   private readonly REQUIRED_CONSECUTIVE_HITS: number = 3;
-  private isInitialized: boolean = false;
 
   constructor() {
-    this.initProductionTickListener();
+    this.registerGlobalBridge();
   }
 
   /**
-   * Production-grade listener that hooks into the Deriv Bot template's native messaging pipeline
+   * Registers a clean global bridge so your app's main tick loop 
+   * can feed live prices directly into the scanner with zero lag.
    */
-  private initProductionTickListener() {
-    if (typeof window === 'undefined' || this.isInitialized) return;
-    this.isInitialized = true;
+  private registerGlobalBridge() {
+    if (typeof window === 'undefined') return;
 
-    // 1. Listen to real-time window postMessage data broadcasted by the Deriv platform engine
-    window.addEventListener('message', (event) => {
-      try {
-        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        
-        // Match Deriv API tick response structure
-        if (data?.msg_type === 'tick' && data?.tick) {
-          const symbol = data.tick.symbol;
-          const price = Number(data.tick.quote);
-          if (symbol && !isNaN(price)) {
-            this.processLiveTick(symbol, price);
-          }
-        }
-      } catch (err) {
-        // Silent catch for cross-origin or unparseable frames
-      }
-    });
+    // Expose a direct window method that your platform engineers' tick loop can call
+    (window as any).feedScannerTick = (symbol: string, price: number) => {
+      this.processLiveTick(symbol, price);
+    };
 
-    // 2. Custom event bridge listener for seamless component communication
+    // Keep the custom event listener as a backup dispatch option
     window.addEventListener('deriv_live_tick' as any, (event: CustomEvent) => {
       const { symbol, price } = event.detail || {};
       if (symbol && typeof price === 'number') {
@@ -66,10 +52,8 @@ export class ScannerLogic {
     const prevPrice = prices[prices.length - 2];
     const diff = latestPrice - prevPrice;
 
-    // Determine live direction based on actual price change
     const liveDirection: 'UP' | 'DOWN' = diff >= 0 ? 'UP' : 'DOWN';
 
-    // Dynamically update strategy confidence and direction based on real market momentum
     this.strategies = this.strategies.map((strat) => {
       const matchesMarket = strat.market.toLowerCase().includes(symbol.toLowerCase().replace('r_', 'volatility ').replace('1hz', 'volatility '));
       if (matchesMarket) {
@@ -85,10 +69,8 @@ export class ScannerLogic {
             
             // 🚨 SIGNAL TRIGGER: Fires ONLY when confidence holds steady for 3 consecutive live ticks
             if (this.consecutiveHighConfidenceCount === this.REQUIRED_CONSECUTIVE_HITS) {
-              // Play centralized upbeat strong signal chime
               AudioAlerts.playChime('STRONG_SIGNAL_LOCK');
               
-              // Dispatch event to FloatingAI banner UI
               if (typeof window !== 'undefined') {
                 window.dispatchEvent(new CustomEvent('ai-signal-locked', {
                   detail: { message: "🎯 99% CONFIDENCE LOCKED (3x Live Ticks): Ready to Load Strategy" }
@@ -96,16 +78,11 @@ export class ScannerLogic {
               }
             }
           } else {
-            // Reset counter immediately if confidence flickers or drops below threshold
             this.consecutiveHighConfidenceCount = 0;
           }
         }
 
-        return { 
-          ...strat, 
-          confidence: newConfidence,
-          direction: liveDirection 
-        };
+        return { ...strat, confidence: newConfidence, direction: liveDirection };
       }
       return strat;
     });
@@ -113,7 +90,6 @@ export class ScannerLogic {
     return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
   }
 
-  // Fallback scan if ticker stream is idle
   public runScan(): Strategy[] {
     return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
   }
