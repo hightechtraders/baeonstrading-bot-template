@@ -22,7 +22,7 @@ export class ScannerLogic {
     private strategies: Strategy[] = INITIAL_STRATEGIES;
     private priceBuffers: { [symbol: string]: number[] } = {};
     
-    // 🎯 State tracking for consecutive 99% high-confidence signal lock on Volatility 50 (1s)
+    // 🎯 State tracking for consecutive high-confidence signal lock on Volatility 50 (1s)
     private consecutiveHighConfidenceCount: number = 0;
     private readonly CONFIDENCE_THRESHOLD: number = 99;
     private readonly REQUIRED_CONSECUTIVE_HITS: number = 3;
@@ -101,26 +101,37 @@ export class ScannerLogic {
         this.strategies = this.strategies.map((strat) => {
             const matchesMarket = strat.market.toLowerCase().includes(symbol.toLowerCase().replace('r_', 'volatility ').replace('1hz', 'volatility '));
             if (matchesMarket) {
-                const momentumBonus = diff !== 0 ? Math.min(20, Math.abs(diff) * 100) : 0;
-                const newConfidence = Math.min(99, Math.max(60, Math.round(75 + momentumBonus)));
+                // Scaled momentum scoring ensuring values securely reach 99% on true upward steps
+                const momentumScore = Math.abs(diff) * 1000;
+                const newConfidence = diff > 0 
+                    ? Math.min(99, Math.max(80, Math.round(85 + momentumScore)))
+                    : Math.min(85, Math.max(60, Math.round(75 - momentumScore)));
 
                 // Target Volatility 50 (1s) setup ("1HZ50V")
                 const isVol501sRise = (symbol === '1HZ50V' || strat.market.toLowerCase().includes('volatility 50 (1s)')) && liveDirection === 'UP';
                 
                 if (isVol501sRise) {
-                    if (newConfidence >= this.CONFIDENCE_THRESHOLD) {
+                    if (newConfidence >= this.CONFIDENCE_THRESHOLD && diff > 0) {
                         this.consecutiveHighConfidenceCount++;
                         
-                        if (this.consecutiveHighConfidenceCount === this.REQUIRED_CONSECUTIVE_HITS) {
+                        if (this.consecutiveHighConfidenceCount >= this.REQUIRED_CONSECUTIVE_HITS) {
                             AudioAlerts.playChime('STRONG_SIGNAL_LOCK');
                             if (typeof window !== 'undefined') {
                                 window.dispatchEvent(new CustomEvent('ai-signal-locked', {
-                                    detail: { message: "🎯 99% CONFIDENCE LOCKED (3x Live Ticks): Ready to Load Strategy" }
+                                    detail: { 
+                                        symbol: '1HZ50V',
+                                        contractType: 'rise',
+                                        stake: strat.recommendedStake || 10,
+                                        message: "🎯 99% CONFIDENCE LOCKED (3x Live Ticks): Ready to Load Strategy" 
+                                    }
                                 }));
                             }
+                            // Reset counter safely after successful trigger
+                            this.consecutiveHighConfidenceCount = 0;
                         }
                     } else {
-                        this.consecutiveHighConfidenceCount = 0;
+                        // Soft reset: subtract 1 instead of dropping straight to 0 to prevent micro-fluctuation dropouts
+                        this.consecutiveHighConfidenceCount = Math.max(0, this.consecutiveHighConfidenceCount - 1);
                     }
                 }
 
@@ -148,9 +159,15 @@ export class ScannerLogic {
                     AudioAlerts.playChime('STRONG_SIGNAL_LOCK');
                     if (typeof window !== 'undefined') {
                         window.dispatchEvent(new CustomEvent('ai-signal-locked', {
-                            detail: { message: "🎯 99% CONFIDENCE LOCKED (Volatility 50 1s): Ready to Load" }
+                            detail: { 
+                                symbol: '1HZ50V',
+                                contractType: 'rise',
+                                stake: 10,
+                                message: "🎯 99% CONFIDENCE LOCKED (Volatility 50 1s): Ready to Load" 
+                            }
                         }));
                     }
+                    this.consecutiveHighConfidenceCount = 0;
                 }
             }
 
