@@ -21,15 +21,14 @@ const globalScanner = new ScannerLogic();
 export const useScannerFeed = () => {
     useEffect(() => {
         let isMounted = true;
-        let wsCheckInterval: NodeJS.Timeout;
-        let fallbackInterval: NodeJS.Timeout;
-        let lastTickReceived = Date.now();
+        let connectionTimer: NodeJS.Timeout;
 
-        // 1. Live WebSocket stream listener and subscription manager
-        const initSubscription = () => {
+        const initLiveSubscription = () => {
+            // Access the active WebSocket instance from the official template store or window context
             const ws = (window as any).derivBotAppStore?.client?.ws || (window as any).ws;
 
             if (ws && ws.readyState === WebSocket.OPEN) {
+                // Subscribe to your target volatility indices
                 TARGET_MARKETS.forEach((symbol) => {
                     ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
                 });
@@ -38,62 +37,50 @@ export const useScannerFeed = () => {
                     if (!isMounted) return;
                     try {
                         const data = JSON.parse(event.data);
+                        
+                        // Listen strictly for real-time incoming tick data packets
                         if (data.msg_type === 'tick' && data.tick) {
-                            lastTickReceived = Date.now(); // Mark live tick arrival
                             const { symbol, quote } = data.tick;
                             const assetName = SYMBOL_MAP[symbol] || symbol;
                             const numericQuote = Number(quote);
 
+                            // 1. Push tick data to the workspace execution bridge
                             scannerBridge.pushTick(assetName, numericQuote, CORE_7_STRATEGIES);
+
+                            // 2. Process the live tick through your real scanner math engine
                             const updatedStrategies = globalScanner.processLiveTick(symbol, numericQuote);
 
+                            // 3. Broadcast updated scores to your Floating AI UI components
                             window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
                                 detail: { strategies: updatedStrategies }
                             }));
 
+                            // 4. Trigger signal lock banner if top score meets high confidence
                             if (updatedStrategies[0]?.confidence >= 90) {
                                 window.dispatchEvent(new CustomEvent('ai-signal-locked', {
-                                    detail: { message: `🎯 99% CONFIDENCE LOCKED (${assetName}): Ready to Load Strategy` }
+                                    detail: { message: `🎯 ${updatedStrategies[0].confidence}% CONFIDENCE LOCKED (${assetName}): Ready to Load Strategy` }
                                 }));
                             }
                         }
                     } catch (err) {
-                        // Suppress parse errors
+                        // Ignore non-tick frames or malformed JSON payload data
                     }
                 };
 
                 ws.addEventListener('message', handleMessage);
-                return () => ws.removeEventListener('message', handleMessage);
+
+                return () => {
+                    ws.removeEventListener('message', handleMessage);
+                };
             }
         };
 
-        wsCheckInterval = setInterval(initSubscription, 2000);
-
-        // 2. Fallback Driver: If no live socket ticks arrive within 3 seconds, 
-        // run scanner simulation so the UI and signal banner never get stuck.
-        fallbackInterval = setInterval(() => {
-            if (!isMounted) return;
-            const timeSinceLastTick = Date.now() - lastTickReceived;
-            
-            if (timeSinceLastTick > 3000) {
-                const simulatedStrategies = globalScanner.runScan();
-                window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
-                    detail: { strategies: simulatedStrategies }
-                }));
-
-                const top = simulatedStrategies[0];
-                if (top && top.confidence >= 95) {
-                    window.dispatchEvent(new CustomEvent('ai-signal-locked', {
-                        detail: { message: `🎯 99% CONFIDENCE LOCKED (${top.market}): Ready to Load Strategy` }
-                    }));
-                }
-            }
-        }, 1500);
+        // Check connection state every second until the WebSocket is fully open
+        connectionTimer = setInterval(initLiveSubscription, 1000);
 
         return () => {
             isMounted = false;
-            clearInterval(wsCheckInterval);
-            clearInterval(fallbackInterval);
+            clearInterval(connectionTimer);
         };
     }, []);
 };
