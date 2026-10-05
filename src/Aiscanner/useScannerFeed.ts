@@ -11,6 +11,7 @@ export const useScannerFeed = () => {
 
         let pollTimer: NodeJS.Timeout;
         let hasSubscribed = false;
+        let activeWs: WebSocket | null = null;
 
         const connectAndSubscribe = () => {
             const appStore = (window as any).derivBotAppStore;
@@ -18,19 +19,20 @@ export const useScannerFeed = () => {
             const ws = appStore?.client?.ws || (window as any).ws || (window as any).derivSocket;
 
             if (isAuthorized && ws && ws.readyState === WebSocket.OPEN) {
-                if (!hasSubscribed) {
+                if (!hasSubscribed || activeWs !== ws) {
                     console.log("[AI Scanner]: Connected to Deriv template socket. Subscribing to markets...");
                     globalScanner.subscribeAllMarkets(ws);
+                    
+                    // Attach message handler directly to the WebSocket instance
+                    ws.addEventListener('message', handleSocketMessage);
+
                     hasSubscribed = true;
+                    activeWs = ws;
                 }
             }
         };
 
-        // Poll every second until the platform socket and auth store are open
-        pollTimer = setInterval(connectAndSubscribe, 1000);
-
-        // Intercept incoming messages from Deriv's active socket stream
-        const handleGlobalMessage = (event: MessageEvent) => {
+        const handleSocketMessage = (event: MessageEvent) => {
             try {
                 const data = JSON.parse(event.data);
                 if (data.msg_type === 'tick' && data.tick) {
@@ -39,7 +41,7 @@ export const useScannerFeed = () => {
 
                     // Push to your UI bridge
                     const { symbol, quote } = data.tick;
-                    const assetName = symbol; // Or map if needed
+                    const assetName = symbol; 
                     scannerBridge.pushTick(assetName, Number(quote), CORE_7_STRATEGIES);
 
                     // Broadcast UI update event for FloatingAI modal
@@ -52,12 +54,14 @@ export const useScannerFeed = () => {
             }
         };
 
-        // Listen to window postMessages or socket frames if exposed
-        window.addEventListener('message', handleGlobalMessage as EventListener);
+        // Poll every second until the platform socket and auth store are open
+        pollTimer = setInterval(connectAndSubscribe, 1000);
 
         return () => {
             clearInterval(pollTimer);
-            window.removeEventListener('message', handleGlobalMessage as EventListener);
+            if (activeWs) {
+                activeWs.removeEventListener('message', handleSocketMessage);
+            }
         };
     }, []);
 };
