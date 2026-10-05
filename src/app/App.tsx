@@ -42,8 +42,8 @@ const i18nInstance = initializeI18n({ cdnUrl: '' });
 const globalScanner = new ScannerLogic();
 
 /**
- * Safe tick subscriber that taps into the existing Deriv application socket 
- * without breaking redirects, auth, or navigation flow.
+ * Enhanced tick subscriber that attaches to the active Deriv socket,
+ * subscribes to target markets, and automatically feeds incoming ticks to the scanner.
  */
 const ScannerTickSubscriber = () => {
     useEffect(() => {
@@ -51,18 +51,44 @@ const ScannerTickSubscriber = () => {
 
         let pollTimer: NodeJS.Timeout;
         let hasSubscribed = false;
+        let lastObservedSocket: WebSocket | null = null;
 
         const connectAndSubscribe = () => {
             const appStore = (window as any).derivBotAppStore;
             const ws = appStore?.client?.ws || (window as any).ws || (window as any).derivSocket;
 
             if (ws && ws.readyState === WebSocket.OPEN) {
-                if (!hasSubscribed) {
-                    console.log("[AI Sniper]: Attached to active Deriv socket. Requesting ticks...");
+                // If a new socket instance is detected, re-hook message listener and subscribe
+                if (!hasSubscribed || lastObservedSocket !== ws) {
+                    console.log("[AI Sniper]: Attached to active Deriv socket. Requesting ticks for targets...");
                     TARGET_MARKETS.forEach((symbol) => {
                         ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
                     });
+
+                    // Intercept messages directly from the socket stream if not already wrapped
+                    const originalOnMessage = ws.onmessage;
+                    ws.onmessage = (event: MessageEvent) => {
+                        if (originalOnMessage) {
+                            originalOnMessage.call(ws, event);
+                        }
+                        try {
+                            const data = JSON.parse(event.data);
+                            if (data.msg_type === 'tick' && data.tick) {
+                                const { symbol, quote } = data.tick;
+                                const numericQuote = Number(quote);
+                                
+                                // Dispatch custom live tick event for components
+                                window.dispatchEvent(new CustomEvent('deriv_live_tick', {
+                                    detail: { symbol, price: numericQuote }
+                                }));
+                            }
+                        } catch (err) {
+                            // Ignore malformed or non-JSON messages
+                        }
+                    };
+
                     hasSubscribed = true;
+                    lastObservedSocket = ws;
                 }
             }
         };
@@ -70,7 +96,7 @@ const ScannerTickSubscriber = () => {
         // Poll every second until the application store and socket are open and ready
         pollTimer = setInterval(connectAndSubscribe, 1000);
 
-        // Listen for custom tick events or messages
+        // Listen for internal tick events to update bridge and scanner state
         const handleCustomTick = (e: CustomEvent) => {
             const detail = e.detail;
             if (detail?.symbol && typeof detail?.price === 'number') {
