@@ -23,7 +23,7 @@ export class ScannerLogic {
     private readonly CONFIDENCE_THRESHOLD: number = 99;
     private readonly REQUIRED_CONSECUTIVE_HITS: number = 3;
     private static lastSniperTriggerTime: number = 0;
-    private static readonly SNIPER_COOLDOWN_MS: number = 20000; // 20s cooldown between sniper locks
+    private static readonly SNIPER_COOLDOWN_MS: number = 20000;
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -36,65 +36,28 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Sniper Scanner]: Initialized with strict live structural filters (Zero Fallback).");
+        console.log("[AI Sniper Scanner]: Initialized strictly for Live Telemetry (Zero Fallback).");
         this.registerGlobalBridge();
-        this.initLiveSocketListener();
     }
 
     private registerGlobalBridge() {
         if (typeof window === 'undefined') return;
 
+        // 1. Direct window bridge for platform tick injections
         (window as any).feedScannerTick = (symbol: string, price: number) => {
             this.processLiveTick(symbol, price);
         };
 
+        // 2. Custom event listener for authentic live tick broadcasts from the trading socket
         window.addEventListener('deriv_live_tick' as any, (event: CustomEvent) => {
             const { symbol, price } = event.detail || {};
             if (symbol && typeof price === 'number') {
-                this.processLiveTick(symbol, price);
+                const updatedStrategies = this.processLiveTick(symbol, price);
+                window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
+                    detail: { strategies: updatedStrategies }
+                }));
             }
         });
-    }
-
-    /**
-     * Automatically hooks into Deriv's platform WebSocket instance 
-     * to subscribe to all target volatility symbols and process incoming frames.
-     */
-    private initLiveSocketListener() {
-        if (typeof window === 'undefined') return;
-
-        const socketPollInterval = setInterval(() => {
-            // Find active Deriv socket instances across platform stores
-            const activeWs = (window as any).derivSocket || (window as any).ws || (window as any).activeWebSocket;
-
-            if (activeWs && activeWs.readyState === WebSocket.OPEN) {
-                this.subscribeAllMarkets(activeWs);
-
-                const existingOnMessage = activeWs.onmessage;
-                activeWs.onmessage = (event: MessageEvent) => {
-                    if (existingOnMessage) {
-                        existingOnMessage.call(activeWs, event);
-                    }
-
-                    try {
-                        const dataParsed: DerivTickResponse = JSON.parse(event.data);
-                        if (dataParsed.msg_type === 'tick' && dataParsed.tick) {
-                            const updatedStrategies = this.handleIncomingMessage(dataParsed);
-                            
-                            // Broadcast fresh live strategy updates to UI components (e.g. FloatingAI)
-                            window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
-                                detail: { strategies: updatedStrategies }
-                            }));
-                        }
-                    } catch (err) {
-                        // Ignore non-JSON frame drops
-                    }
-                };
-
-                clearInterval(socketPollInterval);
-                console.log("[AI Sniper]: Successfully bound to live Deriv WebSocket stream.");
-            }
-        }, 1000);
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -103,13 +66,18 @@ export class ScannerLogic {
         }
 
         const { symbol, quote } = dataParsed.tick;
-        return this.processLiveTick(symbol, Number(quote));
+        const updatedStrategies = this.processLiveTick(symbol, Number(quote));
+
+        // Broadcast to UI instantly
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
+                detail: { strategies: updatedStrategies }
+            }));
+        }
+
+        return updatedStrategies;
     }
 
-    /**
-     * Sniper Processing Engine: Combines Momentum, Moving Average Structure, 
-     * and Cooldown Gating to isolate genuine high-probability entries.
-     */
     public processLiveTick(symbol: string, price: number): Strategy[] {
         if (!this.priceBuffers[symbol]) {
             this.priceBuffers[symbol] = [];
@@ -127,12 +95,10 @@ export class ScannerLogic {
         const diff = latestPrice - prevPrice;
         const liveDirection: 'UP' | 'DOWN' = diff >= 0 ? 'UP' : 'DOWN';
 
-        // 🛡️ Sniper Filter 1: Short-term Moving Average (SMA 5) for trend confirmation
         const recentTicks = prices.slice(-5);
         const sma5 = recentTicks.reduce((sum, p) => sum + p, 0) / recentTicks.length;
         const isAboveTrend = latestPrice > sma5;
 
-        // 🛡️ Sniper Filter 2: Velocity / Acceleration check (avoid micro-jitter noise)
         const avgVelocity = Math.abs(prices[prices.length - 2] - prices[prices.length - 3]);
         const isAccelerating = Math.abs(diff) >= (avgVelocity * 0.8);
 
@@ -140,12 +106,10 @@ export class ScannerLogic {
             const matchesMarket = strat.market.toLowerCase().includes(symbol.toLowerCase().replace('r_', 'volatility ').replace('1hz', 'volatility '));
             
             if (matchesMarket) {
-                // Strict sniper confidence score calculation based on real-time movement
                 const baseScore = (isAboveTrend && isAccelerating && diff > 0) ? 90 : 70;
                 const momentumBonus = Math.min(9, Math.abs(diff) * 2000);
                 const newConfidence = Math.min(99, Math.max(50, Math.round(baseScore + momentumBonus)));
 
-                // Target Volatility 50 (1s) setup ("1HZ50V")
                 const isVol501sSetup = (symbol === '1HZ50V' || strat.market.toLowerCase().includes('volatility 50 (1s)')) 
                     && liveDirection === 'UP' 
                     && isAboveTrend 
