@@ -15,15 +15,18 @@ export const useScannerFeed = () => {
 
         const connectAndSubscribe = () => {
             const appStore = (window as any).derivBotAppStore;
+            // Check both standard store login flags and active connection sockets
             const isAuthorized = appStore?.client?.is_logged_in || localStorage.getItem('active_loginid');
             const ws = appStore?.client?.ws || (window as any).ws || (window as any).derivSocket;
 
-            if (isAuthorized && ws && ws.readyState === WebSocket.OPEN) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
                 if (!hasSubscribed || activeWs !== ws) {
-                    console.log("[AI Scanner]: Connected to Deriv template socket. Subscribing to markets...");
-                    globalScanner.subscribeAllMarkets(ws);
+                    console.log("[AI Scanner]: Socket active. Triggering market subscriptions...");
                     
-                    // Attach message handler directly to the WebSocket instance
+                    // Call your scanner logic's built-in subscription method
+                    globalScanner.subscribeAllMarkets(ws);
+
+                    // Attach message listener directly to the socket instance
                     ws.addEventListener('message', handleSocketMessage);
 
                     hasSubscribed = true;
@@ -35,16 +38,17 @@ export const useScannerFeed = () => {
         const handleSocketMessage = (event: MessageEvent) => {
             try {
                 const data = JSON.parse(event.data);
+                
+                // Pass directly into your existing, well-built scannerLogic parser
+                const updatedStrategies = globalScanner.handleIncomingMessage(data);
+
                 if (data.msg_type === 'tick' && data.tick) {
-                    // Feed directly into your existing ScannerLogic parser
-                    const updatedStrategies = globalScanner.handleIncomingMessage(data);
-
-                    // Push to your UI bridge
                     const { symbol, quote } = data.tick;
-                    const assetName = symbol; 
-                    scannerBridge.pushTick(assetName, Number(quote), CORE_7_STRATEGIES);
+                    
+                    // Push live tick to bridge
+                    scannerBridge.pushTick(symbol, Number(quote), CORE_7_STRATEGIES);
 
-                    // Broadcast UI update event for FloatingAI modal
+                    // Broadcast UI event to update your FloatingAI components
                     window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
                         detail: { strategies: updatedStrategies }
                     }));
@@ -54,7 +58,7 @@ export const useScannerFeed = () => {
             }
         };
 
-        // Poll every second until the platform socket and auth store are open
+        // Poll every second until the socket is live and ready
         pollTimer = setInterval(connectAndSubscribe, 1000);
 
         return () => {
