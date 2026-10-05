@@ -36,8 +36,9 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Sniper Scanner]: Initialized with strict structural filters.");
+        console.log("[AI Sniper Scanner]: Initialized with strict live structural filters (Zero Fallback).");
         this.registerGlobalBridge();
+        this.initLiveSocketListener();
     }
 
     private registerGlobalBridge() {
@@ -53,6 +54,47 @@ export class ScannerLogic {
                 this.processLiveTick(symbol, price);
             }
         });
+    }
+
+    /**
+     * Automatically hooks into Deriv's platform WebSocket instance 
+     * to subscribe to all target volatility symbols and process incoming frames.
+     */
+    private initLiveSocketListener() {
+        if (typeof window === 'undefined') return;
+
+        const socketPollInterval = setInterval(() => {
+            // Find active Deriv socket instances across platform stores
+            const activeWs = (window as any).derivSocket || (window as any).ws || (window as any).activeWebSocket;
+
+            if (activeWs && activeWs.readyState === WebSocket.OPEN) {
+                this.subscribeAllMarkets(activeWs);
+
+                const existingOnMessage = activeWs.onmessage;
+                activeWs.onmessage = (event: MessageEvent) => {
+                    if (existingOnMessage) {
+                        existingOnMessage.call(activeWs, event);
+                    }
+
+                    try {
+                        const dataParsed: DerivTickResponse = JSON.parse(event.data);
+                        if (dataParsed.msg_type === 'tick' && dataParsed.tick) {
+                            const updatedStrategies = this.handleIncomingMessage(dataParsed);
+                            
+                            // Broadcast fresh live strategy updates to UI components (e.g. FloatingAI)
+                            window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
+                                detail: { strategies: updatedStrategies }
+                            }));
+                        }
+                    } catch (err) {
+                        // Ignore non-JSON frame drops
+                    }
+                };
+
+                clearInterval(socketPollInterval);
+                console.log("[AI Sniper]: Successfully bound to live Deriv WebSocket stream.");
+            }
+        }, 1000);
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -98,7 +140,7 @@ export class ScannerLogic {
             const matchesMarket = strat.market.toLowerCase().includes(symbol.toLowerCase().replace('r_', 'volatility ').replace('1hz', 'volatility '));
             
             if (matchesMarket) {
-                // Strict sniper confidence score calculation
+                // Strict sniper confidence score calculation based on real-time movement
                 const baseScore = (isAboveTrend && isAccelerating && diff > 0) ? 90 : 70;
                 const momentumBonus = Math.min(9, Math.abs(diff) * 2000);
                 const newConfidence = Math.min(99, Math.max(50, Math.round(baseScore + momentumBonus)));
@@ -115,7 +157,6 @@ export class ScannerLogic {
                         
                         if (this.consecutiveHighConfidenceCount >= this.REQUIRED_CONSECUTIVE_HITS) {
                             const now = Date.now();
-                            // Check global cooldown to prevent spamming trades
                             if (now - ScannerLogic.lastSniperTriggerTime > ScannerLogic.SNIPER_COOLDOWN_MS) {
                                 ScannerLogic.lastSniperTriggerTime = now;
                                 AudioAlerts.playChime('STRONG_SIGNAL_LOCK');
@@ -146,17 +187,12 @@ export class ScannerLogic {
         return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
     }
 
-    public runScan(): Strategy[] {
-        // Fallback simulation runner
-        return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
-    }
-
     public subscribeAllMarkets(ws: WebSocket): void {
         if (!ws || ws.readyState !== WebSocket.OPEN) {
             console.error("[AI Sniper Error]: WebSocket is not open.");
             return;
         }
-        console.log(`[AI Sniper]: Subscribing to ${ScannerLogic.SCANNER_MARKETS.length} sniper markets.`);
+        console.log(`[AI Sniper]: Subscribing to ${ScannerLogic.SCANNER_MARKETS.length} live sniper markets.`);
         ScannerLogic.SCANNER_MARKETS.forEach((symbol: string) => {
             ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
         });
