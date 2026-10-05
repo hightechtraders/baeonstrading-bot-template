@@ -33,6 +33,8 @@ const SYMBOL_MAP: Record<string, string> = {
     '1HZ75V': 'Volatility 75 (1s)',
 };
 
+const TARGET_MARKETS = ['1HZ50V', '1HZ75V', '1HZ10V', '1HZ100V', 'R_25', 'R_75', 'R_10'];
+
 // Translations CDN configuration
 const i18nInstance = initializeI18n({ cdnUrl: '' });
 
@@ -40,8 +42,8 @@ const i18nInstance = initializeI18n({ cdnUrl: '' });
 const globalScanner = new ScannerLogic();
 
 /**
- * Global tick listener component that intercepts the native WebSocket stream
- * and feeds real-time prices to both the scanner bridge and logic engine.
+ * Global tick listener component that intercepts the native WebSocket stream,
+ * automatically subscribes to volatility markets, and feeds real-time prices.
  */
 const ScannerTickSubscriber = () => {
     useEffect(() => {
@@ -50,10 +52,20 @@ const ScannerTickSubscriber = () => {
         // Save original WebSocket constructor
         const OrigWebSocket = window.WebSocket;
 
-        // Override WebSocket globally to catch all incoming Deriv frames
+        // Override WebSocket globally to catch all incoming Deriv frames and subscribe
         (window as any).WebSocket = function(url: string, protocols?: string | string[]) {
             const ws = new OrigWebSocket(url, protocols);
             
+            // Automatically subscribe to all target markets once the socket opens
+            ws.addEventListener('open', () => {
+                console.log("[AI Sniper]: Socket open. Requesting live tick feeds...");
+                TARGET_MARKETS.forEach((symbol) => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+                    }
+                });
+            });
+
             ws.addEventListener('message', (event: MessageEvent) => {
                 try {
                     const data = JSON.parse(event.data);
@@ -89,7 +101,7 @@ const ScannerTickSubscriber = () => {
         // Copy static properties over
         Object.assign((window as any).WebSocket, OrigWebSocket);
 
-        console.log("[AI Sniper]: Global WebSocket tick interceptor active.");
+        console.log("[AI Sniper]: Global WebSocket tick interceptor & auto-subscriber active.");
     }, []);
 
     return null;
