@@ -9,63 +9,46 @@ export const useScannerFeed = () => {
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        let pollTimer: NodeJS.Timeout;
-        let hasSubscribed = false;
-        let activeWs: WebSocket | null = null;
+        let isSubscribed = false;
 
-        const connectAndSubscribe = () => {
+        const checkAndBind = () => {
             const appStore = (window as any).derivBotAppStore;
-            // Check both standard store login flags and active connection sockets
-            const isAuthorized = appStore?.client?.is_logged_in || localStorage.getItem('active_loginid');
-            const ws = appStore?.client?.ws || (window as any).ws || (window as any).derivSocket;
+            const ws = appStore?.client?.ws || (window as any).ws;
+            const isLoggedIn = appStore?.client?.is_logged_in;
 
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                if (!hasSubscribed || activeWs !== ws) {
-                    console.log("[AI Scanner]: Socket active. Triggering market subscriptions...");
-                    
-                    // Call your scanner logic's built-in subscription method
-                    globalScanner.subscribeAllMarkets(ws);
-
-                    // Attach message listener directly to the socket instance
-                    ws.addEventListener('message', handleSocketMessage);
-
-                    hasSubscribed = true;
-                    activeWs = ws;
-                }
-            }
-        };
-
-        const handleSocketMessage = (event: MessageEvent) => {
-            try {
-                const data = JSON.parse(event.data);
+            // Only subscribe once the user is logged in and the socket is fully open
+            if (isLoggedIn && ws && ws.readyState === WebSocket.OPEN && !isSubscribed) {
+                console.log("[AI Scanner]: Account authorized & socket open. Subscribing to markets...");
                 
-                // Pass directly into your existing, well-built scannerLogic parser
-                const updatedStrategies = globalScanner.handleIncomingMessage(data);
+                globalScanner.subscribeAllMarkets(ws);
+                isSubscribed = true;
 
-                if (data.msg_type === 'tick' && data.tick) {
-                    const { symbol, quote } = data.tick;
-                    
-                    // Push live tick to bridge
-                    scannerBridge.pushTick(symbol, Number(quote), CORE_7_STRATEGIES);
+                // Listen to messages directly from the verified operational socket
+                ws.onmessage = (event: MessageEvent) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        const updatedStrategies = globalScanner.handleIncomingMessage(data);
 
-                    // Broadcast UI event to update your FloatingAI components
-                    window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
-                        detail: { strategies: updatedStrategies }
-                    }));
-                }
-            } catch (err) {
-                // Silently ignore non-JSON frames
+                        if (data.msg_type === 'tick' && data.tick) {
+                            const { symbol, quote } = data.tick;
+                            scannerBridge.pushTick(symbol, Number(quote), CORE_7_STRATEGIES);
+
+                            window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
+                                detail: { strategies: updatedStrategies }
+                            }));
+                        }
+                    } catch (err) {
+                        // Ignore malformed payloads
+                    }
+                };
             }
         };
 
-        // Poll every second until the socket is live and ready
-        pollTimer = setInterval(connectAndSubscribe, 1000);
+        // Check every 500ms until authorization and connection complete
+        const interval = setInterval(checkAndBind, 500);
 
         return () => {
-            clearInterval(pollTimer);
-            if (activeWs) {
-                activeWs.removeEventListener('message', handleSocketMessage);
-            }
+            clearInterval(interval);
         };
     }, []);
 };
