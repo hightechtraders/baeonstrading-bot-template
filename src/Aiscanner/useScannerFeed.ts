@@ -1,62 +1,82 @@
 import { useEffect } from 'react';
-import { ScannerLogic } from './scannerLogic';
 import { scannerBridge } from './scannerBridge';
 import { CORE_7_STRATEGIES } from './strategies';
+import { ScannerLogic } from './scannerLogic';
 
+const SYMBOL_MAP: Record<string, string> = {
+    'R_10': 'Volatility 10',
+    'R_25': 'Volatility 25',
+    'R_50': 'Volatility 50',
+    'R_75': 'Volatility 75',
+    'R_100': 'Volatility 100',
+    '1HZ100V': 'Volatility 100 (1s)',
+    '1HZ25V': 'Volatility 25 (1s)',
+    '1HZ50V': 'Volatility 50 (1s)',
+    '1HZ75V': 'Volatility 75 (1s)',
+};
+
+const TARGET_MARKETS = ['1HZ50V', '1HZ75V', '1HZ10V', '1HZ100V', 'R_25', 'R_75', 'R_10'];
 const globalScanner = new ScannerLogic();
 
 export const useScannerFeed = () => {
     useEffect(() => {
-        if (typeof window === 'undefined') return;
+        let isMounted = true;
+        let cleanupInterval: NodeJS.Timeout;
 
-        let isSubscribed = false;
-        let activeWs: WebSocket | null = null;
+        const initSubscription = () => {
+            // Access active connection safely through standard app store or window context
+            const ws = (window as any).derivBotAppStore?.client?.ws || (window as any).ws;
 
-        const handleSocketMessage = (event: MessageEvent) => {
-            try {
-                const data = JSON.parse(event.data);
-                const updatedStrategies = globalScanner.handleIncomingMessage(data);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                // Subscribe to target symbols
+                TARGET_MARKETS.forEach((symbol) => {
+                    ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+                });
 
-                if (data.msg_type === 'tick' && data.tick) {
-                    const { symbol, quote } = data.tick;
-                    scannerBridge.pushTick(symbol, Number(quote), CORE_7_STRATEGIES);
+                // Message handler wrapper
+                const handleMessage = (event: MessageEvent) => {
+                    if (!isMounted) return;
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.msg_type === 'tick' && data.tick) {
+                            const { symbol, quote } = data.tick;
+                            const assetName = SYMBOL_MAP[symbol] || symbol;
+                            const numericQuote = Number(quote);
 
-                    window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
-                        detail: { strategies: updatedStrategies }
-                    }));
-                }
-            } catch (err) {
-                // Ignore malformed payloads
+                            // Push to bridge and update scanner
+                            scannerBridge.pushTick(assetName, numericQuote, CORE_7_STRATEGIES);
+                            const updatedStrategies = globalScanner.processLiveTick(symbol, numericQuote);
+
+                            // Broadcast update to UI components
+                            window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
+                                detail: { strategies: updatedStrategies }
+                            }));
+
+                            // Update signal banner lock status if confidence is high
+                            if (updatedStrategies[0]?.confidence >= 90) {
+                                window.dispatchEvent(new CustomEvent('ai-signal-locked', {
+                                    detail: { message: `🎯 99% CONFIDENCE LOCKED (${assetName}): Ready to Load Strategy` }
+                                }));
+                            }
+                        }
+                    } catch (err) {
+                        // Suppress parse errors from unrelated frames
+                    }
+                };
+
+                ws.addEventListener('message', handleMessage);
+
+                return () => {
+                    ws.removeEventListener('message', handleMessage);
+                };
             }
         };
 
-        const checkAndBind = () => {
-            const appStore = (window as any).derivBotAppStore;
-            const ws = appStore?.client?.ws || (window as any).ws;
-            const isLoggedIn = appStore?.client?.is_logged_in;
-
-            if (isLoggedIn && ws && ws.readyState === WebSocket.OPEN) {
-                if (!isSubscribed || activeWs !== ws) {
-                    console.log("[AI Scanner]: Account authorized & socket open. Subscribing to markets...");
-                    
-                    globalScanner.subscribeAllMarkets(ws);
-                    
-                    // Use addEventListener so we share the stream safely without overriding the template
-                    ws.addEventListener('message', handleSocketMessage);
-
-                    isSubscribed = true;
-                    activeWs = ws;
-                }
-            }
-        };
-
-        const interval = setInterval(checkAndBind, 500);
+        cleanupInterval = setInterval(initSubscription, 2000);
 
         return () => {
-            clearInterval(interval);
-            if (activeWs) {
-                activeWs.removeEventListener('message', handleSocketMessage);
-            }
+            isMounted = false;
+            clearInterval(cleanupInterval);
         };
     }, []);
 };
