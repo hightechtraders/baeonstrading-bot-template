@@ -42,66 +42,53 @@ const i18nInstance = initializeI18n({ cdnUrl: '' });
 const globalScanner = new ScannerLogic();
 
 /**
- * Global tick listener component that intercepts the native WebSocket stream,
- * automatically subscribes to volatility markets, and feeds real-time prices.
+ * Safe tick subscriber that taps into the existing Deriv application socket 
+ * without breaking redirects, auth, or navigation flow.
  */
 const ScannerTickSubscriber = () => {
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        // Save original WebSocket constructor
-        const OrigWebSocket = window.WebSocket;
+        let pollTimer: NodeJS.Timeout;
+        let hasSubscribed = false;
 
-        // Override WebSocket globally to catch all incoming Deriv frames and subscribe
-        (window as any).WebSocket = function(url: string, protocols?: string | string[]) {
-            const ws = new OrigWebSocket(url, protocols);
-            
-            // Automatically subscribe to all target markets once the socket opens
-            ws.addEventListener('open', () => {
-                console.log("[AI Sniper]: Socket open. Requesting live tick feeds...");
-                TARGET_MARKETS.forEach((symbol) => {
-                    if (ws.readyState === WebSocket.OPEN) {
+        const connectAndSubscribe = () => {
+            const appStore = (window as any).derivBotAppStore;
+            const ws = appStore?.client?.ws || (window as any).ws || (window as any).derivSocket;
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                if (!hasSubscribed) {
+                    console.log("[AI Sniper]: Attached to active Deriv socket. Requesting ticks...");
+                    TARGET_MARKETS.forEach((symbol) => {
                         ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
-                    }
-                });
-            });
-
-            ws.addEventListener('message', (event: MessageEvent) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    
-                    // Check if the frame is a Deriv tick response
-                    if (data.msg_type === 'tick' && data.tick) {
-                        const rawSymbol = data.tick.symbol;
-                        const price = Number(data.tick.quote);
-
-                        if (rawSymbol && !isNaN(price)) {
-                            const assetName = SYMBOL_MAP[rawSymbol] || rawSymbol;
-                            
-                            // 1. Push tick into your UI bridge
-                            scannerBridge.pushTick(assetName, price, CORE_7_STRATEGIES);
-
-                            // 2. Feed tick into ScannerLogic to drive buffers, confidence scores, and signal locks
-                            const updatedStrategies = globalScanner.processLiveTick(rawSymbol, price);
-
-                            // 3. Broadcast fresh strategy updates to FloatingAI
-                            window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
-                                detail: { strategies: updatedStrategies }
-                            }));
-                        }
-                    }
-                } catch (err) {
-                    // Ignore non-JSON frames
+                    });
+                    hasSubscribed = true;
                 }
-            });
-            
-            return ws;
+            }
         };
 
-        // Copy static properties over
-        Object.assign((window as any).WebSocket, OrigWebSocket);
+        // Poll every second until the application store and socket are open and ready
+        pollTimer = setInterval(connectAndSubscribe, 1000);
 
-        console.log("[AI Sniper]: Global WebSocket tick interceptor & auto-subscriber active.");
+        // Listen for custom tick events or messages
+        const handleCustomTick = (e: CustomEvent) => {
+            const detail = e.detail;
+            if (detail?.symbol && typeof detail?.price === 'number') {
+                const assetName = SYMBOL_MAP[detail.symbol] || detail.symbol;
+                scannerBridge.pushTick(assetName, detail.price, CORE_7_STRATEGIES);
+                const updatedStrategies = globalScanner.processLiveTick(detail.symbol, detail.price);
+                window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
+                    detail: { strategies: updatedStrategies }
+                }));
+            }
+        };
+
+        window.addEventListener('deriv_live_tick' as any, handleCustomTick as EventListener);
+
+        return () => {
+            clearInterval(pollTimer);
+            window.removeEventListener('deriv_live_tick' as any, handleCustomTick as EventListener);
+        };
     }, []);
 
     return null;
