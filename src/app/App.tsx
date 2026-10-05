@@ -40,49 +40,56 @@ const i18nInstance = initializeI18n({ cdnUrl: '' });
 const globalScanner = new ScannerLogic();
 
 /**
- * Global tick listener component that captures market stream events 
- * and feeds price data to both the scanner bridge and logic engine.
+ * Global tick listener component that intercepts the native WebSocket stream
+ * and feeds real-time prices to both the scanner bridge and logic engine.
  */
 const ScannerTickSubscriber = () => {
     useEffect(() => {
-        const handleTickEvent = (e: CustomEvent | MessageEvent) => {
-            let detail = (e as CustomEvent).detail;
+        if (typeof window === 'undefined') return;
 
-            // Handle direct WebSocket MessageEvent if passed
-            if (!detail && (e as MessageEvent).data) {
+        // Save original WebSocket constructor
+        const OrigWebSocket = window.WebSocket;
+
+        // Override WebSocket globally to catch all incoming Deriv frames
+        (window as any).WebSocket = function(url: string, protocols?: string | string[]) {
+            const ws = new OrigWebSocket(url, protocols);
+            
+            ws.addEventListener('message', (event: MessageEvent) => {
                 try {
-                    detail = JSON.parse((e as MessageEvent).data);
-                } catch {
-                    return;
+                    const data = JSON.parse(event.data);
+                    
+                    // Check if the frame is a Deriv tick response
+                    if (data.msg_type === 'tick' && data.tick) {
+                        const rawSymbol = data.tick.symbol;
+                        const price = Number(data.tick.quote);
+
+                        if (rawSymbol && !isNaN(price)) {
+                            const assetName = SYMBOL_MAP[rawSymbol] || rawSymbol;
+                            
+                            // 1. Push tick into your UI bridge
+                            scannerBridge.pushTick(assetName, price, CORE_7_STRATEGIES);
+
+                            // 2. Feed tick into ScannerLogic to drive buffers, confidence scores, and signal locks
+                            const updatedStrategies = globalScanner.processLiveTick(rawSymbol, price);
+
+                            // 3. Broadcast fresh strategy updates to FloatingAI
+                            window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
+                                detail: { strategies: updatedStrategies }
+                            }));
+                        }
+                    }
+                } catch (err) {
+                    // Ignore non-JSON frames
                 }
-            }
-
-            if (!detail) return;
-
-            // Normalize tick payload structure
-            const tickData = detail.tick || detail;
-            const rawSymbol = tickData?.symbol;
-            const price = tickData?.quote ?? tickData?.price;
-
-            if (rawSymbol && typeof price === 'number') {
-                const assetName = SYMBOL_MAP[rawSymbol] || rawSymbol;
-                
-                // 1. Push tick into your UI bridge
-                scannerBridge.pushTick(assetName, price, CORE_7_STRATEGIES);
-
-                // 2. Feed tick into ScannerLogic to drive buffers, confidence scores, and signal locks
-                globalScanner.processLiveTick(rawSymbol, price);
-            }
+            });
+            
+            return ws;
         };
 
-        // Listen to custom window events or raw WebSocket message broadcasts
-        window.addEventListener('deriv:tick' as any, handleTickEvent);
-        window.addEventListener('ws:tick' as any, handleTickEvent);
+        // Copy static properties over
+        Object.assign((window as any).WebSocket, OrigWebSocket);
 
-        return () => {
-            window.removeEventListener('deriv:tick' as any, handleTickEvent);
-            window.removeEventListener('ws:tick' as any, handleTickEvent);
-        };
+        console.log("[AI Sniper]: Global WebSocket tick interceptor active.");
     }, []);
 
     return null;
