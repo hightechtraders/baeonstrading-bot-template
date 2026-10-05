@@ -1,181 +1,166 @@
-// ==========================================
-// FILE: src/Aiscanner/scannerLogic.ts
-// ==========================================
-import { Strategy, INITIAL_STRATEGIES } from './strategies';
-import { AudioAlerts } from './audioAlerts';
+import { lazy, Suspense, useEffect } from 'react';
+import React from 'react';
+import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } from 'react-router-dom';
+import ChunkLoader from '@/components/loader/chunk-loader';
+import LocalStorageSyncWrapper from '@/components/localStorage-sync-wrapper';
+import RoutePromptDialog from '@/components/route-prompt-dialog';
+import { useAccountSwitching } from '@/hooks/useAccountSwitching';
+import { useLanguageFromURL } from '@/hooks/useLanguageFromURL';
+import { useOAuthCallback } from '@/hooks/useOAuthCallback';
+import { StoreProvider } from '@/hooks/useStore';
+import { OAuthTokenExchangeService } from '@/services/oauth-token-exchange.service';
+import { initializeI18n, localize, TranslationProvider } from '@deriv-com/translations';
+import { scannerBridge } from '@/Aiscanner/scannerBridge';
+import { CORE_7_STRATEGIES } from '@/Aiscanner/strategies';
+import { ScannerLogic } from '@/Aiscanner/scannerLogic';
+import { FloatingAI } from '@/Aiscanner/FloatingAI';
+import CoreStoreProvider from './CoreStoreProvider';
+import './app-root.scss';
+
+const Layout = lazy(() => import('../components/layout'));
+const AppRoot = lazy(() => import('./app-root'));
+
+// Map Deriv WebSocket tick symbols to match strategy asset names
+const SYMBOL_MAP: Record<string, string> = {
+    'R_10': 'Volatility 10',
+    'R_25': 'Volatility 25',
+    'R_50': 'Volatility 50',
+    'R_75': 'Volatility 75',
+    'R_100': 'Volatility 100',
+    '1HZ100V': 'Volatility 100 (1s)',
+    '1HZ25V': 'Volatility 25 (1s)',
+    '1HZ50V': 'Volatility 50 (1s)',
+    '1HZ75V': 'Volatility 75 (1s)',
+};
+
+const TARGET_MARKETS = ['1HZ50V', '1HZ75V', '1HZ10V', '1HZ100V', 'R_25', 'R_75', 'R_10'];
+
+// Translations CDN configuration
+const i18nInstance = initializeI18n({ cdnUrl: '' });
+
+// Persistent singleton instance of your core scanner logic
+const globalScanner = new ScannerLogic();
 
 /**
- * TypeScript interface explicitly detailing the structural layout 
- * of the official Deriv WebSocket API 'tick' response packet.
+ * Safe tick subscriber that taps into the existing Deriv application socket 
+ * without breaking redirects, auth, or navigation flow.
  */
-export interface DerivTickResponse {
-    msg_type: string;
-    tick?: {
-        symbol: string;
-        quote: number;
-        epoch: number;
-        id: string;
-    };
-}
- 
-export class ScannerLogic {
-    private strategies: Strategy[] = INITIAL_STRATEGIES;
-    private priceBuffers: { [symbol: string]: number[] } = {};
-    
-    // 🎯 State tracking for consecutive 99% high-confidence signal lock on Volatility 50 (1s)
-    private consecutiveHighConfidenceCount: number = 0;
-    private readonly CONFIDENCE_THRESHOLD: number = 99;
-    private readonly REQUIRED_CONSECUTIVE_HITS: number = 3;
-
-    // Exact structural system market identifiers expected by Deriv API backend
-    public static readonly SCANNER_MARKETS: string[] = [
-        '1HZ50V',  // Volatility 50 (1s) Index
-        '1HZ75V',  // Volatility 75 (1s) Index
-        '1HZ10V',  // Volatility 10 (1s) Index
-        '1HZ100V', // Volatility 100 (1s) Index
-        'R_25',    // Volatility 25 Index
-        'R_75',    // Volatility 75 Index
-        'R_10'     // Volatility 10 Index
-    ];
-
-    constructor() {
-        console.log("[AI Scanner]: Module instantiated successfully. Initializing global event bridges...");
-        this.registerGlobalBridge();
-    }
-
-    /**
-     * Registers clean global browser hooks so your platform's network layer 
-     * or custom event dispatchers can feed live tick data directly with zero lag.
-     */
-    private registerGlobalBridge() {
+const ScannerTickSubscriber = () => {
+    useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        // Expose a direct window hook for external network loop calls
-        (window as any).feedScannerTick = (symbol: string, price: number) => {
-            this.processLiveTick(symbol, price);
+        let pollTimer: NodeJS.Timeout;
+        let hasSubscribed = false;
+
+        const connectAndSubscribe = () => {
+            const appStore = (window as any).derivBotAppStore;
+            const ws = appStore?.client?.ws || (window as any).ws || (window as any).derivSocket;
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                if (!hasSubscribed) {
+                    console.log("[AI Sniper]: Attached to active Deriv socket. Requesting ticks...");
+                    TARGET_MARKETS.forEach((symbol) => {
+                        ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+                    });
+                    hasSubscribed = true;
+                }
+            }
         };
 
-        // Custom event bridge listener for decoupled component updates
-        window.addEventListener('deriv_live_tick' as any, (event: CustomEvent) => {
-            const { symbol, price } = event.detail || {};
-            if (symbol && typeof price === 'number') {
-                this.processLiveTick(symbol, price);
+        // Poll every second until the application store and socket are open and ready
+        pollTimer = setInterval(connectAndSubscribe, 1000);
+
+        // Listen for custom tick events or messages
+        const handleCustomTick = (e: CustomEvent) => {
+            const detail = e.detail;
+            if (detail?.symbol && typeof detail?.price === 'number') {
+                const assetName = SYMBOL_MAP[detail.symbol] || detail.symbol;
+                scannerBridge.pushTick(assetName, detail.price, CORE_7_STRATEGIES);
+                const updatedStrategies = globalScanner.processLiveTick(detail.symbol, detail.price);
+                window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
+                    detail: { strategies: updatedStrategies }
+                }));
             }
-        });
-    }
+        };
 
-    /**
-     * Top-Level Multiplexed Data Parser.
-     * Drop this straight into your main network manager's .onmessage stream hook.
-     */
-    public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
-        if (dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
-            return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
-        }
+        window.addEventListener('deriv_live_tick' as any, handleCustomTick as EventListener);
 
-        const { symbol, quote } = dataParsed.tick;
-        return this.processLiveTick(symbol, Number(quote));
-    }
+        return () => {
+            clearInterval(pollTimer);
+            window.removeEventListener('deriv_live_tick' as any, handleCustomTick as EventListener);
+        };
+    }, []);
 
-    /**
-     * Processes individual live ticks, manages rolling price history buffers, 
-     * calculates momentum scores, and triggers confidence signal locks.
-     */
-    public processLiveTick(symbol: string, price: number): Strategy[] {
-        if (!this.priceBuffers[symbol]) {
-            this.priceBuffers[symbol] = [];
-        }
-        this.priceBuffers[symbol].push(price);
-        if (this.priceBuffers[symbol].length > 15) {
-            this.priceBuffers[symbol].shift();
-        }
+    return null;
+};
 
-        const prices = this.priceBuffers[symbol];
-        if (prices.length < 3) return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
+/**
+ * Component wrapper to handle language URL parameter
+ */
+const LanguageHandler = ({ children }: { children: React.ReactNode }) => {
+    useLanguageFromURL();
+    return <>{children}</>;
+};
 
-        const latestPrice = prices[prices.length - 1];
-        const prevPrice = prices[prices.length - 2];
-        const diff = latestPrice - prevPrice;
-        const liveDirection: 'UP' | 'DOWN' = diff >= 0 ? 'UP' : 'DOWN';
+const router = createBrowserRouter(
+    createRoutesFromElements(
+        <Route
+            path='/'
+            element={
+                <Suspense
+                    fallback={<ChunkLoader message={localize('Please wait while we connect to the server...')} />}
+                >
+                    <TranslationProvider defaultLang='EN' i18nInstance={i18nInstance}>
+                        <LanguageHandler>
+                            <StoreProvider>
+                                <LocalStorageSyncWrapper>
+                                    <RoutePromptDialog />
+                                    <CoreStoreProvider>
+                                        <ScannerTickSubscriber />
+                                        <Layout />
+                                        {/* Floating AI Scanner Button & Modal */}
+                                        <FloatingAI />
+                                    </CoreStoreProvider>
+                                </LocalStorageSyncWrapper>
+                            </StoreProvider>
+                        </LanguageHandler>
+                    </TranslationProvider>
+                </Suspense>
+            }
+        >
+            <Route index element={<AppRoot />} />
+        </Route>
+    )
+);
 
-        this.strategies = this.strategies.map((strat) => {
-            const matchesMarket = strat.market.toLowerCase().includes(symbol.toLowerCase().replace('r_', 'volatility ').replace('1hz', 'volatility '));
-            if (matchesMarket) {
-                const momentumBonus = diff !== 0 ? Math.min(20, Math.abs(diff) * 100) : 0;
-                const newConfidence = Math.min(99, Math.max(60, Math.round(75 + momentumBonus)));
+export default function App() {
+    // Handle OAuth callback flow (CSRF validation + code extraction)
+    const { isProcessing, isValid, params, error, cleanupURL } = useOAuthCallback();
 
-                // Target Volatility 50 (1s) setup ("1HZ50V")
-                const isVol501sRise = (symbol === '1HZ50V' || strat.market.toLowerCase().includes('volatility 50 (1s)')) && liveDirection === 'UP';
-                
-                if (isVol501sRise) {
-                    if (newConfidence >= this.CONFIDENCE_THRESHOLD) {
-                        this.consecutiveHighConfidenceCount++;
-                        
-                        if (this.consecutiveHighConfidenceCount === this.REQUIRED_CONSECUTIVE_HITS) {
-                            AudioAlerts.playChime('STRONG_SIGNAL_LOCK');
-                            if (typeof window !== 'undefined') {
-                                window.dispatchEvent(new CustomEvent('ai-signal-locked', {
-                                    detail: { message: "🎯 99% CONFIDENCE LOCKED (3x Live Ticks): Ready to Load Strategy" }
-                                }));
-                            }
-                        }
-                    } else {
-                        this.consecutiveHighConfidenceCount = 0;
+    // Handle account switching via URL parameter
+    useAccountSwitching();
+
+    // Process the authorization code when OAuth callback is valid
+    React.useEffect(() => {
+        if (!isProcessing && isValid && params.code) {
+            OAuthTokenExchangeService.exchangeCodeForToken(params.code)
+                .then(response => {
+                    if (response.access_token) {
+                        cleanupURL();
+                    } else if (response.error) {
+                        console.error('❌ Token exchange failed:', response.error);
+                        console.error('Error description:', response.error_description);
+                        cleanupURL();
                     }
-                }
-
-                return { ...strat, confidence: newConfidence, direction: liveDirection };
-            }
-            return strat;
-        });
-
-        return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
-    }
-
-    /**
-     * Active fallback runner that ensures the UI updates dynamically even if network streams fluctuate.
-     */
-    public runScan(): Strategy[] {
-        this.strategies = this.strategies.map((strat) => {
-            const jitter = Math.floor(Math.random() * 5) - 2;
-            const newConfidence = Math.min(99, Math.max(70, strat.confidence + jitter));
-            const randomDirection: 'UP' | 'DOWN' = Math.random() > 0.4 ? 'UP' : 'DOWN';
-
-            const isVol501s = strat.market.toLowerCase().includes('volatility 50 (1s)');
-            if (isVol501s && newConfidence >= 99) {
-                this.consecutiveHighConfidenceCount++;
-                if (this.consecutiveHighConfidenceCount >= 3) {
-                    AudioAlerts.playChime('STRONG_SIGNAL_LOCK');
-                    if (typeof window !== 'undefined') {
-                        window.dispatchEvent(new CustomEvent('ai-signal-locked', {
-                            detail: { message: "🎯 99% CONFIDENCE LOCKED (Volatility 50 1s): Ready to Load" }
-                        }));
-                    }
-                }
-            }
-
-            return {
-                ...strat,
-                confidence: newConfidence,
-                direction: isVol501s ? 'UP' : randomDirection
-            };
-        });
-
-        return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
-    }
-
-    /**
-     * Batch requests streams for all scanner assets over an active socket.
-     */
-    public subscribeAllMarkets(ws: WebSocket): void {
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-            console.error("[AI Scanner Error]: Cannot subscribe. WebSocket instance is not open.");
-            return;
+                })
+                .catch(error => {
+                    console.error('❌ Token exchange request failed:', error);
+                    cleanupURL();
+                });
+        } else if (!isProcessing && error) {
+            console.error('OAuth callback error:', error);
         }
-        console.log(`[AI Scanner]: Initiating multiplexed streams for ${ScannerLogic.SCANNER_MARKETS.length} assets.`);
-        
-        ScannerLogic.SCANNER_MARKETS.forEach((symbol: string) => {
-            ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
-        });
-    }
+    }, [isProcessing, isValid, params.code, error, cleanupURL]);
+
+    return <RouterProvider router={router} />;
 }
