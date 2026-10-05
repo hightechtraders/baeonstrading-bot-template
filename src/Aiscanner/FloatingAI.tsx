@@ -1,6 +1,3 @@
-// ==========================================
-// FILE: src/Aiscanner/FloatingAI.tsx
-// ==========================================
 import React, { useState, useEffect, useRef } from 'react';
 import { ScannerLogic } from './scannerLogic';
 import { ScannerBridge } from './scannerBridge';
@@ -14,14 +11,14 @@ export const FloatingAI: React.FC = () => {
   const [isScanning, setIsScanning] = useState(true);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   
-  // 🎯 Visual signal banner notifications state
-  const [signalBannerText, setSignalBannerText] = useState<string>("🔍 Listening to Live Deriv Ticks (Zero Fallback)...");
+  // 🎯 New state for visual signal banner notifications
+  const [signalBannerText, setSignalBannerText] = useState<string>("🔍 Scanning Volatility 50 (1s) for 99% Trend Lock...");
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
 
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const expandedIndexRef = useRef<number | null>(null);
 
-  // Keep ref synchronized so card expansions/editing actions don't get overwritten
+  // Keep ref synchronized with state so intervals can read it instantly
   useEffect(() => {
     expandedIndexRef.current = expandedIndex;
   }, [expandedIndex]);
@@ -30,7 +27,7 @@ export const FloatingAI: React.FC = () => {
   const [stopLoss, setStopLoss] = useState<number>(20);
   const [takeProfit, setTakeProfit] = useState<number>(50);
 
-  // 1. Listen for high-confidence 99% sniper signal lock events from scannerLogic
+  // Listen for signal lock event from scannerLogic
   useEffect(() => {
     const handleSignalLock = (e: CustomEvent) => {
       setSignalBannerText(e.detail?.message || "🎯 99% CONFIDENCE LOCKED (3x Ticks): Ready to Load Strategy");
@@ -43,31 +40,36 @@ export const FloatingAI: React.FC = () => {
     };
   }, []);
 
-  // 2. Listen exclusively to real-time live strategy updates pushed by incoming WebSocket ticks
   useEffect(() => {
     if (isOpen) {
+      // 1. Reset state only when modal first opens
       setIsScanning(true);
       setExpandedIndex(null);
       setIsSignalLocked(false);
-      setSignalBannerText("🔍 Connecting to Live Deriv Markets...");
+      setSignalBannerText("🔍 Scanning Volatility 50 (1s) for 99% Trend Lock...");
 
-      const handleLiveStrategiesUpdate = (e: CustomEvent) => {
-        if (e.detail?.strategies) {
-          // Pause updates if user has an expanded card drawer open for editing
+      // 2. Initial 2-second scan delay
+      const scanTimeout = setTimeout(() => {
+        setStrategies(scanner.runScan());
+        setIsScanning(false);
+      }, 2000);
+
+      // 3. Continuous background updates (pauses if a card is expanded/editing)
+      const interval = setInterval(() => {
+        setStrategies((prevStrategies) => {
           if (expandedIndexRef.current === null) {
-            setStrategies(e.detail.strategies);
-            setIsScanning(false); // Seamlessly dismiss scanning loader on first live tick packet
+            return scanner.runScan();
           }
-        }
-      };
-
-      window.addEventListener('ai-strategies-updated' as any, handleLiveStrategiesUpdate as EventListener);
+          return prevStrategies; // Freeze sorting/updates while editing a card
+        });
+      }, 4000);
 
       return () => {
-        window.removeEventListener('ai-strategies-updated' as any, handleLiveStrategiesUpdate as EventListener);
+        clearTimeout(scanTimeout);
+        clearInterval(interval);
       };
     }
-  }, [isOpen]);
+  }, [isOpen]); // Depend ONLY on isOpen so clicking cards never restarts the scan
 
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
   const topWinner = sortedStrategies[0];
@@ -127,19 +129,19 @@ export const FloatingAI: React.FC = () => {
               <div className="global-winner-section">
                 <div className="global-winner-meta">
                   <span>GLOBAL WINNER</span>
-                  <span>WAITING FOR LIVE TICKS...</span>
+                  <span>SCANNING...</span>
                 </div>
                 <div className="strategy-card top-card">
                   <div className="card-main-row">
                     <span className="badge-rank">#1</span>
                     <div className="strategy-info">
-                      <strong>Streaming Deriv Volatility...</strong>
+                      <strong>Analyzing Market Ticks...</strong>
                       <div className="card-tags-row">
                         <span className="market-tag">SYNTHETIC</span>
-                        <span className="direction-tag flat">LIVE</span>
+                        <span className="direction-tag flat">FLAT</span>
                       </div>
                     </div>
-                    <span className="badge-high">0%</span>
+                    <span className="badge-high">50%</span>
                   </div>
                 </div>
               </div>
