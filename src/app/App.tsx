@@ -33,8 +33,6 @@ const SYMBOL_MAP: Record<string, string> = {
     '1HZ75V': 'Volatility 75 (1s)',
 };
 
-const TARGET_MARKETS = ['1HZ50V', '1HZ75V', '1HZ10V', '1HZ100V', 'R_25', 'R_75', 'R_10'];
-
 // Translations CDN configuration
 const i18nInstance = initializeI18n({ cdnUrl: '' });
 
@@ -42,52 +40,48 @@ const i18nInstance = initializeI18n({ cdnUrl: '' });
 const globalScanner = new ScannerLogic();
 
 /**
- * Safe tick subscriber that taps into the existing Deriv application socket 
- * without breaking redirects, auth, or navigation flow.
+ * Global tick listener component that captures market stream events 
+ * and feeds price data to both the scanner bridge and logic engine.
  */
 const ScannerTickSubscriber = () => {
     useEffect(() => {
-        if (typeof window === 'undefined') return;
+        const handleTickEvent = (e: CustomEvent | MessageEvent) => {
+            let detail = (e as CustomEvent).detail;
 
-        let pollTimer: NodeJS.Timeout;
-        let hasSubscribed = false;
-
-        const connectAndSubscribe = () => {
-            const appStore = (window as any).derivBotAppStore;
-            const ws = appStore?.client?.ws || (window as any).ws || (window as any).derivSocket;
-
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                if (!hasSubscribed) {
-                    console.log("[AI Sniper]: Attached to active Deriv socket. Requesting ticks...");
-                    TARGET_MARKETS.forEach((symbol) => {
-                        ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
-                    });
-                    hasSubscribed = true;
+            // Handle direct WebSocket MessageEvent if passed
+            if (!detail && (e as MessageEvent).data) {
+                try {
+                    detail = JSON.parse((e as MessageEvent).data);
+                } catch {
+                    return;
                 }
             }
-        };
 
-        // Poll every second until the application store and socket are open and ready
-        pollTimer = setInterval(connectAndSubscribe, 1000);
+            if (!detail) return;
 
-        // Listen for custom tick events or messages
-        const handleCustomTick = (e: CustomEvent) => {
-            const detail = e.detail;
-            if (detail?.symbol && typeof detail?.price === 'number') {
-                const assetName = SYMBOL_MAP[detail.symbol] || detail.symbol;
-                scannerBridge.pushTick(assetName, detail.price, CORE_7_STRATEGIES);
-                const updatedStrategies = globalScanner.processLiveTick(detail.symbol, detail.price);
-                window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
-                    detail: { strategies: updatedStrategies }
-                }));
+            // Normalize tick payload structure
+            const tickData = detail.tick || detail;
+            const rawSymbol = tickData?.symbol;
+            const price = tickData?.quote ?? tickData?.price;
+
+            if (rawSymbol && typeof price === 'number') {
+                const assetName = SYMBOL_MAP[rawSymbol] || rawSymbol;
+                
+                // 1. Push tick into your UI bridge
+                scannerBridge.pushTick(assetName, price, CORE_7_STRATEGIES);
+
+                // 2. Feed tick into ScannerLogic to drive buffers, confidence scores, and signal locks
+                globalScanner.processLiveTick(rawSymbol, price);
             }
         };
 
-        window.addEventListener('deriv_live_tick' as any, handleCustomTick as EventListener);
+        // Listen to custom window events or raw WebSocket message broadcasts
+        window.addEventListener('deriv:tick' as any, handleTickEvent);
+        window.addEventListener('ws:tick' as any, handleTickEvent);
 
         return () => {
-            clearInterval(pollTimer);
-            window.removeEventListener('deriv_live_tick' as any, handleCustomTick as EventListener);
+            window.removeEventListener('deriv:tick' as any, handleTickEvent);
+            window.removeEventListener('ws:tick' as any, handleTickEvent);
         };
     }, []);
 
