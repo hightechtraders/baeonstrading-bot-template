@@ -42,8 +42,8 @@ const i18nInstance = initializeI18n({ cdnUrl: '' });
 const globalScanner = new ScannerLogic();
 
 /**
- * Enhanced tick subscriber that attaches to the active Deriv socket,
- * subscribes to target markets, and automatically feeds incoming ticks to the scanner.
+ * Enhanced tick subscriber that attaches safely to the active Deriv socket,
+ * subscribes to target markets, and automatically feeds incoming ticks.
  */
 const ScannerTickSubscriber = () => {
     useEffect(() => {
@@ -51,49 +51,44 @@ const ScannerTickSubscriber = () => {
 
         let pollTimer: NodeJS.Timeout;
         let hasSubscribed = false;
-        let lastObservedSocket: WebSocket | null = null;
 
         const connectAndSubscribe = () => {
+            const derivApi = (window as any).DerivAPI;
             const appStore = (window as any).derivBotAppStore;
-            const ws = appStore?.client?.ws || (window as any).ws || (window as any).derivSocket;
+            
+            // Access the active socket across known template paths
+            const ws = appStore?.client?.ws || derivApi?.ws || (window as any).ws;
 
             if (ws && ws.readyState === WebSocket.OPEN) {
-                // If a new socket instance is detected, re-hook message listener and subscribe
-                if (!hasSubscribed || lastObservedSocket !== ws) {
-                    console.log("[AI Sniper]: Attached to active Deriv socket. Requesting ticks for targets...");
+                if (!hasSubscribed) {
+                    console.log("[AI Sniper]: Successfully bound to live Deriv socket. Subscribing...");
+                    
                     TARGET_MARKETS.forEach((symbol) => {
                         ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
                     });
 
-                    // Intercept messages directly from the socket stream if not already wrapped
-                    const originalOnMessage = ws.onmessage;
-                    ws.onmessage = (event: MessageEvent) => {
-                        if (originalOnMessage) {
-                            originalOnMessage.call(ws, event);
-                        }
+                    // Use addEventListener to share the stream without breaking template internal handlers
+                    ws.addEventListener('message', (event: MessageEvent) => {
                         try {
                             const data = JSON.parse(event.data);
                             if (data.msg_type === 'tick' && data.tick) {
                                 const { symbol, quote } = data.tick;
                                 const numericQuote = Number(quote);
                                 
-                                // Dispatch custom live tick event for components
                                 window.dispatchEvent(new CustomEvent('deriv_live_tick', {
                                     detail: { symbol, price: numericQuote }
                                 }));
                             }
                         } catch (err) {
-                            // Ignore malformed or non-JSON messages
+                            // Ignore non-json frames
                         }
-                    };
+                    });
 
                     hasSubscribed = true;
-                    lastObservedSocket = ws;
                 }
             }
         };
 
-        // Poll every second until the application store and socket are open and ready
         pollTimer = setInterval(connectAndSubscribe, 1000);
 
         // Listen for internal tick events to update bridge and scanner state
@@ -175,7 +170,6 @@ export default function App() {
                         cleanupURL();
                     } else if (response.error) {
                         console.error('❌ Token exchange failed:', response.error);
-                        console.error('Error description:', response.error_description);
                         cleanupURL();
                     }
                 })
