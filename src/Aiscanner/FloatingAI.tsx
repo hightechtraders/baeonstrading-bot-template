@@ -11,14 +11,13 @@ export const FloatingAI: React.FC = () => {
   const [isScanning, setIsScanning] = useState(true);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   
-  // 🎯 New state for visual signal banner notifications
+  // 🎯 State for visual signal banner notifications
   const [signalBannerText, setSignalBannerText] = useState<string>("🔍 Scanning Volatility 50 (1s) for 99% Trend Lock...");
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
 
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const expandedIndexRef = useRef<number | null>(null);
 
-  // Keep ref synchronized with state so intervals can read it instantly
   useEffect(() => {
     expandedIndexRef.current = expandedIndex;
   }, [expandedIndex]);
@@ -27,49 +26,49 @@ export const FloatingAI: React.FC = () => {
   const [stopLoss, setStopLoss] = useState<number>(20);
   const [takeProfit, setTakeProfit] = useState<number>(50);
 
-  // Listen for signal lock event from scannerLogic
+  // 1. Listen for live strategy updates broadcasted by useScannerFeed
   useEffect(() => {
+    const handleStrategiesUpdated = (e: CustomEvent) => {
+      const updated = e.detail?.strategies;
+      if (Array.isArray(updated) && updated.length > 0) {
+        setIsScanning(false);
+        // Freeze sorting/state updates if user is actively editing a card's parameters
+        if (expandedIndexRef.current === null) {
+          setStrategies(updated);
+        }
+      }
+    };
+
     const handleSignalLock = (e: CustomEvent) => {
       setSignalBannerText(e.detail?.message || "🎯 99% CONFIDENCE LOCKED (3x Ticks): Ready to Load Strategy");
       setIsSignalLocked(true);
     };
 
+    window.addEventListener('ai-strategies-updated' as any, handleStrategiesUpdated as EventListener);
     window.addEventListener('ai-signal-locked', handleSignalLock as EventListener);
+
     return () => {
+      window.removeEventListener('ai-strategies-updated' as any, handleStrategiesUpdated as EventListener);
       window.removeEventListener('ai-signal-locked', handleSignalLock as EventListener);
     };
   }, []);
 
+  // 2. Initial scan timeout when modal opens
   useEffect(() => {
     if (isOpen) {
-      // 1. Reset state only when modal first opens
       setIsScanning(true);
       setExpandedIndex(null);
       setIsSignalLocked(false);
       setSignalBannerText("🔍 Scanning Volatility 50 (1s) for 99% Trend Lock...");
 
-      // 2. Initial 2-second scan delay
       const scanTimeout = setTimeout(() => {
         setStrategies(scanner.runScan());
         setIsScanning(false);
-      }, 2000);
+      }, 1500);
 
-      // 3. Continuous background updates (pauses if a card is expanded/editing)
-      const interval = setInterval(() => {
-        setStrategies((prevStrategies) => {
-          if (expandedIndexRef.current === null) {
-            return scanner.runScan();
-          }
-          return prevStrategies; // Freeze sorting/updates while editing a card
-        });
-      }, 4000);
-
-      return () => {
-        clearTimeout(scanTimeout);
-        clearInterval(interval);
-      };
+      return () => clearTimeout(scanTimeout);
     }
-  }, [isOpen]); // Depend ONLY on isOpen so clicking cards never restarts the scan
+  }, [isOpen]);
 
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
   const topWinner = sortedStrategies[0];
@@ -129,13 +128,13 @@ export const FloatingAI: React.FC = () => {
               <div className="global-winner-section">
                 <div className="global-winner-meta">
                   <span>GLOBAL WINNER</span>
-                  <span>SCANNING...</span>
+                  <span>SCANNING LIVE TICKS...</span>
                 </div>
                 <div className="strategy-card top-card">
                   <div className="card-main-row">
                     <span className="badge-rank">#1</span>
                     <div className="strategy-info">
-                      <strong>Analyzing Market Ticks...</strong>
+                      <strong>Analyzing Market Stream...</strong>
                       <div className="card-tags-row">
                         <span className="market-tag">SYNTHETIC</span>
                         <span className="direction-tag flat">FLAT</span>
