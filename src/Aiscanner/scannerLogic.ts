@@ -21,6 +21,7 @@ export interface DerivTickResponse {
 export class ScannerLogic {
     private strategies: Strategy[] = INITIAL_STRATEGIES;
     private priceBuffers: { [symbol: string]: number[] } = {};
+    private isSubscribed: boolean = false;
     
     // 🎯 State tracking for consecutive 99% high-confidence signal lock on Volatility 50 (1s)
     private consecutiveHighConfidenceCount: number = 0;
@@ -39,8 +40,9 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Module instantiated successfully. Initializing global event bridges...");
+        console.log("[AI Scanner]: Module instantiated successfully. Initializing global event bridges & socket poller...");
         this.registerGlobalBridge();
+        this.initSocketPoller();
     }
 
     /**
@@ -65,8 +67,57 @@ export class ScannerLogic {
     }
 
     /**
+     * Continuously checks for an active WebSocket instance in the global environment,
+     * hooks into its message stream non-destructively so Stop Loss/Take Profit and 
+     * Blockly parameters continue working normally.
+     */
+    private initSocketPoller() {
+        if (typeof window === 'undefined') return;
+
+        const poller = setInterval(() => {
+            const socket = 
+                (window as any).activeSocket || 
+                (window as any).ws || 
+                (window as any).BinarySocket?.socket;
+
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                console.log("[AI Scanner]: 🚀 Live WebSocket acquired via polling!");
+                
+                if (!this.isSubscribed) {
+                    this.subscribeAllMarkets(socket);
+                    this.isSubscribed = true;
+                }
+
+                // Non-destructive chaining: preserve original platform message handler
+                const originalOnMessage = socket.onmessage;
+                socket.onmessage = (event: MessageEvent) => {
+                    // 1. Let the core platform handlers run first (handles SL, TP, and trade states)
+                    if (originalOnMessage) {
+                        try {
+                            originalOnMessage.call(socket, event);
+                        } catch (e) {
+                            console.error("Error in original socket handler:", e);
+                        }
+                    }
+
+                    // 2. Safely parse our tick data in parallel for the AI scanner
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.msg_type === 'tick') {
+                            this.handleIncomingMessage(data);
+                        }
+                    } catch (e) {
+                        // Ignore non-JSON frames
+                    }
+                };
+
+                clearInterval(poller);
+            }
+        }, 1000);
+    }
+
+    /**
      * Top-Level Multiplexed Data Parser.
-     * Drop this straight into your main network manager's .onmessage stream hook.
      */
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
         if (dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
@@ -74,12 +125,21 @@ export class ScannerLogic {
         }
 
         const { symbol, quote } = dataParsed.tick;
-        return this.processLiveTick(symbol, Number(quote));
+        const updated = this.processLiveTick(symbol, Number(quote));
+
+        // Dispatch update event to refresh UI cards instantly
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
+                detail: { strategies: updated }
+            }));
+        }
+
+        return updated;
     }
 
     /**
      * Processes individual live ticks, manages rolling price history buffers, 
-     * calculates momentum scores, and triggers confidence signal locks.
+     * calculates momentum scores with micro-variance jitter, and sorts dynamically.
      */
     public processLiveTick(symbol: string, price: number): Strategy[] {
         if (!this.priceBuffers[symbol]) {
@@ -111,13 +171,15 @@ export class ScannerLogic {
 
         const normalizedIncoming = symbolToNameMap[symbol] || symbol.toLowerCase();
 
-        this.strategies = this.strategies.map((strat) => {
+        this.strategies = this.strategies.map((strat, idx) => {
             const stratMarketClean = strat.market.toLowerCase();
             const matchesMarket = stratMarketClean.includes(normalizedIncoming) || normalizedIncoming.includes(stratMarketClean);
 
             if (matchesMarket) {
-                const momentumBonus = diff !== 0 ? Math.min(24, Math.abs(diff) * 150) : Math.floor(Math.random() * 5);
-                const newConfidence = Math.min(99, Math.max(65, Math.round(75 + momentumBonus)));
+                // Add tiny randomized jitter & index offset so active ticks cause smooth rank swapping
+                const randomMicroNoise = Math.floor(Math.random() * 5);
+                const momentumBonus = diff !== 0 ? Math.min(22, Math.abs(diff) * 200) : randomMicroNoise;
+                const newConfidence = Math.min(99, Math.max(60, Math.round(72 + momentumBonus + (idx % 3))));
 
                 // Target Volatility 50 (1s) setup ("1HZ50V")
                 const isVol501sRise = (symbol === '1HZ50V' || stratMarketClean.includes('volatility 50 (1s)')) && liveDirection === 'UP';
@@ -139,12 +201,18 @@ export class ScannerLogic {
                     }
                 }
 
-                return { ...strat, confidence: newConfidence, direction: liveDirection };
+                return { ...strat, confidence: newConfidence, score: newConfidence, direction: liveDirection };
             }
             return strat;
         });
 
-        return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
+        // Sort primarily by confidence, with name fallback to prevent static ties
+        return [...this.strategies].sort((a, b) => {
+            if (b.confidence !== a.confidence) {
+                return b.confidence - a.confidence;
+            }
+            return a.name.localeCompare(b.name);
+        });
     }
 
     /**
