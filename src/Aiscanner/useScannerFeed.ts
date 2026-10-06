@@ -11,7 +11,17 @@ export const useScannerFeed = () => {
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        // 1. Listen to global live ticks dispatched from api-base.ts
+        // 1. Instantly push initial mock/baseline strategies so the UI cards render right away
+        const initialStrategies = scanner.handleIncomingMessage({
+            msg_type: 'tick',
+            tick: { symbol: 'R_75', quote: 1000, epoch: Date.now(), id: 'init' }
+        });
+        
+        window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
+            detail: { strategies: initialStrategies }
+        }));
+
+        // 2. Listen to global live ticks dispatched from api-base.ts
         const handleLiveTick = (event: CustomEvent) => {
             const { symbol, price } = event.detail || {};
             if (symbol && typeof price === 'number') {
@@ -35,15 +45,15 @@ export const useScannerFeed = () => {
 
         window.addEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
 
-        // 2. Aggressively push subscriptions as soon as api_base has an active connection
+        // 3. Connect and subscribe to markets via api_base socket
         const triggerSubscriptions = async () => {
             let attempts = 0;
-            const maxAttempts = 10;
+            const maxAttempts = 15;
 
             while (attempts < maxAttempts) {
                 if (api_base.api && api_base.api.connection && api_base.api.connection.readyState === 1) {
-                    console.log("[AI Scanner Feed]: Active socket found. Dispatching scanner market subscriptions...");
-                    ScannerLogic.SCANNER_MARKETS.forEach((symbol: symbol | string) => {
+                    console.log("[AI Scanner Feed]: Socket ready. Requesting market feeds...");
+                    ScannerLogic.SCANNER_MARKETS.forEach((symbol: string) => {
                         api_base.api?.send({ ticks: symbol, subscribe: 1 });
                     });
                     break;
