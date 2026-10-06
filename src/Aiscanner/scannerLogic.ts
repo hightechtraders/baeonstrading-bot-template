@@ -133,38 +133,6 @@ export class ScannerLogic {
     }
 
     /**
-     * Active fallback runner that ensures the UI updates dynamically even if network streams fluctuate.
-     */
-    public runScan(): Strategy[] {
-        this.strategies = this.strategies.map((strat) => {
-            const jitter = Math.floor(Math.random() * 5) - 2;
-            const newConfidence = Math.min(99, Math.max(70, strat.confidence + jitter));
-            const randomDirection: 'UP' | 'DOWN' = Math.random() > 0.4 ? 'UP' : 'DOWN';
-
-            const isVol501s = strat.market.toLowerCase().includes('volatility 50 (1s)');
-            if (isVol501s && newConfidence >= 99) {
-                this.consecutiveHighConfidenceCount++;
-                if (this.consecutiveHighConfidenceCount >= 3) {
-                    AudioAlerts.playChime('STRONG_SIGNAL_LOCK');
-                    if (typeof window !== 'undefined') {
-                        window.dispatchEvent(new CustomEvent('ai-signal-locked', {
-                            detail: { message: "🎯 99% CONFIDENCE LOCKED (Volatility 50 1s): Ready to Load" }
-                        }));
-                    }
-                }
-            }
-
-            return {
-                ...strat,
-                confidence: newConfidence,
-                direction: isVol501s ? 'UP' : randomDirection
-            };
-        });
-
-        return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
-    }
-
-    /**
      * Batch requests streams for all scanner assets over an active socket.
      */
     public subscribeAllMarkets(ws: WebSocket): void {
