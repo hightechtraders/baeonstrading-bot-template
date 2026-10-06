@@ -10,51 +10,52 @@ export const useScannerFeed = () => {
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        let intervalId: any = null;
+        let activeSocket: WebSocket | null = null;
 
-        const checkAndConnectSocket = () => {
-            // Locate active Deriv platform WebSocket instances globally 
-            // (Adjust `(window as any). ДерivWS` or your platform's global socket variable if named differently)
-            const activeWs: WebSocket = (window as any).ws || (window as any).activeSocket;
+        // 1. Intercept native WebSocket connections to catch Deriv's socket dynamically
+        const OriginalWebSocket = window.WebSocket;
+        (window as any).WebSocket = function(url: string | URL, protocols?: string | string[]) {
+            const ws = new OriginalWebSocket(url, protocols);
+            activeSocket = ws;
 
-            if (activeWs && activeWs.readyState === WebSocket.OPEN) {
-                console.log("[AI Scanner Feed]: Active Deriv WebSocket detected. Subscribing to markets...");
-                
-                // 1. Subscribe to all required scanner symbols
-                scanner.subscribeAllMarkets(activeWs);
+            ws.addEventListener('open', () => {
+                // Check if this socket connects to Deriv endpoints
+                if (String(url).includes('deriv') || String(url).includes('binary')) {
+                    console.log("[AI Scanner Feed]: Intercepted active Deriv WebSocket! Subscribing...");
+                    scanner.subscribeAllMarkets(ws);
+                }
+            });
 
-                // 2. Intercept incoming socket messages
-                const originalOnMessage = activeWs.onmessage;
-                activeWs.onmessage = (event) => {
-                    if (originalOnMessage) {
-                        originalOnMessage.call(activeWs, event);
-                    }
+            ws.addEventListener('message', (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    const updatedStrategies = scanner.handleIncomingMessage(data);
 
-                    try {
-                        const data = JSON.parse(event.data);
-                        
-                        // Pass packet to scanner logic
-                        const updatedStrategies = scanner.handleIncomingMessage(data);
-
-                        // Broadcast updated strategies to FloatingAI modal
+                    if (updatedStrategies && updatedStrategies.length > 0) {
                         window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
                             detail: { strategies: updatedStrategies }
                         }));
-                    } catch (err) {
-                        // Ignore non-json or malformed frames
                     }
-                };
+                } catch (err) {
+                    // Ignore non-json frames
+                }
+            });
 
-                if (intervalId) clearInterval(intervalId);
-            }
+            return ws;
         };
 
-        // Poll briefly until the platform's global WebSocket initializes
-        intervalId = setInterval(checkAndConnectSocket, 1000);
-        checkAndConnectSocket();
+        // Copy static properties just in case
+        Object.assign(window.WebSocket, OriginalWebSocket);
+
+        // 2. Fallback check for any pre-existing global sockets
+        const existingWs = (window as any).ws || (window as any).activeSocket || (window as any).BinarySocket;
+        if (existingWs && existingWs.readyState === WebSocket.OPEN) {
+            scanner.subscribeAllMarkets(existingWs);
+        }
 
         return () => {
-            if (intervalId) clearInterval(intervalId);
+            // Restore native WebSocket on unmount
+            window.WebSocket = OriginalWebSocket;
         };
     }, []);
 };
