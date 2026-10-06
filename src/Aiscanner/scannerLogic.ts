@@ -17,7 +17,6 @@ export interface DerivTickResponse {
 export class ScannerLogic {
     private strategies: Strategy[] = INITIAL_STRATEGIES;
     private priceBuffers: { [symbol: string]: number[] } = {};
-    private isSubscribed: boolean = false;
     
     private consecutiveHighConfidenceCount: number = 0;
     private readonly CONFIDENCE_THRESHOLD: number = 99;
@@ -34,25 +33,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Module instantiated cleanly. Initializing safe event bridges...");
-        this.registerGlobalBridge();
-    }
-
-    private registerGlobalBridge() {
-        if (typeof window === 'undefined') return;
-
-        // Direct window hook for external network loop calls
-        (window as any).feedScannerTick = (symbol: string, price: number) => {
-            this.processLiveTick(symbol, price);
-        };
-
-        // Decoupled custom event listener for safe background updates
-        window.addEventListener('deriv_live_tick' as any, (event: CustomEvent) => {
-            const { symbol, price } = event.detail || {};
-            if (symbol && typeof price === 'number') {
-                this.processLiveTick(symbol, price);
-            }
-        });
+        console.log("[AI Scanner]: Module instantiated cleanly.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -61,15 +42,7 @@ export class ScannerLogic {
         }
 
         const { symbol, quote } = dataParsed.tick;
-        const updated = this.processLiveTick(symbol, Number(quote));
-
-        if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
-                detail: { strategies: updated }
-            }));
-        }
-
-        return updated;
+        return this.processLiveTick(symbol, Number(quote));
     }
 
     public processLiveTick(symbol: string, price: number): Strategy[] {
@@ -82,7 +55,7 @@ export class ScannerLogic {
         }
 
         const prices = this.priceBuffers[symbol];
-        if (prices.length < 3) return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
+        if (prices.length < 2) return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
 
         const latestPrice = prices[prices.length - 1];
         const prevPrice = prices[prices.length - 2];
@@ -106,47 +79,16 @@ export class ScannerLogic {
             const matchesMarket = stratMarketClean.includes(normalizedIncoming) || normalizedIncoming.includes(stratMarketClean);
 
             if (matchesMarket) {
-                const randomMicroNoise = Math.floor(Math.random() * 5);
-                const momentumBonus = diff !== 0 ? Math.min(22, Math.abs(diff) * 200) : randomMicroNoise;
-                const newConfidence = Math.min(99, Math.max(60, Math.round(72 + momentumBonus + (idx % 3))));
-
-                const isVol501sRise = (symbol === '1HZ50V' || stratMarketClean.includes('volatility 50 (1s)')) && liveDirection === 'UP';
-                
-                if (isVol501sRise) {
-                    if (newConfidence >= this.CONFIDENCE_THRESHOLD) {
-                        this.consecutiveHighConfidenceCount++;
-                        if (this.consecutiveHighConfidenceCount === this.REQUIRED_CONSECUTIVE_HITS) {
-                            AudioAlerts.playChime('STRONG_SIGNAL_LOCK');
-                            if (typeof window !== 'undefined') {
-                                window.dispatchEvent(new CustomEvent('ai-signal-locked', {
-                                    detail: { message: "🎯 99% CONFIDENCE LOCKED (3x Live Ticks): Ready to Load Strategy" }
-                                }));
-                            }
-                        }
-                    } else {
-                        this.consecutiveHighConfidenceCount = 0;
-                    }
-                }
+                const randomMicroNoise = Math.floor(Math.random() * 6);
+                const momentumBonus = diff !== 0 ? Math.min(25, Math.abs(diff) * 150) : randomMicroNoise;
+                const newConfidence = Math.min(99, Math.max(65, Math.round(70 + momentumBonus + (idx % 5))));
 
                 return { ...strat, confidence: newConfidence, score: newConfidence, direction: liveDirection };
             }
             return strat;
         });
 
-        return [...this.strategies].sort((a, b) => {
-            if (b.confidence !== a.confidence) {
-                return b.confidence - a.confidence;
-            }
-            return a.name.localeCompare(b.name);
-        });
-    }
-
-    public subscribeAllMarkets(ws: WebSocket): void {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return;
-        console.log(`[AI Scanner]: Requesting live streams for ${ScannerLogic.SCANNER_MARKETS.length} assets.`);
-        
-        ScannerLogic.SCANNER_MARKETS.forEach((symbol: string) => {
-            ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
-        });
+        // Return a brand new sorted array reference so React state hooks trigger card re-ordering
+        return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
     }
 }
