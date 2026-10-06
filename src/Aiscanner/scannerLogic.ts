@@ -98,14 +98,29 @@ export class ScannerLogic {
         const diff = latestPrice - prevPrice;
         const liveDirection: 'UP' | 'DOWN' = diff >= 0 ? 'UP' : 'DOWN';
 
+        // 🎯 Canonical lookup mapping raw API symbols to display market strings
+        const symbolToNameMap: Record<string, string> = {
+            '1HZ50V': 'volatility 50 (1s)',
+            '1HZ75V': 'volatility 75 (1s)',
+            '1HZ10V': 'volatility 10 (1s)',
+            '1HZ100V': 'volatility 100 (1s)',
+            'R_25': 'volatility 25',
+            'R_75': 'volatility 75',
+            'R_10': 'volatility 10'
+        };
+
+        const normalizedIncoming = symbolToNameMap[symbol] || symbol.toLowerCase();
+
         this.strategies = this.strategies.map((strat) => {
-            const matchesMarket = strat.market.toLowerCase().includes(symbol.toLowerCase().replace('r_', 'volatility ').replace('1hz', 'volatility '));
+            const stratMarketClean = strat.market.toLowerCase();
+            const matchesMarket = stratMarketClean.includes(normalizedIncoming) || normalizedIncoming.includes(stratMarketClean);
+
             if (matchesMarket) {
-                const momentumBonus = diff !== 0 ? Math.min(20, Math.abs(diff) * 100) : 0;
-                const newConfidence = Math.min(99, Math.max(60, Math.round(75 + momentumBonus)));
+                const momentumBonus = diff !== 0 ? Math.min(24, Math.abs(diff) * 150) : Math.floor(Math.random() * 5);
+                const newConfidence = Math.min(99, Math.max(65, Math.round(75 + momentumBonus)));
 
                 // Target Volatility 50 (1s) setup ("1HZ50V")
-                const isVol501sRise = (symbol === '1HZ50V' || strat.market.toLowerCase().includes('volatility 50 (1s)')) && liveDirection === 'UP';
+                const isVol501sRise = (symbol === '1HZ50V' || stratMarketClean.includes('volatility 50 (1s)')) && liveDirection === 'UP';
                 
                 if (isVol501sRise) {
                     if (newConfidence >= this.CONFIDENCE_THRESHOLD) {
