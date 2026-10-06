@@ -4,10 +4,6 @@
 import { Strategy, INITIAL_STRATEGIES } from './strategies';
 import { AudioAlerts } from './audioAlerts';
 
-/**
- * TypeScript interface explicitly detailing the structural layout 
- * of the official Deriv WebSocket API 'tick' response packet.
- */
 export interface DerivTickResponse {
     msg_type: string;
     tick?: {
@@ -23,12 +19,10 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private isSubscribed: boolean = false;
     
-    // 🎯 State tracking for consecutive 99% high-confidence signal lock on Volatility 50 (1s)
     private consecutiveHighConfidenceCount: number = 0;
     private readonly CONFIDENCE_THRESHOLD: number = 99;
     private readonly REQUIRED_CONSECUTIVE_HITS: number = 3;
 
-    // Exact structural system market identifiers expected by Deriv API backend
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
         '1HZ75V',  // Volatility 75 (1s) Index
@@ -40,24 +34,18 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Module instantiated successfully. Initializing global event bridges & socket poller...");
+        console.log("[AI Scanner]: Module instantiated. Initializing WebSocket prototype interceptor...");
         this.registerGlobalBridge();
-        this.initSocketPoller();
+        this.initWebSocketInterceptor();
     }
 
-    /**
-     * Registers clean global browser hooks so your platform's network layer 
-     * or custom event dispatchers can feed live tick data directly with zero lag.
-     */
     private registerGlobalBridge() {
         if (typeof window === 'undefined') return;
 
-        // Expose a direct window hook for external network loop calls
         (window as any).feedScannerTick = (symbol: string, price: number) => {
             this.processLiveTick(symbol, price);
         };
 
-        // Custom event bridge listener for decoupled component updates
         window.addEventListener('deriv_live_tick' as any, (event: CustomEvent) => {
             const { symbol, price } = event.detail || {};
             if (symbol && typeof price === 'number') {
@@ -67,58 +55,51 @@ export class ScannerLogic {
     }
 
     /**
-     * Continuously checks for an active WebSocket instance in the global environment,
-     * hooks into its message stream non-destructively so Stop Loss/Take Profit and 
-     * Blockly parameters continue working normally.
+     * Intercepts native WebSocket creation to safely attach listeners 
+     * without blocking core platform SL/TP or trade execution handlers.
      */
-    private initSocketPoller() {
+    private initWebSocketInterceptor() {
         if (typeof window === 'undefined') return;
 
-        const poller = setInterval(() => {
-            const socket = 
-                (window as any).activeSocket || 
-                (window as any).ws || 
-                (window as any).BinarySocket?.socket;
+        const self = this;
+        const NativeWebSocket = window.WebSocket;
 
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                console.log("[AI Scanner]: 🚀 Live WebSocket acquired via polling!");
-                
-                if (!this.isSubscribed) {
-                    this.subscribeAllMarkets(socket);
-                    this.isSubscribed = true;
+        // Override WebSocket prototype constructor safely
+        (window as any).WebSocket = function(url: string | URL, protocols?: string | string[]) {
+            const ws = new NativeWebSocket(url, protocols);
+
+            ws.addEventListener('open', () => {
+                // Check if this looks like a Deriv/Binary API endpoint connection
+                if (String(url).includes('deriv') || String(url).includes('binary') || String(url).includes('ws')) {
+                    console.log("[AI Scanner]: 🚀 Connected to trading socket! Subscribing to feeds...");
+                    setTimeout(() => {
+                        self.subscribeAllMarkets(ws);
+                    }, 500);
                 }
+            });
 
-                // Non-destructive chaining: preserve original platform message handler
-                const originalOnMessage = socket.onmessage;
-                socket.onmessage = (event: MessageEvent) => {
-                    // 1. Let the core platform handlers run first (handles SL, TP, and trade states)
-                    if (originalOnMessage) {
-                        try {
-                            originalOnMessage.call(socket, event);
-                        } catch (e) {
-                            console.error("Error in original socket handler:", e);
-                        }
+            // Non-destructive message tapping
+            const originalDescriptor = Object.getOwnPropertyDescriptor(WebSocket.prototype, 'onmessage');
+            
+            ws.addEventListener('message', (event: MessageEvent) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.msg_type === 'tick') {
+                        self.handleIncomingMessage(data);
                     }
+                } catch (e) {
+                    // Ignore non-JSON frames
+                }
+            });
 
-                    // 2. Safely parse our tick data in parallel for the AI scanner
-                    try {
-                        const data = JSON.parse(event.data);
-                        if (data.msg_type === 'tick') {
-                            this.handleIncomingMessage(data);
-                        }
-                    } catch (e) {
-                        // Ignore non-JSON frames
-                    }
-                };
+            return ws;
+        };
 
-                clearInterval(poller);
-            }
-        }, 1000);
+        // Preserve static properties on the mocked WebSocket constructor
+        Object.assign(window.WebSocket, NativeWebSocket);
+        window.WebSocket.prototype = NativeWebSocket.prototype;
     }
 
-    /**
-     * Top-Level Multiplexed Data Parser.
-     */
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
         if (dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
             return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
@@ -127,7 +108,6 @@ export class ScannerLogic {
         const { symbol, quote } = dataParsed.tick;
         const updated = this.processLiveTick(symbol, Number(quote));
 
-        // Dispatch update event to refresh UI cards instantly
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
                 detail: { strategies: updated }
@@ -137,10 +117,6 @@ export class ScannerLogic {
         return updated;
     }
 
-    /**
-     * Processes individual live ticks, manages rolling price history buffers, 
-     * calculates momentum scores with micro-variance jitter, and sorts dynamically.
-     */
     public processLiveTick(symbol: string, price: number): Strategy[] {
         if (!this.priceBuffers[symbol]) {
             this.priceBuffers[symbol] = [];
@@ -158,7 +134,6 @@ export class ScannerLogic {
         const diff = latestPrice - prevPrice;
         const liveDirection: 'UP' | 'DOWN' = diff >= 0 ? 'UP' : 'DOWN';
 
-        // 🎯 Canonical lookup mapping raw API symbols to display market strings
         const symbolToNameMap: Record<string, string> = {
             '1HZ50V': 'volatility 50 (1s)',
             '1HZ75V': 'volatility 75 (1s)',
@@ -176,18 +151,15 @@ export class ScannerLogic {
             const matchesMarket = stratMarketClean.includes(normalizedIncoming) || normalizedIncoming.includes(stratMarketClean);
 
             if (matchesMarket) {
-                // Add tiny randomized jitter & index offset so active ticks cause smooth rank swapping
                 const randomMicroNoise = Math.floor(Math.random() * 5);
                 const momentumBonus = diff !== 0 ? Math.min(22, Math.abs(diff) * 200) : randomMicroNoise;
                 const newConfidence = Math.min(99, Math.max(60, Math.round(72 + momentumBonus + (idx % 3))));
 
-                // Target Volatility 50 (1s) setup ("1HZ50V")
                 const isVol501sRise = (symbol === '1HZ50V' || stratMarketClean.includes('volatility 50 (1s)')) && liveDirection === 'UP';
                 
                 if (isVol501sRise) {
                     if (newConfidence >= this.CONFIDENCE_THRESHOLD) {
                         this.consecutiveHighConfidenceCount++;
-                        
                         if (this.consecutiveHighConfidenceCount === this.REQUIRED_CONSECUTIVE_HITS) {
                             AudioAlerts.playChime('STRONG_SIGNAL_LOCK');
                             if (typeof window !== 'undefined') {
@@ -206,7 +178,6 @@ export class ScannerLogic {
             return strat;
         });
 
-        // Sort primarily by confidence, with name fallback to prevent static ties
         return [...this.strategies].sort((a, b) => {
             if (b.confidence !== a.confidence) {
                 return b.confidence - a.confidence;
@@ -215,15 +186,9 @@ export class ScannerLogic {
         });
     }
 
-    /**
-     * Batch requests streams for all scanner assets over an active socket.
-     */
     public subscribeAllMarkets(ws: WebSocket): void {
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-            console.error("[AI Scanner Error]: Cannot subscribe. WebSocket instance is not open.");
-            return;
-        }
-        console.log(`[AI Scanner]: Initiating multiplexed streams for ${ScannerLogic.SCANNER_MARKETS.length} assets.`);
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        console.log(`[AI Scanner]: Requesting live streams for ${ScannerLogic.SCANNER_MARKETS.length} assets.`);
         
         ScannerLogic.SCANNER_MARKETS.forEach((symbol: string) => {
             ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
