@@ -11,7 +11,7 @@ export const useScannerFeed = () => {
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        // 1. Listen to the global live tick events dispatched from api-base.ts
+        // 1. Listen to global live ticks dispatched from api-base.ts
         const handleLiveTick = (event: CustomEvent) => {
             const { symbol, price } = event.detail || {};
             if (symbol && typeof price === 'number') {
@@ -35,28 +35,25 @@ export const useScannerFeed = () => {
 
         window.addEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
 
-        // 2. Ensure markets are subscribed once the API connection is active/authorized
-        const subscribeWhenReady = async () => {
-            try {
-                // Wait briefly for api_base to initialize
-                let attempts = 0;
-                while ((!api_base.api || !api_base.is_authorized) && attempts < 15) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    attempts++;
-                }
+        // 2. Aggressively push subscriptions as soon as api_base has an active connection
+        const triggerSubscriptions = async () => {
+            let attempts = 0;
+            const maxAttempts = 10;
 
+            while (attempts < maxAttempts) {
                 if (api_base.api && api_base.api.connection && api_base.api.connection.readyState === 1) {
-                    console.log("[AI Scanner Feed]: API ready. Subscribing to scanner markets...");
-                    ScannerLogic.SCANNER_MARKETS.forEach((symbol: string) => {
+                    console.log("[AI Scanner Feed]: Active socket found. Dispatching scanner market subscriptions...");
+                    ScannerLogic.SCANNER_MARKETS.forEach((symbol: symbol | string) => {
                         api_base.api?.send({ ticks: symbol, subscribe: 1 });
                     });
+                    break;
                 }
-            } catch (err) {
-                console.error("[AI Scanner Feed]: Error subscribing to markets", err);
+                attempts++;
+                await new Promise(resolve => setTimeout(resolve, 800));
             }
         };
 
-        subscribeWhenReady();
+        triggerSubscriptions();
 
         return () => {
             window.removeEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
