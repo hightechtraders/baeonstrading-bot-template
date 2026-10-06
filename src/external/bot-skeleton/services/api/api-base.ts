@@ -176,6 +176,23 @@ class APIBase {
             this.api?.connection.addEventListener('open', this.onsocketopen.bind(this));
             this.api?.connection.addEventListener('close', this.onsocketclose.bind(this));
 
+            // [AI] - Clean Live Tick Interceptor Bridge
+            if (this.api && typeof this.api.onMessage === 'function') {
+                this.api.onMessage().subscribe((message: any) => {
+                    if (message && message.msg_type === 'tick' && message.tick) {
+                        window.dispatchEvent(
+                            new CustomEvent('deriv_live_tick', {
+                                detail: {
+                                    symbol: message.tick.symbol,
+                                    price: message.tick.quote,
+                                },
+                            })
+                        );
+                    }
+                });
+            }
+            // [/AI]
+
             // Store the current account ID used for this WebSocket connection
             // This will be used to check if we need to regenerate the connection when the tab becomes active
             const currentClientStore = globalObserver.getState('client.store');
