@@ -54,6 +54,18 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
+  /**
+   * Receives live tick updates from the WebSocket hook and broadcasts them 
+   * to floating UI widgets or internal buffer trackers.
+   */
+  public static pushTick(assetName: string, quote: number, strategies: any[]) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ai-tick-received', {
+        detail: { assetName, quote, strategies }
+      }));
+    }
+  }
+
   public static loadStrategyToWorkspace(strategy: any, options: any) {
     ScannerBridge.isScannerActive = true;
     if (typeof window !== 'undefined') {
@@ -154,7 +166,7 @@ export class ScannerBridge {
                     }
                   }
                   symbolField.setValue(strictDerivSymbol);
-                  updated = true;
+                    updated = true;
                 }
               }
 
