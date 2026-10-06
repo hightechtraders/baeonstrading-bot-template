@@ -1,14 +1,14 @@
+// ==========================================
+// FILE: src/Aiscanner/FloatingAI.tsx
+// ==========================================
 import React, { useState, useEffect, useRef } from 'react';
-import { ScannerLogic } from './scannerLogic';
 import { ScannerBridge } from './scannerBridge';
 import { Strategy } from './strategies';
-import { useScannerFeed } from './useScannerFeed'; // 🎯 1. Imported live feed hook
+import { useScannerFeed } from './useScannerFeed'; // 🎯 Imported live feed hook
 import './FloatingAI.css';
- 
-const scanner = new ScannerLogic();
 
 export const FloatingAI: React.FC = () => {
-  // 🎯 2. Invoke the feed hook so it subscribes to live Deriv market websockets on mount
+  // 🎯 Invoke the feed hook so it subscribes to live Deriv market websockets on mount
   useScannerFeed();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -57,20 +57,13 @@ export const FloatingAI: React.FC = () => {
     };
   }, []);
 
-  // 2. Initial scan timeout when modal opens
+  // 2. Reset modal states cleanly when opened (relying entirely on live WebSocket tick stream)
   useEffect(() => {
     if (isOpen) {
       setIsScanning(true);
       setExpandedIndex(null);
       setIsSignalLocked(false);
-      setSignalBannerText("🔍 Scanning Volatility 50 (1s) for 99% Trend Lock...");
-
-      const scanTimeout = setTimeout(() => {
-        setStrategies(scanner.runScan());
-        setIsScanning(false);
-      }, 1500);
-
-      return () => clearTimeout(scanTimeout);
+      setSignalBannerText("🔍 Listening for Live Deriv Ticks...");
     }
   }, [isOpen]);
 
@@ -132,19 +125,19 @@ export const FloatingAI: React.FC = () => {
               <div className="global-winner-section">
                 <div className="global-winner-meta">
                   <span>GLOBAL WINNER</span>
-                  <span>SCANNING LIVE TICKS...</span>
+                  <span>WAITING FOR LIVE TICKS...</span>
                 </div>
                 <div className="strategy-card top-card">
                   <div className="card-main-row">
                     <span className="badge-rank">#1</span>
                     <div className="strategy-info">
-                      <strong>Analyzing Market Stream...</strong>
+                      <strong>Connecting to Live Deriv Feed...</strong>
                       <div className="card-tags-row">
                         <span className="market-tag">SYNTHETIC</span>
                         <span className="direction-tag flat">FLAT</span>
                       </div>
                     </div>
-                    <span className="badge-high">50%</span>
+                    <span className="badge-high">--</span>
                   </div>
                 </div>
               </div>
