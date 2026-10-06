@@ -34,70 +34,25 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Module instantiated. Initializing WebSocket prototype interceptor...");
+        console.log("[AI Scanner]: Module instantiated cleanly. Initializing safe event bridges...");
         this.registerGlobalBridge();
-        this.initWebSocketInterceptor();
     }
 
     private registerGlobalBridge() {
         if (typeof window === 'undefined') return;
 
+        // Direct window hook for external network loop calls
         (window as any).feedScannerTick = (symbol: string, price: number) => {
             this.processLiveTick(symbol, price);
         };
 
+        // Decoupled custom event listener for safe background updates
         window.addEventListener('deriv_live_tick' as any, (event: CustomEvent) => {
             const { symbol, price } = event.detail || {};
             if (symbol && typeof price === 'number') {
                 this.processLiveTick(symbol, price);
             }
         });
-    }
-
-    /**
-     * Intercepts native WebSocket creation to safely attach listeners 
-     * without blocking core platform SL/TP or trade execution handlers.
-     */
-    private initWebSocketInterceptor() {
-        if (typeof window === 'undefined') return;
-
-        const self = this;
-        const NativeWebSocket = window.WebSocket;
-
-        // Override WebSocket prototype constructor safely
-        (window as any).WebSocket = function(url: string | URL, protocols?: string | string[]) {
-            const ws = new NativeWebSocket(url, protocols);
-
-            ws.addEventListener('open', () => {
-                // Check if this looks like a Deriv/Binary API endpoint connection
-                if (String(url).includes('deriv') || String(url).includes('binary') || String(url).includes('ws')) {
-                    console.log("[AI Scanner]: 🚀 Connected to trading socket! Subscribing to feeds...");
-                    setTimeout(() => {
-                        self.subscribeAllMarkets(ws);
-                    }, 500);
-                }
-            });
-
-            // Non-destructive message tapping
-            const originalDescriptor = Object.getOwnPropertyDescriptor(WebSocket.prototype, 'onmessage');
-            
-            ws.addEventListener('message', (event: MessageEvent) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.msg_type === 'tick') {
-                        self.handleIncomingMessage(data);
-                    }
-                } catch (e) {
-                    // Ignore non-JSON frames
-                }
-            });
-
-            return ws;
-        };
-
-        // Preserve static properties on the mocked WebSocket constructor
-        Object.assign(window.WebSocket, NativeWebSocket);
-        window.WebSocket.prototype = NativeWebSocket.prototype;
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
