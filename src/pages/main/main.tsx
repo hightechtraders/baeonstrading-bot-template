@@ -337,72 +337,77 @@ const AppWrapper = observer(() => {
                 >
                     <div>
                         {!isDesktop && left_tab_shadow && <span className='tabs-shadow tabs-shadow--left' />}{' '}
-                        <Tabs active_index={active_tab} className='main__tabs' onTabItemClick={handleTabChange} top>
-                            <div
-                                label={
-                                    <>
-                                        <LabelPairedObjectsColumnCaptionRegularIcon
-                                            height='24px'
-                                            width='24px'
-                                            fill='var(--text-general)'
-                                        />
-                                        <Localize i18n_default_text='Dashboard' />
-                                    </>
-                                }
-                                id='id-dbot-dashboard'
-                            >
-                                <Dashboard handleTabChange={handleTabChange} />
-                            </div>
-                            <div
-                                label={
-                                    <>
-                                        <LabelPairedPuzzlePieceTwoCaptionBoldIcon
-                                            height='24px'
-                                            width='24px'
-                                            fill='var(--text-general)'
-                                        />
-                                        <Localize i18n_default_text='Bot Builder' />
-                                    </>
-                                }
-                                id='id-bot-builder'
-                            />
-                            <div
-                                label={
-                                    <>
-                                        <LabelPairedChartLineCaptionRegularIcon
-                                            height='24px'
-                                            width='24px'
-                                            fill='var(--text-general)'
-                                        />
-                                        <Localize i18n_default_text='Charts' />
-                                    </>
-                                }
-                                id={
-                                    is_chart_modal_visible || is_trading_view_modal_visible
-                                        ? 'id-charts--disabled'
-                                        : 'id-charts'
-                                }
-                            >
-                                <Suspense
-                                    fallback={<ChunkLoader message={localize('Please wait, loading chart...')} />}
+                        
+                        {/* Parent flex container keeping tabs on the left and bot badge on the right */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'var(--general-main-1)' }}>
+                            <Tabs active_index={active_tab} className='main__tabs' onTabItemClick={handleTabChange} top>
+                                <div
+                                    label={
+                                        <>
+                                            <LabelPairedObjectsColumnCaptionRegularIcon
+                                                height='24px'
+                                                width='24px'
+                                                fill='var(--text-general)'
+                                            />
+                                            <Localize i18n_default_text='Dashboard' />
+                                        </>
+                                    }
+                                    id='id-dbot-dashboard'
                                 >
-                                    <ChartWrapper show_digits_stats={false} />
-                                </Suspense>
-                            </div>
-                        </Tabs>
+                                    <Dashboard handleTabChange={handleTabChange} />
+                                </div>
+                                <div
+                                    label={
+                                        <>
+                                            <LabelPairedPuzzlePieceTwoCaptionBoldIcon
+                                                height='24px'
+                                                width='24px'
+                                                fill='var(--text-general)'
+                                            />
+                                            <Localize i18n_default_text='Bot Builder' />
+                                        </>
+                                    }
+                                    id='id-bot-builder'
+                                />
+                                <div
+                                    label={
+                                        <>
+                                            <LabelPairedChartLineCaptionRegularIcon
+                                                height='24px'
+                                                width='24px'
+                                                fill='var(--text-general)'
+                                            />
+                                            <Localize i18n_default_text='Charts' />
+                                        </>
+                                    }
+                                    id={
+                                        is_chart_modal_visible || is_trading_view_modal_visible
+                                            ? 'id-charts--disabled'
+                                            : 'id-charts'
+                                    }
+                                >
+                                    <Suspense
+                                        fallback={<ChunkLoader message={localize('Please wait, loading chart...')} />}
+                                    >
+                                        <ChartWrapper show_digits_stats={false} />
+                                    </Suspense>
+                                </div>
+                            </Tabs>
 
-                        {/* Custom Branded Bot Name Badge inserted into the former slot */}
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                padding: '0 20px',
-                                height: '100%',
-                                marginLeft: 'auto',
-                            }}
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '15px' }}>⚡</span>
+                            {/* Branded Bot Name Badge */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '0 24px',
+                                    height: '48px',
+                                    borderLeft: '1px solid var(--border-normal)',
+                                    background: 'var(--general-section-1)',
+                                    whiteSpace: 'nowrap',
+                                }}
+                            >
+                                <span style={{ fontSize: '16px' }}>⚡</span>
                                 <div>
                                     <div style={{ fontWeight: '700', fontSize: '13px', color: 'var(--text-prominent)', lineHeight: '1.2' }}>
                                         V50 1s Rise Sniper
