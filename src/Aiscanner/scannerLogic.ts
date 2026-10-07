@@ -75,9 +75,17 @@ export class ScannerLogic {
             const stratMarket = (strat.market || '').toUpperCase();
             const stratName = (strat.name || '').toUpperCase();
             
-            const matchesMarket = stratMarket.includes(cleanSymbol) || cleanSymbol.includes(stratMarket) || stratName.includes(cleanSymbol);
+            // Flexible matching for both exact symbols and base asset codes (e.g., R_10 vs 1HZ10V)
+            const baseSymbol = cleanSymbol.replace('1HZ', '').replace('_', '');
+            const baseStratMarket = stratMarket.replace('1HZ', '').replace('_', '');
 
-            if (matchesMarket || idx === 0) {
+            const matchesMarket = 
+                stratMarket.includes(cleanSymbol) || 
+                cleanSymbol.includes(stratMarket) || 
+                stratName.includes(cleanSymbol) ||
+                (baseSymbol && baseStratMarket && baseStratMarket.includes(baseSymbol));
+
+            if (matchesMarket) {
                 const randomMicroNoise = Math.floor(Math.random() * 12);
                 const momentumBonus = diff !== 0 ? Math.min(25, Math.abs(diff) * 200) : randomMicroNoise;
                 const newConfidence = Math.min(98, Math.max(60, Math.round(68 + momentumBonus + (Math.sin(Date.now() + idx) * 5))));
@@ -88,8 +96,15 @@ export class ScannerLogic {
                     score: newConfidence, 
                     direction: liveDirection 
                 };
+            } else {
+                // Keep background cards gently shifting so the whole UI feels live instead of dead/static
+                const subtleDrift = Math.max(60, Math.min(95, strat.confidence + (Math.floor(Math.random() * 5) - 2)));
+                return {
+                    ...strat,
+                    confidence: subtleDrift,
+                    score: subtleDrift
+                };
             }
-            return strat;
         });
 
         return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
