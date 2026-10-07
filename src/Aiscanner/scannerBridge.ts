@@ -1,5 +1,6 @@
 // src/Aiscanner/scannerBridge.ts
-import { RiskManager } from './riskManager'; // 👈 1. Import the RiskManager
+import { RiskManager } from './riskManager';
+import { ScannerLogic, DerivTickResponse } from './scannerLogic';
 
 export interface AIScannerPayload {
   stake: number;
@@ -13,6 +14,7 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static isScannerActive: boolean = false; 
+  private static scannerLogicInstance = new ScannerLogic(); // 👈 Instantiate core calculation logic
 
   static {
     if (typeof window !== 'undefined') {
@@ -55,13 +57,30 @@ export class ScannerBridge {
   }
 
   /**
-   * Receives live tick updates from the WebSocket hook and broadcasts them 
-   * to floating UI widgets or internal buffer trackers.
+   * Seamlessly intercepts live ticks from api-base, processes them through ScannerLogic,
+   * and broadcasts the fully updated strategy array to the UI components.
    */
-  public static pushTick(assetName: string, quote: number, strategies: any[]) {
+  public static pushTick(assetName: string, quote: number, strategies?: any[]) {
+    // Process live tick through our calculation engine to evaluate UP/DOWN directions & dynamic scores
+    const tickPayload: DerivTickResponse = {
+      msg_type: 'tick',
+      tick: {
+        symbol: assetName,
+        quote: quote,
+        epoch: Date.now(),
+        id: Math.random().toString()
+      }
+    };
+
+    const updatedStrategies = ScannerBridge.scannerLogicInstance.handleIncomingMessage(tickPayload);
+
     if (typeof window !== 'undefined') {
+      // Dispatch both event names to ensure full backward compatibility with any listening component
       window.dispatchEvent(new CustomEvent('ai-tick-received', {
-        detail: { assetName, quote, strategies }
+        detail: { assetName, quote, strategies: updatedStrategies }
+      }));
+      window.dispatchEvent(new CustomEvent('deriv_scanner_updated', {
+        detail: { assetName, quote, strategies: updatedStrategies }
       }));
     }
   }
@@ -85,7 +104,6 @@ export class ScannerBridge {
       takeProfit: options?.takeProfit || strategy?.takeProfit || 100
     };
 
-    // 🔓 2. Arm the RiskManager with the payload's Stop Loss & Take Profit thresholds
     RiskManager.configure(payload.stopLoss, payload.takeProfit);
 
     const rootStore = (window as any).derivBotAppStore;
@@ -142,7 +160,6 @@ export class ScannerBridge {
       } catch (error) {}
     }
 
-    // Block mutation pass...
     const applyBlockMutations = () => {
       try {
         const Blockly = (window as any).Blockly;
@@ -166,7 +183,7 @@ export class ScannerBridge {
                     }
                   }
                   symbolField.setValue(strictDerivSymbol);
-                    updated = true;
+                  updated = true;
                 }
               }
 
