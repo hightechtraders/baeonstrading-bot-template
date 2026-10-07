@@ -15,7 +15,12 @@ export interface DerivTickResponse {
 }
   
 export class ScannerLogic {
-    private strategies: Strategy[] = INITIAL_STRATEGIES;
+    private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
+        ...s,
+        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'Volatility 75 AI Scalper',
+        market: s.market || 'R_75',
+        confidence: s.confidence || 75
+    }));
     private priceBuffers: { [symbol: string]: number[] } = {};
     
     private consecutiveHighConfidenceCount: number = 0;
@@ -75,7 +80,7 @@ export class ScannerLogic {
         const normalizedIncoming = symbolToNameMap[symbol] || symbol.toLowerCase();
 
         this.strategies = this.strategies.map((strat, idx) => {
-            const stratMarketClean = strat.market.toLowerCase();
+            const stratMarketClean = (strat.market || '').toLowerCase();
             const matchesMarket = stratMarketClean.includes(normalizedIncoming) || normalizedIncoming.includes(stratMarketClean);
 
             if (matchesMarket) {
@@ -88,7 +93,6 @@ export class ScannerLogic {
             return strat;
         });
 
-        // Return a brand new sorted array reference so React state hooks trigger card re-ordering
         return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
     }
 }
