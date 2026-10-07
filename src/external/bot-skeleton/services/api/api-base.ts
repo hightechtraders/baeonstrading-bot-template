@@ -9,7 +9,7 @@ import { handleBackendError, isBackendError } from '@/utils/error-handler';
 import { activeSymbolsProcessorService } from '../../../../services/active-symbols-processor.service';
 import { observer as globalObserver } from '../../utils/observer';
 import { doUntilDone, socket_state } from '../tradeEngine/utils/helpers';
-import { ScannerBridge } from '../../../Aiscanner/scannerBridge'; // 👈 Imported ScannerBridge for live tick feed
+import { ScannerBridge } from '@/Aiscanner/scannerBridge'; // 👈 Fixed alias path pointing to project root
 import {
     CONNECTION_STATUS,
     setAccountList,
