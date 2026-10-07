@@ -24,7 +24,7 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     
     private consecutiveHighConfidenceCount: number = 0;
-    private readonly CONFIDENCE_THRESHOLD: number: number = 95;
+    private readonly CONFIDENCE_THRESHOLD: number = 95;
     private readonly REQUIRED_CONSECUTIVE_HITS: number = 2; // Relaxed slightly to catch sustained moves quicker
 
     public static readonly SCANNER_MARKETS: string[] = [
