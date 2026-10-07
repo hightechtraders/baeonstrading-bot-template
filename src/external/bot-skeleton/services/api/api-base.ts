@@ -35,6 +35,7 @@ type TApiBaseApi = {
         readyState: keyof typeof socket_state;
         addEventListener: (event: string, callback: () => void) => void;
         removeEventListener: (event: string, callback: () => void) => void;
+        onmessage?: (event: MessageEvent) => void;
     };
     send: (data: unknown) => void;
     disconnect: () => void;
@@ -176,20 +177,32 @@ class APIBase {
             this.api?.connection.addEventListener('open', this.onsocketopen.bind(this));
             this.api?.connection.addEventListener('close', this.onsocketclose.bind(this));
 
-            // [AI] - Clean Live Tick Interceptor Bridge
-            if (this.api && typeof this.api.onMessage === 'function') {
-                this.api.onMessage().subscribe((message: any) => {
-                    if (message && message.msg_type === 'tick' && message.tick) {
-                        window.dispatchEvent(
-                            new CustomEvent('deriv_live_tick', {
-                                detail: {
-                                    symbol: message.tick.symbol,
-                                    price: message.tick.quote,
-                                },
-                            })
-                        );
+            // [AI] - Direct Native WebSocket Live Tick Interceptor
+            if (this.api && this.api.connection) {
+                const originalOnMessage = this.api.connection.onmessage;
+                this.api.connection.onmessage = (event: MessageEvent) => {
+                    if (originalOnMessage) {
+                        if (typeof originalOnMessage === 'function') {
+                            originalOnMessage.call(this.api.connection, event);
+                        }
                     }
-                });
+
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data && data.msg_type === 'tick' && data.tick) {
+                            window.dispatchEvent(
+                                new CustomEvent('deriv_live_tick', {
+                                    detail: {
+                                        symbol: data.tick.symbol,
+                                        price: data.tick.quote,
+                                    },
+                                })
+                            );
+                        }
+                    } catch (err) {
+                        // Ignore parse errors from non-JSON frames
+                    }
+                };
             }
             // [/AI]
 
