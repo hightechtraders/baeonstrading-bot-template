@@ -5,6 +5,7 @@ import Text from '@/components/shared_ui/text';
 import { useStore } from '@/hooks/useStore';
 import { localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
+import OnboardTourHandler from '../tutorials/dbot-tours/onboarding-tour';
 import Announcements from './announcements';
 import Cards from './cards';
 import InfoPanel from './info-panel';
@@ -16,7 +17,7 @@ type TMobileIconGuide = {
 const DashboardComponent = observer(({ handleTabChange }: TMobileIconGuide) => {
     const { load_modal, dashboard, client } = useStore();
     const { dashboard_strategies } = load_modal;
-    const { active_tour } = dashboard;
+    const { active_tab, active_tour } = dashboard;
     const has_dashboard_strategies = !!dashboard_strategies?.length;
     const { isDesktop, isTablet } = useDevice();
 
@@ -37,16 +38,18 @@ const DashboardComponent = observer(({ handleTabChange }: TMobileIconGuide) => {
                                 'tab__dashboard__header--listed': isDesktop && has_dashboard_strategies,
                             })}
                         >
-                            <Text
-                                className='title'
-                                as='h2'
-                                color='prominent'
-                                size={isDesktop ? 'sm' : 's'}
-                                lineHeight='xxl'
-                                weight='bold'
-                            >
-                                {localize('V50 1s Rise Sniper')}
-                            </Text>
+                            {!has_dashboard_strategies && (
+                                <Text
+                                    className='title'
+                                    as='h2'
+                                    color='prominent'
+                                    size={isDesktop ? 'sm' : 's'}
+                                    lineHeight='xxl'
+                                    weight='bold'
+                                >
+                                    {localize('Load or build your bot')}
+                                </Text>
+                            )}
                             <Text
                                 as='p'
                                 color='prominent'
@@ -55,7 +58,7 @@ const DashboardComponent = observer(({ handleTabChange }: TMobileIconGuide) => {
                                 className={classNames('subtitle', { 'subtitle__has-list': has_dashboard_strategies })}
                             >
                                 {localize(
-                                    'Configured for automated Volatility 50 (1s) Rise contract execution.'
+                                    'Import a bot from your computer or Google Drive, build it from scratch, or start with a quick strategy.'
                                 )}
                             </Text>
                         </div>
@@ -64,6 +67,7 @@ const DashboardComponent = observer(({ handleTabChange }: TMobileIconGuide) => {
                 </div>
             </div>
             <InfoPanel />
+            {active_tab === 0 && <OnboardTourHandler is_mobile={!isDesktop} />}
         </React.Fragment>
     );
 });
