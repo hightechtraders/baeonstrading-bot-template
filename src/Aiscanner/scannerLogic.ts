@@ -24,8 +24,8 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     
     private consecutiveHighConfidenceCount: number = 0;
-    private readonly CONFIDENCE_THRESHOLD: number = 98;
-    private readonly REQUIRED_CONSECUTIVE_HITS: number = 3; // Requires at least 3 consecutive ticks in the same direction
+    private readonly CONFIDENCE_THRESHOLD: number: number = 95;
+    private readonly REQUIRED_CONSECUTIVE_HITS: number = 2; // Relaxed slightly to catch sustained moves quicker
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -70,7 +70,7 @@ export class ScannerLogic {
 
         const cleanSymbol = symbol.toUpperCase();
 
-        // Calculate strict consecutive directional consistency
+        // Calculate consecutive directional consistency
         let consecutiveCount = 0;
         for (let i = prices.length - 1; i > 0; i--) {
             const currentDiff = prices[i] - prices[i - 1];
@@ -97,9 +97,9 @@ export class ScannerLogic {
                 (baseSymbol && baseStratMarket && baseStratMarket.includes(baseSymbol));
 
             if (matchesMarket) {
-                // If the asset is chopping (consecutive hits less than required), suppress the score heavily
+                // If chopping, keep scores low
                 if (consecutiveCount < this.REQUIRED_CONSECUTIVE_HITS) {
-                    const choppyScore = Math.max(40, 55 + (consecutiveCount * 4));
+                    const choppyScore = Math.max(45, 50 + (consecutiveCount * 5));
                     return {
                         ...strat,
                         confidence: choppyScore,
@@ -108,12 +108,12 @@ export class ScannerLogic {
                     };
                 }
 
-                // If genuine momentum and consistency are confirmed, allow high confidence
-                const momentumScore = Math.min(30, Math.abs(diff) * 300);
-                const streakBonus = Math.min(15, consecutiveCount * 3);
+                // Boost scaling so valid trends easily jump to the 88% - 98% tier
+                const momentumBoost = Math.min(35, Math.abs(diff) * 500);
+                const streakMultiplier = consecutiveCount * 6;
                 
-                const calculatedConfidence = Math.round(65 + momentumScore + streakBonus);
-                const newConfidence = Math.min(98, Math.max(50, calculatedConfidence));
+                const calculatedConfidence = Math.round(75 + momentumBoost + streakMultiplier);
+                const newConfidence = Math.min(98, Math.max(82, calculatedConfidence));
 
                 return { 
                     ...strat, 
@@ -122,8 +122,8 @@ export class ScannerLogic {
                     direction: liveDirection 
                 };
             } else {
-                // Low background drift for non-active assets
-                const subtleDrift = Math.max(45, Math.min(75, strat.confidence + (Math.floor(Math.random() * 5) - 2)));
+                // Low background drift
+                const subtleDrift = Math.max(45, Math.min(70, strat.confidence + (Math.floor(Math.random() * 5) - 2)));
                 return {
                     ...strat,
                     confidence: subtleDrift,
