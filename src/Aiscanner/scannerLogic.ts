@@ -24,8 +24,8 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     
     private consecutiveHighConfidenceCount: number = 0;
-    private readonly CONFIDENCE_THRESHOLD: number = 99;
-    private readonly REQUIRED_CONSECUTIVE_HITS: number = 3;
+    private readonly CONFIDENCE_THRESHOLD: number = 98;
+    private readonly REQUIRED_CONSECUTIVE_HITS: number = 3; // Requires at least 3 consecutive ticks in the same direction
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -55,29 +55,29 @@ export class ScannerLogic {
             this.priceBuffers[symbol] = [];
         }
         this.priceBuffers[symbol].push(price);
-        if (this.priceBuffers[symbol].length > 15) {
+        if (this.priceBuffers[symbol].length > 20) {
             this.priceBuffers[symbol].shift();
         }
 
         const prices = this.priceBuffers[symbol];
-        if (prices.length < 2) return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
+        if (prices.length < 4) return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
 
         const latestPrice = prices[prices.length - 1];
         const prevPrice = prices[prices.length - 2];
         const diff = latestPrice - prevPrice;
         
-        // Strict direction evaluation
         const liveDirection: 'UP' | 'DOWN' = diff > 0 ? 'UP' : diff < 0 ? 'DOWN' : (Math.random() > 0.5 ? 'UP' : 'DOWN');
 
         const cleanSymbol = symbol.toUpperCase();
 
-        // Calculate short-term directional consistency (tightening margin filter)
-        let consecutiveDirectionCount = 1;
+        // Calculate strict consecutive directional consistency
+        let consecutiveCount = 0;
         for (let i = prices.length - 1; i > 0; i--) {
             const currentDiff = prices[i] - prices[i - 1];
-            const prevDiff = prices[i - 1] - (prices[i - 2] ?? prices[i - 1]);
-            if ((currentDiff > 0 && prevDiff > 0) || (currentDiff < 0 && prevDiff < 0)) {
-                consecutiveDirectionCount++;
+            if (currentDiff === 0) break;
+            const isSameDirection = (diff > 0 && currentDiff > 0) || (diff < 0 && currentDiff < 0);
+            if (isSameDirection) {
+                consecutiveCount++;
             } else {
                 break;
             }
@@ -97,13 +97,23 @@ export class ScannerLogic {
                 (baseSymbol && baseStratMarket && baseStratMarket.includes(baseSymbol));
 
             if (matchesMarket) {
-                // Tightened formula: reward consistency and momentum, penalize flat/choppy micro-noise
-                const momentumScore = Math.min(35, Math.abs(diff) * 350);
-                const consistencyBonus = Math.min(20, consecutiveDirectionCount * 5);
+                // If the asset is chopping (consecutive hits less than required), suppress the score heavily
+                if (consecutiveCount < this.REQUIRED_CONSECUTIVE_HITS) {
+                    const choppyScore = Math.max(40, 55 + (consecutiveCount * 4));
+                    return {
+                        ...strat,
+                        confidence: choppyScore,
+                        score: choppyScore,
+                        direction: liveDirection
+                    };
+                }
+
+                // If genuine momentum and consistency are confirmed, allow high confidence
+                const momentumScore = Math.min(30, Math.abs(diff) * 300);
+                const streakBonus = Math.min(15, consecutiveCount * 3);
                 
-                // Stricter baseline: requires clean directional momentum to score above 85+
-                const calculatedConfidence = Math.round(50 + momentumScore + consistencyBonus + (Math.sin(Date.now() + idx) * 3));
-                const newConfidence = Math.min(98, Math.max(45, calculatedConfidence));
+                const calculatedConfidence = Math.round(65 + momentumScore + streakBonus);
+                const newConfidence = Math.min(98, Math.max(50, calculatedConfidence));
 
                 return { 
                     ...strat, 
@@ -112,8 +122,8 @@ export class ScannerLogic {
                     direction: liveDirection 
                 };
             } else {
-                // Background drift lowered so random cards don't accidentally sneak to the top
-                const subtleDrift = Math.max(50, Math.min(85, strat.confidence + (Math.floor(Math.random() * 5) - 2)));
+                // Low background drift for non-active assets
+                const subtleDrift = Math.max(45, Math.min(75, strat.confidence + (Math.floor(Math.random() * 5) - 2)));
                 return {
                     ...strat,
                     confidence: subtleDrift,
