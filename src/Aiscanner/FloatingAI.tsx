@@ -17,16 +17,6 @@ export const FloatingAI: React.FC = () => {
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
 
-  // Use pure React state for coordinates so it moves as a single unified element
-  const [position, setPosition] = useState({
-    x: window.innerWidth - 80,
-    y: window.innerHeight - 120
-  });
-
-  const isDraggingRef = useRef(false);
-  const dragOffsetRef = useRef({ x: 0, y: 0 });
-  const hasMovedRef = useRef(false);
-
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const expandedIndexRef = useRef<number | null>(null);
 
@@ -78,46 +68,6 @@ export const FloatingAI: React.FC = () => {
     }
   }, [isOpen]);
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    isDraggingRef.current = true;
-    hasMovedRef.current = false;
-    dragOffsetRef.current = {
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
-    };
-
-    const handleWindowPointerMove = (moveEvent: PointerEvent) => {
-      if (!isDraggingRef.current) return;
-
-      const dx = moveEvent.clientX - position.x - dragOffsetRef.current.x;
-      const dy = moveEvent.clientY - position.y - dragOffsetRef.current.y;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-        hasMovedRef.current = true;
-      }
-
-      const buttonSize = 60;
-      const padding = 12;
-
-      const newX = Math.max(padding, Math.min(moveEvent.clientX - dragOffsetRef.current.x, window.innerWidth - buttonSize - padding));
-      const newY = Math.max(padding, Math.min(moveEvent.clientY - dragOffsetRef.current.y, window.innerHeight - buttonSize - padding));
-
-      setPosition({ x: newX, y: newY });
-    };
-
-    const handleWindowPointerUp = () => {
-      isDraggingRef.current = false;
-      window.removeEventListener('pointermove', handleWindowPointerMove);
-      window.removeEventListener('pointerup', handleWindowPointerUp);
-
-      if (!hasMovedRef.current) {
-        setIsOpen(true);
-      }
-    };
-
-    window.addEventListener('pointermove', handleWindowPointerMove);
-    window.addEventListener('pointerup', handleWindowPointerUp);
-  };
-
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
   const topWinner = sortedStrategies[0];
   const otherStrategies = sortedStrategies.slice(1);
@@ -140,19 +90,16 @@ export const FloatingAI: React.FC = () => {
     <div className="floating-ai-container" style={{ display: 'contents' }}>
       <button 
         className="dancing-orb-wrapper"
-        draggable={false}
-        onDragStart={(e) => e.preventDefault()}
-        onPointerDown={handlePointerDown}
+        onClick={() => setIsOpen(true)}
         style={{
           position: 'fixed',
-          left: `${position.x}px`,
-          top: `${position.y}px`,
-          touchAction: 'none',
-          cursor: 'grab',
+          bottom: '24px',
+          right: '24px',
           zIndex: 9999,
           background: 'transparent',
           border: 'none',
-          padding: 0
+          padding: 0,
+          cursor: 'pointer'
         }}
       >
         <div className="dancing-orb-inner">
