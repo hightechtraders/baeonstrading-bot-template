@@ -148,19 +148,25 @@ export const FloatingAI: React.FC = () => {
 
   return (
     <div className="floating-ai-container">
-      {/* DRAGGABLE AI ORB BUTTON */}
+      {/* DRAGGABLE AI ORB BUTTON (Outer wrapper handles fixed drag positioning) */}
       <button 
         ref={buttonRef}
-        className="dancing-orb"
+        className="dancing-orb-wrapper"
         onPointerDown={handlePointerDown}
         style={{
           position: 'fixed',
           touchAction: 'none',
           cursor: 'grab',
-          zIndex: 9999
+          zIndex: 9999,
+          background: 'transparent',
+          border: 'none',
+          padding: 0
         }}
       >
-        🤖 AI
+        {/* Inner element handles the smooth pulse animation and gradient background */}
+        <div className="dancing-orb-inner">
+          🤖 AI
+        </div>
       </button>
 
       {isOpen && (
