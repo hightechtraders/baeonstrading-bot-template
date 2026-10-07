@@ -17,8 +17,9 @@ export const FloatingAI: React.FC = () => {
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
 
-  // Dragging state and position
-  const [position, setPosition] = useState<{ x: number; y: number }>({ x: window.innerWidth - 80, y: window.innerHeight - 120 });
+  // Direct DOM ref for buttery smooth dragging without re-render ghosting
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const posRef = useRef({ x: window.innerWidth - 80, y: window.innerHeight - 120 });
   const isDraggingRef = useRef(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const hasMovedRef = useRef(false);
@@ -33,6 +34,14 @@ export const FloatingAI: React.FC = () => {
   const [stake, setStake] = useState<number>(10);
   const [stopLoss, setStopLoss] = useState<number>(20);
   const [takeProfit, setTakeProfit] = useState<number>(50);
+
+  // Set initial position on mount
+  useEffect(() => {
+    if (buttonRef.current) {
+      buttonRef.current.style.left = `${posRef.current.x}px`;
+      buttonRef.current.style.top = `${posRef.current.y}px`;
+    }
+  }, []);
 
   // 1. Listen for live strategy updates broadcasted by useScannerFeed
   useEffect(() => {
@@ -76,35 +85,35 @@ export const FloatingAI: React.FC = () => {
     }
   }, [isOpen]);
 
-  // 3. Handle Dragging Mechanics with Strict Boundary Clamping
+  // 3. Handle Dragging Mechanics directly on DOM element (No Re-renders)
   const handlePointerDown = (e: React.PointerEvent) => {
     isDraggingRef.current = true;
     hasMovedRef.current = false;
     dragOffsetRef.current = {
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
+      x: e.clientX - posRef.current.x,
+      y: e.clientY - posRef.current.y
     };
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDraggingRef.current) return;
+    if (!isDraggingRef.current || !buttonRef.current) return;
     
-    const dx = e.clientX - position.x - dragOffsetRef.current.x;
-    const dy = e.clientY - position.y - dragOffsetRef.current.y;
+    const dx = e.clientX - posRef.current.x - dragOffsetRef.current.x;
+    const dy = e.clientY - posRef.current.y - dragOffsetRef.current.y;
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
       hasMovedRef.current = true;
     }
 
-    // Button dimensions (approx 60px diameter)
     const buttonSize = 60;
     const padding = 12;
 
-    // Calculate clamped coordinates ensuring it never leaves screen borders
     const newX = Math.max(padding, Math.min(e.clientX - dragOffsetRef.current.x, window.innerWidth - buttonSize - padding));
     const newY = Math.max(padding, Math.min(e.clientY - dragOffsetRef.current.y, window.innerHeight - buttonSize - padding));
 
-    setPosition({ x: newX, y: newY });
+    posRef.current = { x: newX, y: newY };
+    buttonRef.current.style.left = `${newX}px`;
+    buttonRef.current.style.top = `${newY}px`;
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
@@ -113,7 +122,6 @@ export const FloatingAI: React.FC = () => {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {}
 
-    // If it was just a click (not a drag), open the modal
     if (!hasMovedRef.current) {
       setIsOpen(true);
     }
@@ -141,14 +149,13 @@ export const FloatingAI: React.FC = () => {
     <div className="floating-ai-container">
       {/* DRAGGABLE AI ORB BUTTON */}
       <button 
+        ref={buttonRef}
         className="dancing-orb"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         style={{
           position: 'fixed',
-          left: `${position.x}px`,
-          top: `${position.y}px`,
           touchAction: 'none',
           cursor: 'grab',
           zIndex: 9999
