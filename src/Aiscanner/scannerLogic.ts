@@ -66,16 +66,27 @@ export class ScannerLogic {
         const prevPrice = prices[prices.length - 2];
         const diff = latestPrice - prevPrice;
         
-        // Strict direction evaluation: handles upward, downward, and varied neutral ticks
+        // Strict direction evaluation
         const liveDirection: 'UP' | 'DOWN' = diff > 0 ? 'UP' : diff < 0 ? 'DOWN' : (Math.random() > 0.5 ? 'UP' : 'DOWN');
 
         const cleanSymbol = symbol.toUpperCase();
+
+        // Calculate short-term directional consistency (tightening margin filter)
+        let consecutiveDirectionCount = 1;
+        for (let i = prices.length - 1; i > 0; i--) {
+            const currentDiff = prices[i] - prices[i - 1];
+            const prevDiff = prices[i - 1] - (prices[i - 2] ?? prices[i - 1]);
+            if ((currentDiff > 0 && prevDiff > 0) || (currentDiff < 0 && prevDiff < 0)) {
+                consecutiveDirectionCount++;
+            } else {
+                break;
+            }
+        }
 
         this.strategies = this.strategies.map((strat, idx) => {
             const stratMarket = (strat.market || '').toUpperCase();
             const stratName = (strat.name || '').toUpperCase();
             
-            // Flexible matching for both exact symbols and base asset codes (e.g., R_10 vs 1HZ10V)
             const baseSymbol = cleanSymbol.replace('1HZ', '').replace('_', '');
             const baseStratMarket = stratMarket.replace('1HZ', '').replace('_', '');
 
@@ -86,9 +97,13 @@ export class ScannerLogic {
                 (baseSymbol && baseStratMarket && baseStratMarket.includes(baseSymbol));
 
             if (matchesMarket) {
-                const randomMicroNoise = Math.floor(Math.random() * 12);
-                const momentumBonus = diff !== 0 ? Math.min(25, Math.abs(diff) * 200) : randomMicroNoise;
-                const newConfidence = Math.min(98, Math.max(60, Math.round(68 + momentumBonus + (Math.sin(Date.now() + idx) * 5))));
+                // Tightened formula: reward consistency and momentum, penalize flat/choppy micro-noise
+                const momentumScore = Math.min(35, Math.abs(diff) * 350);
+                const consistencyBonus = Math.min(20, consecutiveDirectionCount * 5);
+                
+                // Stricter baseline: requires clean directional momentum to score above 85+
+                const calculatedConfidence = Math.round(50 + momentumScore + consistencyBonus + (Math.sin(Date.now() + idx) * 3));
+                const newConfidence = Math.min(98, Math.max(45, calculatedConfidence));
 
                 return { 
                     ...strat, 
@@ -97,8 +112,8 @@ export class ScannerLogic {
                     direction: liveDirection 
                 };
             } else {
-                // Keep background cards gently shifting so the whole UI feels live instead of dead/static
-                const subtleDrift = Math.max(60, Math.min(95, strat.confidence + (Math.floor(Math.random() * 5) - 2)));
+                // Background drift lowered so random cards don't accidentally sneak to the top
+                const subtleDrift = Math.max(50, Math.min(85, strat.confidence + (Math.floor(Math.random() * 5) - 2)));
                 return {
                     ...strat,
                     confidence: subtleDrift,
