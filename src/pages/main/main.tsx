@@ -34,7 +34,6 @@ import {
     LabelPairedObjectsColumnCaptionRegularIcon,
     LabelPairedPuzzlePieceTwoCaptionBoldIcon,
 } from '@deriv/quill-icons/LabelPaired';
-import { LegacyGuide1pxIcon } from '@deriv/quill-icons/Legacy';
 import { Localize, localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
 import RunPanel from '../../components/run-panel';
@@ -44,7 +43,6 @@ import RunStrategy from '../dashboard/run-strategy';
 import './main.scss';
 
 const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
-const Tutorial = lazy(() => import('../tutorials'));
 
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
@@ -77,7 +75,7 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial'];
+    const hash = ['dashboard', 'bot_builder', 'chart'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -140,7 +138,7 @@ const AppWrapper = observer(() => {
 
     React.useEffect(() => {
         const el_dashboard = document.getElementById('id-dbot-dashboard');
-        const el_tutorial = document.getElementById('id-tutorials');
+        const el_bot_builder = document.getElementById('id-bot-builder');
 
         const observer_dashboard = new window.IntersectionObserver(
             ([entry]) => {
@@ -152,11 +150,11 @@ const AppWrapper = observer(() => {
             },
             {
                 root: null,
-                threshold: 0.5, // set offset 0.1 means trigger if atleast 10% of element in viewport
+                threshold: 0.5,
             }
         );
 
-        const observer_tutorial = new window.IntersectionObserver(
+        const observer_bot_builder = new window.IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
                     setRightTabShadow(false);
@@ -166,12 +164,12 @@ const AppWrapper = observer(() => {
             },
             {
                 root: null,
-                threshold: 0.5, // set offset 0.1 means trigger if atleast 10% of element in viewport
+                threshold: 0.5,
             }
         );
-        observer_dashboard.observe(el_dashboard);
-        observer_tutorial.observe(el_tutorial);
-    });
+        if (el_dashboard) observer_dashboard.observe(el_dashboard);
+        if (el_bot_builder) observer_bot_builder.observe(el_bot_builder);
+    }, []);
 
     React.useEffect(() => {
         if (connectionStatus !== CONNECTION_STATUS.OPENED) {
@@ -203,48 +201,35 @@ const AppWrapper = observer(() => {
 
         // Handle URL trade type parameters when switching to Bot Builder tab
         if (active_tab === BOT_BUILDER) {
-            // Use requestAnimationFrame to ensure Blockly workspace is fully initialized
             requestAnimationFrame(() => {
-                // Disable automatic URL parameter application to prevent changes before modal
                 disableUrlParameterApplication();
-
-                // Set up listener for manual trade type changes (only once)
                 setupTradeTypeChangeListener();
 
-                // Create unified handler for both immediate and delayed execution
                 const handleTradeTypeModal = () => {
                     checkAndShowTradeTypeModal(
-                        // onConfirm: Changes are now handled by the modal component
                         () => {
-                            // Re-enable URL parameter application for future parameters
                             enableUrlParameterApplication();
                         },
-                        // onCancel: URL parameter removal is now handled by the modal component
                         () => {}
                     );
                 };
 
-                // Wait for Blockly to finish loading before checking for URL parameters
                 if (!blockly_store.is_loading) {
-                    // Blockly is loaded, but add longer delay to ensure workspace is fully initialized
-                    // and trade type fields are populated
                     setTimeout(() => {
                         handleTradeTypeModal();
                     }, 500);
                 } else {
-                    // Blockly is still loading, wait for it to finish with optimized polling
                     let pollAttempts = 0;
-                    const maxPollAttempts = 10; // Maximum 5 seconds (10 * 500ms) - optimized performance
+                    const maxPollAttempts = 10;
 
                     const checkBlocklyLoaded = () => {
                         if (!blockly_store.is_loading) {
                             handleTradeTypeModal();
-                            return; // Exit polling once loaded
+                            return;
                         }
 
                         if (pollAttempts < maxPollAttempts) {
                             pollAttempts++;
-                            // Use 500ms intervals for better performance (5x improvement from 100ms)
                             pollTimeoutId = setTimeout(checkBlocklyLoaded, 500);
                         } else {
                             console.warn(
@@ -258,7 +243,6 @@ const AppWrapper = observer(() => {
             });
         }
 
-        // Cleanup function to prevent memory leaks
         return () => {
             if (pollTimeoutId) {
                 clearTimeout(pollTimeoutId);
@@ -268,7 +252,6 @@ const AppWrapper = observer(() => {
     }, [active_tab, is_loading]);
 
     React.useEffect(() => {
-        // Run on mount and when active tab changes
         updateTabShadowsHeight();
 
         if (is_open) {
@@ -279,26 +262,11 @@ const AppWrapper = observer(() => {
             if (!isDesktop) handleTabChange(Number(active_hash_tab));
             init_render.current = false;
         } else {
-            // Preserve URL parameters when navigating
             const currentSearch = window.location.search;
             navigate(`${currentSearch}#${hash[active_tab] || hash[0]}`);
         }
         if (active_tour !== '') {
             setActiveTour('');
-        }
-
-        // Prevent scrolling when tutorial tab is active (only on mobile)
-        const mainElement = document.querySelector('.main__container');
-        if (active_tab === DBOT_TABS.TUTORIAL && !isDesktop) {
-            document.body.style.overflow = 'hidden';
-            if (mainElement instanceof HTMLElement) {
-                mainElement.classList.add('no-scroll');
-            }
-        } else {
-            document.body.style.overflow = '';
-            if (mainElement instanceof HTMLElement) {
-                mainElement.classList.remove('no-scroll');
-            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [active_tab]);
@@ -318,7 +286,7 @@ const AppWrapper = observer(() => {
         }, 100);
 
         return () => {
-            clearTimeout(trashcan_init_id); // Clear the timeout on unmount
+            clearTimeout(trashcan_init_id);
         };
         //eslint-disable-next-line react-hooks/exhaustive-deps
     }, [active_tab, is_drawer_open]);
@@ -326,8 +294,6 @@ const AppWrapper = observer(() => {
     useEffect(() => {
         let timer: ReturnType<typeof setTimeout>;
         if (dashboard_strategies.length > 0) {
-            // Needed to pass this to the Callback Queue as on tab changes
-            // document title getting override by 'Bot | Deriv' only
             timer = setTimeout(() => {
                 updateWorkspaceName();
             });
@@ -352,7 +318,6 @@ const AppWrapper = observer(() => {
         [active_tab]
     );
 
-    // [AI]
     const handleLoginGeneration = async () => {
         const oauthUrl = await generateOAuthURL();
         if (oauthUrl) {
@@ -361,7 +326,7 @@ const AppWrapper = observer(() => {
             console.error('Failed to generate OAuth URL');
         }
     };
-    // [/AI]
+
     return (
         <React.Fragment>
             <div className='main'>
@@ -424,30 +389,6 @@ const AppWrapper = observer(() => {
                                     <ChartWrapper show_digits_stats={false} />
                                 </Suspense>
                             </div>
-                            <div
-                                label={
-                                    <>
-                                        <LegacyGuide1pxIcon
-                                            height='16px'
-                                            width='16px'
-                                            fill='var(--text-general)'
-                                            className='icon-general-fill-g-path'
-                                        />
-                                        <Localize i18n_default_text='Tutorials' />
-                                    </>
-                                }
-                                id='id-tutorials'
-                            >
-                                <div className='tutorials-wrapper'>
-                                    <Suspense
-                                        fallback={
-                                            <ChunkLoader message={localize('Please wait, loading tutorials...')} />
-                                        }
-                                    >
-                                        <Tutorial handleTabChange={handleTabChange} />
-                                    </Suspense>
-                                </div>
-                            </div>
                         </Tabs>
                         {!isDesktop && right_tab_shadow && <span className='tabs-shadow tabs-shadow--right' />}{' '}
                     </div>
@@ -475,7 +416,7 @@ const AppWrapper = observer(() => {
                 portal_element_id='modal_root'
                 title={title}
                 login={handleLoginGeneration}
-                dismissable={dismissable} // Prevents closing on outside clicks
+                dismissable={dismissable}
                 is_closed_on_cancel={is_closed_on_cancel}
             >
                 {message}
