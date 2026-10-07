@@ -114,7 +114,7 @@ export class ScannerBridge {
     
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
-    const martingaleMultiplier = 2.4;
+    const martingaleMultiplier = 1.8;
 
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
