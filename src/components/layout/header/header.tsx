@@ -144,7 +144,7 @@ const AppHeader = observer(() => {
                         </div>
                     );
                 } else if (position === 'right') {
-                    // For right section - transfer button (and account switcher on desktop)
+                    // For right section - cashier button (and account switcher on desktop)
                     return (
                         <div className='auth-actions'>
                             {isDesktop && (
@@ -157,7 +157,7 @@ const AppHeader = observer(() => {
                                 disabled={client?.is_logging_out || !authData?.currency}
                                 onClick={handleTransfer}
                             >
-                                <Localize i18n_default_text='Transfer' />
+                                <Localize i18n_default_text='Cashier' />
                             </Button>
                         </div>
                     );
