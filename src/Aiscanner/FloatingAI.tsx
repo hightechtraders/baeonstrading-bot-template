@@ -11,11 +11,13 @@ export const FloatingAI: React.FC = () => {
   useScannerFeed();
 
   const [isOpen, setIsOpen] = useState(false);
-  // Initialize strategies directly so cards render instantly without waiting for a socket event trigger
   const [strategies, setStrategies] = useState<Strategy[]>(INITIAL_STRATEGIES);
   
   const [signalBannerText, setSignalBannerText] = useState<string>("🔍 Listening for Live Deriv Ticks...");
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
+  
+  // Added isScanning state to track active tick processing
+  const [isScanning, setIsScanning] = useState<boolean>(false);
 
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const expandedIndexRef = useRef<number | null>(null);
@@ -31,6 +33,8 @@ export const FloatingAI: React.FC = () => {
   // 1. Listen for live strategy updates broadcasted by useScannerFeed
   useEffect(() => {
     const handleStrategiesUpdated = (e: CustomEvent) => {
+      // Set scanning to true whenever a tick feed update arrives
+      setIsScanning(true);
       const updated = e.detail?.strategies;
       if (Array.isArray(updated) && updated.length > 0) {
         if (expandedIndexRef.current === null) {
@@ -42,6 +46,7 @@ export const FloatingAI: React.FC = () => {
     const handleSignalLock = (e: CustomEvent) => {
       setSignalBannerText(e.detail?.message || "🎯 99% CONFIDENCE LOCKED (3x Ticks): Ready to Load Strategy");
       setIsSignalLocked(true);
+      setIsScanning(false);
     };
 
     window.addEventListener('ai-strategies-updated' as any, handleStrategiesUpdated as EventListener);
@@ -58,7 +63,10 @@ export const FloatingAI: React.FC = () => {
     if (isOpen) {
       setExpandedIndex(null);
       setIsSignalLocked(false);
-      setSignalBannerText("🔍 Listening for Live Deriv Ticks...");
+      setIsScanning(true); // Active scan starts immediately when modal opens
+      setSignalBannerText("🔍 Scanning Live Ticks Across Assets...");
+    } else {
+      setIsScanning(false);
     }
   }, [isOpen]);
 
@@ -83,14 +91,14 @@ export const FloatingAI: React.FC = () => {
   return (
     <div className="floating-ai-container">
       <button className="dancing-orb" onClick={() => setIsOpen(true)}>
-        🤖 AI
+        🤖 AI {isScanning && <span className="scanning-dot" style={{ background: '#2ed479', width: '8px', height: '8px', borderRadius: '50%', display: 'inline-block', marginLeft: '4px' }} />}
       </button>
 
       {isOpen && (
         <div className="ai-modal-backdrop" onClick={() => setIsOpen(false)}>
           <div className="ai-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="ai-modal-header">
-              <h2>AI Multi-Asset Scanner</h2>
+              <h2>AI Multi-Asset Scanner {isScanning && <small style={{ fontSize: '11px', color: '#2ed479', fontWeight: 'normal' }}>(Scanning...)</small>}</h2>
               <button className="close-btn" onClick={() => setIsOpen(false)}>×</button>
             </div>
             
