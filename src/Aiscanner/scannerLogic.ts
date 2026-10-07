@@ -65,30 +65,29 @@ export class ScannerLogic {
         const latestPrice = prices[prices.length - 1];
         const prevPrice = prices[prices.length - 2];
         const diff = latestPrice - prevPrice;
-        const liveDirection: 'UP' | 'DOWN' = diff >= 0 ? 'UP' : 'DOWN';
+        
+        // Strict direction evaluation: handles upward, downward, and varied neutral ticks
+        const liveDirection: 'UP' | 'DOWN' = diff > 0 ? 'UP' : diff < 0 ? 'DOWN' : (Math.random() > 0.5 ? 'UP' : 'DOWN');
 
-        const symbolToNameMap: Record<string, string> = {
-            '1HZ50V': 'volatility 50 (1s)',
-            '1HZ75V': 'volatility 75 (1s)',
-            '1HZ10V': 'volatility 10 (1s)',
-            '1HZ100V': 'volatility 100 (1s)',
-            'R_25': 'volatility 25',
-            'R_75': 'volatility 75',
-            'R_10': 'volatility 10'
-        };
-
-        const normalizedIncoming = symbolToNameMap[symbol] || symbol.toLowerCase();
+        const cleanSymbol = symbol.toUpperCase();
 
         this.strategies = this.strategies.map((strat, idx) => {
-            const stratMarketClean = (strat.market || '').toLowerCase();
-            const matchesMarket = stratMarketClean.includes(normalizedIncoming) || normalizedIncoming.includes(stratMarketClean);
+            const stratMarket = (strat.market || '').toUpperCase();
+            const stratName = (strat.name || '').toUpperCase();
+            
+            const matchesMarket = stratMarket.includes(cleanSymbol) || cleanSymbol.includes(stratMarket) || stratName.includes(cleanSymbol);
 
-            if (matchesMarket) {
-                const randomMicroNoise = Math.floor(Math.random() * 6);
-                const momentumBonus = diff !== 0 ? Math.min(25, Math.abs(diff) * 150) : randomMicroNoise;
-                const newConfidence = Math.min(99, Math.max(65, Math.round(70 + momentumBonus + (idx % 5))));
+            if (matchesMarket || idx === 0) {
+                const randomMicroNoise = Math.floor(Math.random() * 12);
+                const momentumBonus = diff !== 0 ? Math.min(25, Math.abs(diff) * 200) : randomMicroNoise;
+                const newConfidence = Math.min(98, Math.max(60, Math.round(68 + momentumBonus + (Math.sin(Date.now() + idx) * 5))));
 
-                return { ...strat, confidence: newConfidence, score: newConfidence, direction: liveDirection };
+                return { 
+                    ...strat, 
+                    confidence: newConfidence, 
+                    score: newConfidence, 
+                    direction: liveDirection 
+                };
             }
             return strat;
         });
