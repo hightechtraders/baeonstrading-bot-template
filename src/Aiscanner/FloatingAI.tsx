@@ -17,7 +17,7 @@ export const FloatingAI: React.FC = () => {
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
 
-  // Direct DOM ref for buttery smooth dragging without re-render ghosting
+  // Direct DOM ref for zero re-render drag performance
   const buttonRef = useRef<HTMLButtonElement>(null);
   const posRef = useRef({ x: window.innerWidth - 80, y: window.innerHeight - 120 });
   const isDraggingRef = useRef(false);
@@ -85,7 +85,7 @@ export const FloatingAI: React.FC = () => {
     }
   }, [isOpen]);
 
-  // 3. Handle Dragging Mechanics directly on DOM element (No Re-renders)
+  // 3. Robust Dragging with Window-Level Listeners (Prevents cloning / detachment)
   const handlePointerDown = (e: React.PointerEvent) => {
     isDraggingRef.current = true;
     hasMovedRef.current = false;
@@ -93,38 +93,39 @@ export const FloatingAI: React.FC = () => {
       x: e.clientX - posRef.current.x,
       y: e.clientY - posRef.current.y
     };
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDraggingRef.current || !buttonRef.current) return;
-    
-    const dx = e.clientX - posRef.current.x - dragOffsetRef.current.x;
-    const dy = e.clientY - posRef.current.y - dragOffsetRef.current.y;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-      hasMovedRef.current = true;
-    }
+    const handleWindowPointerMove = (moveEvent: PointerEvent) => {
+      if (!isDraggingRef.current || !buttonRef.current) return;
 
-    const buttonSize = 60;
-    const padding = 12;
+      const dx = moveEvent.clientX - posRef.current.x - dragOffsetRef.current.x;
+      const dy = moveEvent.clientY - posRef.current.y - dragOffsetRef.current.y;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        hasMovedRef.current = true;
+      }
 
-    const newX = Math.max(padding, Math.min(e.clientX - dragOffsetRef.current.x, window.innerWidth - buttonSize - padding));
-    const newY = Math.max(padding, Math.min(e.clientY - dragOffsetRef.current.y, window.innerHeight - buttonSize - padding));
+      const buttonSize = 60;
+      const padding = 12;
 
-    posRef.current = { x: newX, y: newY };
-    buttonRef.current.style.left = `${newX}px`;
-    buttonRef.current.style.top = `${newY}px`;
-  };
+      const newX = Math.max(padding, Math.min(moveEvent.clientX - dragOffsetRef.current.x, window.innerWidth - buttonSize - padding));
+      const newY = Math.max(padding, Math.min(moveEvent.clientY - dragOffsetRef.current.y, window.innerHeight - buttonSize - padding));
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    isDraggingRef.current = false;
-    try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {}
+      posRef.current = { x: newX, y: newY };
+      buttonRef.current.style.left = `${newX}px`;
+      buttonRef.current.style.top = `${newY}px`;
+    };
 
-    if (!hasMovedRef.current) {
-      setIsOpen(true);
-    }
+    const handleWindowPointerUp = () => {
+      isDraggingRef.current = false;
+      window.removeEventListener('pointermove', handleWindowPointerMove);
+      window.removeEventListener('pointerup', handleWindowPointerUp);
+
+      if (!hasMovedRef.current) {
+        setIsOpen(true);
+      }
+    };
+
+    window.addEventListener('pointermove', handleWindowPointerMove);
+    window.addEventListener('pointerup', handleWindowPointerUp);
   };
 
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
@@ -152,8 +153,6 @@ export const FloatingAI: React.FC = () => {
         ref={buttonRef}
         className="dancing-orb"
         onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
         style={{
           position: 'fixed',
           touchAction: 'none',
