@@ -17,9 +17,12 @@ export const FloatingAI: React.FC = () => {
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
 
-  // Direct DOM ref for zero re-render drag performance
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const posRef = useRef({ x: window.innerWidth - 80, y: window.innerHeight - 120 });
+  // Use React state for position so it never splits or leaves ghost clones in the DOM
+  const [position, setPosition] = useState({
+    x: window.innerWidth - 80,
+    y: window.innerHeight - 120
+  });
+
   const isDraggingRef = useRef(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const hasMovedRef = useRef(false);
@@ -34,14 +37,6 @@ export const FloatingAI: React.FC = () => {
   const [stake, setStake] = useState<number>(10);
   const [stopLoss, setStopLoss] = useState<number>(20);
   const [takeProfit, setTakeProfit] = useState<number>(50);
-
-  // Set initial position on mount
-  useEffect(() => {
-    if (buttonRef.current) {
-      buttonRef.current.style.left = `${posRef.current.x}px`;
-      buttonRef.current.style.top = `${posRef.current.y}px`;
-    }
-  }, []);
 
   // 1. Listen for live strategy updates broadcasted by useScannerFeed
   useEffect(() => {
@@ -85,20 +80,20 @@ export const FloatingAI: React.FC = () => {
     }
   }, [isOpen]);
 
-  // 3. Robust Dragging with Window-Level Listeners (Prevents cloning / detachment)
+  // 3. Clean State-Driven Dragging Handler
   const handlePointerDown = (e: React.PointerEvent) => {
     isDraggingRef.current = true;
     hasMovedRef.current = false;
     dragOffsetRef.current = {
-      x: e.clientX - posRef.current.x,
-      y: e.clientY - posRef.current.y
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
     };
 
     const handleWindowPointerMove = (moveEvent: PointerEvent) => {
-      if (!isDraggingRef.current || !buttonRef.current) return;
+      if (!isDraggingRef.current) return;
 
-      const dx = moveEvent.clientX - posRef.current.x - dragOffsetRef.current.x;
-      const dy = moveEvent.clientY - posRef.current.y - dragOffsetRef.current.y;
+      const dx = moveEvent.clientX - position.x - dragOffsetRef.current.x;
+      const dy = moveEvent.clientY - position.y - dragOffsetRef.current.y;
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
         hasMovedRef.current = true;
       }
@@ -109,9 +104,7 @@ export const FloatingAI: React.FC = () => {
       const newX = Math.max(padding, Math.min(moveEvent.clientX - dragOffsetRef.current.x, window.innerWidth - buttonSize - padding));
       const newY = Math.max(padding, Math.min(moveEvent.clientY - dragOffsetRef.current.y, window.innerHeight - buttonSize - padding));
 
-      posRef.current = { x: newX, y: newY };
-      buttonRef.current.style.left = `${newX}px`;
-      buttonRef.current.style.top = `${newY}px`;
+      setPosition({ x: newX, y: newY });
     };
 
     const handleWindowPointerUp = () => {
@@ -148,13 +141,14 @@ export const FloatingAI: React.FC = () => {
 
   return (
     <div className="floating-ai-container">
-      {/* DRAGGABLE AI ORB BUTTON (Outer wrapper handles fixed drag positioning) */}
+      {/* SINGLE UNIFIED DRAGGABLE BUTTON DRIVEN BY REACT STATE */}
       <button 
-        ref={buttonRef}
         className="dancing-orb-wrapper"
         onPointerDown={handlePointerDown}
         style={{
           position: 'fixed',
+          left: `${position.x}px`,
+          top: `${position.y}px`,
           touchAction: 'none',
           cursor: 'grab',
           zIndex: 9999,
@@ -163,7 +157,6 @@ export const FloatingAI: React.FC = () => {
           padding: 0
         }}
       >
-        {/* Inner element handles the smooth pulse animation and gradient background */}
         <div className="dancing-orb-inner">
           🤖 AI
         </div>
