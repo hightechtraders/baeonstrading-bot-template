@@ -336,10 +336,10 @@ const AppWrapper = observer(() => {
                     })}
                 >
                     <div>
-                        {!isDesktop && left_tab_shadow && <span className='tabs-shadow tabs-shadow--left' />}{' '}
+                        {!isDesktop && left_tab_shadow && <span className='tabs-shadow tabs-shadow--left' />}
                         
-                        {/* Parent flex container keeping tabs on the left and bot badge on the right */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'var(--general-main-1)' }}>
+                        {/* Clean wrapper for tab row + embedded custom bot badge */}
+                        <div className='main__tabs-header-wrapper'>
                             <Tabs active_index={active_tab} className='main__tabs' onTabItemClick={handleTabChange} top>
                                 <div
                                     label={
@@ -394,32 +394,16 @@ const AppWrapper = observer(() => {
                                 </div>
                             </Tabs>
 
-                            {/* Branded Bot Name Badge */}
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    padding: '0 24px',
-                                    height: '48px',
-                                    borderLeft: '1px solid var(--border-normal)',
-                                    background: 'var(--general-section-1)',
-                                    whiteSpace: 'nowrap',
-                                }}
-                            >
-                                <span style={{ fontSize: '16px' }}>⚡</span>
-                                <div>
-                                    <div style={{ fontWeight: '700', fontSize: '13px', color: 'var(--text-prominent)', lineHeight: '1.2' }}>
-                                        V50 1s Rise Sniper
-                                    </div>
-                                    <div style={{ fontSize: '10px', color: 'var(--text-general)', lineHeight: '1.2' }}>
-                                        Volatility 50 (1s) Locked
-                                    </div>
+                            <div className='main__custom-bot-badge'>
+                                <span className='main__custom-bot-badge-icon'>⚡</span>
+                                <div className='main__custom-bot-badge-text'>
+                                    <div className='main__custom-bot-badge-title'>V50 1s Rise Sniper</div>
+                                    <div className='main__custom-bot-badge-subtitle'>Volatility 50 (1s) Locked</div>
                                 </div>
                             </div>
                         </div>
 
-                        {!isDesktop && right_tab_shadow && <span className='tabs-shadow tabs-shadow--right' />}{' '}
+                        {!isDesktop && right_tab_shadow && <span className='tabs-shadow tabs-shadow--right' />}
                     </div>
                 </div>
             </div>
