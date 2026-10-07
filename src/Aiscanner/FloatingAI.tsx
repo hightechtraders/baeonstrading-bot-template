@@ -15,9 +15,13 @@ export const FloatingAI: React.FC = () => {
   
   const [signalBannerText, setSignalBannerText] = useState<string>("🔍 Listening for Live Deriv Ticks...");
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
-  
-  // NEW: Controls the initial scanning phase before showing cards
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
+
+  // Dragging state and position
+  const [position, setPosition] = useState<{ x: number; y: number }>({ x: window.innerWidth - 80, y: window.innerHeight - 120 });
+  const isDraggingRef = useRef(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const hasMovedRef = useRef(false);
 
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const expandedIndexRef = useRef<number | null>(null);
@@ -55,7 +59,7 @@ export const FloatingAI: React.FC = () => {
     };
   }, []);
 
-  // 2. Trigger the scanning phase whenever modal opens
+  // 2. Trigger scanning phase whenever modal opens
   useEffect(() => {
     if (isOpen) {
       setExpandedIndex(null);
@@ -63,7 +67,6 @@ export const FloatingAI: React.FC = () => {
       setIsScanningPhase(true);
       setSignalBannerText("🔍 Scanning Live Ticks Across Markets...");
 
-      // Simulate a 2.5 second deep market scan before revealing strategies
       const timer = setTimeout(() => {
         setIsScanningPhase(false);
         setSignalBannerText("✅ Market Scan Complete: Strategies Ranked");
@@ -72,6 +75,49 @@ export const FloatingAI: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  // 3. Handle Dragging Mechanics with Strict Boundary Clamping
+  const handlePointerDown = (e: React.PointerEvent) => {
+    isDraggingRef.current = true;
+    hasMovedRef.current = false;
+    dragOffsetRef.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDraggingRef.current) return;
+    
+    const dx = e.clientX - position.x - dragOffsetRef.current.x;
+    const dy = e.clientY - position.y - dragOffsetRef.current.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      hasMovedRef.current = true;
+    }
+
+    // Button dimensions (approx 60px diameter)
+    const buttonSize = 60;
+    const padding = 12;
+
+    // Calculate clamped coordinates ensuring it never leaves screen borders
+    const newX = Math.max(padding, Math.min(e.clientX - dragOffsetRef.current.x, window.innerWidth - buttonSize - padding));
+    const newY = Math.max(padding, Math.min(e.clientY - dragOffsetRef.current.y, window.innerHeight - buttonSize - padding));
+
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    isDraggingRef.current = false;
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {}
+
+    // If it was just a click (not a drag), open the modal
+    if (!hasMovedRef.current) {
+      setIsOpen(true);
+    }
+  };
 
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
   const topWinner = sortedStrategies[0];
@@ -93,7 +139,21 @@ export const FloatingAI: React.FC = () => {
 
   return (
     <div className="floating-ai-container">
-      <button className="dancing-orb" onClick={() => setIsOpen(true)}>
+      {/* DRAGGABLE AI ORB BUTTON */}
+      <button 
+        className="dancing-orb"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        style={{
+          position: 'fixed',
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+          touchAction: 'none',
+          cursor: 'grab',
+          zIndex: 9999
+        }}
+      >
         🤖 AI
       </button>
 
