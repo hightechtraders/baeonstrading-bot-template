@@ -17,7 +17,7 @@ export const FloatingAI: React.FC = () => {
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
 
-  // Pure React state for position guarantees a single DOM node that never ghosts or clones
+  // Use pure React state for coordinates so it moves as a single unified element
   const [position, setPosition] = useState({
     x: window.innerWidth - 80,
     y: window.innerHeight - 120
@@ -140,6 +140,8 @@ export const FloatingAI: React.FC = () => {
     <div className="floating-ai-container" style={{ display: 'contents' }}>
       <button 
         className="dancing-orb-wrapper"
+        draggable={false}
+        onDragStart={(e) => e.preventDefault()}
         onPointerDown={handlePointerDown}
         style={{
           position: 'fixed',
