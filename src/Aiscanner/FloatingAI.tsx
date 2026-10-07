@@ -17,7 +17,7 @@ export const FloatingAI: React.FC = () => {
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
 
-  // Use React state for position so it never splits or leaves ghost clones in the DOM
+  // Pure React state for position guarantees a single DOM node that never ghosts or clones
   const [position, setPosition] = useState({
     x: window.innerWidth - 80,
     y: window.innerHeight - 120
@@ -38,7 +38,6 @@ export const FloatingAI: React.FC = () => {
   const [stopLoss, setStopLoss] = useState<number>(20);
   const [takeProfit, setTakeProfit] = useState<number>(50);
 
-  // 1. Listen for live strategy updates broadcasted by useScannerFeed
   useEffect(() => {
     const handleStrategiesUpdated = (e: CustomEvent) => {
       const updated = e.detail?.strategies;
@@ -63,7 +62,6 @@ export const FloatingAI: React.FC = () => {
     };
   }, []);
 
-  // 2. Trigger scanning phase whenever modal opens
   useEffect(() => {
     if (isOpen) {
       setExpandedIndex(null);
@@ -80,7 +78,6 @@ export const FloatingAI: React.FC = () => {
     }
   }, [isOpen]);
 
-  // 3. Clean State-Driven Dragging Handler
   const handlePointerDown = (e: React.PointerEvent) => {
     isDraggingRef.current = true;
     hasMovedRef.current = false;
@@ -140,8 +137,7 @@ export const FloatingAI: React.FC = () => {
   };
 
   return (
-    <div className="floating-ai-container">
-      {/* SINGLE UNIFIED DRAGGABLE BUTTON DRIVEN BY REACT STATE */}
+    <div className="floating-ai-container" style={{ display: 'contents' }}>
       <button 
         className="dancing-orb-wrapper"
         onPointerDown={handlePointerDown}
@@ -170,7 +166,6 @@ export const FloatingAI: React.FC = () => {
               <button className="close-btn" onClick={() => setIsOpen(false)}>×</button>
             </div>
             
-            {/* VISUAL SIGNAL BANNER */}
             <div 
               id="ai-signal-banner"
               style={{
@@ -189,7 +184,6 @@ export const FloatingAI: React.FC = () => {
               {signalBannerText}
             </div>
 
-            {/* SCANNING PHASE LOADER VS STRATEGY CARDS */}
             {isScanningPhase ? (
               <div className="scanner-loading-state" style={{ textAlign: 'center', padding: '40px 20px', color: '#6c718c' }}>
                 <div className="spinner-animation" style={{ fontSize: '32px', marginBottom: '12px' }}>🛰️</div>
@@ -200,7 +194,6 @@ export const FloatingAI: React.FC = () => {
               <>
                 <p className="scanner-instruction">Balanced strategies rank below. Tap card to edit.</p>
 
-                {/* TOP GLOBAL WINNER CARD */}
                 {topWinner && (
                   <div className="global-winner-section">
                     <div className="global-winner-meta">
@@ -256,7 +249,6 @@ export const FloatingAI: React.FC = () => {
                   </div>
                 )}
 
-                {/* REMAINING STRATEGIES LIST */}
                 <div className="strategy-list">
                   {otherStrategies.map((strat, idx) => {
                     const actualIndex = idx + 1;
