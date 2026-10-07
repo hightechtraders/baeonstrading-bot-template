@@ -390,6 +390,30 @@ const AppWrapper = observer(() => {
                                 </Suspense>
                             </div>
                         </Tabs>
+
+                        {/* Custom Branded Bot Name Badge inserted into the former slot */}
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '0 20px',
+                                height: '100%',
+                                marginLeft: 'auto',
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '15px' }}>⚡</span>
+                                <div>
+                                    <div style={{ fontWeight: '700', fontSize: '13px', color: 'var(--text-prominent)', lineHeight: '1.2' }}>
+                                        V50 1s Rise Sniper
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: 'var(--text-general)', lineHeight: '1.2' }}>
+                                        Volatility 50 (1s) Locked
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {!isDesktop && right_tab_shadow && <span className='tabs-shadow tabs-shadow--right' />}{' '}
                     </div>
                 </div>
