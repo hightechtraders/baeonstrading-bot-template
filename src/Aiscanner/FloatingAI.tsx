@@ -3,20 +3,18 @@
 // ==========================================
 import React, { useState, useEffect, useRef } from 'react';
 import { ScannerBridge } from './scannerBridge';
-import { Strategy } from './strategies';
-import { useScannerFeed } from './useScannerFeed'; // 🎯 Imported live feed hook
+import { Strategy, INITIAL_STRATEGIES } from './strategies';
+import { useScannerFeed } from './useScannerFeed'; 
 import './FloatingAI.css';
 
 export const FloatingAI: React.FC = () => {
-  // 🎯 Invoke the feed hook so it subscribes to live Deriv market websockets on mount
   useScannerFeed();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [isScanning, setIsScanning] = useState(true);
-  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  // Initialize strategies directly so cards render instantly without waiting for a socket event trigger
+  const [strategies, setStrategies] = useState<Strategy[]>(INITIAL_STRATEGIES);
   
-  // 🎯 State for visual signal banner notifications
-  const [signalBannerText, setSignalBannerText] = useState<string>("🔍 Scanning Volatility 50 (1s) for 99% Trend Lock...");
+  const [signalBannerText, setSignalBannerText] = useState<string>("🔍 Listening for Live Deriv Ticks...");
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
 
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
@@ -35,8 +33,6 @@ export const FloatingAI: React.FC = () => {
     const handleStrategiesUpdated = (e: CustomEvent) => {
       const updated = e.detail?.strategies;
       if (Array.isArray(updated) && updated.length > 0) {
-        setIsScanning(false);
-        // Freeze sorting/state updates if user is actively editing a card's parameters
         if (expandedIndexRef.current === null) {
           setStrategies(updated);
         }
@@ -57,10 +53,9 @@ export const FloatingAI: React.FC = () => {
     };
   }, []);
 
-  // 2. Reset modal states cleanly when opened (relying entirely on live WebSocket tick stream)
+  // 2. Reset modal states cleanly when opened
   useEffect(() => {
     if (isOpen) {
-      setIsScanning(true);
       setExpandedIndex(null);
       setIsSignalLocked(false);
       setSignalBannerText("🔍 Listening for Live Deriv Ticks...");
@@ -99,7 +94,7 @@ export const FloatingAI: React.FC = () => {
               <button className="close-btn" onClick={() => setIsOpen(false)}>×</button>
             </div>
             
-            {/* 🎯 VISUAL SIGNAL BANNER */}
+            {/* VISUAL SIGNAL BANNER */}
             <div 
               id="ai-signal-banner"
               style={{
@@ -120,61 +115,96 @@ export const FloatingAI: React.FC = () => {
 
             <p className="scanner-instruction">Balanced strategies rank below. Tap card to edit.</p>
 
-            {/* SCANNING STATE HEADER OR TOP GLOBAL WINNER */}
-            {isScanning ? (
+            {/* TOP GLOBAL WINNER CARD */}
+            {topWinner && (
               <div className="global-winner-section">
                 <div className="global-winner-meta">
                   <span>GLOBAL WINNER</span>
-                  <span>WAITING FOR LIVE TICKS...</span>
+                  <span>CONFIDENCE {topWinner.confidence}%</span>
                 </div>
-                <div className="strategy-card top-card">
+
+                <div 
+                  className={`strategy-card top-card ${expandedIndex === 0 ? 'expanded' : ''}`}
+                  onClick={() => handleCardClick(topWinner, 0)}
+                >
                   <div className="card-main-row">
                     <span className="badge-rank">#1</span>
                     <div className="strategy-info">
-                      <strong>Connecting to Live Deriv Feed...</strong>
+                      <strong>{topWinner.name}</strong>
                       <div className="card-tags-row">
-                        <span className="market-tag">SYNTHETIC</span>
-                        <span className="direction-tag flat">FLAT</span>
+                        <span className="market-tag">{topWinner.market}</span>
+                        {topWinner.direction && (
+                          <span className={`direction-tag ${topWinner.direction.toLowerCase()}`}>
+                            {topWinner.direction}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <span className="badge-high">--</span>
+                    <span className="badge-high">HIGH</span>
+                    <span className="toggle-arrow">{expandedIndex === 0 ? '▲' : '▼'}</span>
                   </div>
-                </div>
-              </div>
-            ) : (
-              topWinner && (
-                <div className="global-winner-section">
-                  <div className="global-winner-meta">
-                    <span>GLOBAL WINNER</span>
-                    <span>CONFIDENCE {topWinner.confidence}%</span>
+                  <div className="card-sub-row">
+                    <span>Score {topWinner.score || topWinner.confidence}%</span>
+                    <span>Confidence {topWinner.confidence}%</span>
                   </div>
 
+                  {expandedIndex === 0 && (
+                    <div className="parameter-drawer" onClick={(e) => e.stopPropagation()}>
+                      <div className="input-group">
+                        <label>Stake ($):</label>
+                        <input type="number" value={stake} onChange={(e) => setStake(Number(e.target.value))} />
+                      </div>
+                      <div className="input-group">
+                        <label>Stop Loss ($):</label>
+                        <input type="number" value={stopLoss} onChange={(e) => setStopLoss(Number(e.target.value))} />
+                      </div>
+                      <div className="input-group">
+                        <label>Take Profit ($):</label>
+                        <input type="number" value={takeProfit} onChange={(e) => setTakeProfit(Number(e.target.value))} />
+                      </div>
+                      <button className="run-manual-btn" onClick={() => handleRunBot(topWinner)}>
+                        Load Strategy to Workspace
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* REMAINING STRATEGIES LIST */}
+            <div className="strategy-list">
+              {otherStrategies.map((strat, idx) => {
+                const actualIndex = idx + 1;
+                const isExpanded = expandedIndex === actualIndex;
+
+                return (
                   <div 
-                    className={`strategy-card top-card ${expandedIndex === 0 ? 'expanded' : ''}`}
-                    onClick={() => handleCardClick(topWinner, 0)}
+                    key={strat.id || actualIndex} 
+                    className={`strategy-card ${isExpanded ? 'expanded' : ''}`}
+                    onClick={() => handleCardClick(strat, actualIndex)}
                   >
                     <div className="card-main-row">
-                      <span className="badge-rank">#1</span>
+                      <span className="badge-rank">#{actualIndex + 1}</span>
                       <div className="strategy-info">
-                        <strong>{topWinner.name}</strong>
+                        <strong>{strat.name}</strong>
                         <div className="card-tags-row">
-                          <span className="market-tag">{topWinner.market}</span>
-                          {topWinner.direction && (
-                            <span className={`direction-tag ${topWinner.direction.toLowerCase()}`}>
-                              {topWinner.direction}
+                          <span className="market-tag">{strat.market}</span>
+                          {strat.direction && (
+                            <span className={`direction-tag ${strat.direction.toLowerCase()}`}>
+                              {strat.direction}
                             </span>
                           )}
                         </div>
                       </div>
-                      <span className="badge-high">HIGH</span>
-                      <span className="toggle-arrow">{expandedIndex === 0 ? '▲' : '▼'}</span>
+                      <span className="badge-medium">MEDIUM</span>
+                      <span className="toggle-arrow">{isExpanded ? '▲' : '▼'}</span>
                     </div>
                     <div className="card-sub-row">
-                      <span>Score {topWinner.score || topWinner.confidence}%</span>
-                      <span>Confidence {topWinner.confidence}%</span>
+                      <span>Score {strat.score || strat.confidence}%</span>
+                      <span>Confidence {strat.confidence}%</span>
                     </div>
 
-                    {expandedIndex === 0 && (
+                    {isExpanded && (
                       <div className="parameter-drawer" onClick={(e) => e.stopPropagation()}>
                         <div className="input-group">
                           <label>Stake ($):</label>
@@ -188,74 +218,15 @@ export const FloatingAI: React.FC = () => {
                           <label>Take Profit ($):</label>
                           <input type="number" value={takeProfit} onChange={(e) => setTakeProfit(Number(e.target.value))} />
                         </div>
-                        <button className="run-manual-btn" onClick={() => handleRunBot(topWinner)}>
+                        <button className="run-manual-btn" onClick={() => handleRunBot(strat)}>
                           Load Strategy to Workspace
                         </button>
                       </div>
                     )}
                   </div>
-                </div>
-              )
-            )}
-
-            {/* REMAINING STRATEGIES LIST */}
-            {!isScanning && (
-              <div className="strategy-list">
-                {otherStrategies.map((strat, idx) => {
-                  const actualIndex = idx + 1;
-                  const isExpanded = expandedIndex === actualIndex;
-
-                  return (
-                    <div 
-                      key={strat.id || actualIndex} 
-                      className={`strategy-card ${isExpanded ? 'expanded' : ''}`}
-                      onClick={() => handleCardClick(strat, actualIndex)}
-                    >
-                      <div className="card-main-row">
-                        <span className="badge-rank">#{actualIndex + 1}</span>
-                        <div className="strategy-info">
-                          <strong>{strat.name}</strong>
-                          <div className="card-tags-row">
-                            <span className="market-tag">{strat.market}</span>
-                            {strat.direction && (
-                              <span className={`direction-tag ${strat.direction.toLowerCase()}`}>
-                                {strat.direction}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <span className="badge-medium">MEDIUM</span>
-                        <span className="toggle-arrow">{isExpanded ? '▲' : '▼'}</span>
-                      </div>
-                      <div className="card-sub-row">
-                        <span>Score {strat.score || strat.confidence}%</span>
-                        <span>Confidence {strat.confidence}%</span>
-                      </div>
-
-                      {isExpanded && (
-                        <div className="parameter-drawer" onClick={(e) => e.stopPropagation()}>
-                          <div className="input-group">
-                            <label>Stake ($):</label>
-                            <input type="number" value={stake} onChange={(e) => setStake(Number(e.target.value))} />
-                          </div>
-                          <div className="input-group">
-                            <label>Stop Loss ($):</label>
-                            <input type="number" value={stopLoss} onChange={(e) => setStopLoss(Number(e.target.value))} />
-                          </div>
-                          <div className="input-group">
-                            <label>Take Profit ($):</label>
-                            <input type="number" value={takeProfit} onChange={(e) => setTakeProfit(Number(e.target.value))} />
-                          </div>
-                          <button className="run-manual-btn" onClick={() => handleRunBot(strat)}>
-                            Load Strategy to Workspace
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                );
+              })}
+            </div>
 
           </div>
         </div>
