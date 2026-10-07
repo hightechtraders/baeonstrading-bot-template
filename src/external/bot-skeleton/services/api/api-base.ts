@@ -9,6 +9,7 @@ import { handleBackendError, isBackendError } from '@/utils/error-handler';
 import { activeSymbolsProcessorService } from '../../../../services/active-symbols-processor.service';
 import { observer as globalObserver } from '../../utils/observer';
 import { doUntilDone, socket_state } from '../tradeEngine/utils/helpers';
+import { ScannerBridge } from '../../../Aiscanner/scannerBridge'; // 👈 Imported ScannerBridge for live tick feed
 import {
     CONNECTION_STATUS,
     setAccountList,
@@ -190,6 +191,9 @@ class APIBase {
                     try {
                         const data = JSON.parse(event.data);
                         if (data && data.msg_type === 'tick' && data.tick) {
+                            // Forward live ticks directly into ScannerBridge for score computation & UI sorting
+                            ScannerBridge.pushTick(data.tick.symbol, Number(data.tick.quote));
+
                             window.dispatchEvent(
                                 new CustomEvent('deriv_live_tick', {
                                     detail: {
