@@ -3,8 +3,7 @@
    ========================================== */
 
 .floating-ai-container {
-  position: relative;
-  z-index: 9999;
+  display: contents;
 }
 
 .dancing-orb-wrapper {
