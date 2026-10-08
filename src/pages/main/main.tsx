@@ -377,20 +377,27 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-tutorials'
                             >
-                                <div className='free-bots-container p-6 flex flex-col items-center justify-center min-h-[400px] text-white'>
-                                    <div className='bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-md w-full shadow-xl'>
-                                        <div className='flex justify-between items-center mb-3'>
-                                            <span className='bg-blue-600 text-xs px-2.5 py-1 rounded-md font-semibold'>Free Strategy</span>
-                                            <span className='text-xs bg-red-500/20 text-red-400 font-bold px-2 py-0.5 rounded'>DOWN</span>
+                                <div className='flex items-center justify-center w-full h-full p-8' style={{ minHeight: 'calc(100vh - 200px)' }}>
+                                    <div className='bg-[var(--general-main-1)] border border-[var(--border-normal)] rounded-xl p-6 max-w-md w-full shadow-lg'>
+                                        <div className='flex justify-between items-center mb-4'>
+                                            <span className='bg-[var(--brand-secondary)] text-[var(--text-prominent)] text-xs px-3 py-1 rounded-full font-semibold'>
+                                                Free Strategy
+                                            </span>
+                                            <span className='text-xs bg-red-500/10 text-red-500 font-bold px-2.5 py-1 rounded-md'>
+                                                DOWN
+                                            </span>
                                         </div>
-                                        <h3 className='text-xl font-bold mb-1'>EMA Crossover Breakout</h3>
-                                        <p className='text-sm text-slate-400 mb-4'>Target Asset: Volatility 50 (1s) Index</p>
+                                        <h3 className='text-xl font-bold text-[var(--text-prominent)] mb-2'>
+                                            EMA Crossover Breakout
+                                        </h3>
+                                        <p className='text-sm text-[var(--text-general)] mb-6'>
+                                            Target Asset: <span className='font-semibold'>Volatility 50 (1s) Index</span>
+                                        </p>
                                         <button 
                                             onClick={() => {
                                                 console.log('Loading EMA Crossover Breakout for Vol 50 1s DOWN');
-                                                // Trigger your scanner bridge load function here if needed
                                             }}
-                                            className='w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition-colors shadow-md'
+                                            className='w-full bg-[var(--brand-red)] hover:opacity-90 text-white font-medium py-3 px-4 rounded-xl transition-all shadow-md'
                                         >
                                             Load Strategy to Workspace
                                         </button>
