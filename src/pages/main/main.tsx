@@ -377,27 +377,49 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-tutorials'
                             >
-                                <div className='flex items-center justify-center w-full h-full p-8' style={{ minHeight: 'calc(100vh - 200px)' }}>
-                                    <div className='bg-[var(--general-main-1)] border border-[var(--border-normal)] rounded-xl p-6 max-w-md w-full shadow-lg'>
-                                        <div className='flex justify-between items-center mb-4'>
-                                            <span className='bg-[var(--brand-secondary)] text-[var(--text-prominent)] text-xs px-3 py-1 rounded-full font-semibold'>
-                                                Free Strategy
-                                            </span>
-                                            <span className='text-xs bg-red-500/10 text-red-500 font-bold px-2.5 py-1 rounded-md'>
-                                                DOWN
-                                            </span>
+                                <div className='flex items-center justify-center w-full h-full p-6' style={{ minHeight: 'calc(100vh - 200px)' }}>
+                                    <div className='bg-[#181a20] border border-[#2b2f36] rounded-2xl p-6 max-w-lg w-full shadow-2xl text-white'>
+                                        {/* Header Section */}
+                                        <div className='flex justify-between items-center pb-4 mb-4 border-b border-[#2b2f36]'>
+                                            <h3 className='text-lg font-bold tracking-wide'>AI Single-Strategy Focus</h3>
+                                            <span className='text-xs text-[#848e9c] cursor-pointer hover:text-white'>✕</span>
                                         </div>
-                                        <h3 className='text-xl font-bold text-[var(--text-prominent)] mb-2'>
-                                            EMA Crossover Breakout
-                                        </h3>
-                                        <p className='text-sm text-[var(--text-general)] mb-6'>
-                                            Target Asset: <span className='font-semibold'>Volatility 50 (1s) Index</span>
+
+                                        {/* Status Banner */}
+                                        <div className='bg-[#1e2329] border border-[#2b2f36] rounded-xl p-3 mb-6 text-xs text-center text-[#0ecb81] font-medium'>
+                                            ✓ Market Scan Complete: Top Strategy Isolated
+                                        </div>
+
+                                        <p className='text-xs text-[#848e9c] mb-4'>
+                                            Top performing strategy identified. Tap card to configure parameters.
                                         </p>
+
+                                        {/* Strategy Card */}
+                                        <div className='bg-[#1e2329] border border-[#363c4e] rounded-xl p-4 mb-6 hover:border-[#0ecb81] transition-all cursor-pointer'>
+                                            <div className='flex justify-between items-center text-xs text-[#848e9c] mb-2'>
+                                                <span className='uppercase font-semibold tracking-wider'>TOP VERIFIED STRATEGY</span>
+                                                <span>CONFIDENCE 66%</span>
+                                            </div>
+                                            <div className='flex items-center justify-between'>
+                                                <div className='flex items-center gap-3'>
+                                                    <span className='bg-[#2962ff] text-white text-xs px-2 py-1 rounded-md font-bold'>#1</span>
+                                                    <div>
+                                                        <h4 className='text-sm font-bold text-white'>MACD Histogram Surge</h4>
+                                                        <p className='text-xs text-[#848e9c]'>Volatility 100 (1s) Index <span className='bg-[#0ecb81]/20 text-[#0ecb81] px-1.5 py-0.5 rounded text-[10px] font-bold ml-1'>UP</span></p>
+                                                    </div>
+                                                </div>
+                                                <span className='text-xs bg-[#2b2f36] text-white px-2.5 py-1 rounded font-semibold'>
+                                                    HIGH ▾
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Action Button */}
                                         <button 
                                             onClick={() => {
-                                                console.log('Loading EMA Crossover Breakout for Vol 50 1s DOWN');
+                                                console.log('Loading MACD Histogram Surge strategy to workspace');
                                             }}
-                                            className='w-full bg-[var(--brand-red)] hover:opacity-90 text-white font-medium py-3 px-4 rounded-xl transition-all shadow-md'
+                                            className='w-full bg-[#0ecb81] hover:opacity-90 text-[#0b0e11] font-bold py-3 px-4 rounded-xl transition-all shadow-md text-sm'
                                         >
                                             Load Strategy to Workspace
                                         </button>
