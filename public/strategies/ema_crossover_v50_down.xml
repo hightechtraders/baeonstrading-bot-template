@@ -1,0 +1,49 @@
+<xml xmlns="http://www.w3.org/1999/xhtml" is_dbot="true" collection="false">
+    <block type="trade_definition" id="ema_crossover_v50" x="0" y="0">
+        <statement name="TRADE_OPTIONS">
+            <block type="trade_definition_market" id="market_v50">
+                <field name="MARKET_LIST">synthetic_index</field>
+                <field name="SUBMARKET_LIST">random_index</field>
+                <field name="SYMBOL_LIST">1HZ50V</field>
+                <field name="TRADETYPECAT_LIST">callput</field>
+                <field name="TRADETYPE_LIST">put</field>
+                <field name="TYPE_LIST">both</field>
+                <field name="CANDLE_INTERVAL_list">60</field>
+                <field name="TIME_MACHINE_ENABLED">FALSE</field>
+                <field name="RESTARTONERROR">TRUE</field>
+                <statement name="SUBMARKET_STAFF">
+                    <block type="trade_definition_contracttype" id="contract_put">
+                        <field name="TYPE_LIST">PUT</field>
+                        <next>
+                            <block type="trade_definition_tradeoptions" id="trade_opts">
+                                <mutation has_first_barrier="false" has_second_barrier="false"></mutation>
+                                <field name="DURATIONUNIT_LIST">t</field>
+                                <value name="DURATION">
+                                    <shadow type="math_number" id="dur_val">
+                                        <field name="NUM">5</field>
+                                    </shadow>
+                                </value>
+                                <value name="AMOUNT">
+                                    <shadow type="math_number" id="amt_val">
+                                        <field name="NUM">1</field>
+                                    </shadow>
+                                </value>
+                            </block>
+                        </next>
+                    </block>
+                </statement>
+            </block>
+        </statement>
+        <statement name="INITIALIZATION">
+            <block type="variables_set" id="init_strat">
+                <field name="VAR" id="strat_name">EMA Crossover Breakpoint</field>
+                <value name="VALUE">
+                    <block type="math_number"><field name="NUM">1</field></block>
+                </value>
+            </block>
+        </statement>
+        <statement name="SUBZERO">
+            <!-- Main Tick Processing & Logic Loop -->
+        </statement>
+    </block>
+</xml>
