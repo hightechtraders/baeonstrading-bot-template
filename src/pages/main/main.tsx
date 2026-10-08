@@ -33,7 +33,7 @@ import {
     LabelPairedChartLineCaptionRegularIcon,
     LabelPairedObjectsColumnCaptionRegularIcon,
     LabelPairedPuzzlePieceTwoCaptionBoldIcon,
-    LabelPairedBookCaptionRegularIcon,
+    LabelPairedBookmarkCaptionRegularIcon,
 } from '@deriv/quill-icons/LabelPaired';
 import { Localize, localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
@@ -366,7 +366,7 @@ const AppWrapper = observer(() => {
                             <div
                                 label={
                                     <>
-                                        <LabelPairedBookCaptionRegularIcon
+                                        <LabelPairedBookmarkCaptionRegularIcon
                                             height='24px'
                                             width='24px'
                                             fill='var(--text-general)'
