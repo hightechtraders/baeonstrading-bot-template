@@ -16,7 +16,7 @@ import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observab
 import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
-import FloatingAI from '../../Aiscanner/FloatingAI';
+import { FloatingAI } from '../../Aiscanner/FloatingAI';
 import {
     disableUrlParameterApplication,
     enableUrlParameterApplication,
