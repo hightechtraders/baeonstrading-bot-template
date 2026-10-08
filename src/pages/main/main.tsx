@@ -377,40 +377,38 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-tutorials'
                             >
-                                <div className='flex items-center justify-center w-full h-full p-6' style={{ minHeight: 'calc(100vh - 200px)' }}>
-                                    <div className='bg-[#181a20] border border-[#2b2f36] rounded-2xl p-6 max-w-lg w-full shadow-2xl text-white'>
+                                <div className='free-bots-container'>
+                                    <div className='free-bots-card'>
                                         {/* Header Section */}
-                                        <div className='flex justify-between items-center pb-4 mb-4 border-b border-[#2b2f36]'>
-                                            <h3 className='text-lg font-bold tracking-wide'>AI Single-Strategy Focus</h3>
-                                            <span className='text-xs text-[#848e9c] cursor-pointer hover:text-white'>✕</span>
+                                        <div className='free-bots-header'>
+                                            <h3>AI Single-Strategy Focus</h3>
+                                            <span className='close-btn'>✕</span>
                                         </div>
 
                                         {/* Status Banner */}
-                                        <div className='bg-[#1e2329] border border-[#2b2f36] rounded-xl p-3 mb-6 text-xs text-center text-[#0ecb81] font-medium'>
+                                        <div className='free-bots-banner'>
                                             ✓ Market Scan Complete: Top Strategy Isolated
                                         </div>
 
-                                        <p className='text-xs text-[#848e9c] mb-4'>
+                                        <p className='free-bots-subtitle'>
                                             Top performing strategy identified. Tap card to configure parameters.
                                         </p>
 
                                         {/* Strategy Card */}
-                                        <div className='bg-[#1e2329] border border-[#363c4e] rounded-xl p-4 mb-6 hover:border-[#0ecb81] transition-all cursor-pointer'>
-                                            <div className='flex justify-between items-center text-xs text-[#848e9c] mb-2'>
-                                                <span className='uppercase font-semibold tracking-wider'>TOP VERIFIED STRATEGY</span>
+                                        <div className='free-bots-strategy-item'>
+                                            <div className='strategy-meta'>
+                                                <span>TOP VERIFIED STRATEGY</span>
                                                 <span>CONFIDENCE 66%</span>
                                             </div>
-                                            <div className='flex items-center justify-between'>
-                                                <div className='flex items-center gap-3'>
-                                                    <span className='bg-[#2962ff] text-white text-xs px-2 py-1 rounded-md font-bold'>#1</span>
+                                            <div className='strategy-content'>
+                                                <div className='strategy-info'>
+                                                    <span className='badge-num'>#1</span>
                                                     <div>
-                                                        <h4 className='text-sm font-bold text-white'>MACD Histogram Surge</h4>
-                                                        <p className='text-xs text-[#848e9c]'>Volatility 100 (1s) Index <span className='bg-[#0ecb81]/20 text-[#0ecb81] px-1.5 py-0.5 rounded text-[10px] font-bold ml-1'>UP</span></p>
+                                                        <h4>MACD Histogram Surge</h4>
+                                                        <p>Volatility 100 (1s) Index <span className='badge-up'>UP</span></p>
                                                     </div>
                                                 </div>
-                                                <span className='text-xs bg-[#2b2f36] text-white px-2.5 py-1 rounded font-semibold'>
-                                                    HIGH ▾
-                                                </span>
+                                                <span className='badge-high'>HIGH ▾</span>
                                             </div>
                                         </div>
 
@@ -419,7 +417,7 @@ const AppWrapper = observer(() => {
                                             onClick={() => {
                                                 console.log('Loading MACD Histogram Surge strategy to workspace');
                                             }}
-                                            className='w-full bg-[#0ecb81] hover:opacity-90 text-[#0b0e11] font-bold py-3 px-4 rounded-xl transition-all shadow-md text-sm'
+                                            className='free-bots-btn'
                                         >
                                             Load Strategy to Workspace
                                         </button>
