@@ -85,32 +85,16 @@ const AppWrapper = observer(() => {
     // Trade type modal state
     const [tradeTypeModalState, setTradeTypeModalState] = useState(getModalState());
 
-    /**
-     * Helper function to get modal props with enhanced type safety and clear documentation
-     *
-     * Props serve distinct purposes:
-     * - current_trade_type: Technical identifier for API/internal use (format: "category/type")
-     * - current_trade_type_display_name: Human-readable name for UI display
-     *
-     * This separation ensures proper data flow between technical systems and user interface
-     */
     const getTradeTypeModalProps = () => {
         const { tradeTypeData } = tradeTypeModalState;
 
         return {
             is_visible: tradeTypeModalState.isVisible,
             trade_type_display_name: tradeTypeData?.displayName || '',
-
-            // Technical identifier for internal/API use (e.g., "callput/callput")
-            // Used by backend systems and technical integrations
             current_trade_type: tradeTypeData?.currentTradeType
                 ? `${tradeTypeData.currentTradeType.tradeTypeCategory}/${tradeTypeData.currentTradeType.tradeType}`
                 : 'N/A',
-
-            // Human-readable display name for UI (e.g., "Rise/Fall")
-            // Used for user-facing text and modal content
             current_trade_type_display_name: tradeTypeData?.currentTradeTypeDisplayName || 'N/A',
-
             onConfirm: handleTradeTypeConfirm,
             onCancel: handleTradeTypeCancel,
         };
@@ -124,14 +108,12 @@ const AppWrapper = observer(() => {
     };
     const active_hash_tab = GetHashedValue(active_tab);
 
-    // Set up modal state change listener
     React.useEffect(() => {
         setModalStateChangeCallback(new_state => {
             setTradeTypeModalState(new_state);
         });
     }, [is_loading]);
 
-    // Reset URL parameter processing when location changes
     React.useEffect(() => {
         resetUrlParamProcessing();
     }, [location.search]);
@@ -148,10 +130,7 @@ const AppWrapper = observer(() => {
                 }
                 setLeftTabShadow(true);
             },
-            {
-                root: null,
-                threshold: 0.5,
-            }
+            { root: null, threshold: 0.5 }
         );
 
         const observer_bot_builder = new window.IntersectionObserver(
@@ -162,10 +141,7 @@ const AppWrapper = observer(() => {
                 }
                 setRightTabShadow(true);
             },
-            {
-                root: null,
-                threshold: 0.5,
-            }
+            { root: null, threshold: 0.5 }
         );
         if (el_dashboard) observer_dashboard.observe(el_dashboard);
         if (el_bot_builder) observer_bot_builder.observe(el_bot_builder);
@@ -183,7 +159,6 @@ const AppWrapper = observer(() => {
         }
     }, [clear, connectionStatus, setWebSocketState, stopBot]);
 
-    // Update tab shadows height to match bot builder height
     const updateTabShadowsHeight = () => {
         const botBuilderEl = document.getElementById('id-bot-builder');
         const leftShadow = document.querySelector('.tabs-shadow--left') as HTMLElement;
@@ -199,7 +174,6 @@ const AppWrapper = observer(() => {
     React.useEffect(() => {
         let pollTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
-        // Handle URL trade type parameters when switching to Bot Builder tab
         if (active_tab === BOT_BUILDER) {
             requestAnimationFrame(() => {
                 disableUrlParameterApplication();
@@ -232,9 +206,7 @@ const AppWrapper = observer(() => {
                             pollAttempts++;
                             pollTimeoutId = setTimeout(checkBlocklyLoaded, 500);
                         } else {
-                            console.warn(
-                                'Blockly loading timeout after 5 seconds - proceeding without URL parameter check'
-                            );
+                            console.warn('Blockly loading timeout after 5 seconds');
                         }
                     };
 
@@ -338,7 +310,7 @@ const AppWrapper = observer(() => {
                     <div>
                         {!isDesktop && left_tab_shadow && <span className='tabs-shadow tabs-shadow--left' />}
                         
-                        {/* Clean wrapper for tab row + embedded custom bot badge */}
+                        {/* Flex Wrapper locking Tabs to the left and custom badge to the far right */}
                         <div className='main__tabs-header-wrapper'>
                             <Tabs active_index={active_tab} className='main__tabs' onTabItemClick={handleTabChange} top>
                                 <div
@@ -435,7 +407,6 @@ const AppWrapper = observer(() => {
                 {message}
             </Dialog>
 
-            {/* Trade Type Confirmation Modal */}
             {(() => {
                 const modalProps = getTradeTypeModalProps();
                 return (
