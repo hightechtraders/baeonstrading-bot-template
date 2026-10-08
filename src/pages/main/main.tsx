@@ -16,6 +16,7 @@ import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observab
 import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
+import { ScannerBridge } from '../../Aiscanner/scannerBridge';
 import {
     disableUrlParameterApplication,
     enableUrlParameterApplication,
@@ -280,15 +281,12 @@ const AppWrapper = observer(() => {
         (tab_index: number) => {
             setActiveTab(tab_index);
 
-            // Initialize Bollinger Band Squeeze rule for Vol 25 DOWN when Free Bots tab (index 3) is clicked
+            // Trigger ScannerBridge load to workspace when Free Bots tab is clicked
             if (tab_index === 3) {
-                if (typeof window !== 'undefined' && (window as any).injectScannerStrategy) {
-                    (window as any).injectScannerStrategy({
-                        strategy: 'Bollinger Band Squeeze',
-                        symbol: 'R_25',
-                        contractType: 'PUT',
-                    });
-                }
+                ScannerBridge.loadStrategyToWorkspace(
+                    { strategy: 'Bollinger Band Squeeze', direction: 'PUT' },
+                    { symbol: 'R_25', contractType: 'PUT', stake: 10, duration: 5 }
+                );
             }
 
             const el_id = TAB_IDS[tab_index];
