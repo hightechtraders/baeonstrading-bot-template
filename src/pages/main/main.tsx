@@ -41,7 +41,6 @@ import RunPanel from '../../components/run-panel';
 import ChartModal from '../chart/chart-modal';
 import Dashboard from '../dashboard';
 import RunStrategy from '../dashboard/run-strategy';
-import Tutorials from '../tutorials';
 import './main.scss';
 
 const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
@@ -281,13 +280,13 @@ const AppWrapper = observer(() => {
         (tab_index: number) => {
             setActiveTab(tab_index);
 
-            // Initialize Bollinger Band Squeeze on Vol 25 (1s) DOWN when Free Bots tab (index 3) is clicked
+            // Initialize Bollinger Band Squeeze rule for Vol 25 DOWN when Free Bots tab (index 3) is clicked
             if (tab_index === 3) {
                 if (typeof window !== 'undefined' && (window as any).injectScannerStrategy) {
                     (window as any).injectScannerStrategy({
                         strategy: 'Bollinger Band Squeeze',
-                        symbol: 'R_25',      // Volatility 25 (1s) Index
-                        contractType: 'PUT'   // DOWN
+                        symbol: 'R_25',
+                        contractType: 'PUT',
                     });
                 }
             }
@@ -388,7 +387,7 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-tutorials'
                             >
-                                <Tutorials />
+                                <RunStrategy />
                             </div>
                         </Tabs>
                         {!isDesktop && right_tab_shadow && <span className='tabs-shadow tabs-shadow--right' />}
