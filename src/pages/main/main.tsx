@@ -377,7 +377,25 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-tutorials'
                             >
-                                <FloatingAI />
+                                <div className='free-bots-container p-6 flex flex-col items-center justify-center min-h-[400px] text-white'>
+                                    <div className='bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-md w-full shadow-xl'>
+                                        <div className='flex justify-between items-center mb-3'>
+                                            <span className='bg-blue-600 text-xs px-2.5 py-1 rounded-md font-semibold'>Free Strategy</span>
+                                            <span className='text-xs bg-red-500/20 text-red-400 font-bold px-2 py-0.5 rounded'>DOWN</span>
+                                        </div>
+                                        <h3 className='text-xl font-bold mb-1'>EMA Crossover Breakout</h3>
+                                        <p className='text-sm text-slate-400 mb-4'>Target Asset: Volatility 50 (1s) Index</p>
+                                        <button 
+                                            onClick={() => {
+                                                console.log('Loading EMA Crossover Breakout for Vol 50 1s DOWN');
+                                                // Trigger your scanner bridge load function here if needed
+                                            }}
+                                            className='w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition-colors shadow-md'
+                                        >
+                                            Load Strategy to Workspace
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </Tabs>
                         {!isDesktop && right_tab_shadow && <span className='tabs-shadow tabs-shadow--right' />}
@@ -391,6 +409,7 @@ const AppWrapper = observer(() => {
                 </div>
                 <ChartModal />
                 <TradingViewModal />
+                <FloatingAI />
             </DesktopWrapper>
             <MobileWrapper>{!is_open && <RunPanel />}</MobileWrapper>
             <Dialog
