@@ -84,8 +84,28 @@ const AppWrapper = observer(() => {
     const [left_tab_shadow, setLeftTabShadow] = useState<boolean>(false);
     const [right_tab_shadow, setRightTabShadow] = useState<boolean>(false);
 
-    // Free bots card visibility state
+    // Free bots card visibility state & working strategies
     const [is_card_visible, setIsCardVisible] = useState<boolean>(true);
+    const [working_strategies] = useState([
+        {
+            id: 'strat_1',
+            strategyName: 'EMA Crossover Breakpoint',
+            marketName: 'Volatility 50 (1s) Index',
+            direction: 'DOWN',
+            confidence: '84%',
+            status: 'HIGH',
+            xmlPath: '/strategies/ema_crossover_v50_down.xml'
+        },
+        {
+            id: 'strat_2',
+            strategyName: 'Bollinger Band Squeeze',
+            marketName: 'Volatility 100 (1s) Index',
+            direction: 'CALL',
+            confidence: '79%',
+            status: 'HIGH',
+            xmlPath: '/strategies/bollinger_squeeze_v100_call.xml'
+        }
+    ]);
 
     // Trade type modal state
     const [tradeTypeModalState, setTradeTypeModalState] = useState(getModalState());
@@ -380,57 +400,77 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-tutorials'
                             >
-                                <div className='free-bots-container'>
+                                <div className='free-bots-container' style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', padding: '16px' }}>
                                     {is_card_visible ? (
-                                        <div className='free-bots-card'>
-                                            {/* Header Section */}
-                                            <div className='free-bots-header'>
-                                                <h3>AI Single-Strategy Focus</h3>
-                                                <span 
-                                                    className='close-btn' 
-                                                    onClick={() => setIsCardVisible(false)}
-                                                    style={{ cursor: 'pointer' }}
-                                                >
-                                                    ✕
-                                                </span>
-                                            </div>
-
-                                            {/* Status Banner */}
-                                            <div className='free-bots-banner'>
-                                                ✓ Market Scan Complete: Top Strategy Isolated
-                                            </div>
-
-                                            {/* Strategy Card */}
-                                            <div className='free-bots-strategy-item'>
-                                                <div className='strategy-meta'>
-                                                    <span>TOP VERIFIED STRATEGY</span>
-                                                    <span>CONFIDENCE 84%</span>
+                                        working_strategies.map((bot, index) => (
+                                            <div className='free-bots-card' key={bot.id} style={{ flex: '1 1 320px' }}>
+                                                {/* Header Section */}
+                                                <div className='free-bots-header'>
+                                                    <h3>AI Strategy #{index + 1}</h3>
+                                                    {index === 0 && (
+                                                        <span 
+                                                            className='close-btn' 
+                                                            onClick={() => setIsCardVisible(false)}
+                                                            style={{ cursor: 'pointer' }}
+                                                        >
+                                                            ✕
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                <div className='strategy-content'>
-                                                    <div className='strategy-info'>
-                                                        <span className='badge-num'>#1</span>
-                                                        <div>
-                                                            <h4>EMA Crossover Breakpoint</h4>
-                                                            <p>Volatility 50 (1s) Index <span className='badge-down' style={{ color: '#ec3f3f', fontWeight: 'bold' }}>DOWN</span></p>
-                                                        </div>
+
+                                                {/* Status Banner */}
+                                                <div className='free-bots-banner'>
+                                                    ✓ Live Scan Ready: High Probability Setup
+                                                </div>
+
+                                                {/* Strategy Card */}
+                                                <div className='free-bots-strategy-item'>
+                                                    <div className='strategy-meta'>
+                                                        <span>TOP VERIFIED STRATEGY</span>
+                                                        <span>CONFIDENCE {bot.confidence}</span>
                                                     </div>
-                                                    <span className='badge-high'>HIGH ▾</span>
+                                                    <div className='strategy-content'>
+                                                        <div className='strategy-info'>
+                                                            <span className='badge-num'>#{index + 1}</span>
+                                                            <div>
+                                                                <h4>{bot.strategyName}</h4>
+                                                                <p>
+                                                                    {bot.marketName}{' '}
+                                                                    <span 
+                                                                        style={{ 
+                                                                            color: bot.direction === 'CALL' ? '#06795b' : '#ec3f3f', 
+                                                                            fontWeight: 'bold' 
+                                                                        }}
+                                                                    >
+                                                                        {bot.direction}
+                                                                    </span>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <span className='badge-high'>{bot.status} ▾</span>
+                                                    </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Action Button */}
-                                            <button 
-                                                onClick={() => {
-                                                    console.log('Loading EMA Crossover Breakpoint strategy to workspace');
-                                                }}
-                                                className='free-bots-btn'
-                                            >
-                                                Load Strategy to Workspace
-                                            </button>
-                                        </div>
+                                                {/* Action Button */}
+                                                <button 
+                                                    onClick={() => {
+                                                        console.log(`Loading ${bot.strategyName} into Blockly workspace from ${bot.xmlPath}...`);
+                                                        
+                                                        if (blockly_store.loadWorkspaceFromPath) {
+                                                            blockly_store.loadWorkspaceFromPath(bot.xmlPath);
+                                                        }
+
+                                                        setActiveTab(BOT_BUILDER);
+                                                    }}
+                                                    className='free-bots-btn'
+                                                >
+                                                    Load Strategy to Workspace
+                                                </button>
+                                            </div>
+                                        ))
                                     ) : (
-                                        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-general)' }}>
-                                            <p>Strategy card closed.</p>
+                                        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-general)', width: '100%' }}>
+                                            <p>Strategy cards closed.</p>
                                             <button 
                                                 onClick={() => setIsCardVisible(true)}
                                                 className='free-bots-btn'
