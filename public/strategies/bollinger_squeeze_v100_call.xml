@@ -1,0 +1,46 @@
+<xml xmlns="http://www.w3.org/1999/xhtml" is_dbot="true" collection="false">
+    <block type="trade_definition" id="bollinger_squeeze_v100" x="0" y="0">
+        <statement name="TRADE_OPTIONS">
+            <block type="trade_definition_market" id="market_v100">
+                <field name="MARKET_LIST">synthetic_index</field>
+                <field name="SUBMARKET_LIST">random_index</field>
+                <field name="SYMBOL_LIST">1HZ100V</field>
+                <field name="TRADETYPECAT_LIST">callput</field>
+                <field name="TRADETYPE_LIST">call</field>
+                <field name="TYPE_LIST">both</field>
+                <field name="CANDLE_INTERVAL_list">60</field>
+                <field name="TIME_MACHINE_ENABLED">FALSE</field>
+                <field name="RESTARTONERROR">TRUE</field>
+                <statement name="SUBMARKET_STAFF">
+                    <block type="trade_definition_contracttype" id="contract_call">
+                        <field name="TYPE_LIST">CALL</field>
+                        <next>
+                            <block type="trade_definition_tradeoptions" id="trade_opts_100">
+                                <mutation has_first_barrier="false" has_second_barrier="false"></mutation>
+                                <field name="DURATIONUNIT_LIST">t</field>
+                                <value name="DURATION">
+                                    <shadow type="math_number" id="dur_val_100">
+                                        <field name="NUM">5</field>
+                                    </shadow>
+                                </value>
+                                <value name="AMOUNT">
+                                    <shadow type="math_number" id="amt_val_100">
+                                        <field name="NUM">1</field>
+                                    </shadow>
+                                </value>
+                            </block>
+                        </next>
+                    </block>
+                </statement>
+            </block>
+        </statement>
+        <statement name="INITIALIZATION">
+            <block type="variables_set" id="init_strat_100">
+                <field name="VAR" id="strat_name">Bollinger Band Squeeze</field>
+                <value name="VALUE">
+                    <block type="math_number"><field name="NUM">1</field></block>
+                </value>
+            </block>
+        </statement>
+    </block>
+</xml>
