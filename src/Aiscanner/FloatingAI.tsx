@@ -9,7 +9,7 @@ import './FloatingAI.css';
 
 export const FloatingAI: React.FC = () => {
   useScannerFeed();
-
+ 
   const [isOpen, setIsOpen] = useState(false);
   const [strategies, setStrategies] = useState<Strategy[]>(INITIAL_STRATEGIES);
   
