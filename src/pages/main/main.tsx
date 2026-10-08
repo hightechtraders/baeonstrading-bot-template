@@ -398,14 +398,14 @@ const AppWrapper = observer(() => {
                                         <div className='free-bots-strategy-item'>
                                             <div className='strategy-meta'>
                                                 <span>TOP VERIFIED STRATEGY</span>
-                                                <span>CONFIDENCE 66%</span>
+                                                <span>CONFIDENCE 84%</span>
                                             </div>
                                             <div className='strategy-content'>
                                                 <div className='strategy-info'>
                                                     <span className='badge-num'>#1</span>
                                                     <div>
-                                                        <h4>MACD Histogram Surge</h4>
-                                                        <p>Volatility 100 (1s) Index <span className='badge-up'>UP</span></p>
+                                                        <h4>EMA Crossover Breakpoint</h4>
+                                                        <p>Volatility 50 (1s) Index <span className='badge-down' style={{ color: '#ec3f3f', fontWeight: 'bold' }}>DOWN</span></p>
                                                     </div>
                                                 </div>
                                                 <span className='badge-high'>HIGH ▾</span>
@@ -415,7 +415,7 @@ const AppWrapper = observer(() => {
                                         {/* Action Button */}
                                         <button 
                                             onClick={() => {
-                                                console.log('Loading MACD Histogram Surge strategy to workspace');
+                                                console.log('Loading EMA Crossover Breakpoint strategy to workspace');
                                             }}
                                             className='free-bots-btn'
                                         >
