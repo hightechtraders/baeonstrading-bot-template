@@ -33,6 +33,7 @@ import {
     LabelPairedChartLineCaptionRegularIcon,
     LabelPairedObjectsColumnCaptionRegularIcon,
     LabelPairedPuzzlePieceTwoCaptionBoldIcon,
+    LabelPairedBookOpenRegularIcon,
 } from '@deriv/quill-icons/LabelPaired';
 import { Localize, localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
@@ -40,6 +41,7 @@ import RunPanel from '../../components/run-panel';
 import ChartModal from '../chart/chart-modal';
 import Dashboard from '../dashboard';
 import RunStrategy from '../dashboard/run-strategy';
+import Tutorials from '../tutorials';
 import './main.scss';
 
 const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
@@ -75,7 +77,7 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'chart'];
+    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -309,72 +311,74 @@ const AppWrapper = observer(() => {
                 >
                     <div>
                         {!isDesktop && left_tab_shadow && <span className='tabs-shadow tabs-shadow--left' />}
-                        
-                        {/* Flex Wrapper locking Tabs to the left and custom badge to the far right */}
-                        <div className='main__tabs-header-wrapper'>
-                            <Tabs active_index={active_tab} className='main__tabs' onTabItemClick={handleTabChange} top>
-                                <div
-                                    label={
-                                        <>
-                                            <LabelPairedObjectsColumnCaptionRegularIcon
-                                                height='24px'
-                                                width='24px'
-                                                fill='var(--text-general)'
-                                            />
-                                            <Localize i18n_default_text='Dashboard' />
-                                        </>
-                                    }
-                                    id='id-dbot-dashboard'
-                                >
-                                    <Dashboard handleTabChange={handleTabChange} />
-                                </div>
-                                <div
-                                    label={
-                                        <>
-                                            <LabelPairedPuzzlePieceTwoCaptionBoldIcon
-                                                height='24px'
-                                                width='24px'
-                                                fill='var(--text-general)'
-                                            />
-                                            <Localize i18n_default_text='Bot Builder' />
-                                        </>
-                                    }
-                                    id='id-bot-builder'
-                                />
-                                <div
-                                    label={
-                                        <>
-                                            <LabelPairedChartLineCaptionRegularIcon
-                                                height='24px'
-                                                width='24px'
-                                                fill='var(--text-general)'
-                                            />
-                                            <Localize i18n_default_text='Charts' />
-                                        </>
-                                    }
-                                    id={
-                                        is_chart_modal_visible || is_trading_view_modal_visible
-                                            ? 'id-charts--disabled'
-                                            : 'id-charts'
-                                    }
-                                >
-                                    <Suspense
-                                        fallback={<ChunkLoader message={localize('Please wait, loading chart...')} />}
-                                    >
-                                        <ChartWrapper show_digits_stats={false} />
-                                    </Suspense>
-                                </div>
-                            </Tabs>
-
-                            <div className='main__custom-bot-badge'>
-                                <span className='main__custom-bot-badge-icon'>⚡</span>
-                                <div className='main__custom-bot-badge-text'>
-                                    <div className='main__custom-bot-badge-title'>V50 1s Rise Sniper</div>
-                                    <div className='main__custom-bot-badge-subtitle'>Volatility 50 (1s) Locked</div>
-                                </div>
+                        <Tabs active_index={active_tab} className='main__tabs' onTabItemClick={handleTabChange} top>
+                            <div
+                                label={
+                                    <>
+                                        <LabelPairedObjectsColumnCaptionRegularIcon
+                                            height='24px'
+                                            width='24px'
+                                            fill='var(--text-general)'
+                                        />
+                                        <Localize i18n_default_text='Dashboard' />
+                                    </>
+                                }
+                                id='id-dbot-dashboard'
+                            >
+                                <Dashboard handleTabChange={handleTabChange} />
                             </div>
-                        </div>
-
+                            <div
+                                label={
+                                    <>
+                                        <LabelPairedPuzzlePieceTwoCaptionBoldIcon
+                                            height='24px'
+                                            width='24px'
+                                            fill='var(--text-general)'
+                                        />
+                                        <Localize i18n_default_text='Bot Builder' />
+                                    </>
+                                }
+                                id='id-bot-builder'
+                            />
+                            <div
+                                label={
+                                    <>
+                                        <LabelPairedChartLineCaptionRegularIcon
+                                            height='24px'
+                                            width='24px'
+                                            fill='var(--text-general)'
+                                        />
+                                        <Localize i18n_default_text='Charts' />
+                                    </>
+                                }
+                                id={
+                                    is_chart_modal_visible || is_trading_view_modal_visible
+                                        ? 'id-charts--disabled'
+                                        : 'id-charts'
+                                }
+                            >
+                                <Suspense
+                                    fallback={<ChunkLoader message={localize('Please wait, loading chart...')} />}
+                                >
+                                    <ChartWrapper show_digits_stats={false} />
+                                </Suspense>
+                            </div>
+                            <div
+                                label={
+                                    <>
+                                        <LabelPairedBookOpenRegularIcon
+                                            height='24px'
+                                            width='24px'
+                                            fill='var(--text-general)'
+                                        />
+                                        <Localize i18n_default_text='Tutorials' />
+                                    </>
+                                }
+                                id='id-tutorials'
+                            >
+                                <Tutorials />
+                            </div>
+                        </Tabs>
                         {!isDesktop && right_tab_shadow && <span className='tabs-shadow tabs-shadow--right' />}
                     </div>
                 </div>
