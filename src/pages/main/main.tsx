@@ -84,7 +84,7 @@ const AppWrapper = observer(() => {
     const [left_tab_shadow, setLeftTabShadow] = useState<boolean>(false);
     const [right_tab_shadow, setRightTabShadow] = useState<boolean>(false);
 
-    // Free bots card visibility state & working strategies
+    // Free bots card visibility state & working strategies (DOWN & UP)
     const [is_card_visible, setIsCardVisible] = useState<boolean>(true);
     const [working_strategies] = useState([
         {
@@ -100,10 +100,10 @@ const AppWrapper = observer(() => {
             id: 'strat_2',
             strategyName: 'Bollinger Band Squeeze',
             marketName: 'Volatility 100 (1s) Index',
-            direction: 'CALL',
+            direction: 'UP',
             confidence: '79%',
             status: 'HIGH',
-            xmlPath: '/strategies/bollinger_squeeze_v100_call.xml'
+            xmlPath: '/strategies/bollinger_squeeze_v100_up.xml'
         }
     ]);
 
@@ -438,7 +438,7 @@ const AppWrapper = observer(() => {
                                                                     {bot.marketName}{' '}
                                                                     <span 
                                                                         style={{ 
-                                                                            color: bot.direction === 'CALL' ? '#06795b' : '#ec3f3f', 
+                                                                            color: bot.direction === 'UP' ? '#06795b' : '#ec3f3f', 
                                                                             fontWeight: 'bold' 
                                                                         }}
                                                                     >
@@ -463,6 +463,7 @@ const AppWrapper = observer(() => {
                                                         setActiveTab(BOT_BUILDER);
                                                     }}
                                                     className='free-bots-btn'
+                                                    style={{ width: '100%', textAlign: 'center', display: 'block' }}
                                                 >
                                                     Load Strategy to Workspace
                                                 </button>
@@ -470,7 +471,7 @@ const AppWrapper = observer(() => {
                                         ))
                                     ) : (
                                         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-general)', width: '100%' }}>
-                                            <p>Strategy cards closed.</p>
+                                            <p>Strategy card closed.</p>
                                             <button 
                                                 onClick={() => setIsCardVisible(true)}
                                                 className='free-bots-btn'
