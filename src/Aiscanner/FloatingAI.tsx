@@ -7,7 +7,7 @@ import { Strategy, INITIAL_STRATEGIES } from './strategies';
 import { useScannerFeed } from './useScannerFeed'; 
 import './FloatingAI.css';
 
-const FloatingAI: React.FC = () => {
+export const FloatingAI: React.FC = () => {
   useScannerFeed();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -207,5 +207,3 @@ const FloatingAI: React.FC = () => {
     </div>
   );
 };
-
-export default FloatingAI;
