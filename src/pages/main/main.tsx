@@ -280,6 +280,18 @@ const AppWrapper = observer(() => {
     const handleTabChange = React.useCallback(
         (tab_index: number) => {
             setActiveTab(tab_index);
+
+            // Initialize Bollinger Band Squeeze on Vol 25 (1s) DOWN when Free Bots tab (index 3) is clicked
+            if (tab_index === 3) {
+                if (typeof window !== 'undefined' && (window as any).injectScannerStrategy) {
+                    (window as any).injectScannerStrategy({
+                        strategy: 'Bollinger Band Squeeze',
+                        symbol: 'R_25',      // Volatility 25 (1s) Index
+                        contractType: 'PUT'   // DOWN
+                    });
+                }
+            }
+
             const el_id = TAB_IDS[tab_index];
             if (el_id) {
                 const el_tab = document.getElementById(el_id);
