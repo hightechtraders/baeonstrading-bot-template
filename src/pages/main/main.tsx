@@ -16,7 +16,7 @@ import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observab
 import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
-import { ScannerBridge } from '../../Aiscanner/scannerBridge';
+import FloatingAI from '../../Aiscanner/FloatingAI';
 import {
     disableUrlParameterApplication,
     enableUrlParameterApplication,
@@ -281,14 +281,6 @@ const AppWrapper = observer(() => {
         (tab_index: number) => {
             setActiveTab(tab_index);
 
-            // Trigger ScannerBridge load to workspace when Free Bots tab is clicked
-            if (tab_index === 3) {
-                ScannerBridge.loadStrategyToWorkspace(
-                    { strategy: 'Bollinger Band Squeeze', direction: 'PUT' },
-                    { symbol: 'R_25', contractType: 'PUT', stake: 10, duration: 5 }
-                );
-            }
-
             const el_id = TAB_IDS[tab_index];
             if (el_id) {
                 const el_tab = document.getElementById(el_id);
@@ -385,7 +377,7 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-tutorials'
                             >
-                                <RunStrategy />
+                                <FloatingAI />
                             </div>
                         </Tabs>
                         {!isDesktop && right_tab_shadow && <span className='tabs-shadow tabs-shadow--right' />}
