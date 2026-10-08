@@ -390,10 +390,6 @@ const AppWrapper = observer(() => {
                                             ✓ Market Scan Complete: Top Strategy Isolated
                                         </div>
 
-                                        <p className='free-bots-subtitle'>
-                                            Top performing strategy identified. Tap card to configure parameters.
-                                        </p>
-
                                         {/* Strategy Card */}
                                         <div className='free-bots-strategy-item'>
                                             <div className='strategy-meta'>
