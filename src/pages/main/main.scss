@@ -1,502 +1,756 @@
-import React, { lazy, Suspense, useEffect, useState } from 'react';
-import classNames from 'classnames';
-import { observer } from 'mobx-react-lite';
-import { useLocation, useNavigate } from 'react-router-dom';
-import ChunkLoader from '@/components/loader/chunk-loader';
-import { generateOAuthURL } from '@/components/shared';
-import DesktopWrapper from '@/components/shared_ui/desktop-wrapper';
-import Dialog from '@/components/shared_ui/dialog';
-import MobileWrapper from '@/components/shared_ui/mobile-wrapper';
-import Tabs from '@/components/shared_ui/tabs/tabs';
-import TradeTypeConfirmationModal from '@/components/trade-type-confirmation-modal';
-import TradingViewModal from '@/components/trading-view-chart/trading-view-modal';
-import { DBOT_TABS, TAB_IDS } from '@/constants/bot-contents';
-import { api_base, updateWorkspaceName } from '@/external/bot-skeleton';
-import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observables/connection-status-stream';
-import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
-import { useApiBase } from '@/hooks/useApiBase';
-import { useStore } from '@/hooks/useStore';
-import {
-    disableUrlParameterApplication,
-    enableUrlParameterApplication,
-    setupTradeTypeChangeListener,
-} from '@/utils/blockly-url-param-handler';
-import {
-    checkAndShowTradeTypeModal,
-    getModalState,
-    handleTradeTypeCancel,
-    handleTradeTypeConfirm,
-    resetUrlParamProcessing,
-    setModalStateChangeCallback,
-} from '@/utils/trade-type-modal-handler';
-import {
-    LabelPairedChartLineCaptionRegularIcon,
-    LabelPairedObjectsColumnCaptionRegularIcon,
-    LabelPairedPuzzlePieceTwoCaptionBoldIcon,
-} from '@deriv/quill-icons/LabelPaired';
-import { LegacyGuide1pxIcon } from '@deriv/quill-icons/Legacy';
-import { Localize, localize } from '@deriv-com/translations';
-import { useDevice } from '@deriv-com/ui';
-import RunPanel from '../../components/run-panel';
-import ChartModal from '../chart/chart-modal';
-import Dashboard from '../dashboard';
-import RunStrategy from '../dashboard/run-strategy';
-import './main.scss';
+@use 'components/shared/styles/constants' as *;
+@use 'components/shared/styles/mixins' as *;
 
-const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
-const Tutorial = lazy(() => import('../tutorials'));
+.run-panel {
+    // fix for the RTL issue on tab active line
+    .dc-tabs__active-line {
+        right: auto;
+    }
+}
 
-const AppWrapper = observer(() => {
-    const { connectionStatus } = useApiBase();
-    const { dashboard, load_modal, run_panel, quick_strategy, summary_card, blockly_store } = useStore();
-    const { is_loading } = blockly_store;
-    const {
-        active_tab,
-        active_tour,
-        is_chart_modal_visible,
-        is_trading_view_modal_visible,
-        setActiveTab,
-        setWebSocketState,
-        setActiveTour,
-        setTourDialogVisibility,
-    } = dashboard;
-    const { dashboard_strategies } = load_modal;
-    const {
-        is_dialog_open,
-        is_drawer_open,
-        dialog_options,
-        onCancelButtonClick,
-        onCloseDialog,
-        onOkButtonClick,
-        stopBot,
-    } = run_panel;
-    const { is_open } = quick_strategy;
-    const { cancel_button_text, ok_button_text, title, message, dismissable, is_closed_on_cancel } = dialog_options as {
-        [key: string]: string;
-    };
-    const { clear } = summary_card;
-    const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
-    const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial'];
-    const { isDesktop } = useDevice();
-    const location = useLocation();
-    const navigate = useNavigate();
-    const [left_tab_shadow, setLeftTabShadow] = useState<boolean>(false);
-    const [right_tab_shadow, setRightTabShadow] = useState<boolean>(false);
+.tabs-shadow {
+    position: absolute;
+    top: 8px;
+    height: 40px;
+    width: 64px;
+    z-index: 1;
+    pointer-events: none;
 
-    // Trade type modal state
-    const [tradeTypeModalState, setTradeTypeModalState] = useState(getModalState());
+    &--left {
+        left: 0;
+        background: linear-gradient(-88.07deg, transparent 1.63%, var(--general-section-1) 50.02%);
+    }
 
-    /**
-     * Helper function to get modal props with enhanced type safety and clear documentation
-     *
-     * Props serve distinct purposes:
-     * - current_trade_type: Technical identifier for API/internal use (format: "category/type")
-     * - current_trade_type_display_name: Human-readable name for UI display
-     *
-     * This separation ensures proper data flow between technical systems and user interface
-     */
-    const getTradeTypeModalProps = () => {
-        const { tradeTypeData } = tradeTypeModalState;
+    &--right {
+        right: 0;
+        background: linear-gradient(88.07deg, transparent 1.63%, var(--general-section-1) 50.02%);
+    }
+}
 
-        return {
-            is_visible: tradeTypeModalState.isVisible,
-            trade_type_display_name: tradeTypeData?.displayName || '',
+.main {
+    display: flex;
+    overflow: hidden;
+    width: 100%;
+    height: calc(100vh - 9rem);
+    padding: 1.6rem;
 
-            // Technical identifier for internal/API use (e.g., "callput/callput")
-            // Used by backend systems and technical integrations
-            current_trade_type: tradeTypeData?.currentTradeType
-                ? `${tradeTypeData.currentTradeType.tradeTypeCategory}/${tradeTypeData.currentTradeType.tradeType}`
-                : 'N/A',
+    @include mobile-or-tablet-screen {
+        height: calc(100vh - 6rem);
+        padding: 0;
+    }
 
-            // Human-readable display name for UI (e.g., "Rise/Fall")
-            // Used for user-facing text and modal content
-            current_trade_type_display_name: tradeTypeData?.currentTradeTypeDisplayName || 'N/A',
+    &__container {
+        position: relative;
+        border: none;
+        max-width: 100%;
+        width: 100%;
 
-            onConfirm: handleTradeTypeConfirm,
-            onCancel: handleTradeTypeCancel,
-        };
-    };
+        &.no-scroll {
+            overflow: hidden;
+        }
 
-    let tab_value: number | string = active_tab;
-    const GetHashedValue = (tab: number) => {
-        tab_value = location.hash?.split('#')[1];
-        if (!tab_value) return tab;
-        return Number(hash.indexOf(String(tab_value)));
-    };
-    const active_hash_tab = GetHashedValue(active_tab);
-
-    // Set up modal state change listener
-    React.useEffect(() => {
-        setModalStateChangeCallback(new_state => {
-            setTradeTypeModalState(new_state);
-        });
-    }, [is_loading]);
-
-    // Reset URL parameter processing when location changes
-    React.useEffect(() => {
-        resetUrlParamProcessing();
-    }, [location.search]);
-
-    React.useEffect(() => {
-        const el_dashboard = document.getElementById('id-dbot-dashboard');
-        const el_tutorial = document.getElementById('id-tutorials');
-
-        const observer_dashboard = new window.IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    setLeftTabShadow(false);
-                    return;
-                }
-                setLeftTabShadow(true);
-            },
-            {
-                root: null,
-                threshold: 0.5, // set offset 0.1 means trigger if atleast 10% of element in viewport
-            }
-        );
-
-        const observer_tutorial = new window.IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    setRightTabShadow(false);
-                    return;
-                }
-                setRightTabShadow(true);
-            },
-            {
-                root: null,
-                threshold: 0.5, // set offset 0.1 means trigger if atleast 10% of element in viewport
-            }
-        );
-        observer_dashboard.observe(el_dashboard);
-        observer_tutorial.observe(el_tutorial);
-    });
-
-    React.useEffect(() => {
-        if (connectionStatus !== CONNECTION_STATUS.OPENED) {
-            const is_bot_running = document.getElementById('db-animation__stop-button') !== null;
-            if (is_bot_running) {
-                clear();
-                stopBot();
-                api_base.setIsRunning(false);
-                setWebSocketState(false);
+        &--active {
+            // css for onboard tour overlay
+            &:before {
+                content: '';
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background: rgb(0 0 0 / 72%);
+                opacity: 0.7;
+                z-index: 100;
             }
         }
-    }, [clear, connectionStatus, setWebSocketState, stopBot]);
 
-    // Update tab shadows height to match bot builder height
-    const updateTabShadowsHeight = () => {
-        const botBuilderEl = document.getElementById('id-bot-builder');
-        const leftShadow = document.querySelector('.tabs-shadow--left') as HTMLElement;
-        const rightShadow = document.querySelector('.tabs-shadow--right') as HTMLElement;
+        .dc-tabs {
+            &__active-line {
+                background-color: var(--general-main-1);
+                transition: none;
+            }
 
-        if (botBuilderEl && leftShadow && rightShadow) {
-            const height = botBuilderEl.offsetHeight;
-            leftShadow.style.height = `${height}px`;
-            rightShadow.style.height = `${height}px`;
-        }
-    };
+            &__active {
+                background: var(--general-main-1);
+            }
 
-    React.useEffect(() => {
-        let pollTimeoutId: ReturnType<typeof setTimeout> | null = null;
+            &__list {
+                background: var(--general-section-1);
+                justify-content: start;
 
-        // Handle URL trade type parameters when switching to Bot Builder tab
-        if (active_tab === BOT_BUILDER) {
-            // Use requestAnimationFrame to ensure Blockly workspace is fully initialized
-            requestAnimationFrame(() => {
-                // Disable automatic URL parameter application to prevent changes before modal
-                disableUrlParameterApplication();
+                @include mobile-or-tablet-screen {
+                    overflow-x: auto;
+                    overflow-y: hidden;
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
 
-                // Set up listener for manual trade type changes (only once)
-                setupTradeTypeChangeListener();
+                    &::-webkit-scrollbar {
+                        display: none;
+                    }
+                }
 
-                // Create unified handler for both immediate and delayed execution
-                const handleTradeTypeModal = () => {
-                    checkAndShowTradeTypeModal(
-                        // onConfirm: Changes are now handled by the modal component
-                        () => {
-                            // Re-enable URL parameter application for future parameters
-                            enableUrlParameterApplication();
-                        },
-                        // onCancel: URL parameter removal is now handled by the modal component
-                        () => {}
-                    );
-                };
+                &--header {
+                    &--main {
+                        &__tabs {
+                            @include mobile-or-tablet-screen {
+                                width: 100%;
+                                overflow-x: auto;
+                                padding: 0.8rem 1.6rem 0;
+                            }
+                        }
+                    }
+                }
 
-                // Wait for Blockly to finish loading before checking for URL parameters
-                if (!blockly_store.is_loading) {
-                    // Blockly is loaded, but add longer delay to ensure workspace is fully initialized
-                    // and trade type fields are populated
-                    setTimeout(() => {
-                        handleTradeTypeModal();
-                    }, 500);
-                } else {
-                    // Blockly is still loading, wait for it to finish with optimized polling
-                    let pollAttempts = 0;
-                    const maxPollAttempts = 10; // Maximum 5 seconds (10 * 500ms) - optimized performance
+                &--border-bottom {
+                    @include mobile-or-tablet-screen {
+                        border-bottom: 0;
+                    }
+                }
+            }
 
-                    const checkBlocklyLoaded = () => {
-                        if (!blockly_store.is_loading) {
-                            handleTradeTypeModal();
-                            return; // Exit polling once loaded
+            &__content {
+                @include mobile-or-tablet-screen {
+                    width: 100%;
+                    overflow-x: auto;
+
+                    &--no-result {
+                        @include flex-center;
+
+                        flex-direction: column;
+                        justify-content: flex-start;
+                        height: 100vh;
+                        margin-top: 5rem;
+
+                        svg {
+                            margin-bottom: 2.4rem;
                         }
 
-                        if (pollAttempts < maxPollAttempts) {
-                            pollAttempts++;
-                            // Use 500ms intervals for better performance (5x improvement from 100ms)
-                            pollTimeoutId = setTimeout(checkBlocklyLoaded, 500);
-                        } else {
-                            console.warn(
-                                'Blockly loading timeout after 5 seconds - proceeding without URL parameter check'
-                            );
+                        h1 {
+                            margin-bottom: 0.8rem;
                         }
-                    };
 
-                    checkBlocklyLoaded();
+                        span {
+                            word-break: break-word;
+                            text-align: center;
+                        }
+                    }
                 }
-            });
-        }
 
-        // Cleanup function to prevent memory leaks
-        return () => {
-            if (pollTimeoutId) {
-                clearTimeout(pollTimeoutId);
-                pollTimeoutId = null;
-            }
-        };
-    }, [active_tab, is_loading]);
+                &--main {
+                    &__tabs {
+                        display: flex;
+                        justify-content: space-between;
 
-    React.useEffect(() => {
-        // Run on mount and when active tab changes
-        updateTabShadowsHeight();
-
-        if (is_open) {
-            setTourDialogVisibility(false);
-        }
-        if (init_render.current) {
-            setActiveTab(Number(active_hash_tab));
-            if (!isDesktop) handleTabChange(Number(active_hash_tab));
-            init_render.current = false;
-        } else {
-            // Preserve URL parameters when navigating
-            const currentSearch = window.location.search;
-            navigate(`${currentSearch}#${hash[active_tab] || hash[0]}`);
-        }
-        if (active_tour !== '') {
-            setActiveTour('');
-        }
-
-        // Prevent scrolling when tutorial tab is active (only on mobile)
-        const mainElement = document.querySelector('.main__container');
-        if (active_tab === DBOT_TABS.TUTORIAL && !isDesktop) {
-            document.body.style.overflow = 'hidden';
-            if (mainElement instanceof HTMLElement) {
-                mainElement.classList.add('no-scroll');
-            }
-        } else {
-            document.body.style.overflow = '';
-            if (mainElement instanceof HTMLElement) {
-                mainElement.classList.remove('no-scroll');
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [active_tab]);
-
-    React.useEffect(() => {
-        const trashcan_init_id = setTimeout(() => {
-            if (active_tab === BOT_BUILDER && Blockly?.derivWorkspace?.trashcan) {
-                const trashcanY = window.innerHeight - 250;
-                let trashcanX;
-                if (is_drawer_open) {
-                    trashcanX = isDbotRTL() ? 380 : window.innerWidth - 460;
-                } else {
-                    trashcanX = isDbotRTL() ? 20 : window.innerWidth - 100;
+                        @include mobile-or-tablet-screen {
+                            flex-direction: column;
+                            background-color: var(--general-section-1);
+                        }
+                    }
                 }
-                Blockly?.derivWorkspace?.trashcan?.setTrashcanPosition(trashcanX, trashcanY);
             }
-        }, 100);
 
-        return () => {
-            clearTimeout(trashcan_init_id); // Clear the timeout on unmount
-        };
-        //eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [active_tab, is_drawer_open]);
+            &__item {
+                border-top-left-radius: 1rem;
+                border-top-right-radius: 1rem;
+                height: 4.8rem;
+                padding: 0 2rem;
+                width: auto;
 
-    useEffect(() => {
-        let timer: ReturnType<typeof setTimeout>;
-        if (dashboard_strategies.length > 0) {
-            // Needed to pass this to the Callback Queue as on tab changes
-            // document title getting override by 'Bot | Deriv' only
-            timer = setTimeout(() => {
-                updateWorkspaceName();
-            });
-        }
-        return () => {
-            if (timer) clearTimeout(timer);
-        };
-    }, [dashboard_strategies, active_tab]);
+                @include flex-center;
 
-    const handleTabChange = React.useCallback(
-        (tab_index: number) => {
-            setActiveTab(tab_index);
-            const el_id = TAB_IDS[tab_index];
-            if (el_id) {
-                const el_tab = document.getElementById(el_id);
-                setTimeout(() => {
-                    el_tab?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-                }, 10);
+                svg {
+                    padding-inline-end: 0;
+                    margin-inline-end: 0.8rem;
+
+                    @include mobile-or-tablet-screen {
+                        margin-inline-end: 0.4rem;
+                    }
+                }
+
+                &__icon {
+                    @include mobile-or-tablet-screen {
+                        padding-top: 0.5rem;
+                    }
+                }
             }
-        },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [active_tab]
-    );
-
-    // [AI]
-    const handleLoginGeneration = async () => {
-        const oauthUrl = await generateOAuthURL();
-        if (oauthUrl) {
-            window.location.replace(oauthUrl);
-        } else {
-            console.error('Failed to generate OAuth URL');
         }
-    };
-    // [/AI]
-    return (
-        <React.Fragment>
-            <div className='main'>
-                <div
-                    className={classNames('main__container', {
-                        'main__container--active': active_tour && active_tab === DASHBOARD && !isDesktop,
-                    })}
-                >
-                    <div>
-                        {!isDesktop && left_tab_shadow && <span className='tabs-shadow tabs-shadow--left' />}{' '}
-                        <Tabs active_index={active_tab} className='main__tabs' onTabItemClick={handleTabChange} top>
-                            <div
-                                label={
-                                    <>
-                                        <LabelPairedObjectsColumnCaptionRegularIcon
-                                            height='24px'
-                                            width='24px'
-                                            fill='var(--text-general)'
-                                        />
-                                        <Localize i18n_default_text='Dashboard' />
-                                    </>
-                                }
-                                id='id-dbot-dashboard'
-                            >
-                                <Dashboard handleTabChange={handleTabChange} />
-                            </div>
-                            <div
-                                label={
-                                    <>
-                                        <LabelPairedPuzzlePieceTwoCaptionBoldIcon
-                                            height='24px'
-                                            width='24px'
-                                            fill='var(--text-general)'
-                                        />
-                                        <Localize i18n_default_text='Bot Builder' />
-                                    </>
-                                }
-                                id='id-bot-builder'
-                            />
-                            <div
-                                label={
-                                    <>
-                                        <LabelPairedChartLineCaptionRegularIcon
-                                            height='24px'
-                                            width='24px'
-                                            fill='var(--text-general)'
-                                        />
-                                        <Localize i18n_default_text='Charts' />
-                                    </>
-                                }
-                                id={
-                                    is_chart_modal_visible || is_trading_view_modal_visible
-                                        ? 'id-charts--disabled'
-                                        : 'id-charts'
-                                }
-                            >
-                                <Suspense
-                                    fallback={<ChunkLoader message={localize('Please wait, loading chart...')} />}
-                                >
-                                    <ChartWrapper show_digits_stats={false} />
-                                </Suspense>
-                            </div>
-                            <div
-                                label={
-                                    <>
-                                        <LegacyGuide1pxIcon
-                                            height='16px'
-                                            width='16px'
-                                            fill='var(--text-general)'
-                                            className='icon-general-fill-g-path'
-                                        />
-                                        <Localize i18n_default_text='Tutorials' />
-                                    </>
-                                }
-                                id='id-tutorials'
-                            >
-                                <div className='tutorials-wrapper'>
-                                    <Suspense
-                                        fallback={
-                                            <ChunkLoader message={localize('Please wait, loading tutorials...')} />
-                                        }
-                                    >
-                                        <Tutorial handleTabChange={handleTabChange} />
-                                    </Suspense>
-                                </div>
-                            </div>
-                        </Tabs>
-                        {!isDesktop && right_tab_shadow && <span className='tabs-shadow tabs-shadow--right' />}{' '}
-                    </div>
-                </div>
-            </div>
-            <DesktopWrapper>
-                <div className='main__run-strategy-wrapper'>
-                    <RunStrategy />
-                    <RunPanel />
-                </div>
-                <ChartModal />
-                <TradingViewModal />
-            </DesktopWrapper>
-            <MobileWrapper>{!is_open && <RunPanel />}</MobileWrapper>
-            <Dialog
-                cancel_button_text={cancel_button_text || localize('Cancel')}
-                className='dc-dialog__wrapper--fixed'
-                confirm_button_text={ok_button_text || localize('Ok')}
-                has_close_icon
-                is_mobile_full_width={false}
-                is_visible={is_dialog_open}
-                onCancel={onCancelButtonClick}
-                onClose={onCloseDialog}
-                onConfirm={onOkButtonClick || onCloseDialog}
-                portal_element_id='modal_root'
-                title={title}
-                login={handleLoginGeneration}
-                dismissable={dismissable} // Prevents closing on outside clicks
-                is_closed_on_cancel={is_closed_on_cancel}
-            >
-                {message}
-            </Dialog>
+    }
 
-            {/* Trade Type Confirmation Modal */}
-            {(() => {
-                const modalProps = getTradeTypeModalProps();
-                return (
-                    <TradeTypeConfirmationModal
-                        is_visible={modalProps.is_visible}
-                        trade_type_display_name={modalProps.trade_type_display_name}
-                        current_trade_type={modalProps.current_trade_type}
-                        current_trade_type_display_name={modalProps.current_trade_type_display_name}
-                        onConfirm={modalProps.onConfirm}
-                        onCancel={modalProps.onCancel}
-                    />
-                );
-            })()}
-        </React.Fragment>
-    );
-});
+    &__run-strategy-wrapper {
+        inset-inline-end: 1.6rem;
+        top: 1.6rem;
+        z-index: 2;
 
-export default AppWrapper;
+        @include desktop-screen {
+            position: absolute;
+        }
+
+        .animation {
+            &__button#db-animation {
+                &__run-button {
+                    background-color: var(--purchase-main-1);
+                }
+
+                &__stop-button {
+                    background-color: var(--button-primary-hover);
+                }
+            }
+
+            &__container {
+                background-color: var(--general-main-1);
+            }
+        }
+    }
+
+    &__sidebar-wrapper {
+        &--active {
+            position: fixed;
+            right: 0;
+        }
+
+        &--hidden {
+            display: none;
+        }
+    }
+}
+
+.animation__wrapper {
+    .animation {
+        &__button#db-animation {
+            &__run-button {
+                background-color: var(--purchase-main-1);
+            }
+
+            &__stop-button {
+                background-color: var(--button-primary-hover);
+            }
+        }
+    }
+}
+
+.bot-stopped-dialog {
+    @include mobile-or-tablet-screen {
+        padding: 2rem;
+    }
+
+    .dc-dialog {
+        position: relative;
+
+        &__header-wrapper {
+            margin: 0 0 2.4rem;
+        }
+
+        &__content {
+            &__header {
+                display: flex;
+                justify-content: space-between;
+                margin: 0 0 2.4rem;
+
+                .dc-icon {
+                    cursor: pointer;
+                }
+            }
+        }
+
+        @include mobile-or-tablet-screen {
+            &__footer {
+                flex-wrap: unset;
+
+                .dc-dialog__button {
+                    padding: 0;
+                    width: 40%;
+                    min-width: unset;
+                    flex-basis: unset;
+
+                    &:first-child {
+                        margin-right: 1rem;
+                    }
+                }
+            }
+        }
+    }
+}
+
+.dashboard {
+    &__chart-wrapper {
+        position: relative;
+        height: var(--tab-content-height);
+        width: 100%;
+        transition: all 0.4s;
+
+        @include mobile-or-tablet-screen {
+            height: var(--tab-content-height-mobile);
+            background: var(--general-main-1);
+
+            .smartcharts {
+                height: calc(100% - 4rem);
+                z-index: 1;
+
+                &:has(.stxMenuActive) {
+                    z-index: 99;
+                    transition: all 1s ease-out;
+                }
+            }
+        }
+
+        &--expanded {
+            width: calc(100vw - 39.8rem);
+        }
+
+        &--modal {
+            width: 40rem;
+        }
+    }
+
+    &__toolbox {
+        position: absolute;
+        top: 0;
+        inset-inline-start: 0;
+        width: 23.6rem;
+        padding: 0.8rem;
+        background: var(--general-main-1);
+        z-index: 1;
+
+        .db-toolbox {
+            &__title {
+                height: 2.6rem;
+                line-height: 2.6rem;
+                position: relative;
+                cursor: pointer;
+
+                &__chevron {
+                    position: absolute;
+                    inset-inline-end: 0;
+                    top: 0.3rem;
+                    transition: transform 0.3s ease;
+
+                    &--active {
+                        transform: rotate(180deg);
+                        top: -0.2rem;
+                    }
+                }
+            }
+
+            &__content {
+                border: solid 1px var(--general-section-1);
+            }
+
+            &__category-menu {
+                height: calc(100vh - 33.6rem);
+                overflow-y: scroll;
+            }
+
+            &__search {
+                padding: 1.3rem 0.8rem;
+                height: 6rem;
+            }
+
+            &__content-wrapper {
+                height: 0;
+            }
+
+            &__content-wrapper.active {
+                height: 100%;
+            }
+        }
+    }
+
+    &__run-strategy-wrapper {
+        inset-inline-end: 1.6rem;
+        top: 1.6rem;
+        z-index: 2;
+
+        @include desktop-screen {
+            position: absolute;
+        }
+
+        .animation {
+            &__button {
+                background-color: var(--purchase-main-1);
+            }
+
+            &__container {
+                background-color: var(--general-main-1);
+            }
+        }
+    }
+
+    &__sidebar-wrapper {
+        &--active {
+            position: fixed;
+            inset-inline-end: 0;
+        }
+
+        &--hidden {
+            display: none;
+        }
+    }
+}
+
+.bot-builder {
+    position: absolute;
+    top: 6.6rem;
+    inset-inline-start: 1.6rem;
+    z-index: -1;
+    background: var(--general-main-1);
+    height: var(--tab-content-height);
+
+    .injectionDiv {
+        .blocklyTrash {
+            transition: all 0.4s;
+
+            @include mobile-or-tablet-screen {
+                display: none;
+            }
+        }
+    }
+
+    &--tour-active {
+        .blocklyTrash {
+            display: none;
+        }
+    }
+
+    &--active {
+        z-index: 1;
+    }
+
+    &--inactive {
+        display: none;
+    }
+
+    @include mobile-or-tablet-screen {
+        top: 5.6rem;
+        inset-inline-start: 0;
+        width: 100vw;
+        height: var(--tab-content-height-mobile);
+    }
+}
+
+#react-joyride-step-6 {
+    .onboard__label {
+        margin-bottom: 1.6rem;
+    }
+}
+
+#react-joyride-step-4 {
+    .__floater__arrow {
+        span {
+            inset-inline-end: 0;
+        }
+    }
+}
+
+.onboard {
+    &__header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2.4rem;
+        margin-top: -2rem;
+
+        &--close {
+            cursor: pointer;
+        }
+    }
+
+    &__steps {
+        @media (height <= 730px) {
+            max-height: 40vh;
+            overflow-y: auto;
+        }
+    }
+
+    &__label {
+        text-align: left;
+        margin-bottom: 2.4rem;
+    }
+
+    &__container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        margin-bottom: 2.4rem;
+
+        img {
+            width: 97%;
+        }
+
+        .initial-loader {
+            width: 33rem;
+            height: 18rem;
+        }
+    }
+
+    &__content {
+        text-align: left;
+
+        @include rtl {
+            text-align: right;
+        }
+
+        p {
+            font-size: 1.4rem;
+        }
+
+        &__block {
+            &:first-child {
+                margin-bottom: 2.4rem;
+            }
+        }
+    }
+}
+
+.joyride-content {
+    font-size: 1.4rem;
+
+    @media (height <= 790px) {
+        max-height: 46vh;
+        overflow-y: auto;
+    }
+
+    &__left {
+        text-align: start;
+
+        &__step-three {
+            margin-bottom: 0.8rem;
+        }
+    }
+
+    &__sub-title {
+        margin-top: 1rem;
+    }
+
+    ul {
+        list-style: disc;
+        margin-left: 4rem;
+        margin-top: 1rem;
+
+        li {
+            margin-bottom: 1rem;
+        }
+    }
+
+    video {
+        width: 100%;
+        margin-top: 1rem;
+    }
+
+    &__with-icon {
+        display: flex;
+        margin-bottom: 1rem;
+
+        &__right {
+            margin-left: 0.8rem;
+        }
+
+        &__left {
+            margin: 0.3rem 0 0 1.2rem;
+
+            @include mobile-or-tablet-screen {
+                margin: 0;
+
+                svg {
+                    margin: 0;
+                }
+            }
+        }
+    }
+}
+
+.dbot-slider {
+    @include flex-center(flex-start);
+
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100vh;
+    padding: 1.6rem;
+    border-top: solid 1px var(--border-normal);
+    z-index: 1000;
+    background-color: var(--general-main-1);
+
+    &--tour-position {
+        top: 0;
+
+        .progress-bar-circle:first-child {
+            display: none;
+        }
+    }
+
+    &--active {
+        height: auto;
+        min-height: 18rem;
+    }
+
+    &__navbar {
+        display: flex;
+        justify-content: space-between;
+        padding: 0 1.6rem;
+        width: 100%;
+        margin-bottom: 1.8rem;
+    }
+
+    &__title {
+        margin-bottom: 0.8rem;
+    }
+
+    &__label {
+        margin-bottom: 0.8rem;
+    }
+
+    &__content {
+        text-align: center;
+        padding: 0 1.6rem;
+
+        @include mobile-or-tablet-screen {
+            line-height: 1.8;
+        }
+
+        &:last-child {
+            margin-bottom: 3rem;
+        }
+    }
+
+    &__image,
+    &__media {
+        background: var(--general-section-1);
+        text-align: center;
+        width: 100%;
+        height: 55%;
+        margin-bottom: auto;
+    }
+
+    img {
+        height: 100%;
+    }
+
+    video {
+        height: 100%;
+        width: 65%;
+    }
+
+    &__progress-bar {
+        margin: 1.6rem 0;
+    }
+
+    &__status {
+        width: 100%;
+    }
+
+    &__button-group {
+        display: flex;
+        padding: 0 1.6rem;
+
+        button {
+            height: 4rem;
+            width: 100%;
+            border: 0.2rem solid $color-grey-1;
+            background: $color-white;
+            border-radius: 0.4rem;
+            outline: none;
+            cursor: pointer;
+            margin-inline-end: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            &.default {
+                background: transparent;
+            }
+
+            &.danger {
+                background: $color-red;
+                border: none;
+                margin-right: 0;
+
+                span {
+                    color: $color-white;
+                }
+            }
+        }
+    }
+
+    &__bot-builder-tour {
+        height: auto;
+        background: var(--general-section-1);
+
+        .dbot-slider {
+            width: 100%;
+
+            &__content {
+                margin-bottom: auto;
+            }
+
+            &__status {
+                @include flex-center(flex-start);
+            }
+
+            &__progress-bar {
+                width: 50%;
+                margin-bottom: unset;
+
+                @include flex-center(flex-start);
+
+                margin-inline-start: 1rem;
+
+                .progress-bar-circle {
+                    opacity: 0.16;
+                }
+            }
+
+            &__button-group {
+                width: 50%;
+                display: flex;
+                justify-content: center;
+                padding: 1rem 0;
+
+                .default {
+                    background: transparent;
+
+                    span {
+                        color: var(--text-prominent);
+                    }
+                }
+            }
+        }
+    }
+}
+
+@keyframes blink {
+    0%,
+    100% {
+        border: 1px solid $color-red;
+    }
+
+    50% {
+        border: 1px solid transparent;
+    }
+}
+
+.dbot-tour-blink {
+    animation: blink 1.25s infinite;
+    animation: blink 1.25s ease-in infinite;
+    animation: blink 1.25s ease-in infinite;
+    border-radius: $BORDER-RADIUS * 12.5;
+    height: 2.5rem !important;
+    width: 2.5rem !important;
+    padding: 0.2rem 0;
+
+    @include flex-center;
+}
+
+.beta-server-bot {
+    color: var(--brand-red-coral);
+    margin-left: 8px;
+    padding: 4px 8px;
+    height: 22px;
+    border-radius: 16px;
+    font-size: 1.2rem;
+    border: 2px solid var(--brand-red-coral);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
