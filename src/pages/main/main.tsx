@@ -434,8 +434,9 @@ const AppWrapper = observer(() => {
                                                             <span className='badge-num'>#{index + 1}</span>
                                                             <div>
                                                                 <h4>{bot.strategyName}</h4>
-                                                                <p>
-                                                                    {bot.marketName}{' '}
+                                                                <p style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0 0 0' }}>
+                                                                    <span>{bot.marketName}</span>
+                                                                    <span style={{ opacity: 0.4 }}>•</span>
                                                                     <span 
                                                                         style={{ 
                                                                             color: bot.direction === 'UP' ? '#06795b' : '#ec3f3f', 
