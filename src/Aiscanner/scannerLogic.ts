@@ -2,7 +2,6 @@
 // FILE: src/Aiscanner/scannerLogic.ts
 // ==========================================
 import { Strategy, INITIAL_STRATEGIES } from './strategies';
-import { AudioAlerts } from './audioAlerts';
 
 export interface DerivTickResponse {
     msg_type: string;
@@ -17,14 +16,16 @@ export interface DerivTickResponse {
 export class ScannerLogic {
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
-        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'Volatility 75 AI Scalper',
-        market: s.market || 'R_75',
+        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'Volatility 50 AI Scalper',
+        market: s.market || '1HZ50V',
         confidence: s.confidence || 75
     }));
     private priceBuffers: { [symbol: string]: number[] } = {};
     
-    private readonly CONFIDENCE_THRESHOLD: number = 94;
-    private readonly REQUIRED_CONSECUTIVE_HITS: number = 5; // Stricter requirement for strong directional runs
+    // Persistence lock state to prevent frantic reshuffling
+    private lockedUntil: number = 0;
+    private lockedStrategyId: string | null = null;
+    private readonly LOCK_DURATION_MS = 7000; // Freeze high-conviction signal for 7 seconds
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -37,12 +38,12 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Module instantiated with strict impulse momentum filters.");
+        console.log("[AI Scanner]: Signal locking and persistence filter active.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
         if (dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
-            return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
+            return this.getSortedStrategies();
         }
 
         const { symbol, quote } = dataParsed.tick;
@@ -50,101 +51,100 @@ export class ScannerLogic {
     }
 
     public processLiveTick(symbol: string, price: number): Strategy[] {
+        const now = Date.now();
+
         if (!this.priceBuffers[symbol]) {
             this.priceBuffers[symbol] = [];
         }
         this.priceBuffers[symbol].push(price);
-        if (this.priceBuffers[symbol].length > 45) {
+        if (this.priceBuffers[symbol].length > 40) {
             this.priceBuffers[symbol].shift();
         }
 
         const prices = this.priceBuffers[symbol];
-        if (prices.length < 12) return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
+        if (prices.length < 12) return this.getSortedStrategies();
+
+        // If a high-conviction signal is currently locked, keep the sorting frozen to avoid reshuffling
+        if (now < this.lockedUntil && this.lockedStrategyId) {
+            return this.getSortedStrategies();
+        }
 
         const latestPrice = prices[prices.length - 1];
-        const prevPrice = prices[prices.length - 2];
-        const diff = latestPrice - prevPrice;
+        const prevPrice3 = prices[prices.length - 4]; 
+        const netDiff = latestPrice - prevPrice3;
         
-        const liveDirection: 'UP' | 'DOWN' = diff > 0 ? 'UP' : diff < 0 ? 'DOWN' : (Math.random() > 0.5 ? 'UP' : 'DOWN');
+        const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
         const cleanSymbol = symbol.toUpperCase();
 
-        // Calculate Exponential/Simple Moving Average (SMA) over the last 6 ticks
-        const recentPrices = prices.slice(-6);
-        const sma6 = recentPrices.reduce((sum, p) => sum + p, 0) / recentPrices.length;
-        
-        // Calculate average tick volatility to filter out noise
-        let totalVariance = 0;
-        for (let i = 1; i < recentPrices.length; i++) {
-            totalVariance += Math.abs(recentPrices[i] - recentPrices[i - 1]);
-        }
-        const avgVolatility = totalVariance / (recentPrices.length - 1);
-        
-        // Require price to be decisively away from SMA and volatility to be healthy
-        const isStrongImpulse = liveDirection === 'UP' 
-            ? (latestPrice > sma6 && Math.abs(diff) >= avgVolatility * 0.8)
-            : (latestPrice < sma6 && Math.abs(diff) >= avgVolatility * 0.8);
-
-        // Calculate consecutive directional consistency
         let consecutiveCount = 0;
-        for (let i = prices.length - 1; i > 0; i--) {
-            const currentDiff = prices[i] - prices[i - 1];
-            if (currentDiff === 0) break;
-            const isSameDirection = (diff > 0 && currentDiff > 0) || (diff < 0 && currentDiff < 0);
-            if (isSameDirection) {
+        for (let i = prices.length - 1; i > prices.length - 5; i--) {
+            if (i <= 0) break;
+            const diff = prices[i] - prices[i - 1];
+            if ((netDiff > 0 && diff >= 0) || (netDiff < 0 && diff <= 0)) {
                 consecutiveCount++;
-            } else {
-                break;
             }
         }
 
+        let triggeredHighConfidence = false;
+        let targetStrategyId = '';
+
         this.strategies = this.strategies.map((strat) => {
             const stratMarket = (strat.market || '').toUpperCase();
-            const stratName = (strat.name || '').toUpperCase();
-            
-            const baseSymbol = cleanSymbol.replace('1HZ', '').replace('_', '');
-            const baseStratMarket = stratMarket.replace('1HZ', '').replace('_', '');
-
-            const matchesMarket = 
-                stratMarket.includes(cleanSymbol) || 
-                cleanSymbol.includes(stratMarket) || 
-                stratName.includes(cleanSymbol) ||
-                (baseSymbol && baseStratMarket && baseStratMarket.includes(baseSymbol));
+            const matchesMarket = stratMarket.includes(cleanSymbol) || cleanSymbol.includes(stratMarket);
 
             if (matchesMarket) {
-                // If market lacks consecutive momentum OR fails impulse velocity checks, suppress score
-                if (consecutiveCount < this.REQUIRED_CONSECUTIVE_HITS || !isStrongImpulse) {
-                    const choppyScore = Math.max(20, 35 + (consecutiveCount * 2));
+                if (consecutiveCount < 3 || Math.abs(netDiff) < 0.02) {
                     return {
                         ...strat,
-                        confidence: choppyScore,
-                        score: choppyScore,
+                        confidence: 45,
+                        score: 45,
                         direction: liveDirection
                     };
                 }
 
-                // High-probability mathematical calculation for consistent impulse wins
-                const impulseBoost = Math.min(18, Math.abs(diff) * 250);
-                const streakBonus = consecutiveCount * 2;
-                
-                const calculatedConfidence = Math.round(80 + impulseBoost + streakBonus);
-                const newConfidence = Math.min(98, Math.max(88, calculatedConfidence));
+                triggeredHighConfidence = true;
+                targetStrategyId = strat.id || strat.name;
 
                 return { 
                     ...strat, 
-                    confidence: newConfidence, 
-                    score: newConfidence, 
+                    confidence: 96, 
+                    score: 96, 
                     direction: liveDirection 
                 };
             } else {
-                const subtleDrift = Math.max(20, Math.min(45, strat.confidence + (Math.floor(Math.random() * 5) - 2)));
                 return {
                     ...strat,
-                    confidence: subtleDrift,
-                    score: subtleDrift
+                    confidence: 30,
+                    score: 30
                 };
             }
         });
 
+        // Activate the lock if a strong signal is found
+        if (triggeredHighConfidence && targetStrategyId) {
+            this.lockedUntil = now + this.LOCK_DURATION_MS;
+            this.lockedStrategyId = targetStrategyId;
+            
+            // Optional browser audio cue / notification hook
+            if (typeof window !== 'undefined') {
+                console.log(`%c[STRONG SIGNAL LOCKED]: ${targetStrategyId} - Direction: ${liveDirection}`, 'background: #222; color: #bada55; padding: 4px;');
+            }
+        }
+
+        return this.getSortedStrategies();
+    }
+
+    private getSortedStrategies(): Strategy[] {
+        // If locked, place the locked strategy explicitly at the top index
+        if (Date.now() < this.lockedUntil && this.lockedStrategyId) {
+            const copy = [...this.strategies];
+            const index = copy.findIndex(s => (s.id || s.name) === this.lockedStrategyId);
+            if (index > 0) {
+                const [lockedItem] = copy.splice(index, 1);
+                copy.unshift(lockedItem);
+                return copy;
+            }
+        }
         return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
     }
 }
