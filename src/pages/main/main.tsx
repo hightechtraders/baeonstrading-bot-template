@@ -103,7 +103,7 @@ const AppWrapper = observer(() => {
             direction: 'UP',
             confidence: '79%',
             status: 'HIGH',
-            xmlPath: '/strategies/bollinger_squeeze_v100_up.xml'
+            xmlPath: '/strategies/bollinger_squeeze_v100_call.xml'
         }
     ]);
 
