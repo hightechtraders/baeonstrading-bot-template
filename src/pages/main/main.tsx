@@ -446,16 +446,34 @@ const AppWrapper = observer(() => {
                                                     </div>
                                                 </div>
 
-                                                {/* Action Button */}
+                                                {/* Action Button with Direct XML Fetch & Injection Bridge */}
                                                 <button 
-                                                    onClick={() => {
-                                                        console.log(`Loading ${bot.strategyName} into Blockly workspace from ${bot.xmlPath}...`);
+                                                    onClick={async () => {
+                                                        console.log(`Loading ${bot.strategyName} into workspace from ${bot.xmlPath}...`);
                                                         
-                                                        if (blockly_store.loadWorkspaceFromPath) {
-                                                            blockly_store.loadWorkspaceFromPath(bot.xmlPath);
-                                                        }
-
+                                                        // 1. Switch to Bot Builder tab first
                                                         setActiveTab(BOT_BUILDER);
+
+                                                        try {
+                                                            // 2. Fetch XML file from public folder
+                                                            const response = await fetch(bot.xmlPath);
+                                                            const xmlText = await response.text();
+
+                                                            // 3. Inject into workspace once DOM/Blockly mounts
+                                                            setTimeout(() => {
+                                                                const workspace = window.Blockly?.derivWorkspace || Blockly?.derivWorkspace;
+                                                                if (workspace && window.Blockly?.Xml) {
+                                                                    const xmlDom = window.Blockly.Xml.textToDom(xmlText);
+                                                                    workspace.clear();
+                                                                    window.Blockly.Xml.domToWorkspace(xmlDom, workspace);
+                                                                    console.log(`${bot.strategyName} successfully rendered in Blockly!`);
+                                                                } else {
+                                                                    console.warn('Blockly workspace is not initialized yet.');
+                                                                }
+                                                            }, 400);
+                                                        } catch (error) {
+                                                            console.error('Error loading strategy XML:', error);
+                                                        }
                                                     }}
                                                     className='free-bots-btn'
                                                 >
