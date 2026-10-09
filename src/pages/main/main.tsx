@@ -459,7 +459,7 @@ const AppWrapper = observer(() => {
                                                     }}
                                                     className='free-bots-btn'
                                                 >
-                                                    Load Strategy to Workspace
+                                                    Load Bot to Workspace
                                                 </button>
                                             </div>
                                         ))
