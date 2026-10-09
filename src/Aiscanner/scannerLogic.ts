@@ -24,7 +24,7 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     
     private readonly CONFIDENCE_THRESHOLD: number = 92;
-    private readonly REQUIRED_CONSECUTIVE_HITS: number = 4; // Stricter requirement to eliminate chop
+    private readonly REQUIRED_CONSECUTIVE_HITS: number = 5; // Stricter requirement to completely eliminate false breakouts
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -37,7 +37,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Module instantiated cleanly with high win-rate momentum filters.");
+        console.log("[AI Scanner]: Module instantiated cleanly with high win-rate trend momentum filters.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -54,12 +54,12 @@ export class ScannerLogic {
             this.priceBuffers[symbol] = [];
         }
         this.priceBuffers[symbol].push(price);
-        if (this.priceBuffers[symbol].length > 30) {
+        if (this.priceBuffers[symbol].length > 35) {
             this.priceBuffers[symbol].shift();
         }
 
         const prices = this.priceBuffers[symbol];
-        if (prices.length < 6) return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
+        if (prices.length < 7) return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
 
         const latestPrice = prices[prices.length - 1];
         const prevPrice = prices[prices.length - 2];
@@ -68,7 +68,7 @@ export class ScannerLogic {
         const liveDirection: 'UP' | 'DOWN' = diff > 0 ? 'UP' : diff < 0 ? 'DOWN' : (Math.random() > 0.5 ? 'UP' : 'DOWN');
         const cleanSymbol = symbol.toUpperCase();
 
-        // Calculate consecutive directional consistency and average acceleration
+        // Calculate consecutive directional consistency and velocity
         let consecutiveCount = 0;
         let cumulativeDisplacement = 0;
         for (let i = prices.length - 1; i > 0; i--) {
@@ -97,9 +97,9 @@ export class ScannerLogic {
                 (baseSymbol && baseStratMarket && baseStratMarket.includes(baseSymbol));
 
             if (matchesMarket) {
-                // Suppress confidence aggressively if choppy or below the 4-tick consecutive threshold
+                // If market is consolidating or lacks 5 consecutive directional ticks, suppress confidence
                 if (consecutiveCount < this.REQUIRED_CONSECUTIVE_HITS) {
-                    const choppyScore = Math.max(35, 45 + (consecutiveCount * 3));
+                    const choppyScore = Math.max(30, 40 + (consecutiveCount * 3));
                     return {
                         ...strat,
                         confidence: choppyScore,
@@ -108,12 +108,12 @@ export class ScannerLogic {
                     };
                 }
 
-                // High-precision momentum calculation requiring true directional acceleration
-                const accelerationFactor = Math.min(20, Math.abs(diff) * 250);
-                const streakBonus = consecutiveCount * 3;
+                // Strict momentum calculation requiring true sustained velocity
+                const velocityBoost = Math.min(18, Math.abs(diff) * 200);
+                const streakBonus = consecutiveCount * 2;
                 
-                const calculatedConfidence = Math.round(72 + accelerationFactor + streakBonus);
-                const newConfidence = Math.min(95, Math.max(80, calculatedConfidence));
+                const calculatedConfidence = Math.round(75 + velocityBoost + streakBonus);
+                const newConfidence = Math.min(96, Math.max(82, calculatedConfidence));
 
                 return { 
                     ...strat, 
@@ -122,8 +122,8 @@ export class ScannerLogic {
                     direction: liveDirection 
                 };
             } else {
-                // Lower drift score for non-active background markets
-                const subtleDrift = Math.max(35, Math.min(60, strat.confidence + (Math.floor(Math.random() * 5) - 2)));
+                // Background drift for inactive markets
+                const subtleDrift = Math.max(30, Math.min(55, strat.confidence + (Math.floor(Math.random() * 5) - 2)));
                 return {
                     ...strat,
                     confidence: subtleDrift,
