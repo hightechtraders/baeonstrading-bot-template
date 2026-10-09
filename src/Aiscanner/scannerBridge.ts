@@ -1,4 +1,6 @@
-// src/Aiscanner/scannerBridge.ts
+// ==========================================
+// FILE: src/Aiscanner/scannerBridge.ts
+// ==========================================
 import { RiskManager } from './riskManager';
 import { ScannerLogic, DerivTickResponse } from './scannerLogic';
 
@@ -14,7 +16,7 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static isScannerActive: boolean = false; 
-  private static scannerLogicInstance = new ScannerLogic(); // 👈 Instantiate core calculation logic
+  private static scannerLogicInstance = new ScannerLogic();
 
   static {
     if (typeof window !== 'undefined') {
@@ -56,12 +58,7 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
-  /**
-   * Seamlessly intercepts live ticks from api-base, processes them through ScannerLogic,
-   * and broadcasts the fully updated strategy array to the UI components.
-   */
   public static pushTick(assetName: string, quote: number, strategies?: any[]) {
-    // Process live tick through our calculation engine to evaluate UP/DOWN directions & dynamic scores
     const tickPayload: DerivTickResponse = {
       msg_type: 'tick',
       tick: {
@@ -75,7 +72,6 @@ export class ScannerBridge {
     const updatedStrategies = ScannerBridge.scannerLogicInstance.handleIncomingMessage(tickPayload);
 
     if (typeof window !== 'undefined') {
-      // Dispatch both event names to ensure full backward compatibility with any listening component
       window.dispatchEvent(new CustomEvent('ai-tick-received', {
         detail: { assetName, quote, strategies: updatedStrategies }
       }));
@@ -97,11 +93,11 @@ export class ScannerBridge {
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
-      duration: options?.duration || strategy?.duration || 5,
+      duration: options?.duration || strategy?.duration || 5, // Optimized duration ticks
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: options?.stopLoss || strategy?.stopLoss || 150,
-      takeProfit: options?.takeProfit || strategy?.takeProfit || 100
+      stopLoss: options?.stopLoss || strategy?.stopLoss || 25,   // Aligned with strict circuit breaker
+      takeProfit: options?.takeProfit || strategy?.takeProfit || 50
     };
 
     RiskManager.configure(payload.stopLoss, payload.takeProfit);
@@ -114,7 +110,7 @@ export class ScannerBridge {
     
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
-    const martingaleMultiplier = 1.8;
+    const conservativeMultiplier = 1.2; // 👈 Lowered from 1.8 to prevent compounding drawdowns
 
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
@@ -125,7 +121,7 @@ export class ScannerBridge {
           quickStrategy.setValue('amount', payload.stake);
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
-          quickStrategy.setValue('size', martingaleMultiplier);
+          quickStrategy.setValue('size', conservativeMultiplier);
           
           if (payload.stopLoss !== undefined) {
             quickStrategy.setValue('loss', payload.stopLoss);
@@ -146,7 +142,7 @@ export class ScannerBridge {
           tradetype: 'rise_fall',
           contract_type: storeContractType,
           type: storeType,
-          size: martingaleMultiplier,
+          size: conservativeMultiplier,
           loss: payload.stopLoss,
           stop_loss: payload.stopLoss,
           profit: payload.takeProfit,
