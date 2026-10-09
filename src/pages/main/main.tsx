@@ -16,7 +16,6 @@ import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observab
 import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
-import { FloatingAI } from '../../Aiscanner/FloatingAI';
 import {
     disableUrlParameterApplication,
     enableUrlParameterApplication,
@@ -446,20 +445,16 @@ const AppWrapper = observer(() => {
                                                     </div>
                                                 </div>
 
-                                                {/* Action Button with Direct XML Fetch & Injection Bridge */}
+                                                {/* Action Button */}
                                                 <button 
                                                     onClick={async () => {
                                                         console.log(`Loading ${bot.strategyName} into workspace from ${bot.xmlPath}...`);
-                                                        
-                                                        // 1. Switch to Bot Builder tab first
                                                         setActiveTab(BOT_BUILDER);
 
                                                         try {
-                                                            // 2. Fetch XML file from public folder
                                                             const response = await fetch(bot.xmlPath);
                                                             const xmlText = await response.text();
 
-                                                            // 3. Inject into workspace once DOM/Blockly mounts
                                                             setTimeout(() => {
                                                                 const workspace = window.Blockly?.derivWorkspace || Blockly?.derivWorkspace;
                                                                 if (workspace && window.Blockly?.Xml) {
@@ -506,7 +501,6 @@ const AppWrapper = observer(() => {
                 </div>
                 <ChartModal />
                 <TradingViewModal />
-                <FloatingAI />
             </DesktopWrapper>
             <MobileWrapper>{!is_open && <RunPanel />}</MobileWrapper>
             <Dialog
