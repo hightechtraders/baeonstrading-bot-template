@@ -23,9 +23,8 @@ export class ScannerLogic {
     }));
     private priceBuffers: { [symbol: string]: number[] } = {};
     
-    private consecutiveHighConfidenceCount: number = 0;
-    private readonly CONFIDENCE_THRESHOLD: number = 95;
-    private readonly REQUIRED_CONSECUTIVE_HITS: number = 2; // Relaxed slightly to catch sustained moves quicker
+    private readonly CONFIDENCE_THRESHOLD: number = 92;
+    private readonly REQUIRED_CONSECUTIVE_HITS: number = 3; // Increased to 3 ticks to reduce false breakouts
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -38,7 +37,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Module instantiated cleanly.");
+        console.log("[AI Scanner]: Module instantiated cleanly with enhanced win-rate filters.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -55,25 +54,26 @@ export class ScannerLogic {
             this.priceBuffers[symbol] = [];
         }
         this.priceBuffers[symbol].push(price);
-        if (this.priceBuffers[symbol].length > 20) {
+        if (this.priceBuffers[symbol].length > 25) {
             this.priceBuffers[symbol].shift();
         }
 
         const prices = this.priceBuffers[symbol];
-        if (prices.length < 4) return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
+        if (prices.length < 5) return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
 
         const latestPrice = prices[prices.length - 1];
         const prevPrice = prices[prices.length - 2];
         const diff = latestPrice - prevPrice;
         
         const liveDirection: 'UP' | 'DOWN' = diff > 0 ? 'UP' : diff < 0 ? 'DOWN' : (Math.random() > 0.5 ? 'UP' : 'DOWN');
-
         const cleanSymbol = symbol.toUpperCase();
 
-        // Calculate consecutive directional consistency
+        // Calculate consecutive directional consistency (Trend Strength Filter)
         let consecutiveCount = 0;
+        let totalDisplacement = 0;
         for (let i = prices.length - 1; i > 0; i--) {
             const currentDiff = prices[i] - prices[i - 1];
+            totalDisplacement += Math.abs(currentDiff);
             if (currentDiff === 0) break;
             const isSameDirection = (diff > 0 && currentDiff > 0) || (diff < 0 && currentDiff < 0);
             if (isSameDirection) {
@@ -83,7 +83,7 @@ export class ScannerLogic {
             }
         }
 
-        this.strategies = this.strategies.map((strat, idx) => {
+        this.strategies = this.strategies.map((strat) => {
             const stratMarket = (strat.market || '').toUpperCase();
             const stratName = (strat.name || '').toUpperCase();
             
@@ -97,9 +97,9 @@ export class ScannerLogic {
                 (baseSymbol && baseStratMarket && baseStratMarket.includes(baseSymbol));
 
             if (matchesMarket) {
-                // If chopping, keep scores low
+                // If market is chopping or lacks sufficient consecutive momentum, suppress confidence
                 if (consecutiveCount < this.REQUIRED_CONSECUTIVE_HITS) {
-                    const choppyScore = Math.max(45, 50 + (consecutiveCount * 5));
+                    const choppyScore = Math.max(40, 48 + (consecutiveCount * 4));
                     return {
                         ...strat,
                         confidence: choppyScore,
@@ -108,12 +108,13 @@ export class ScannerLogic {
                     };
                 }
 
-                // Boost scaling so valid trends easily jump to the 88% - 98% tier
-                const momentumBoost = Math.min(35, Math.abs(diff) * 500);
-                const streakMultiplier = consecutiveCount * 6;
+                // Strict momentum scaling for high win-rate setups
+                const momentumBoost = Math.min(25, Math.abs(diff) * 300);
+                const streakMultiplier = consecutiveCount * 4;
                 
-                const calculatedConfidence = Math.round(75 + momentumBoost + streakMultiplier);
-                const newConfidence = Math.min(98, Math.max(82, calculatedConfidence));
+                const calculatedConfidence = Math.round(70 + momentumBoost + streakMultiplier);
+                // Cap maximum confidence slightly to remain realistic and require robust alignment
+                const newConfidence = Math.min(94, Math.max(78, calculatedConfidence));
 
                 return { 
                     ...strat, 
@@ -122,8 +123,8 @@ export class ScannerLogic {
                     direction: liveDirection 
                 };
             } else {
-                // Low background drift
-                const subtleDrift = Math.max(45, Math.min(70, strat.confidence + (Math.floor(Math.random() * 5) - 2)));
+                // Low background drift for non-active markets
+                const subtleDrift = Math.max(40, Math.min(65, strat.confidence + (Math.floor(Math.random() * 5) - 2)));
                 return {
                     ...strat,
                     confidence: subtleDrift,
