@@ -17,7 +17,6 @@ import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
 import { FloatingAI } from '../../Aiscanner/FloatingAI';
-import { useScannerFeed } from '../../Aiscanner/useScannerFeed';
 import {
     disableUrlParameterApplication,
     enableUrlParameterApplication,
@@ -85,33 +84,28 @@ const AppWrapper = observer(() => {
     const [left_tab_shadow, setLeftTabShadow] = useState<boolean>(false);
     const [right_tab_shadow, setRightTabShadow] = useState<boolean>(false);
 
-    // Free bots card visibility state & live tick feed integration
+    // Free bots card visibility state & static working strategies
     const [is_card_visible, setIsCardVisible] = useState<boolean>(true);
-    const { scanned_strategies, rescanMarket } = useScannerFeed();
-
-    // Fallback to defaults if live feed is initializing or empty
-    const working_strategies = scanned_strategies && scanned_strategies.length > 0
-        ? scanned_strategies
-        : [
-            {
-                id: 'strat_1',
-                strategyName: 'EMA Crossover Breakpoint',
-                marketName: 'Volatility 50 (1s) Index',
-                direction: 'DOWN',
-                confidence: '84%',
-                status: 'HIGH',
-                xmlPath: '/strategies/ema_crossover_v50_down.xml'
-            },
-            {
-                id: 'strat_2',
-                strategyName: 'Bollinger Band Squeeze',
-                marketName: 'Volatility 100 (1s) Index',
-                direction: 'UP',
-                confidence: '79%',
-                status: 'HIGH',
-                xmlPath: '/strategies/bollinger_squeeze_v100_up.xml'
-            }
-        ];
+    const [working_strategies] = useState([
+        {
+            id: 'strat_1',
+            strategyName: 'EMA Crossover Breakpoint',
+            marketName: 'Volatility 50 (1s) Index',
+            direction: 'DOWN',
+            confidence: '84%',
+            status: 'HIGH',
+            xmlPath: '/strategies/ema_crossover_v50_down.xml'
+        },
+        {
+            id: 'strat_2',
+            strategyName: 'Bollinger Band Squeeze',
+            marketName: 'Volatility 100 (1s) Index',
+            direction: 'UP',
+            confidence: '79%',
+            status: 'HIGH',
+            xmlPath: '/strategies/bollinger_squeeze_v100_up.xml'
+        }
+    ]);
 
     // Trade type modal state
     const [tradeTypeModalState, setTradeTypeModalState] = useState(getModalState());
@@ -409,7 +403,7 @@ const AppWrapper = observer(() => {
                                 <div className='free-bots-container'>
                                     {is_card_visible ? (
                                         working_strategies.map((bot, index) => (
-                                            <div className='free-bots-card' key={bot.id || index}>
+                                            <div className='free-bots-card' key={bot.id}>
                                                 {/* Header Section */}
                                                 <div className='free-bots-header'>
                                                     <h3>AI Strategy #{index + 1}</h3>
@@ -448,7 +442,7 @@ const AppWrapper = observer(() => {
                                                                 </p>
                                                             </div>
                                                         </div>
-                                                        <span className='badge-high'>{bot.status || 'HIGH'} ▾</span>
+                                                        <span className='badge-high'>{bot.status} ▾</span>
                                                     </div>
                                                 </div>
 
@@ -473,10 +467,7 @@ const AppWrapper = observer(() => {
                                         <div className='free-bots-closed-state'>
                                             <p>Strategy card closed.</p>
                                             <button 
-                                                onClick={() => {
-                                                    setIsCardVisible(true);
-                                                    if (rescanMarket) rescanMarket();
-                                                }}
+                                                onClick={() => setIsCardVisible(true)}
                                                 className='free-bots-btn rescan-btn'
                                             >
                                                 Rescan Market
