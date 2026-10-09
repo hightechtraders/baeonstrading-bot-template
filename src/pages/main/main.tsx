@@ -400,10 +400,10 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-tutorials'
                             >
-                                <div className='free-bots-container' style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', padding: '16px' }}>
+                                <div className='free-bots-container'>
                                     {is_card_visible ? (
                                         working_strategies.map((bot, index) => (
-                                            <div className='free-bots-card' key={bot.id} style={{ flex: '1 1 320px' }}>
+                                            <div className='free-bots-card' key={bot.id}>
                                                 {/* Header Section */}
                                                 <div className='free-bots-header'>
                                                     <h3>AI Strategy #{index + 1}</h3>
@@ -411,7 +411,6 @@ const AppWrapper = observer(() => {
                                                         <span 
                                                             className='close-btn' 
                                                             onClick={() => setIsCardVisible(false)}
-                                                            style={{ cursor: 'pointer' }}
                                                         >
                                                             ✕
                                                         </span>
@@ -434,15 +433,10 @@ const AppWrapper = observer(() => {
                                                             <span className='badge-num'>#{index + 1}</span>
                                                             <div>
                                                                 <h4>{bot.strategyName}</h4>
-                                                                <p style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0 0 0' }}>
+                                                                <p>
                                                                     <span>{bot.marketName}</span>
-                                                                    <span style={{ opacity: 0.4 }}>•</span>
-                                                                    <span 
-                                                                        style={{ 
-                                                                            color: bot.direction === 'UP' ? '#06795b' : '#ec3f3f', 
-                                                                            fontWeight: 'bold' 
-                                                                        }}
-                                                                    >
+                                                                    <span style={{ opacity: 0.4, margin: '0 6px' }}>•</span>
+                                                                    <span className={bot.direction === 'UP' ? 'badge-up' : 'badge-down'} style={{ color: bot.direction === 'UP' ? '#4caf50' : '#ec3f3f', fontWeight: 'bold' }}>
                                                                         {bot.direction}
                                                                     </span>
                                                                 </p>
@@ -464,19 +458,17 @@ const AppWrapper = observer(() => {
                                                         setActiveTab(BOT_BUILDER);
                                                     }}
                                                     className='free-bots-btn'
-                                                    style={{ width: '100%', textAlign: 'center', display: 'block' }}
                                                 >
                                                     Load Strategy to Workspace
                                                 </button>
                                             </div>
                                         ))
                                     ) : (
-                                        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-general)', width: '100%' }}>
+                                        <div className='free-bots-closed-state'>
                                             <p>Strategy card closed.</p>
                                             <button 
                                                 onClick={() => setIsCardVisible(true)}
-                                                className='free-bots-btn'
-                                                style={{ marginTop: '12px', width: 'auto', padding: '8px 16px' }}
+                                                className='free-bots-btn rescan-btn'
                                             >
                                                 Rescan Market
                                             </button>
