@@ -6,6 +6,8 @@ export class RiskManager {
   private static monitoredTakeProfit: number = 0;
   private static cumulativeSessionPnL: number = 0;
   private static totalCycles: number = 0;
+  private static consecutiveLosses: number = 0;
+  private static readonly MAX_MARTINGALE_STEPS: number = 3; // Strict cap to prevent runaway drawdowns
   private static processedContractIds: Set<string> = new Set();
   public static liveExecutionLock: boolean = false;
   private static isInitialized: boolean = false;
@@ -21,6 +23,7 @@ export class RiskManager {
     // Reset session stats and history on new configuration
     this.cumulativeSessionPnL = 0;
     this.totalCycles = 0;
+    this.consecutiveLosses = 0;
     this.processedContractIds.clear();
     this.liveExecutionLock = false;
     
@@ -94,6 +97,22 @@ export class RiskManager {
     }
 
     const profit = parseFloat(contractNode.profit) || 0;
+    const isWin = profit > 0;
+
+    // Track consecutive losses for martingale capping
+    if (isWin) {
+      this.consecutiveLosses = 0;
+    } else {
+      this.consecutiveLosses += 1;
+      if (this.consecutiveLosses >= this.MAX_MARTINGALE_STEPS) {
+        console.warn(`[RiskManager] Max Martingale recovery step (${this.MAX_MARTINGALE_STEPS}) reached! Forcing stake reset.`);
+        // Signal platform to reset stake multiplier back to base level
+        const globalWin = window as any;
+        if (globalWin.derivBotAppStore && typeof globalWin.derivBotAppStore.resetMultiplier === 'function') {
+          globalWin.derivBotAppStore.resetMultiplier();
+        }
+      }
+    }
     
     // Synchronize with the live platform summary element if available
     const summaryProfitEl = document.querySelector('[class*="total-profit"], [class*="pnl"]');
@@ -110,7 +129,7 @@ export class RiskManager {
 
     this.totalCycles += 1;
 
-    console.log(`[RiskManager] Cycle ${this.totalCycles} Settled (ID: ${contractId}): $${profit.toFixed(2)} | Synchronized PnL: $${this.cumulativeSessionPnL.toFixed(2)}`);
+    console.log(`[RiskManager] Cycle ${this.totalCycles} Settled (ID: ${contractId}): $${profit.toFixed(2)} | Synchronized PnL: $${this.cumulativeSessionPnL.toFixed(2)} | Streak Losses: ${this.consecutiveLosses}`);
 
     if (this.monitoredTakeProfit > 0 && this.cumulativeSessionPnL >= this.monitoredTakeProfit) {
       AudioAlerts.showModal('PROFIT', this.cumulativeSessionPnL, this.monitoredTakeProfit, this.totalCycles);
