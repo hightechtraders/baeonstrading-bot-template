@@ -88,15 +88,15 @@ export class ScannerBridge {
     }
 
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
-    const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
+    const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'UP';
 
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
-      duration: options?.duration || strategy?.duration || 5, // Optimized duration ticks
+      duration: options?.duration || strategy?.duration || 5, // 5 ticks duration for breathing room
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: options?.stopLoss || strategy?.stopLoss || 25,   // Aligned with strict circuit breaker
+      stopLoss: options?.stopLoss || strategy?.stopLoss || 25,
       takeProfit: options?.takeProfit || strategy?.takeProfit || 50
     };
 
@@ -105,12 +105,12 @@ export class ScannerBridge {
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     
-    const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
-    const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
+    const rawTradeType = (payload.tradeType || 'UP').toUpperCase();
+    const isFall = rawTradeType.includes('DOWN') || rawTradeType.includes('PUT') || rawTradeType.includes('FALL');
     
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
-    const conservativeMultiplier = 1.2; // 👈 Lowered from 1.8 to prevent compounding drawdowns
+    const conservativeMultiplier = 1.2;
 
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
@@ -156,6 +156,7 @@ export class ScannerBridge {
       } catch (error) {}
     }
 
+    // Force Blockly workspace blocks to adopt the exact scanner direction & market
     const applyBlockMutations = () => {
       try {
         const Blockly = (window as any).Blockly;
@@ -169,37 +170,22 @@ export class ScannerBridge {
             blocks.forEach((block: any) => {
               if (!block) return;
 
+              // Update market dropdowns
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
-                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
-                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
-                    if (!exists) {
-                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
-                    }
-                  }
                   symbolField.setValue(strictDerivSymbol);
                   updated = true;
                 }
               }
 
+              // Force purchase blocks to match UP (Call) or DOWN (Put) precisely
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
                   const field = block.getField(name);
                   if (field && typeof field.setValue === 'function') {
-                    const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
-                    const targetMatch = options.find((opt: any) => {
-                      const label = String(opt[0] || '').toLowerCase();
-                      const val = String(opt[1] || '').toLowerCase();
-                      if (isFall) {
-                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
-                      } else {
-                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
-                      }
-                    });
-
-                    const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
+                    const desiredVal = isFall ? 'Put' : 'Rise';
                     if (field.getValue() !== desiredVal) {
                       field.setValue(desiredVal);
                       updated = true;
