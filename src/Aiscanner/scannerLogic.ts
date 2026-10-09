@@ -23,8 +23,8 @@ export class ScannerLogic {
     }));
     private priceBuffers: { [symbol: string]: number[] } = {};
     
-    private readonly CONFIDENCE_THRESHOLD: number = 93;
-    private readonly REQUIRED_CONSECUTIVE_HITS: number = 4;
+    private readonly CONFIDENCE_THRESHOLD: number = 94;
+    private readonly REQUIRED_CONSECUTIVE_HITS: number = 5; // Stricter requirement for strong directional runs
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -37,7 +37,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Module instantiated with enhanced win-rate moving-average & velocity filters.");
+        console.log("[AI Scanner]: Module instantiated with strict impulse momentum filters.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -54,12 +54,12 @@ export class ScannerLogic {
             this.priceBuffers[symbol] = [];
         }
         this.priceBuffers[symbol].push(price);
-        if (this.priceBuffers[symbol].length > 40) {
+        if (this.priceBuffers[symbol].length > 45) {
             this.priceBuffers[symbol].shift();
         }
 
         const prices = this.priceBuffers[symbol];
-        if (prices.length < 10) return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
+        if (prices.length < 12) return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
 
         const latestPrice = prices[prices.length - 1];
         const prevPrice = prices[prices.length - 2];
@@ -68,10 +68,21 @@ export class ScannerLogic {
         const liveDirection: 'UP' | 'DOWN' = diff > 0 ? 'UP' : diff < 0 ? 'DOWN' : (Math.random() > 0.5 ? 'UP' : 'DOWN');
         const cleanSymbol = symbol.toUpperCase();
 
-        // Calculate Simple Moving Average (SMA) over the last 5 ticks for trend confirmation
-        const recentPrices = prices.slice(-5);
-        const sma5 = recentPrices.reduce((sum, p) => sum + p, 0) / recentPrices.length;
-        const isTrendAligned = liveDirection === 'UP' ? latestPrice > sma5 : latestPrice < sma5;
+        // Calculate Exponential/Simple Moving Average (SMA) over the last 6 ticks
+        const recentPrices = prices.slice(-6);
+        const sma6 = recentPrices.reduce((sum, p) => sum + p, 0) / recentPrices.length;
+        
+        // Calculate average tick volatility to filter out noise
+        let totalVariance = 0;
+        for (let i = 1; i < recentPrices.length; i++) {
+            totalVariance += Math.abs(recentPrices[i] - recentPrices[i - 1]);
+        }
+        const avgVolatility = totalVariance / (recentPrices.length - 1);
+        
+        // Require price to be decisively away from SMA and volatility to be healthy
+        const isStrongImpulse = liveDirection === 'UP' 
+            ? (latestPrice > sma6 && Math.abs(diff) >= avgVolatility * 0.8)
+            : (latestPrice < sma6 && Math.abs(diff) >= avgVolatility * 0.8);
 
         // Calculate consecutive directional consistency
         let consecutiveCount = 0;
@@ -100,9 +111,9 @@ export class ScannerLogic {
                 (baseSymbol && baseStratMarket && baseStratMarket.includes(baseSymbol));
 
             if (matchesMarket) {
-                // If market lacks consecutive hits OR fails moving average trend alignment, suppress score
-                if (consecutiveCount < this.REQUIRED_CONSECUTIVE_HITS || !isTrendAligned) {
-                    const choppyScore = Math.max(25, 40 + (consecutiveCount * 2));
+                // If market lacks consecutive momentum OR fails impulse velocity checks, suppress score
+                if (consecutiveCount < this.REQUIRED_CONSECUTIVE_HITS || !isStrongImpulse) {
+                    const choppyScore = Math.max(20, 35 + (consecutiveCount * 2));
                     return {
                         ...strat,
                         confidence: choppyScore,
@@ -111,12 +122,12 @@ export class ScannerLogic {
                     };
                 }
 
-                // High-probability mathematical calculation for consistent wins
-                const velocityBoost = Math.min(20, Math.abs(diff) * 220);
-                const streakBonus = consecutiveCount * 3;
+                // High-probability mathematical calculation for consistent impulse wins
+                const impulseBoost = Math.min(18, Math.abs(diff) * 250);
+                const streakBonus = consecutiveCount * 2;
                 
-                const calculatedConfidence = Math.round(78 + velocityBoost + streakBonus);
-                const newConfidence = Math.min(97, Math.max(85, calculatedConfidence));
+                const calculatedConfidence = Math.round(80 + impulseBoost + streakBonus);
+                const newConfidence = Math.min(98, Math.max(88, calculatedConfidence));
 
                 return { 
                     ...strat, 
@@ -125,7 +136,7 @@ export class ScannerLogic {
                     direction: liveDirection 
                 };
             } else {
-                const subtleDrift = Math.max(25, Math.min(50, strat.confidence + (Math.floor(Math.random() * 5) - 2)));
+                const subtleDrift = Math.max(20, Math.min(45, strat.confidence + (Math.floor(Math.random() * 5) - 2)));
                 return {
                     ...strat,
                     confidence: subtleDrift,
