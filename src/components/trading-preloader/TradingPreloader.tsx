@@ -15,7 +15,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
   minLoadingTime = 2500
 }) => {
   const [progress, setProgress] = useState(1);
-  const [statusText, setStatusText] = useState('Initializing D-Bot...');
+  const [statusText, setStatusText] = useState('Connecting to secure feeds...');
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
@@ -55,12 +55,13 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
 
   return (
     <div className={`trading-preloader-overlay ${isFadingOut ? 'fade-out' : ''}`}>
+      {/* Background Neon Orbs & Chart Grid FX */}
       <div className="neural-bg-fx">
         <div className="glow-orb orb-1"></div>
         <div className="glow-orb orb-2"></div>
-        <div className="grid-overlay"></div>
       </div>
 
+      {/* Glassmorphic Central Card */}
       <div className="preloader-card">
         <div className="brand-header">
           <h1 className="brand-title">{appName}</h1>
