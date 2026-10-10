@@ -110,7 +110,7 @@ export class ScannerBridge {
     
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
-    const conservativeMultiplier = 1.2;
+    const conservativeMultiplier = 1.8;
 
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
