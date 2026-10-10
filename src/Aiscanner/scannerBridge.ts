@@ -116,50 +116,6 @@ export class ScannerBridge {
     const storeType = isFall ? 'fall' : 'rise';
     const martingaleMultiplier = 2.4;
 
-    if (rootStore?.quick_strategy) {
-      const quickStrategy = rootStore.quick_strategy;
-      try {
-        if (typeof quickStrategy.setValue === 'function') {
-          quickStrategy.setValue('symbol', strictDerivSymbol);
-          quickStrategy.setValue('duration', payload.duration);
-          quickStrategy.setValue('amount', payload.stake);
-          quickStrategy.setValue('contract_type', storeContractType);
-          quickStrategy.setValue('type', storeType);
-          quickStrategy.setValue('size', martingaleMultiplier);
-          
-          if (payload.stopLoss !== undefined) {
-            quickStrategy.setValue('loss', payload.stopLoss);
-            quickStrategy.setValue('stop_loss', payload.stopLoss);
-          }
-          if (payload.takeProfit !== undefined) {
-            quickStrategy.setValue('profit', payload.takeProfit);
-            quickStrategy.setValue('take_profit', payload.takeProfit);
-          }
-        }
-        
-        const mockFormData = {
-          symbol: strictDerivSymbol, 
-          durationtype: payload.durationUnit || 't', 
-          duration: payload.duration,
-          stake: payload.stake,
-          amount: payload.stake,
-          tradetype: 'rise_fall',
-          contract_type: storeContractType,
-          type: storeType,
-          size: martingaleMultiplier,
-          loss: payload.stopLoss,
-          stop_loss: payload.stopLoss,
-          profit: payload.takeProfit,
-          take_profit: payload.takeProfit
-        };
-
-        const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
-        if (typeof submitAction === 'function') {
-          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).catch(() => {});
-        }
-      } catch (error) {}
-    }
-
     const applyBlockMutations = () => {
       try {
         const Blockly = (window as any).Blockly;
@@ -220,6 +176,54 @@ export class ScannerBridge {
         }
       } catch (e) {}
     };
+
+    if (rootStore?.quick_strategy) {
+      const quickStrategy = rootStore.quick_strategy;
+      try {
+        if (typeof quickStrategy.setValue === 'function') {
+          quickStrategy.setValue('symbol', strictDerivSymbol);
+          quickStrategy.setValue('duration', payload.duration);
+          quickStrategy.setValue('amount', payload.stake);
+          quickStrategy.setValue('contract_type', storeContractType);
+          quickStrategy.setValue('type', storeType);
+          quickStrategy.setValue('size', martingaleMultiplier);
+          
+          if (payload.stopLoss !== undefined) {
+            quickStrategy.setValue('loss', payload.stopLoss);
+            quickStrategy.setValue('stop_loss', payload.stopLoss);
+          }
+          if (payload.takeProfit !== undefined) {
+            quickStrategy.setValue('profit', payload.takeProfit);
+            quickStrategy.setValue('take_profit', payload.takeProfit);
+          }
+        }
+        
+        const mockFormData = {
+          symbol: strictDerivSymbol, 
+          durationtype: payload.durationUnit || 't', 
+          duration: payload.duration,
+          stake: payload.stake,
+          amount: payload.stake,
+          tradetype: 'rise_fall',
+          contract_type: storeContractType,
+          type: storeType,
+          subtype: storeType,
+          size: martingaleMultiplier,
+          loss: payload.stopLoss,
+          stop_loss: payload.stopLoss,
+          profit: payload.takeProfit,
+          take_profit: payload.takeProfit
+        };
+
+        const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
+        if (typeof submitAction === 'function') {
+          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).then(() => {
+            setTimeout(applyBlockMutations, 100);
+            setTimeout(applyBlockMutations, 500);
+          }).catch(() => {});
+        }
+      } catch (error) {}
+    }
 
     applyBlockMutations();
     setTimeout(applyBlockMutations, 150);
