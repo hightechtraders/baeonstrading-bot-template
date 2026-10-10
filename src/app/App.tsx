@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import React from 'react';
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } from 'react-router-dom';
 import ChunkLoader from '@/components/loader/chunk-loader';
@@ -11,6 +11,7 @@ import { StoreProvider } from '@/hooks/useStore';
 import { OAuthTokenExchangeService } from '@/services/oauth-token-exchange.service';
 import { initializeI18n, localize, TranslationProvider } from '@deriv-com/translations';
 import { FloatingAI } from '@/Aiscanner/FloatingAI';
+import { TradingPreloader } from '@/components/trading-preloader/TradingPreloader';
 import CoreStoreProvider from './CoreStoreProvider';
 import './app-root.scss';
 
@@ -58,6 +59,9 @@ const router = createBrowserRouter(
 export default function App() {
     const { isProcessing, isValid, params, error, cleanupURL } = useOAuthCallback();
     useAccountSwitching();
+    
+    // State to control your high-end trading preloader
+    const [isBooting, setIsBooting] = useState(true);
 
     React.useEffect(() => {
         if (!isProcessing && isValid && params.code) {
@@ -73,5 +77,17 @@ export default function App() {
         }
     }, [isProcessing, isValid, params.code, error, cleanupURL]);
 
-    return <RouterProvider router={router} />;
+    return (
+        <>
+            {isBooting && (
+                <TradingPreloader 
+                    appName="TraderScore" 
+                    subtitle="TraderScore Trading Workspace" 
+                    minLoadingTime={3000} 
+                    onComplete={() => setIsBooting(false)} 
+                />
+            )}
+            <RouterProvider router={router} />
+        </>
+    );
 }
