@@ -1,9 +1,7 @@
-// ==========================================
-// FILE: src/Aiscanner/scannerBridge.ts
-// ==========================================
+// src/Aiscanner/scannerBridge.ts
 import { RiskManager } from './riskManager';
 import { ScannerLogic, DerivTickResponse } from './scannerLogic';
- 
+
 export interface AIScannerPayload {
   stake: number;
   duration: number;
@@ -16,7 +14,7 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static isScannerActive: boolean = false; 
-  private static scannerLogicInstance = new ScannerLogic();
+  private static scannerLogicInstance = new ScannerLogic(); // 👈 Instantiate core calculation logic
 
   static {
     if (typeof window !== 'undefined') {
@@ -58,7 +56,12 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
+  /**
+   * Seamlessly intercepts live ticks from api-base, processes them through ScannerLogic,
+   * and broadcasts the fully updated strategy array to the UI components.
+   */
   public static pushTick(assetName: string, quote: number, strategies?: any[]) {
+    // Process live tick through our calculation engine to evaluate UP/DOWN directions & dynamic scores
     const tickPayload: DerivTickResponse = {
       msg_type: 'tick',
       tick: {
@@ -72,6 +75,7 @@ export class ScannerBridge {
     const updatedStrategies = ScannerBridge.scannerLogicInstance.handleIncomingMessage(tickPayload);
 
     if (typeof window !== 'undefined') {
+      // Dispatch both event names to ensure full backward compatibility with any listening component
       window.dispatchEvent(new CustomEvent('ai-tick-received', {
         detail: { assetName, quote, strategies: updatedStrategies }
       }));
@@ -88,16 +92,16 @@ export class ScannerBridge {
     }
 
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
-    const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'UP';
+    const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
 
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
-      duration: options?.duration || strategy?.duration || 5, // 5 ticks duration for breathing room
+      duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: options?.stopLoss || strategy?.stopLoss || 25,
-      takeProfit: options?.takeProfit || strategy?.takeProfit || 50
+      stopLoss: options?.stopLoss || strategy?.stopLoss || 150,
+      takeProfit: options?.takeProfit || strategy?.takeProfit || 100
     };
 
     RiskManager.configure(payload.stopLoss, payload.takeProfit);
@@ -105,12 +109,12 @@ export class ScannerBridge {
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     
-    const rawTradeType = (payload.tradeType || 'UP').toUpperCase();
-    const isFall = rawTradeType.includes('DOWN') || rawTradeType.includes('PUT') || rawTradeType.includes('FALL');
+    const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
+    const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
     
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
-    const conservativeMultiplier = 1.8;
+    const martingaleMultiplier = 2.4;
 
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
@@ -121,7 +125,7 @@ export class ScannerBridge {
           quickStrategy.setValue('amount', payload.stake);
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
-          quickStrategy.setValue('size', conservativeMultiplier);
+          quickStrategy.setValue('size', martingaleMultiplier);
           
           if (payload.stopLoss !== undefined) {
             quickStrategy.setValue('loss', payload.stopLoss);
@@ -142,7 +146,7 @@ export class ScannerBridge {
           tradetype: 'rise_fall',
           contract_type: storeContractType,
           type: storeType,
-          size: conservativeMultiplier,
+          size: martingaleMultiplier,
           loss: payload.stopLoss,
           stop_loss: payload.stopLoss,
           profit: payload.takeProfit,
@@ -156,7 +160,6 @@ export class ScannerBridge {
       } catch (error) {}
     }
 
-    // Force Blockly workspace blocks to adopt the exact scanner direction & market
     const applyBlockMutations = () => {
       try {
         const Blockly = (window as any).Blockly;
@@ -170,22 +173,37 @@ export class ScannerBridge {
             blocks.forEach((block: any) => {
               if (!block) return;
 
-              // Update market dropdowns
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
+                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
+                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                    if (!exists) {
+                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
+                    }
+                  }
                   symbolField.setValue(strictDerivSymbol);
                   updated = true;
                 }
               }
 
-              // Force purchase blocks to match UP (Call) or DOWN (Put) precisely
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
                   const field = block.getField(name);
                   if (field && typeof field.setValue === 'function') {
-                    const desiredVal = isFall ? 'Put' : 'Rise';
+                    const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
+                    const targetMatch = options.find((opt: any) => {
+                      const label = String(opt[0] || '').toLowerCase();
+                      const val = String(opt[1] || '').toLowerCase();
+                      if (isFall) {
+                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
+                      } else {
+                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
+                      }
+                    });
+
+                    const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
                     if (field.getValue() !== desiredVal) {
                       field.setValue(desiredVal);
                       updated = true;
