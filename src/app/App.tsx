@@ -35,7 +35,7 @@ const router = createBrowserRouter(
                         <TradingPreloader 
                             appName="TraderScore" 
                             subtitle="TraderScore Trading Workspace" 
-                            minLoadingTime={8000} 
+                            minLoadingTime={10000} 
                         />
                     }
                 >
