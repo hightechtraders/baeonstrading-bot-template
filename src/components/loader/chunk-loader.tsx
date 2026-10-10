@@ -11,7 +11,13 @@ export default function ChunkLoader({ message }: { message?: string }) {
             appName="TraderScore" 
             subtitle="TraderScore Trading Workspace" 
             minLoadingTime={6000} 
-            onComplete={() => setIsFinished(true)}
+            onComplete={() => {
+                // Add a small 600ms delay to let the fade-out fully complete 
+                // before removing the component from the DOM entirely
+                setTimeout(() => {
+                    setIsFinished(true);
+                }, 600);
+            }}
         />
     );
 }
