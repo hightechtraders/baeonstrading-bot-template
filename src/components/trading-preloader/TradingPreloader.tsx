@@ -12,7 +12,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
   appName = 'TraderScore',
   subtitle = 'TraderScore Neural Trading Workspace',
   onComplete,
-  minLoadingTime = 8000 // Extended by ~1/4 to an 8-second professional boot pace
+  minLoadingTime = 8000
 }) => {
   const [progress, setProgress] = useState(1);
   const [statusText, setStatusText] = useState('Initializing secure kernel...');
@@ -134,9 +134,11 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
       if (calculatedProgress >= 100) {
         clearInterval(timer);
         setIsFadingOut(true);
+        // Give a slightly longer cushion (e.g. 1200ms) so the fade out 
+        // completely covers the final background mounting phase.
         setTimeout(() => {
           if (onComplete) onComplete();
-        }, 900);
+        }, 1200);
       }
     }, 60);
 
