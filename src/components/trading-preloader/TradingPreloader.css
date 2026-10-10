@@ -78,13 +78,13 @@
   100% { transform: translate(-25px, -25px) scale(1.15); opacity: 0.7; }
 }
 
-/* Glassmorphic Professional Terminal Card */
+/* Glassmorphic Professional Terminal Card (Fully Stabilized) */
 .preloader-card {
   position: relative;
   z-index: 10;
   width: 90%;
   max-width: 460px;
-  background: rgba(10, 15, 28, 0.82);
+  background: rgba(10, 15, 28, 0.85);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(0, 242, 254, 0.25);
@@ -93,6 +93,7 @@
   box-shadow: 0 35px 70px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 0 25px rgba(0, 242, 254, 0.1);
   text-align: center;
   animation: cardSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateZ(0); /* Prevents subpixel shaky rendering */
 }
 
 @keyframes cardSlideUp {
