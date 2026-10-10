@@ -1,23 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { TradingPreloader } from '@/components/trading-preloader/TradingPreloader';
 
-export default function ChunkLoader({ message }: { message?: string }) {
-    const [isFinished, setIsFinished] = useState(false);
-
-    if (isFinished) return null;
-
+export default function ChunkLoader({ message, onLoaded }: { message?: string; onLoaded?: () => void }) {
     return (
         <TradingPreloader 
             appName="TraderScore" 
-            subtitle="TraderScore Trading Workspace" 
+            subtitle="TraderScore Neural Trading Workspace" 
             minLoadingTime={6000} 
-            onComplete={() => {
-                // Add a small 600ms delay to let the fade-out fully complete 
-                // before removing the component from the DOM entirely
-                setTimeout(() => {
-                    setIsFinished(true);
-                }, 600);
-            }}
+            onComplete={onLoaded}
         />
     );
 }
