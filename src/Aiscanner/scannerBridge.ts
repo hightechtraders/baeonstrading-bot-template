@@ -3,7 +3,7 @@
 // ==========================================
 import { RiskManager } from './riskManager';
 import { ScannerLogic, DerivTickResponse } from './scannerLogic';
-
+ 
 export interface AIScannerPayload {
   stake: number;
   duration: number;
