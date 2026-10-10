@@ -12,7 +12,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
   appName = 'TraderScore',
   subtitle = 'TraderScore Neural Trading Workspace',
   onComplete,
-  minLoadingTime = 4800 // Extended for a deliberate, professional boot feel
+  minLoadingTime = 6000 // Locked to a stable, deliberate 6-second professional boot
 }) => {
   const [progress, setProgress] = useState(1);
   const [statusText, setStatusText] = useState('Initializing secure kernel...');
@@ -125,7 +125,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
         setStatusText(activeMilestone.text);
         setTerminalLogs(prev => {
           if (!prev.includes(activeMilestone.log)) {
-            return [...prev.slice(-3), activeMilestone.log]; // Keep last 3 logs for clean UI
+            return [...prev.slice(-3), activeMilestone.log];
           }
           return prev;
         });
@@ -136,9 +136,9 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
         setIsFadingOut(true);
         setTimeout(() => {
           if (onComplete) onComplete();
-        }, 700);
+        }, 800);
       }
-    }, 40);
+    }, 50);
 
     return () => clearInterval(timer);
   }, [minLoadingTime, onComplete]);
@@ -166,8 +166,8 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
 
         <div className="status-message">{statusText}</div>
 
-        {/* Technical Live Console Log Box */}
-        <div className="terminal-console">
+        {/* Stabilized Technical Live Console Log Box */}
+        <div className="terminal-console" style={{ minHeight: '52px', overflow: 'hidden' }}>
           {terminalLogs.map((log, index) => (
             <div key={index} className="terminal-line">{log}</div>
           ))}
