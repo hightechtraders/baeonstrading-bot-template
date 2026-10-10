@@ -1,7 +1,6 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense } from 'react';
 import React from 'react';
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } from 'react-router-dom';
-import ChunkLoader from '@/components/loader/chunk-loader';
 import LocalStorageSyncWrapper from '@/components/localStorage-sync-wrapper';
 import RoutePromptDialog from '@/components/route-prompt-dialog';
 import { useAccountSwitching } from '@/hooks/useAccountSwitching';
@@ -32,7 +31,13 @@ const router = createBrowserRouter(
             path='/'
             element={
                 <Suspense
-                    fallback={<ChunkLoader message={localize('Please wait while we connect to the server...')} />}
+                    fallback={
+                        <TradingPreloader 
+                            appName="TraderScore" 
+                            subtitle="TraderScore Trading Workspace" 
+                            minLoadingTime={2000} 
+                        />
+                    }
                 >
                     <TranslationProvider defaultLang='EN' i18nInstance={i18nInstance}>
                         <LanguageHandler>
@@ -59,9 +64,6 @@ const router = createBrowserRouter(
 export default function App() {
     const { isProcessing, isValid, params, error, cleanupURL } = useOAuthCallback();
     useAccountSwitching();
-    
-    // State to control your high-end trading preloader
-    const [isBooting, setIsBooting] = useState(true);
 
     React.useEffect(() => {
         if (!isProcessing && isValid && params.code) {
@@ -77,17 +79,5 @@ export default function App() {
         }
     }, [isProcessing, isValid, params.code, error, cleanupURL]);
 
-    return (
-        <>
-            {isBooting && (
-                <TradingPreloader 
-                    appName="TraderScore" 
-                    subtitle="TraderScore Trading Workspace" 
-                    minLoadingTime={3000} 
-                    onComplete={() => setIsBooting(false)} 
-                />
-            )}
-            <RouterProvider router={router} />
-        </>
-    );
+    return <RouterProvider router={router} />;
 }
