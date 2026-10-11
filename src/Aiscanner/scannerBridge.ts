@@ -160,7 +160,7 @@ export class ScannerBridge {
                     });
 
                     const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
-                    if (field.getValue() !== desiredVal) {
+                    if (field && field.getValue() !== desiredVal) {
                       field.setValue(desiredVal);
                       updated = true;
                     }
@@ -220,6 +220,11 @@ export class ScannerBridge {
           Promise.resolve(submitAction.call(quickStrategy, mockFormData)).then(() => {
             setTimeout(applyBlockMutations, 100);
             setTimeout(applyBlockMutations, 500);
+
+            // 👈 Force a balance subscription/refresh request to keep the UI live
+            if (rootStore?.client?.send) {
+              rootStore.client.send({ balance: 1, subscribe: 1 }).catch(() => {});
+            }
           }).catch(() => {});
         }
       } catch (error) {}
