@@ -10,6 +10,7 @@ import { StoreProvider } from '@/hooks/useStore';
 import { OAuthTokenExchangeService } from '@/services/oauth-token-exchange.service';
 import { initializeI18n, localize, TranslationProvider } from '@deriv-com/translations';
 import { FloatingAI } from '@/Aiscanner/FloatingAI';
+import { useScannerFeed } from '@/Aiscanner/useScannerFeed';
 import { TradingPreloader } from '@/components/trading-preloader/TradingPreloader';
 import CoreStoreProvider from './CoreStoreProvider';
 import './app-root.scss';
@@ -46,7 +47,7 @@ const router = createBrowserRouter(
                                     <RoutePromptDialog />
                                     <CoreStoreProvider>
                                         <Layout />
-                                        {/* Floating AI Scanner & Live Feed Hook */}
+                                        {/* Floating AI Scanner Component */}
                                         <FloatingAI />
                                     </CoreStoreProvider>
                                 </LocalStorageSyncWrapper>
@@ -62,6 +63,9 @@ const router = createBrowserRouter(
 );
 
 export default function App() {
+    // Keep the live market tick feed active globally across all tabs
+    useScannerFeed();
+
     const { isProcessing, isValid, params, error, cleanupURL } = useOAuthCallback();
     useAccountSwitching();
 
