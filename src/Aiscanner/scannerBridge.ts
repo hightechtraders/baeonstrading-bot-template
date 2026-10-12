@@ -145,9 +145,27 @@ export class ScannerBridge {
                 symbolField.setValue(strictDerivSymbol);
                 mutated = true;
               }
+
+              // 2. Mutate Martingale Size / Multiplier instantly
+              const sizeField = block.getField('SIZE') || block.getField('MARTINGALE_SIZE') || block.getField('MULTIPLIER');
+              if (sizeField && typeof sizeField.setValue === 'function') {
+                if (Number(sizeField.getValue()) !== martingaleMultiplier) {
+                  sizeField.setValue(martingaleMultiplier);
+                  mutated = true;
+                }
+              }
+
+              // 3. Mutate Stake / Amount instantly
+              const amountField = block.getField('STAKE') || block.getField('AMOUNT');
+              if (amountField && typeof amountField.setValue === 'function') {
+                if (Number(amountField.getValue()) !== payload.stake) {
+                  amountField.setValue(payload.stake);
+                  mutated = true;
+                }
+              }
             }
 
-            // 2. Mutate Purchase / Contract Type Field instantly
+            // 4. Mutate Purchase / Contract Type Field instantly
             if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
               const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
               fieldNames.forEach(name => {
@@ -206,6 +224,22 @@ export class ScannerBridge {
                   }
                   symbolField.setValue(strictDerivSymbol);
                   updated = true;
+                }
+
+                const sizeField = block.getField('SIZE') || block.getField('MARTINGALE_SIZE') || block.getField('MULTIPLIER');
+                if (sizeField && typeof sizeField.setValue === 'function') {
+                  if (Number(sizeField.getValue()) !== martingaleMultiplier) {
+                    sizeField.setValue(martingaleMultiplier);
+                    updated = true;
+                  }
+                }
+
+                const amountField = block.getField('STAKE') || block.getField('AMOUNT');
+                if (amountField && typeof amountField.setValue === 'function') {
+                  if (Number(amountField.getValue()) !== payload.stake) {
+                    amountField.setValue(payload.stake);
+                    updated = true;
+                  }
                 }
               }
 
