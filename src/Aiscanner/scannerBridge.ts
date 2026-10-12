@@ -108,11 +108,13 @@ export class ScannerBridge {
     const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
     const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
     
+    // Comprehensive direction mapping to support both Rise and Fall toggles reliably
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
+    const subTypeVal = isFall ? 'fall' : 'rise';
     const martingaleMultiplier = 2.4;
 
-    // 🛡️ NATIVE STORE DISPATCH: Safely submit via quick_strategy store to populate all parameters correctly
+    // 🛡️ NATIVE STORE DISPATCH: Safely submit via quick_strategy store with all variant keys
     if (rootStore?.quick_strategy) {
       try {
         const quickStrategy = rootStore.quick_strategy;
@@ -123,6 +125,8 @@ export class ScannerBridge {
           quickStrategy.setValue('amount', payload.stake);
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
+          quickStrategy.setValue('subtype', subTypeVal);
+          quickStrategy.setValue('trade_type', storeType);
           quickStrategy.setValue('size', martingaleMultiplier);
           
           if (payload.stopLoss !== undefined) {
@@ -144,7 +148,8 @@ export class ScannerBridge {
           tradetype: 'rise_fall',
           contract_type: storeContractType,
           type: storeType,
-          subtype: storeType,
+          subtype: subTypeVal,
+          trade_type: storeType,
           size: martingaleMultiplier,
           loss: payload.stopLoss,
           stop_loss: payload.stopLoss,
