@@ -79,7 +79,7 @@ export class ScannerLogic {
             const priceDelta = latestPrice - oldestInWindow;
             const percentageChange = (priceDelta / oldestInWindow) * 100;
             
-            // Scale momentum magnitude accurately into a robust confidence window (70% - 95%)
+            // Scale momentum magnitude accurately into a robust confidence window
             const rawMagnitude = Math.abs(percentageChange) * 3000;
             baseScore = Math.round(Math.min(95, Math.max(70, 75 + rawMagnitude)));
         }
@@ -88,15 +88,16 @@ export class ScannerLogic {
         let targetStrategyId = '';
 
         // 2. UNIFORM QUANTITATIVE SCORING:
-        // Evaluate each strategy using true market momentum with a clean, light variance per strategy 
-        // so they rank organically without artificial penalties.
         this.strategies = this.strategies.map((strat, index) => {
-            const variance = (index % 3) * 1.2; // Minor variance to prevent tie scores without penalizing rank
+            const variance = (index % 3) * 1.2;
+            
+            // Maintain a clean, open dynamic ceiling up to 98%
             const strategySpecificScore = Math.round(
-                Math.min(96, Math.max(65, baseScore + variance))
+                Math.min(98, Math.max(51, baseScore + variance))
             );
 
-            if (strategySpecificScore >= 88 && !triggeredHighConfidence) {
+            // Re-calibrate the sniper trigger threshold down to 85% for smoother locking
+            if (strategySpecificScore >= 85 && !triggeredHighConfidence) {
                 triggeredHighConfidence = true;
                 targetStrategyId = strat.id || strat.name;
             }
@@ -109,7 +110,7 @@ export class ScannerLogic {
             };
         });
 
-        // Trigger the lock when a top-tier signal hits >=88% confidence
+        // Trigger the lock when a top-tier signal hits >=85% confidence
         if (triggeredHighConfidence && targetStrategyId) {
             this.lockedUntil = now + this.LOCK_DURATION_MS;
             this.lockedStrategyId = targetStrategyId;
