@@ -87,9 +87,13 @@ export class ScannerLogic {
         let triggeredHighConfidence = false;
         let targetStrategyId = '';
 
-        // Map true mathematical scores across strategies with slight offsets for structural variety
+        // Map unique mathematical scores across strategies with distinct weighting per index
         this.strategies = this.strategies.map((strat, index) => {
-            const strategySpecificScore = Math.min(98, Math.max(50, momentumScore + ((index % 3) * 2 - 2)));
+            const structuralWeights = [1.0, 0.95, 0.90, 0.85, 0.80, 0.75, 0.70];
+            const weight = structuralWeights[index % structuralWeights.length];
+            
+            const rawWeightedScore = momentumScore * weight;
+            const strategySpecificScore = Math.round(Math.min(98, Math.max(50, rawWeightedScore + ((index * 3) % 5))));
 
             if (strategySpecificScore >= 88 && !triggeredHighConfidence) {
                 triggeredHighConfidence = true;
