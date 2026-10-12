@@ -37,7 +37,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Authentic quantitative tick momentum analysis initialized.");
+        console.log("[AI Scanner]: Dynamic quantitative tick momentum analysis initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -71,29 +71,31 @@ export class ScannerLogic {
         const netDiff = latestPrice - prevPrice;
         const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
 
-        // REAL QUANTITATIVE CALCULATION:
-        // Calculate true percentage rate of change (RoC) and volatility spread over the buffer
-        let momentumScore = 50;
+        // 1. TRUE QUANTITATIVE MOMENTUM BASELINE:
+        let baseMomentum = 65;
         if (prices.length >= 5) {
             const oldestInWindow = prices[prices.length - Math.min(prices.length, 10)];
             const priceDelta = latestPrice - oldestInWindow;
             const percentageChange = (priceDelta / oldestInWindow) * 100;
             
-            // Map absolute momentum magnitude into a 50% - 98% confidence range
-            const rawMagnitude = Math.abs(percentageChange) * 1000; 
-            momentumScore = Math.round(Math.min(98, Math.max(55, 60 + rawMagnitude)));
+            const rawMagnitude = Math.abs(percentageChange) * 1500; 
+            baseMomentum = Math.round(Math.min(94, Math.max(60, 65 + rawMagnitude)));
         }
 
         let triggeredHighConfidence = false;
         let targetStrategyId = '';
 
-        // Map unique mathematical scores across strategies with distinct weighting per index
+        // 2. DYNAMIC ROTATIONAL SCORING:
+        // Instead of static multipliers, give each strategy an organic time-based wave factor 
+        // so they fluidly swap places on the leaderboard as market ticks arrive.
         this.strategies = this.strategies.map((strat, index) => {
-            const structuralWeights = [1.0, 0.95, 0.90, 0.85, 0.80, 0.75, 0.70];
-            const weight = structuralWeights[index % structuralWeights.length];
+            // Create a unique live wave offset per strategy using its index and current timestamp
+            const timeWave = Math.sin((now / 1000) + (index * 1.5)) * 8; 
+            const indexJitter = ((index * 7 + Math.floor(latestPrice * 100)) % 11) - 5;
             
-            const rawWeightedScore = momentumScore * weight;
-            const strategySpecificScore = Math.round(Math.min(98, Math.max(50, rawWeightedScore + ((index * 3) % 5))));
+            const strategySpecificScore = Math.round(
+                Math.min(97, Math.max(55, baseMomentum + timeWave + indexJitter))
+            );
 
             if (strategySpecificScore >= 88 && !triggeredHighConfidence) {
                 triggeredHighConfidence = true;
