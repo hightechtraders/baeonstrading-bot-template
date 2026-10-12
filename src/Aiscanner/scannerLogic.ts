@@ -12,7 +12,7 @@ export interface DerivTickResponse {
         id: string;
     };
 }
-  
+   
 export class ScannerLogic {
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
