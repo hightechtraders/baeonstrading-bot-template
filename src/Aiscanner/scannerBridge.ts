@@ -1,4 +1,6 @@
-// src/Aiscanner/scannerBridge.ts
+// ==========================================
+// FILE: src/Aiscanner/scannerBridge.ts
+// ==========================================
 import { RiskManager } from './riskManager';
 import { ScannerLogic, DerivTickResponse } from './scannerLogic';
 
@@ -114,7 +116,71 @@ export class ScannerBridge {
     
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
+    const desiredContractVal = isFall ? 'Fall' : 'Rise';
     const martingaleMultiplier = 2.4;
+
+    // 🚀 ZERO-DELAY HYBRID MUTATION: Check if canvas is already mounted and update fields instantly
+    try {
+      const Blockly = (window as any).Blockly;
+      const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
+
+      if (workspace && typeof workspace.getAllBlocks === 'function') {
+        const blocks = workspace.getAllBlocks(false);
+        if (Array.isArray(blocks) && blocks.length > 0) {
+          let mutated = false;
+
+          blocks.forEach((block: any) => {
+            if (!block) return;
+
+            // 1. Mutate Symbol Field instantly
+            if (typeof block.getField === 'function') {
+              const symbolField = block.getField('SYMBOL_LIST');
+              if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
+                if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
+                  const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                  if (!exists) {
+                    symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
+                  }
+                }
+                symbolField.setValue(strictDerivSymbol);
+                mutated = true;
+              }
+            }
+
+            // 2. Mutate Purchase / Contract Type Field instantly
+            if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
+              const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
+              fieldNames.forEach(name => {
+                const field = block.getField(name);
+                if (field && typeof field.setValue === 'function') {
+                  const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
+                  const targetMatch = options.find((opt: any) => {
+                    const label = String(opt[0] || '').toLowerCase();
+                    const val = String(opt[1] || '').toLowerCase();
+                    if (isFall) {
+                      return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
+                    } else {
+                      return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
+                    }
+                  });
+
+                  const desiredVal = targetMatch ? targetMatch[1] : desiredContractVal;
+                  if (field.getValue() !== desiredVal) {
+                    field.setValue(desiredVal);
+                    mutated = true;
+                  }
+                }
+              });
+            }
+          });
+
+          if (mutated && typeof workspace.render === 'function') {
+            workspace.render();
+            return true; // ⚡ Bypasses full teardown completely with 0ms delay!
+          }
+        }
+      }
+    } catch (e) {}
 
     const applyBlockMutations = () => {
       try {
@@ -159,7 +225,7 @@ export class ScannerBridge {
                       }
                     });
 
-                    const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
+                    const desiredVal = targetMatch ? targetMatch[1] : desiredContractVal;
                     if (field && field.getValue() !== desiredVal) {
                       field.setValue(desiredVal);
                       updated = true;
@@ -221,7 +287,6 @@ export class ScannerBridge {
             setTimeout(applyBlockMutations, 100);
             setTimeout(applyBlockMutations, 500);
 
-            // 👈 Force a balance subscription/refresh request to keep the UI live
             if (rootStore?.client?.send) {
               rootStore.client.send({ balance: 1, subscribe: 1 }).catch(() => {});
             }
