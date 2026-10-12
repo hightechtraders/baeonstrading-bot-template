@@ -16,7 +16,7 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static isScannerActive: boolean = false; 
-  private static scannerLogicInstance = new ScannerLogic(); // 👈 Instantiate core calculation logic
+  private static scannerLogicInstance = new ScannerLogic();
 
   static {
     if (typeof window !== 'undefined') {
@@ -58,12 +58,7 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
-  /**
-   * Seamlessly intercepts live ticks from api-base, processes them through ScannerLogic,
-   * and broadcasts the fully updated strategy array to the UI components.
-   */
   public static pushTick(assetName: string, quote: number, strategies?: any[]) {
-    // Process live tick through our calculation engine to evaluate UP/DOWN directions & dynamic scores
     const tickPayload: DerivTickResponse = {
       msg_type: 'tick',
       tick: {
@@ -77,7 +72,6 @@ export class ScannerBridge {
     const updatedStrategies = ScannerBridge.scannerLogicInstance.handleIncomingMessage(tickPayload);
 
     if (typeof window !== 'undefined') {
-      // Dispatch both event names to ensure full backward compatibility with any listening component
       window.dispatchEvent(new CustomEvent('ai-tick-received', {
         detail: { assetName, quote, strategies: updatedStrategies }
       }));
@@ -116,170 +110,13 @@ export class ScannerBridge {
     
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
-    const desiredContractVal = isFall ? 'Fall' : 'Rise';
     const martingaleMultiplier = 2.4;
 
-    // 🚀 ZERO-DELAY HYBRID MUTATION: Check if canvas is already mounted and update fields instantly
-    try {
-      const Blockly = (window as any).Blockly;
-      const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
-
-      if (workspace && typeof workspace.getAllBlocks === 'function') {
-        const blocks = workspace.getAllBlocks(false);
-        if (Array.isArray(blocks) && blocks.length > 0) {
-          let mutated = false;
-
-          blocks.forEach((block: any) => {
-            if (!block) return;
-
-            // 1. Mutate Symbol Field instantly
-            if (typeof block.getField === 'function') {
-              const symbolField = block.getField('SYMBOL_LIST');
-              if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
-                if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
-                  const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
-                  if (!exists) {
-                    symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
-                  }
-                }
-                symbolField.setValue(strictDerivSymbol);
-                mutated = true;
-              }
-
-              // 2. Mutate Martingale Size / Multiplier instantly
-              const sizeField = block.getField('SIZE') || block.getField('MARTINGALE_SIZE') || block.getField('MULTIPLIER');
-              if (sizeField && typeof sizeField.setValue === 'function') {
-                if (Number(sizeField.getValue()) !== martingaleMultiplier) {
-                  sizeField.setValue(martingaleMultiplier);
-                  mutated = true;
-                }
-              }
-
-              // 3. Mutate Stake / Amount instantly
-              const amountField = block.getField('STAKE') || block.getField('AMOUNT');
-              if (amountField && typeof amountField.setValue === 'function') {
-                if (Number(amountField.getValue()) !== payload.stake) {
-                  amountField.setValue(payload.stake);
-                  mutated = true;
-                }
-              }
-            }
-
-            // 4. Mutate Purchase / Contract Type Field instantly
-            if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
-              const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
-              fieldNames.forEach(name => {
-                const field = block.getField(name);
-                if (field && typeof field.setValue === 'function') {
-                  const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
-                  const targetMatch = options.find((opt: any) => {
-                    const label = String(opt[0] || '').toLowerCase();
-                    const val = String(opt[1] || '').toLowerCase();
-                    if (isFall) {
-                      return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
-                    } else {
-                      return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
-                    }
-                  });
-
-                  const desiredVal = targetMatch ? targetMatch[1] : desiredContractVal;
-                  if (field.getValue() !== desiredVal) {
-                    field.setValue(desiredVal);
-                    mutated = true;
-                  }
-                }
-              });
-            }
-          });
-
-          if (mutated && typeof workspace.render === 'function') {
-            workspace.render();
-            return true; // ⚡ Bypasses full teardown completely with 0ms delay!
-          }
-        }
-      }
-    } catch (e) {}
-
-    const applyBlockMutations = () => {
-      try {
-        const Blockly = (window as any).Blockly;
-        const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
-
-        if (workspace && typeof workspace.getAllBlocks === 'function') {
-          const blocks = workspace.getAllBlocks(false);
-          if (Array.isArray(blocks)) {
-            let updated = false;
-
-            blocks.forEach((block: any) => {
-              if (!block) return;
-
-              if (typeof block.getField === 'function') {
-                const symbolField = block.getField('SYMBOL_LIST');
-                if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
-                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
-                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
-                    if (!exists) {
-                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
-                    }
-                  }
-                  symbolField.setValue(strictDerivSymbol);
-                  updated = true;
-                }
-
-                const sizeField = block.getField('SIZE') || block.getField('MARTINGALE_SIZE') || block.getField('MULTIPLIER');
-                if (sizeField && typeof sizeField.setValue === 'function') {
-                  if (Number(sizeField.getValue()) !== martingaleMultiplier) {
-                    sizeField.setValue(martingaleMultiplier);
-                    updated = true;
-                  }
-                }
-
-                const amountField = block.getField('STAKE') || block.getField('AMOUNT');
-                if (amountField && typeof amountField.setValue === 'function') {
-                  if (Number(amountField.getValue()) !== payload.stake) {
-                    amountField.setValue(payload.stake);
-                    updated = true;
-                  }
-                }
-              }
-
-              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
-                const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
-                fieldNames.forEach(name => {
-                  const field = block.getField(name);
-                  if (field && typeof field.setValue === 'function') {
-                    const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
-                    const targetMatch = options.find((opt: any) => {
-                      const label = String(opt[0] || '').toLowerCase();
-                      const val = String(opt[1] || '').toLowerCase();
-                      if (isFall) {
-                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
-                      } else {
-                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
-                      }
-                    });
-
-                    const desiredVal = targetMatch ? targetMatch[1] : desiredContractVal;
-                    if (field && field.getValue() !== desiredVal) {
-                      field.setValue(desiredVal);
-                      updated = true;
-                    }
-                  }
-                });
-              }
-            });
-
-            if (updated && typeof workspace.render === 'function') {
-              workspace.render();
-            }
-          }
-        }
-      } catch (e) {}
-    };
-
+    // 🛡️ NATIVE STORE DISPATCH: Safely submit via quick_strategy store to populate all parameters correctly
     if (rootStore?.quick_strategy) {
-      const quickStrategy = rootStore.quick_strategy;
       try {
+        const quickStrategy = rootStore.quick_strategy;
+        
         if (typeof quickStrategy.setValue === 'function') {
           quickStrategy.setValue('symbol', strictDerivSymbol);
           quickStrategy.setValue('duration', payload.duration);
@@ -318,9 +155,6 @@ export class ScannerBridge {
         const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
         if (typeof submitAction === 'function') {
           Promise.resolve(submitAction.call(quickStrategy, mockFormData)).then(() => {
-            setTimeout(applyBlockMutations, 100);
-            setTimeout(applyBlockMutations, 500);
-
             if (rootStore?.client?.send) {
               rootStore.client.send({ balance: 1, subscribe: 1 }).catch(() => {});
             }
@@ -328,10 +162,6 @@ export class ScannerBridge {
         }
       } catch (error) {}
     }
-
-    applyBlockMutations();
-    setTimeout(applyBlockMutations, 150);
-    setTimeout(applyBlockMutations, 400);
 
     return true;
   }
