@@ -1,6 +1,4 @@
-// ==========================================
-// FILE: src/Aiscanner/scannerBridge.ts
-// ==========================================
+// src/Aiscanner/scannerBridge.ts
 import { RiskManager } from './riskManager';
 import { ScannerLogic, DerivTickResponse } from './scannerLogic';
 
@@ -16,7 +14,7 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static isScannerActive: boolean = false; 
-  private static scannerLogicInstance = new ScannerLogic();
+  private static scannerLogicInstance = new ScannerLogic(); // 👈 Instantiate core calculation logic
 
   static {
     if (typeof window !== 'undefined') {
@@ -58,7 +56,12 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
+  /**
+   * Seamlessly intercepts live ticks from api-base, processes them through ScannerLogic,
+   * and broadcasts the fully updated strategy array to the UI components.
+   */
   public static pushTick(assetName: string, quote: number, strategies?: any[]) {
+    // Process live tick through our calculation engine to evaluate UP/DOWN directions & dynamic scores
     const tickPayload: DerivTickResponse = {
       msg_type: 'tick',
       tick: {
@@ -72,6 +75,7 @@ export class ScannerBridge {
     const updatedStrategies = ScannerBridge.scannerLogicInstance.handleIncomingMessage(tickPayload);
 
     if (typeof window !== 'undefined') {
+      // Dispatch both event names to ensure full backward compatibility with any listening component
       window.dispatchEvent(new CustomEvent('ai-tick-received', {
         detail: { assetName, quote, strategies: updatedStrategies }
       }));
@@ -108,25 +112,80 @@ export class ScannerBridge {
     const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
     const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
     
-    // Comprehensive direction mapping to support both Rise and Fall toggles reliably
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
-    const subTypeVal = isFall ? 'fall' : 'rise';
     const martingaleMultiplier = 2.4;
 
-    // 🛡️ NATIVE STORE DISPATCH: Safely submit via quick_strategy store with all variant keys
-    if (rootStore?.quick_strategy) {
+    const applyBlockMutations = () => {
       try {
-        const quickStrategy = rootStore.quick_strategy;
-        
+        const Blockly = (window as any).Blockly;
+        const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
+
+        if (workspace && typeof workspace.getAllBlocks === 'function') {
+          const blocks = workspace.getAllBlocks(false);
+          if (Array.isArray(blocks)) {
+            let updated = false;
+
+            blocks.forEach((block: any) => {
+              if (!block) return;
+
+              if (typeof block.getField === 'function') {
+                const symbolField = block.getField('SYMBOL_LIST');
+                if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
+                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
+                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                    if (!exists) {
+                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
+                    }
+                  }
+                  symbolField.setValue(strictDerivSymbol);
+                  updated = true;
+                }
+              }
+
+              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
+                const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
+                fieldNames.forEach(name => {
+                  const field = block.getField(name);
+                  if (field && typeof field.setValue === 'function') {
+                    const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
+                    const targetMatch = options.find((opt: any) => {
+                      const label = String(opt[0] || '').toLowerCase();
+                      const val = String(opt[1] || '').toLowerCase();
+                      if (isFall) {
+                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
+                      } else {
+                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
+                      }
+                    });
+
+                    const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
+                    if (field && field.getValue() !== desiredVal) {
+                      field.setValue(desiredVal);
+                      updated = true;
+                    }
+                  }
+                });
+              }
+            });
+
+            if (updated && typeof workspace.render === 'function') {
+              workspace.render();
+            }
+          }
+        }
+      } catch (e) {}
+    };
+
+    if (rootStore?.quick_strategy) {
+      const quickStrategy = rootStore.quick_strategy;
+      try {
         if (typeof quickStrategy.setValue === 'function') {
           quickStrategy.setValue('symbol', strictDerivSymbol);
           quickStrategy.setValue('duration', payload.duration);
           quickStrategy.setValue('amount', payload.stake);
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
-          quickStrategy.setValue('subtype', subTypeVal);
-          quickStrategy.setValue('trade_type', storeType);
           quickStrategy.setValue('size', martingaleMultiplier);
           
           if (payload.stopLoss !== undefined) {
@@ -148,8 +207,7 @@ export class ScannerBridge {
           tradetype: 'rise_fall',
           contract_type: storeContractType,
           type: storeType,
-          subtype: subTypeVal,
-          trade_type: storeType,
+          subtype: storeType,
           size: martingaleMultiplier,
           loss: payload.stopLoss,
           stop_loss: payload.stopLoss,
@@ -160,6 +218,10 @@ export class ScannerBridge {
         const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
         if (typeof submitAction === 'function') {
           Promise.resolve(submitAction.call(quickStrategy, mockFormData)).then(() => {
+            setTimeout(applyBlockMutations, 100);
+            setTimeout(applyBlockMutations, 500);
+
+            // 👈 Force a balance subscription/refresh request to keep the UI live
             if (rootStore?.client?.send) {
               rootStore.client.send({ balance: 1, subscribe: 1 }).catch(() => {});
             }
@@ -167,6 +229,10 @@ export class ScannerBridge {
         }
       } catch (error) {}
     }
+
+    applyBlockMutations();
+    setTimeout(applyBlockMutations, 150);
+    setTimeout(applyBlockMutations, 400);
 
     return true;
   }
