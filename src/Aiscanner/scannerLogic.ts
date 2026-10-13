@@ -26,7 +26,7 @@ export class ScannerLogic {
     
     private lockedUntil: number = 0;
     private lockedStrategyId: string | null = null;
-    private readonly LOCK_DURATION_MS = 10000; // Expanded to 10s for safe manual execution review
+    private readonly LOCK_DURATION_MS = 10000; // 10s for review
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -59,12 +59,10 @@ export class ScannerLogic {
         }
         
         this.priceBuffers[symbol].push(price);
-        // Maintain a rolling window of the last 50 ticks for deep math calculations
         if (this.priceBuffers[symbol].length > 50) {
             this.priceBuffers[symbol].shift();
         }
 
-        // If locked on a high-conviction signal, keep order stable so you can load it to workspace
         if (now < this.lockedUntil && this.lockedStrategyId) {
             return this.getSortedStrategies();
         }
@@ -74,17 +72,15 @@ export class ScannerLogic {
             return this.getSortedStrategies();
         }
 
-        // --- REAL MATHEMATICAL INDICATORS ---
         const liveDirection = this.calculateLiveDirection(prices);
         const volatilityFactor = this.calculateStandardDeviation(prices);
         
-        // Volatility Gate: If market is entirely flat/dead (chop), suppress high scores
+        // Volatility Gate: Suppress scores during flat/dead chop ranges
         const isMarketChoppy = volatilityFactor < 0.0002; 
 
         let triggeredHighConfidence = false;
         let targetStrategyId = '';
 
-        // Evaluate each strategy using true independent indicator logic
         this.strategies = this.strategies.map((strat) => {
             if (strat.symbol && strat.symbol !== symbol) {
                 return strat;
@@ -103,29 +99,29 @@ export class ScannerLogic {
             }
 
             switch (strat.id) {
-                case '1': // RSI Momentum Spike
+                case '1':
                     calculatedScore = this.evaluateRsiMomentum(prices);
                     break;
-                case '2': // Bollinger Band / Volatility Expansion Breakout
+                case '2':
                     calculatedScore = this.evaluateVolatilityBreakout(prices);
                     break;
-                case '3': // EMA Crossover
+                case '3':
                     {
                         const emaResult = this.evaluateEmaCrossover(prices);
                         calculatedScore = emaResult.score;
                         stratDirection = emaResult.direction;
                     }
                     break;
-                case '4': // Tick Reversal Pattern
+                case '4':
                     calculatedScore = this.evaluateReversalPattern(prices);
                     break;
-                case '5': // MACD Histogram Momentum Surge
+                case '5':
                     calculatedScore = this.evaluateMacdSurge(prices);
                     break;
-                case '6': // Support/Resistance Local Bounce
+                case '6':
                     calculatedScore = this.evaluateSupportResistanceBounce(prices);
                     break;
-                case '7': // High-Frequency Multi-Tick Scalper
+                case '7':
                     calculatedScore = this.evaluateHfScalper(prices);
                     break;
                 default:
@@ -154,8 +150,6 @@ export class ScannerLogic {
 
         return this.getSortedStrategies();
     }
-
-    // --- MATHEMATICAL HELPER METHODS ---
 
     private calculateLiveDirection(prices: number[]): 'UP' | 'DOWN' {
         const latest = prices[prices.length - 1];
