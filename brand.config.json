@@ -7,15 +7,15 @@
     },
     "domain_name": "baeonstrading-bot-template.vercel.app",
     "colors": {
-        "primary": "#3b82f6",
+        "primary": "#00f0ff",
         "secondary": "#64748b",
-        "tertiary": "#8b5cf6",
-        "success": "#10b981",
-        "danger": "#ef4444",
-        "warning": "#f59e0b",
-        "info": "#0ea5e9",
-        "neutral": "#6b7280",
-        "black": "#0f172a",
+        "tertiary": "#7000ff",
+        "success": "#00ff9d",
+        "danger": "#ff3366",
+        "warning": "#ffb800",
+        "info": "#00b8ff",
+        "neutral": "#94a3b8",
+        "black": "#070a12",
         "white": "#ffffff",
         "grey": {
             "50": "#f8fafc",
@@ -26,15 +26,15 @@
             "500": "#64748b",
             "600": "#475569",
             "700": "#334155",
-            "800": "#1e293b",
-            "900": "#0f172a"
+            "800": "#131b2e",
+            "900": "#0b0f19"
         }
     },
     "typography": {
         "font_family": {
-            "primary": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-            "secondary": "Georgia, 'Times New Roman', Times, serif",
-            "monospace": "'Courier New', Courier, monospace"
+            "primary": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            "secondary": "Georgia, serif",
+            "monospace": "'JetBrains Mono', 'Fira Code', 'Courier New', monospace"
         },
         "font_sizes": {
             "xs": "0.75rem",
@@ -58,18 +58,18 @@
         "css_variable_prefix": "--brand"
     },
     "platform": {
-        "name": "Baeons Trading Bot",
+        "name": "Baeons Quantum Terminal",
         "logo": {
             "type": "component",
             "component_name": "BrandLogo",
-            "alt_text": "Baeons Trading Bot",
+            "alt_text": "Baeons Trading Terminal Logo",
             "link_url": "/",
-            "show_text": false,
-            "text": "Baeons Trading Bot"
+            "show_text": true,
+            "text": "BAEONS QUANTUM"
         },
         "footer": {
             "enable_language_settings": false,
-            "enable_theme_toggle": false
+            "enable_theme_toggle": true
         },
         "hostname": {
             "production": {
