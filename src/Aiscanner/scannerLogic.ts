@@ -71,7 +71,6 @@ export class ScannerLogic {
 
         const prices = this.priceBuffers[symbol];
         if (prices.length < 10) {
-            // Lowered minimum buffer slightly to ensure fast UI initialization without long blank waits
             return this.getSortedStrategies();
         }
 
@@ -79,15 +78,14 @@ export class ScannerLogic {
         const liveDirection = this.calculateLiveDirection(prices);
         const volatilityFactor = this.calculateStandardDeviation(prices);
         
-        // 1. Volatility Gate: If market is entirely flat/dead (chop), suppress high scores
+        // Volatility Gate: If market is entirely flat/dead (chop), suppress high scores
         const isMarketChoppy = volatilityFactor < 0.0002; 
 
         let triggeredHighConfidence = false;
         let targetStrategyId = '';
 
-        // 2. Evaluate each strategy using true independent indicator logic
+        // Evaluate each strategy using true independent indicator logic
         this.strategies = this.strategies.map((strat) => {
-            // Only update strategies matching this incoming symbol feed (or allow fallback if symbol isn't strictly defined)
             if (strat.symbol && strat.symbol !== symbol) {
                 return strat;
             }
