@@ -1,5 +1,5 @@
 {
-    "brand_name": "Baeons Trading",
+    "brand_name": "Barons Trading",
     "brand_domain": "baeonstrading-bot-template.vercel.app",
     "brand_hostname": {
         "staging": "baeonstrading-bot-template.vercel.app",
@@ -58,14 +58,14 @@
         "css_variable_prefix": "--brand"
     },
     "platform": {
-        "name": "Baeons Quantum Terminal",
+        "name": "Barons Quantum Terminal",
         "logo": {
-            "type": "component",
-            "component_name": "BrandLogo",
-            "alt_text": "Baeons Trading Terminal Logo",
+            "type": "image",
+            "src": "/barons-logo.jfif",
+            "alt_text": "Barons Quantum Terminal Logo",
             "link_url": "/",
             "show_text": true,
-            "text": "BAEONS QUANTUM"
+            "text": "BARONS QUANTUM"
         },
         "footer": {
             "enable_language_settings": false,
