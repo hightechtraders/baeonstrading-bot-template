@@ -70,8 +70,8 @@ export class ScannerLogic {
         }
 
         const prices = this.priceBuffers[symbol];
-        if (prices.length < 15) {
-            // Need at least 15 ticks to compute valid indicators without noise errors
+        if (prices.length < 10) {
+            // Lowered minimum buffer slightly to ensure fast UI initialization without long blank waits
             return this.getSortedStrategies();
         }
 
@@ -87,11 +87,15 @@ export class ScannerLogic {
 
         // 2. Evaluate each strategy using true independent indicator logic
         this.strategies = this.strategies.map((strat) => {
+            // Only update strategies matching this incoming symbol feed (or allow fallback if symbol isn't strictly defined)
+            if (strat.symbol && strat.symbol !== symbol) {
+                return strat;
+            }
+
             let calculatedScore = 50;
             let stratDirection = liveDirection;
 
             if (isMarketChoppy) {
-                // Force low score during tight consolidation ranges to avoid whipsaws
                 return {
                     ...strat,
                     confidence: 45,
@@ -101,20 +105,20 @@ export class ScannerLogic {
             }
 
             switch (strat.id) {
-                case '1': // RSI Momentum Spike (using 14-tick velocity)
+                case '1': // RSI Momentum Spike
                     calculatedScore = this.evaluateRsiMomentum(prices);
                     break;
                 case '2': // Bollinger Band / Volatility Expansion Breakout
                     calculatedScore = this.evaluateVolatilityBreakout(prices);
                     break;
-                case '3': // EMA Crossover (Fast EMA vs Slow EMA)
+                case '3': // EMA Crossover
                     {
                         const emaResult = this.evaluateEmaCrossover(prices);
                         calculatedScore = emaResult.score;
                         stratDirection = emaResult.direction;
                     }
                     break;
-                case '4': // Tick Reversal Pattern (Mean Reversion)
+                case '4': // Tick Reversal Pattern
                     calculatedScore = this.evaluateReversalPattern(prices);
                     break;
                 case '5': // MACD Histogram Momentum Surge
@@ -132,7 +136,6 @@ export class ScannerLogic {
 
             const finalScore = Math.round(Math.min(98, Math.max(40, calculatedScore)));
 
-            // Sniper trigger threshold set at 86% for genuine high-probability setups
             if (finalScore >= 86 && !triggeredHighConfidence) {
                 triggeredHighConfidence = true;
                 targetStrategyId = strat.id;
@@ -142,12 +145,10 @@ export class ScannerLogic {
                 ...strat,
                 confidence: finalScore,
                 score: finalScore,
-                market: symbol, // Align active market dynamically
                 direction: stratDirection
             };
         });
 
-        // Trigger lock window when a top-tier setup passes real mathematical checks
         if (triggeredHighConfidence && targetStrategyId) {
             this.lockedUntil = now + this.LOCK_DURATION_MS;
             this.lockedStrategyId = targetStrategyId;
@@ -172,7 +173,6 @@ export class ScannerLogic {
     }
 
     private evaluateRsiMomentum(prices: number[]): number {
-        // Real simplified RSI calculation over last 14 ticks
         let gains = 0;
         let losses = 0;
         const period = Math.min(14, prices.length - 1);
@@ -187,7 +187,6 @@ export class ScannerLogic {
         const rs = gains / losses;
         const rsi = 100 - (100 / (1 + rs));
 
-        // High confidence if RSI indicates strong momentum (overbought/oversold breakout)
         if (rsi > 70 || rsi < 30) return 89;
         if (rsi > 60 || rsi < 40) return 78;
         return 62;
@@ -199,7 +198,6 @@ export class ScannerLogic {
         const mean = recentSlice.reduce((a, b) => a + b, 0) / recentSlice.length;
         const currentPrice = prices[prices.length - 1];
 
-        // Deviation from mean indicating a true band expansion breakout
         const zScore = Math.abs(currentPrice - mean) / (stdDev || 0.0001);
         if (zScore > 2.0) return 91;
         if (zScore > 1.5) return 82;
@@ -231,13 +229,12 @@ export class ScannerLogic {
     }
 
     private evaluateReversalPattern(prices: number[]): number {
-        // Check for wick rejection / sharp pivot on last 3 ticks
         const t3 = prices[prices.length - 1];
         const t2 = prices[prices.length - 2];
         const t1 = prices[prices.length - 3];
 
-        const isVee = t2 < t1 && t2 < t3; // local bottom bounce
-        const isPeak = t2 > t1 && t2 > t3; // local top rejection
+        const isVee = t2 < t1 && t2 < t3; 
+        const isPeak = t2 > t1 && t2 > t3; 
 
         if (isVee || isPeak) return 85;
         return 65;
@@ -258,7 +255,6 @@ export class ScannerLogic {
         const max = Math.max(...recent);
         const current = prices[prices.length - 1];
 
-        // Proximity to recent local high or low boundary
         const distToMin = Math.abs(current - min);
         const distToMax = Math.abs(current - max);
 
@@ -267,14 +263,13 @@ export class ScannerLogic {
     }
 
     private evaluateHfScalper(prices: number[]): number {
-        // Consecutive directional tick velocity check
         const t3 = prices[prices.length - 1];
         const t2 = prices[prices.length - 2];
         const t1 = prices[prices.length - 3];
         const t0 = prices[prices.length - 4];
 
-        if (t3 > t2 && t2 > t1 && t1 > t0) return 93; // 4 ticks strict upward streak
-        if (t3 < t2 && t2 < t1 && t1 < t0) return 93; // 4 ticks strict downward streak
+        if (t3 > t2 && t2 > t1 && t1 > t0) return 93; 
+        if (t3 < t2 && t2 < t1 && t1 < t0) return 93; 
         return 60;
     }
 
