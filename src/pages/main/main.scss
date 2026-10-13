@@ -926,3 +926,19 @@
         display: inline-flex;
     }
 }
+/* --- Barons Quantum Terminal Theme Overrides --- */
+:root {
+    color-scheme: dark;
+}
+
+body, html, #root {
+    background-color: #070a12 !important;
+    color: #f1f5f9 !important;
+    font-family: 'JetBrains Mono', 'Fira Code', Inter, sans-serif !important;
+}
+
+.bot-card, .dashboard-container {
+    background: rgba(19, 27, 46, 0.75) !important;
+    border: 1px solid rgba(0, 240, 255, 0.15) !important;
+    backdrop-filter: blur(12px);
+}
