@@ -21,6 +21,8 @@ export const FloatingAI: React.FC = () => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const expandedIndexRef = useRef<number | null>(null);
   const isOpenRef = useRef<boolean>(false);
+  const isScanningPhaseRef = useRef<boolean>(true);
+  const sweetSpotStreakRef = useRef<number>(0); // Anti-jitter consecutive counter
 
   useEffect(() => {
     expandedIndexRef.current = expandedIndex;
@@ -29,6 +31,10 @@ export const FloatingAI: React.FC = () => {
   useEffect(() => {
     isOpenRef.current = isOpen;
   }, [isOpen]);
+
+  useEffect(() => {
+    isScanningPhaseRef.current = isScanningPhase;
+  }, [isScanningPhase]);
 
   const [stake, setStake] = useState<number>(10);
   const [stopLoss, setStopLoss] = useState<number>(20);
@@ -40,19 +46,30 @@ export const FloatingAI: React.FC = () => {
       if (Array.isArray(updated) && updated.length > 0) {
         setStrategies(updated);
 
-        // ONLY evaluate when the modal is open and no card is currently expanded
-        if (isOpenRef.current && expandedIndexRef.current === null && !isSignalLocked) {
+        // GUARD: Only evaluate when modal is fully open, scan phase is over, no drawer is expanded, and no signal is locked
+        if (
+          isOpenRef.current && 
+          !isScanningPhaseRef.current && 
+          expandedIndexRef.current === null && 
+          !isSignalLocked
+        ) {
           const sorted = [...updated].sort((a, b) => b.confidence - a.confidence);
           const topStrat = sorted[0];
 
-          // STRICT SWEET SPOT CHECK: Must be top-ranked, have steady momentum (80-89%), 
-          // and qualify as a HIGH conviction signal (preventing random/medium triggers)
           const isHighConviction = topStrat && topStrat.confidence >= 80 && topStrat.confidence <= 89;
 
           if (isHighConviction) {
-            setSignalBannerText(`🎯 HIGH MOMENTUM SWEET SPOT: ${topStrat.name} (${topStrat.market}) at ${topStrat.confidence}%! Ready to Load.`);
-            setIsSweetSpot(true);
+            // Increment streak to prevent random tick jitter/flicker
+            sweetSpotStreakRef.current += 1;
+
+            // Require at least 2 consecutive stable ticks before locking the sweet spot banner
+            if (sweetSpotStreakRef.current >= 2) {
+              setSignalBannerText(`🎯 HIGH MOMENTUM SWEET SPOT: ${topStrat.name} (${topStrat.market}) at ${topStrat.confidence}%! Ready to Load.`);
+              setIsSweetSpot(true);
+            }
           } else {
+            // Reset streak immediately if momentum dips
+            sweetSpotStreakRef.current = 0;
             setSignalBannerText("✅ Market Scan Complete: Strategies Ranked");
             setIsSweetSpot(false);
           }
@@ -61,7 +78,7 @@ export const FloatingAI: React.FC = () => {
     };
 
     const handleSignalLock = (e: CustomEvent) => {
-      if (isOpenRef.current) {
+      if (isOpenRef.current && !isScanningPhaseRef.current) {
         setSignalBannerText(e.detail?.message || "🎯 90%+ HIGH CONFIDENCE LOCKED: Ready to Load Strategy");
         setIsSignalLocked(true);
         setIsSweetSpot(false);
@@ -83,6 +100,7 @@ export const FloatingAI: React.FC = () => {
       setIsSignalLocked(false);
       setIsSweetSpot(false);
       setIsScanningPhase(true);
+      sweetSpotStreakRef.current = 0; // Reset anti-jitter counter on open
       setSignalBannerText("🔍 Scanning Live Ticks Across Markets...");
 
       const timer = setTimeout(() => {
