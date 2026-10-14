@@ -21,10 +21,11 @@ export class ScannerLogic {
         confidence: s.confidence || 78
     }));
     private priceBuffers: { [symbol: string]: number[] } = {};
+    private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
     private lockedUntil: number = 0;
     private lockedStrategyId: string | null = null;
-    private readonly LOCK_DURATION_MS = 2000; // Shortened to 2 seconds for a lively, fluid feed
+    private readonly LOCK_DURATION_MS = 3000; // 3-second stable window for execution
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -37,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Restored high-precision quantitative momentum analysis initialized.");
+        console.log("[AI Scanner]: Predictive momentum & confluence filter initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -70,27 +71,44 @@ export class ScannerLogic {
         const netDiff = latestPrice - prevPrice;
         const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
 
-        let baseScore = 75;
+        // Track directional history to check for multi-tick confluence
+        if (!this.directionHistory[symbol]) {
+            this.directionHistory[symbol] = [];
+        }
+        this.directionHistory[symbol].push(liveDirection);
+        if (this.directionHistory[symbol].length > 5) {
+            this.directionHistory[symbol].shift();
+        }
+
+        // Confluence Check: Are the last 3 ticks pointing in the exact same direction?
+        const history = this.directionHistory[symbol];
+        const isConfluent = history.length >= 3 && history.slice(-3.0).every(d => d === liveDirection);
+
+        let baseScore = 60; // Lower baseline so weak markets don't trigger false flags
         if (prices.length >= 5) {
             const windowSize = Math.min(prices.length, 10);
             const oldestInWindow = prices[prices.length - windowSize];
             const priceDelta = latestPrice - oldestInWindow;
             const percentageChange = (priceDelta / oldestInWindow) * 100;
-            const rawMagnitude = Math.abs(percentageChange) * 3000;
-            baseScore = Math.round(Math.min(95, Math.max(70, 75 + rawMagnitude)));
+            
+            const rawMagnitude = Math.abs(percentageChange) * 4000;
+            // Boost score only if multi-tick confluence is met
+            const confluenceBonus = isConfluent ? 15 : 0;
+            
+            baseScore = Math.round(Math.min(96, Math.max(55, 65 + rawMagnitude + confluenceBonus)));
         }
 
         let triggeredHighConfidence = false;
         let targetStrategyId = '';
 
-        // Dynamic multi-strategy variance wave to prevent single-strategy lockups
         this.strategies = this.strategies.map((strat, index) => {
-            const uniqueWave = Math.sin(prices.length + index) * 4; 
+            const uniqueWave = Math.sin(prices.length + index) * 3; 
             const strategySpecificScore = Math.round(
-                Math.min(98, Math.max(50, baseScore + uniqueWave))
+                Math.min(97, Math.max(45, baseScore + uniqueWave))
             );
 
-            if (strategySpecificScore >= 88 && !triggeredHighConfidence) {
+            // Require high score AND strict multi-tick confluence before flagging high signal
+            if (strategySpecificScore >= 89 && isConfluent && !triggeredHighConfidence) {
                 triggeredHighConfidence = true;
                 targetStrategyId = strat.id || strat.name;
             }
