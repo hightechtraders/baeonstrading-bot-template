@@ -91,7 +91,10 @@ export class ScannerLogic {
             const priceDelta = latestPrice - oldestInWindow;
             const percentageChange = (priceDelta / oldestInWindow) * 100;
             
-            const rawMagnitude = Math.abs(percentageChange) * 4000;
+            // Scaled magnitude: optimizes Vol 10 micro-trends without altering other indices
+            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 5500 : 4000;
+            const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
+            
             // Boost score only if multi-tick confluence is met
             const confluenceBonus = isConfluent ? 15 : 0;
             
