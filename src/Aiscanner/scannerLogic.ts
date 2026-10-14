@@ -80,9 +80,9 @@ export class ScannerLogic {
             this.directionHistory[symbol].shift();
         }
 
-        // Confluence Check: Are the last 3 ticks pointing in the exact same direction?
+        // Confluence Check: Are the last 3 ticks pointing in the exact same direction? (Cleaned slice parameter)
         const history = this.directionHistory[symbol];
-        const isConfluent = history.length >= 3 && history.slice(-3.0).every(d => d === liveDirection);
+        const isConfluent = history.length >= 3 && history.slice(-3).every(d => d === liveDirection);
 
         let baseScore = 60; // Lower baseline so weak markets don't trigger false flags
         if (prices.length >= 5) {
