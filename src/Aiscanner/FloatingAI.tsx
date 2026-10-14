@@ -15,6 +15,7 @@ export const FloatingAI: React.FC = () => {
   
   const [signalBannerText, setSignalBannerText] = useState<string>("🔍 Listening for Live Deriv Ticks...");
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
+  const [isSweetSpot, setIsSweetSpot] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
 
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
@@ -34,13 +35,24 @@ export const FloatingAI: React.FC = () => {
       if (Array.isArray(updated) && updated.length > 0) {
         if (expandedIndexRef.current === null) {
           setStrategies(updated);
+
+          // Check if any strategy is currently in the 80-89% sweet spot
+          const sweetSpotMatch = updated.find((s: Strategy) => s.confidence >= 80 && s.confidence <= 89);
+          if (sweetSpotMatch) {
+            setSignalBannerText(`🎯 SWEET SPOT ALERT: ${sweetSpotMatch.name} (${sweetSpotMatch.market}) at ${sweetSpotMatch.confidence}%! Ready to Load.`);
+            setIsSweetSpot(true);
+          } else if (!isSignalLocked) {
+            setSignalBannerText("✅ Market Scan Complete: Strategies Ranked");
+            setIsSweetSpot(false);
+          }
         }
       }
     };
 
     const handleSignalLock = (e: CustomEvent) => {
-      setSignalBannerText(e.detail?.message || "🎯 99% CONFIDENCE LOCKED (3x Ticks): Ready to Load Strategy");
+      setSignalBannerText(e.detail?.message || "🎯 90%+ HIGH CONFIDENCE LOCKED: Ready to Load Strategy");
       setIsSignalLocked(true);
+      setIsSweetSpot(false);
     };
 
     window.addEventListener('ai-strategies-updated' as any, handleStrategiesUpdated as EventListener);
@@ -50,12 +62,13 @@ export const FloatingAI: React.FC = () => {
       window.removeEventListener('ai-strategies-updated' as any, handleStrategiesUpdated as EventListener);
       window.removeEventListener('ai-signal-locked', handleSignalLock as EventListener);
     };
-  }, []);
+  }, [isSignalLocked]);
 
   useEffect(() => {
     if (isOpen) {
       setExpandedIndex(null);
       setIsSignalLocked(false);
+      setIsSweetSpot(false);
       setIsScanningPhase(true);
       setSignalBannerText("🔍 Scanning Live Ticks Across Markets...");
 
@@ -118,12 +131,16 @@ export const FloatingAI: React.FC = () => {
             <div 
               id="ai-signal-banner"
               style={{
-                background: isSignalLocked ? 'rgba(46, 212, 121, 0.15)' : '#141824',
-                border: `1px solid ${isSignalLocked ? '#2ed479' : '#1e2335'}`,
+                background: isSignalLocked 
+                  ? 'rgba(46, 212, 121, 0.15)' 
+                  : isSweetSpot 
+                  ? 'rgba(245, 158, 11, 0.2)' 
+                  : '#141824',
+                border: `1px solid ${isSignalLocked ? '#2ed479' : isSweetSpot ? '#f59e0b' : '#1e2335'}`,
                 borderRadius: '8px',
                 padding: '10px 14px',
                 margin: '10px 0 16px 0',
-                color: isSignalLocked ? '#2ed479' : '#6c718c',
+                color: isSignalLocked ? '#2ed479' : isSweetSpot ? '#f59e0b' : '#6c718c',
                 fontSize: '11px',
                 fontWeight: 'bold',
                 textAlign: 'center',
