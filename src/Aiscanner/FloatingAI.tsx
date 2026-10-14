@@ -205,7 +205,7 @@ export const FloatingAI: React.FC = () => {
 
                     return (
                       <div 
-                        key={strat.id || actualIndex} 
+                        key={strat.id || strat.name} 
                         className={`strategy-card ${isExpanded ? 'expanded' : ''}`}
                         onClick={() => handleCardClick(strat, actualIndex)}
                       >
