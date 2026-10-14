@@ -1,4 +1,6 @@
-// src/Aiscanner/scannerBridge.ts
+// ==========================================
+// FILE: src/Aiscanner/scannerBridge.ts
+// ==========================================
 import { RiskManager } from './riskManager';
 import { ScannerLogic, DerivTickResponse } from './scannerLogic';
 
@@ -114,7 +116,9 @@ export class ScannerBridge {
     
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
-    const martingaleMultiplier = payload.multiplier || 2.4;
+    
+    // Fixed: Updated fallback from 2.4 to 1.5 to match your desired multiplier
+    const martingaleMultiplier = payload.multiplier || 1.5;
 
     const applyBlockMutations = () => {
       try {
