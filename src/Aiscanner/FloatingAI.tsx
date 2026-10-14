@@ -20,10 +20,15 @@ export const FloatingAI: React.FC = () => {
 
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const expandedIndexRef = useRef<number | null>(null);
+  const isOpenRef = useRef<boolean>(false);
 
   useEffect(() => {
     expandedIndexRef.current = expandedIndex;
   }, [expandedIndex]);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
 
   const [stake, setStake] = useState<number>(10);
   const [stopLoss, setStopLoss] = useState<number>(20);
@@ -33,15 +38,21 @@ export const FloatingAI: React.FC = () => {
     const handleStrategiesUpdated = (e: CustomEvent) => {
       const updated = e.detail?.strategies;
       if (Array.isArray(updated) && updated.length > 0) {
-        if (expandedIndexRef.current === null) {
-          setStrategies(updated);
+        setStrategies(updated);
 
-          // Check if any strategy is currently in the 80-89% sweet spot
-          const sweetSpotMatch = updated.find((s: Strategy) => s.confidence >= 80 && s.confidence <= 89);
-          if (sweetSpotMatch) {
-            setSignalBannerText(`🎯 SWEET SPOT ALERT: ${sweetSpotMatch.name} (${sweetSpotMatch.market}) at ${sweetSpotMatch.confidence}%! Ready to Load.`);
+        // ONLY evaluate when the modal is open and no card is currently expanded
+        if (isOpenRef.current && expandedIndexRef.current === null && !isSignalLocked) {
+          const sorted = [...updated].sort((a, b) => b.confidence - a.confidence);
+          const topStrat = sorted[0];
+
+          // STRICT SWEET SPOT CHECK: Must be top-ranked, have steady momentum (80-89%), 
+          // and qualify as a HIGH conviction signal (preventing random/medium triggers)
+          const isHighConviction = topStrat && topStrat.confidence >= 80 && topStrat.confidence <= 89;
+
+          if (isHighConviction) {
+            setSignalBannerText(`🎯 HIGH MOMENTUM SWEET SPOT: ${topStrat.name} (${topStrat.market}) at ${topStrat.confidence}%! Ready to Load.`);
             setIsSweetSpot(true);
-          } else if (!isSignalLocked) {
+          } else {
             setSignalBannerText("✅ Market Scan Complete: Strategies Ranked");
             setIsSweetSpot(false);
           }
@@ -50,9 +61,11 @@ export const FloatingAI: React.FC = () => {
     };
 
     const handleSignalLock = (e: CustomEvent) => {
-      setSignalBannerText(e.detail?.message || "🎯 90%+ HIGH CONFIDENCE LOCKED: Ready to Load Strategy");
-      setIsSignalLocked(true);
-      setIsSweetSpot(false);
+      if (isOpenRef.current) {
+        setSignalBannerText(e.detail?.message || "🎯 90%+ HIGH CONFIDENCE LOCKED: Ready to Load Strategy");
+        setIsSignalLocked(true);
+        setIsSweetSpot(false);
+      }
     };
 
     window.addEventListener('ai-strategies-updated' as any, handleStrategiesUpdated as EventListener);
