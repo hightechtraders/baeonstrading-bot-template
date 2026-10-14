@@ -101,7 +101,7 @@ export class ScannerBridge {
       durationUnit: options?.durationUnit || 't',
       stopLoss: options?.stopLoss || strategy?.stopLoss || 150,
       takeProfit: options?.takeProfit || strategy?.takeProfit || 100,
-      multiplier: options?.multiplier || strategy?.multiplier || 2.4
+      multiplier: options?.multiplier || strategy?.multiplier || 1.5
     };
 
     RiskManager.configure(payload.stopLoss, payload.takeProfit);
