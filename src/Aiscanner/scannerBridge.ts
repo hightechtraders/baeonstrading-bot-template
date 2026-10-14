@@ -10,11 +10,12 @@ export interface AIScannerPayload {
   durationUnit?: string;   
   stopLoss?: number;
   takeProfit?: number;
+  multiplier?: number;
 }
 
 export class ScannerBridge {
   private static isScannerActive: boolean = false; 
-  private static scannerLogicInstance = new ScannerLogic(); // 👈 Instantiate core calculation logic
+  private static scannerLogicInstance = new ScannerLogic(); // Instantiate core calculation logic
 
   static {
     if (typeof window !== 'undefined') {
@@ -57,11 +58,10 @@ export class ScannerBridge {
   }
 
   /**
-   * Seamlessly intercepts live ticks from api-base, processes them through ScannerLogic,
+   * Intercepts live ticks, processes them through ScannerLogic,
    * and broadcasts the fully updated strategy array to the UI components.
    */
   public static pushTick(assetName: string, quote: number, strategies?: any[]) {
-    // Process live tick through our calculation engine to evaluate UP/DOWN directions & dynamic scores
     const tickPayload: DerivTickResponse = {
       msg_type: 'tick',
       tick: {
@@ -75,7 +75,6 @@ export class ScannerBridge {
     const updatedStrategies = ScannerBridge.scannerLogicInstance.handleIncomingMessage(tickPayload);
 
     if (typeof window !== 'undefined') {
-      // Dispatch both event names to ensure full backward compatibility with any listening component
       window.dispatchEvent(new CustomEvent('ai-tick-received', {
         detail: { assetName, quote, strategies: updatedStrategies }
       }));
@@ -101,7 +100,8 @@ export class ScannerBridge {
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
       stopLoss: options?.stopLoss || strategy?.stopLoss || 150,
-      takeProfit: options?.takeProfit || strategy?.takeProfit || 100
+      takeProfit: options?.takeProfit || strategy?.takeProfit || 100,
+      multiplier: options?.multiplier || strategy?.multiplier || 2.4
     };
 
     RiskManager.configure(payload.stopLoss, payload.takeProfit);
@@ -114,7 +114,7 @@ export class ScannerBridge {
     
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
-    const martingaleMultiplier = 2.4;
+    const martingaleMultiplier = payload.multiplier || 2.4;
 
     const applyBlockMutations = () => {
       try {
@@ -221,7 +221,6 @@ export class ScannerBridge {
             setTimeout(applyBlockMutations, 100);
             setTimeout(applyBlockMutations, 500);
 
-            // 👈 Force a balance subscription/refresh request to keep the UI live
             if (rootStore?.client?.send) {
               rootStore.client.send({ balance: 1, subscribe: 1 }).catch(() => {});
             }
