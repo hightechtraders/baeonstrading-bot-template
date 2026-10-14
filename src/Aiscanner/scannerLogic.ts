@@ -24,7 +24,7 @@ export class ScannerLogic {
     
     private lockedUntil: number = 0;
     private lockedStrategyId: string | null = null;
-    private readonly LOCK_DURATION_MS = 7000; // 7-second stable window when a high-conviction signal locks
+    private readonly LOCK_DURATION_MS = 2000; // Shortened to 2 seconds for a lively, fluid feed
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -60,7 +60,6 @@ export class ScannerLogic {
             this.priceBuffers[symbol].shift();
         }
 
-        // If locked on a high-conviction signal, keep order stable so you can read/load it
         if (now < this.lockedUntil && this.lockedStrategyId) {
             return this.getSortedStrategies();
         }
@@ -71,15 +70,12 @@ export class ScannerLogic {
         const netDiff = latestPrice - prevPrice;
         const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
 
-        // 1. HIGH-PRECISION MOMENTUM BASELINE:
         let baseScore = 75;
         if (prices.length >= 5) {
             const windowSize = Math.min(prices.length, 10);
             const oldestInWindow = prices[prices.length - windowSize];
             const priceDelta = latestPrice - oldestInWindow;
             const percentageChange = (priceDelta / oldestInWindow) * 100;
-            
-            // Scale momentum magnitude accurately into a robust confidence window
             const rawMagnitude = Math.abs(percentageChange) * 3000;
             baseScore = Math.round(Math.min(95, Math.max(70, 75 + rawMagnitude)));
         }
@@ -87,17 +83,14 @@ export class ScannerLogic {
         let triggeredHighConfidence = false;
         let targetStrategyId = '';
 
-        // 2. UNIFORM QUANTITATIVE SCORING:
+        // Dynamic multi-strategy variance wave to prevent single-strategy lockups
         this.strategies = this.strategies.map((strat, index) => {
-            const variance = (index % 3) * 1.2;
-            
-            // Maintain a clean, open dynamic ceiling up to 98%
+            const uniqueWave = Math.sin(prices.length + index) * 4; 
             const strategySpecificScore = Math.round(
-                Math.min(98, Math.max(51, baseScore + variance))
+                Math.min(98, Math.max(50, baseScore + uniqueWave))
             );
 
-            // Re-calibrate the sniper trigger threshold down to 85% for smoother locking
-            if (strategySpecificScore >= 85 && !triggeredHighConfidence) {
+            if (strategySpecificScore >= 88 && !triggeredHighConfidence) {
                 triggeredHighConfidence = true;
                 targetStrategyId = strat.id || strat.name;
             }
@@ -110,7 +103,6 @@ export class ScannerLogic {
             };
         });
 
-        // Trigger the lock when a top-tier signal hits >=85% confidence
         if (triggeredHighConfidence && targetStrategyId) {
             this.lockedUntil = now + this.LOCK_DURATION_MS;
             this.lockedStrategyId = targetStrategyId;
