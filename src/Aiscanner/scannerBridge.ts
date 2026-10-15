@@ -97,12 +97,12 @@ export class ScannerBridge {
 
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
-      stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 0.35,
+      stake: 0.35, // Forcefully locked to your 0.35 USD stake
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: options?.stopLoss || strategy?.stopLoss || 3,
-      takeProfit: options?.takeProfit || strategy?.takeProfit || 5,
+      stopLoss: 3,   // Forcefully locked to your 3 USD stop loss
+      takeProfit: 5, // Forcefully locked to your 5 USD take profit
       multiplier: options?.multiplier || strategy?.multiplier || 1.5
     };
 
