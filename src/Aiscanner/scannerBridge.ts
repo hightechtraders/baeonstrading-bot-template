@@ -97,12 +97,12 @@ export class ScannerBridge {
 
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
-      stake: 0.35, // Forcefully locked to your 0.35 USD stake
+      stake: 0.35, 
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: 3,   // Forcefully locked to your 3 USD stop loss
-      takeProfit: 5, // Forcefully locked to your 5 USD take profit
+      stopLoss: 3,   
+      takeProfit: 5, 
       multiplier: options?.multiplier || strategy?.multiplier || 1.5
     };
 
@@ -186,6 +186,7 @@ export class ScannerBridge {
         if (typeof quickStrategy.setValue === 'function') {
           quickStrategy.setValue('symbol', strictDerivSymbol);
           quickStrategy.setValue('duration', payload.duration);
+          quickStrategy.setValue('duration_type', payload.durationUnit || 't'); // Explicitly forces tick duration unit
           quickStrategy.setValue('amount', payload.stake);
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
