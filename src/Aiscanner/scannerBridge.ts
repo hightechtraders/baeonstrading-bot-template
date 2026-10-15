@@ -97,12 +97,12 @@ export class ScannerBridge {
 
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
-      stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
+      stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 0.35,
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: options?.stopLoss || strategy?.stopLoss || 150,
-      takeProfit: options?.takeProfit || strategy?.takeProfit || 100,
+      stopLoss: options?.stopLoss || strategy?.stopLoss || 3,
+      takeProfit: options?.takeProfit || strategy?.takeProfit || 5,
       multiplier: options?.multiplier || strategy?.multiplier || 1.5
     };
 
@@ -117,7 +117,6 @@ export class ScannerBridge {
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
     
-    // Fixed: Updated fallback from 2.4 to 1.5 to match your desired multiplier
     const martingaleMultiplier = payload.multiplier || 1.5;
 
     const applyBlockMutations = () => {
