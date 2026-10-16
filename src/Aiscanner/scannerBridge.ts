@@ -101,7 +101,7 @@ export class ScannerBridge {
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: 3,   
+      stopLoss: 2.5, // Adjusted down from 3 to absorb execution overshoot
       takeProfit: 5, 
       multiplier: options?.multiplier || strategy?.multiplier || 1.5
     };
