@@ -96,7 +96,7 @@ export class ScannerBridge {
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
 
     // ==========================================
-    // OPTIMIZED SESSION THRESHOLDS ($3 TP / $2.90 SL)
+    // OPTIMIZED SESSION THRESHOLDS ($3 TP / $4.50 SL)
     // ==========================================
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
@@ -104,7 +104,7 @@ export class ScannerBridge {
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: 2.90,     // Tightened to prevent runaway Martingale drawdown
+      stopLoss: 4.50,     // Safe buffer to allow Martingale recovery to complete
       takeProfit: 3.00,   // Capped at $3.00 to lock in quick, frequent session gains
       multiplier: options?.multiplier || strategy?.multiplier || 1.5
     };
