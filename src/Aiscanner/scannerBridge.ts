@@ -95,14 +95,17 @@ export class ScannerBridge {
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
 
+    // ==========================================
+    // OPTIMIZED SESSION THRESHOLDS ($3 TP / $2.90 SL)
+    // ==========================================
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: 0.35, 
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: 2.5, // Adjusted down from 3 to absorb execution overshoot
-      takeProfit: 5, 
+      stopLoss: 2.90,     // Tightened to prevent runaway Martingale drawdown
+      takeProfit: 3.00,   // Capped at $3.00 to lock in quick, frequent session gains
       multiplier: options?.multiplier || strategy?.multiplier || 1.5
     };
 
@@ -186,7 +189,7 @@ export class ScannerBridge {
         if (typeof quickStrategy.setValue === 'function') {
           quickStrategy.setValue('symbol', strictDerivSymbol);
           quickStrategy.setValue('duration', payload.duration);
-          quickStrategy.setValue('duration_type', payload.durationUnit || 't'); // Explicitly forces tick duration unit
+          quickStrategy.setValue('duration_type', payload.durationUnit || 't'); 
           quickStrategy.setValue('amount', payload.stake);
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
