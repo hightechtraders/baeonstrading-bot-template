@@ -87,7 +87,7 @@ const AppWrapper = observer(() => {
     const [left_tab_shadow, setLeftTabShadow] = useState<boolean>(false);
     const [right_tab_shadow, setRightTabShadow] = useState<boolean>(false);
 
-    // Free bots card visibility state & 7 integrated working strategies
+    // Free bots card visibility state & 7 integrated working strategies with explicit contract bindings
     const [is_card_visible, setIsCardVisible] = useState<boolean>(true);
     const [working_strategies] = useState([
         {
@@ -95,6 +95,7 @@ const AppWrapper = observer(() => {
             strategyName: 'EMA Crossover Breakpoint',
             marketName: 'Volatility 50 (1s) Index',
             symbol: '1HZ50V',
+            contractType: 'PUT',
             direction: 'DOWN',
             confidence: '84%',
             status: 'HIGH',
@@ -104,6 +105,7 @@ const AppWrapper = observer(() => {
             strategyName: 'Bollinger Band Squeeze',
             marketName: 'Volatility 100 (1s) Index',
             symbol: '1HZ100V',
+            contractType: 'CALL',
             direction: 'UP',
             confidence: '79%',
             status: 'HIGH',
@@ -113,6 +115,7 @@ const AppWrapper = observer(() => {
             strategyName: 'Only Ups / Only Downs Momentum',
             marketName: 'Volatility 100 Index',
             symbol: '1HZ100V',
+            contractType: 'CALL',
             direction: 'UP',
             confidence: '91%',
             status: 'HIGH',
@@ -122,6 +125,7 @@ const AppWrapper = observer(() => {
             strategyName: 'Over 2, Recovery Over 7',
             marketName: 'Volatility 75 Index',
             symbol: '1HZ75V',
+            contractType: 'DIGITOVER',
             direction: 'DIGIT',
             confidence: '88%',
             status: 'HIGH',
@@ -131,6 +135,7 @@ const AppWrapper = observer(() => {
             strategyName: 'Even Botter Strategy',
             marketName: 'Volatility 10 Index',
             symbol: 'R_10',
+            contractType: 'EVEN',
             direction: 'EVEN',
             confidence: '82%',
             status: 'MED',
@@ -140,6 +145,7 @@ const AppWrapper = observer(() => {
             strategyName: 'Over 1, Recovery Under 7',
             marketName: 'Volatility 25 Index',
             symbol: 'R_25',
+            contractType: 'DIGITOVER',
             direction: 'DIGIT',
             confidence: '85%',
             status: 'HIGH',
@@ -149,7 +155,8 @@ const AppWrapper = observer(() => {
             strategyName: 'Rise and Fall Copier',
             marketName: 'Volatility 50 Index',
             symbol: 'R_50',
-            direction: 'CALL',
+            contractType: 'CALL',
+            direction: 'CALL/PUT',
             confidence: '90%',
             status: 'HIGH',
         }
@@ -478,7 +485,7 @@ const AppWrapper = observer(() => {
                                                             setActiveTab(BOT_BUILDER);
                                                             ScannerBridge.loadStrategyToWorkspace(bot, {
                                                                 symbol: bot.symbol,
-                                                                contractType: bot.direction,
+                                                                contractType: bot.contractType,
                                                                 duration: 5,
                                                                 durationUnit: 't'
                                                             });
