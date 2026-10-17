@@ -84,104 +84,45 @@ export class ScannerBridge {
   }
 
   /**
-   * Executes a trade directly via API while safely feeding 
-   * live contract events into the app's journal and transaction stores.
+   * Executes a trade by configuring the Quick Strategy store 
+   * and invoking the native run loop so summaries and transactions populate live.
    */
   public static async executeDirectTrade(strategy: any, options: any) {
     const rootStore = (window as any).derivBotAppStore || (window as any).Bot?.stores;
-    const client = rootStore?.client || rootStore?.core?.client;
-    const api = client?.send ? client : (api_base?.api || (window as any).api_base || rootStore?.api);
 
-    if (!api || typeof api.send !== 'function') {
-      console.error('Deriv API client not available for headless execution.');
+    if (!rootStore) {
+      console.error('Deriv bot app store not available.');
       alert('Trading client not ready. Please make sure you are logged into your Deriv account.');
       return;
     }
 
-    const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V';
-    const strictSymbol = this.translateSymbol(rawSymbol);
-    const contractType = (options?.contractType || strategy?.direction || strategy?.tradeType || 'CALL').toUpperCase();
-    const stake = Number(options?.stake || strategy?.stake || 0.35);
-    const duration = Number(options?.duration || strategy?.duration || 5);
-    const durationUnit = options?.durationUnit || 't';
-    const currency = client?.currency || 'USD';
-
     try {
-      const proposalReq: any = {
-        proposal: 1,
-        amount: stake,
-        basis: 'stake',
-        currency: currency,
-        underlying_symbol: strictSymbol, 
-        contract_type: contractType,
-        duration: duration,
-        duration_unit: durationUnit,
-      };
+      // 1. Populate workspace parameters and quick strategy form state
+      this.loadStrategyToWorkspace(strategy, options);
 
-      if (contractType.includes('DIGIT') || contractType.includes('MATCH') || contractType.includes('DIFF') || contractType.includes('EVEN') || contractType.includes('ODD')) {
-        proposalReq.barrier = String(options?.barrier ?? strategy?.barrier ?? '2');
-      }
-
-      console.log('Sending headless proposal request:', proposalReq);
-      
-      const sendPromise = api.send(proposalReq);
-      const proposalResponse = sendPromise?.then ? await sendPromise : await new Promise((resolve) => {
-        api.send(proposalReq, (response: any) => resolve(response));
-      });
-
-      if ((proposalResponse as any)?.error) {
-        console.error('Deriv Proposal Error:', (proposalResponse as any).error);
-        alert(`Deriv Error: ${(proposalResponse as any).error.message}`);
-        return;
-      }
-
-      const proposalId = (proposalResponse as any)?.proposal?.id;
-      if (proposalId) {
-        const buyReq = { buy: proposalId, price: stake };
-        const buySendPromise = api.send(buyReq);
-        const buyResponse = buySendPromise?.then ? await buySendPromise : await new Promise((resolve) => {
-          api.send(buyReq, (response: any) => resolve(response));
-        });
-
-        if ((buyResponse as any)?.error) {
-          console.error('Deriv Buy Error:', (buyResponse as any).error);
-          alert(`Buy Error: ${(buyResponse as any).error.message}`);
-          return;
-        }
-        
-        if ((buyResponse as any)?.buy) {
-          const contract = (buyResponse as any).buy;
-          console.log('Headless trade executed successfully:', contract);
-
-          // Safely push to Journal and Transaction stores using official handlers
-          try {
-            if (rootStore?.journal?.pushMessage) {
-              rootStore.journal.pushMessage(`AI Bot Executed: ${strategy.strategyName || strategy.name || 'Strategy'} | ID: ${contract.contract_id} | Stake: ${stake} ${currency}`);
-            }
-            if (rootStore?.transactions?.onBotContractEvent) {
-              rootStore.transactions.onBotContractEvent({ event: 'buy', contract });
-            }
-          } catch (storeErr) {
-            console.warn('Store logging warning:', storeErr);
-          }
-
-          window.dispatchEvent(new CustomEvent('ai_trade_executed', {
-            detail: { contract, strategy: strategy.strategyName || strategy.name }
-          }));
-
-          // Automatically shift to summary tab so user can see it live
-          if (rootStore?.ui && typeof rootStore.ui.setActiveTab === 'function') {
-            rootStore.ui.setActiveTab('summary');
-          }
-
-          alert(`Trade executed successfully! Contract ID: ${contract.contract_id}`);
-        }
+      // 2. Trigger the native run action on the app's run panel store
+      const runPanelStore = rootStore.run_panel || rootStore.quick_strategy;
+      if (runPanelStore && typeof runPanelStore.onRunButtonClick === 'function') {
+        runPanelStore.onRunButtonClick();
       } else {
-        alert('Failed to obtain contract proposal ID from server.');
+        // Fallback to clicking the DOM run button directly
+        const runButton = document.querySelector('#runButton') || document.querySelector('.run-button') || document.querySelector('[data-testid="run_button"]');
+        if (runButton && (runButton as HTMLElement).click) {
+          (runButton as HTMLElement).click();
+        } else {
+          window.dispatchEvent(new CustomEvent('bot_run_start'));
+        }
       }
+
+      // 3. Switch to the summary/transactions tab view automatically
+      if (rootStore.ui && typeof rootStore.ui.setActiveTab === 'function') {
+        rootStore.ui.setActiveTab('summary');
+      }
+
+      console.log('Successfully triggered native live run cycle.');
     } catch (error: any) {
-      console.error('Headless trade execution failed:', error);
-      alert(`Trade Execution Failed: ${error?.message || JSON.stringify(error) || 'Unknown error occurred'}`);
+      console.error('Trade execution routing failed:', error);
+      alert(`Execution Failed: ${error?.message || 'Unknown error occurred'}`);
     }
   }
 
