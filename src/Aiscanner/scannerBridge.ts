@@ -52,12 +52,8 @@ export class ScannerBridge {
           targetApi.send = function (data: any, cb?: any) {
             if (data && data.proposal === 1 && ScannerBridge.isScannerActive) {
               const contractType = String(data.contract_type || '').toUpperCase();
-              if ((contractType.includes('DIGIT') || contractType.includes('MATCH') || contractType.includes('DIFF') || contractType.includes('EVEN') || contractType.includes('ODD')) && !data.barrier && !data.duration) {
-                // Inject the active prediction barrier required by the API server
-                data.barrier = ScannerBridge.activePrediction;
-                if (contractType.includes('DIGIT') && data.barrier === undefined) {
-                  data.barrier = '2';
-                }
+              if ((contractType.includes('DIGIT') || contractType.includes('MATCH') || contractType.includes('DIFF') || contractType.includes('EVEN') || contractType.includes('ODD')) && !data.barrier) {
+                data.barrier = ScannerBridge.activePrediction || '2';
               }
             }
             return originalSend(data, cb);
@@ -262,6 +258,16 @@ export class ScannerBridge {
                   }
                 });
               }
+
+              // Update barrier/prediction fields on blocks if present
+              const barrierFields = ['BARRIER', 'PREDICTION', 'DIGIT_PREDICTION'];
+              barrierFields.forEach(fieldName => {
+                const field = block.getField(fieldName);
+                if (field && typeof field.setValue === 'function') {
+                  field.setValue(barrierValue);
+                  updated = true;
+                }
+              });
             });
 
             if (updated && typeof workspace.render === 'function') {
@@ -285,7 +291,7 @@ export class ScannerBridge {
           quickStrategy.setValue('type', storeType);
           quickStrategy.setValue('size', martingaleMultiplier);
           
-          if (storeContractType.includes('DIGIT') || storeContractType.includes('MATCH') || storeContractType.includes('DIFF')) {
+          if (storeContractType.includes('DIGIT') || storeContractType.includes('MATCH') || storeContractType.includes('DIFF') || storeContractType.includes('EVEN') || storeContractType.includes('ODD')) {
             quickStrategy.setValue('prediction', payload.barrier);
             quickStrategy.setValue('barrier', payload.barrier);
           }
@@ -317,7 +323,7 @@ export class ScannerBridge {
           take_profit: payload.takeProfit
         };
 
-        if (storeContractType.includes('DIGIT') || storeContractType.includes('MATCH') || storeContractType.includes('DIFF')) {
+        if (storeContractType.includes('DIGIT') || storeContractType.includes('MATCH') || storeContractType.includes('DIFF') || storeContractType.includes('EVEN') || storeContractType.includes('ODD')) {
           mockFormData.prediction = payload.barrier;
           mockFormData.barrier = payload.barrier;
         }
