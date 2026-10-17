@@ -17,7 +17,7 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static isScannerActive: boolean = false; 
-  private static scannerLogicInstance = new ScannerLogic(); // Instantiate core calculation logic
+  private static scannerLogicInstance = new ScannerLogic();
 
   static {
     if (typeof window !== 'undefined') {
@@ -59,10 +59,6 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
-  /**
-   * Intercepts live ticks, processes them through ScannerLogic,
-   * and broadcasts the fully updated strategy array to the UI components.
-   */
   public static pushTick(assetName: string, quote: number, strategies?: any[]) {
     const tickPayload: DerivTickResponse = {
       msg_type: 'tick',
@@ -95,9 +91,7 @@ export class ScannerBridge {
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = (options?.contractType || strategy?.direction || strategy?.tradeType || 'rise').toUpperCase();
 
-    // ==========================================
-    // DYNAMIC TRADE TYPE & FORM SCHEMA MAPPING
-    // ==========================================
+    // 1. Classify Trade Type Family
     let resolvedTradeType = 'rise_fall';
     let storeContractType = 'CALL';
     let storeType = 'rise';
@@ -117,9 +111,6 @@ export class ScannerBridge {
       storeType = isFall ? 'fall' : 'rise';
     }
 
-    // ==========================================
-    // OPTIMIZED SESSION THRESHOLDS ($3 TP / $4.50 SL)
-    // ==========================================
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: 0.35, 
@@ -137,6 +128,7 @@ export class ScannerBridge {
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     const martingaleMultiplier = payload.multiplier || 1.5;
 
+    // 2. Direct Block Reconstruction / Mutation for Non-Standard Types
     const applyBlockMutations = () => {
       try {
         const Blockly = (window as any).Blockly;
@@ -150,7 +142,7 @@ export class ScannerBridge {
             blocks.forEach((block: any) => {
               if (!block) return;
 
-              // 1. Update Asset Symbol List
+              // Update Asset Symbol List
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
@@ -165,20 +157,23 @@ export class ScannerBridge {
                 }
               }
 
-              // 2. Update Purchase Conditions & Contract Types
+              // Update Purchase/Contract Types & Inject sub-blocks if Digit/EvenOdd
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase' || block.type?.includes('trade_definition')) {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
                   const field = block.getField(name);
                   if (field && typeof field.setValue === 'function') {
                     const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
-                    const targetMatch = options.find((opt: any) => {
+                    let targetMatch = options.find((opt: any) => {
                       const label = String(opt[0] || '').toLowerCase();
                       const val = String(opt[1] || '').toLowerCase();
-                      const targetStr = storeContractType.toLowerCase();
-
-                      return label.includes(targetStr) || val.includes(targetStr);
+                      return label.includes(storeContractType.toLowerCase()) || val.includes(storeContractType.toLowerCase());
                     });
+
+                    // Force inject contract option if missing from menu
+                    if (!targetMatch && field.menuGenerator_ && Array.isArray(field.menuGenerator_)) {
+                      field.menuGenerator_.push([storeContractType, storeContractType]);
+                    }
 
                     const desiredVal = targetMatch ? targetMatch[1] : storeContractType;
                     if (field && field.getValue() !== desiredVal) {
@@ -187,6 +182,17 @@ export class ScannerBridge {
                     }
                   }
                 });
+
+                // If it's a digit strategy, ensure prediction block input exists on the trade definition
+                if (resolvedTradeType === 'matches_differs' && block.type === 'trade_definition') {
+                  try {
+                    if (typeof block.getInput === 'function' && !block.getInput('PREDICTION')) {
+                      // Dynamically create prediction input statement if absent
+                      block.appendValueInput('PREDICTION').setCheck('Number');
+                      updated = true;
+                    }
+                  } catch (err) {}
+                }
               }
             });
 
@@ -227,9 +233,9 @@ export class ScannerBridge {
           duration: payload.duration,
           stake: payload.stake,
           amount: payload.stake,
-          tradetype: resolvedTradeType,       // <--- Passes even_odd, matches_differs, or rise_fall
+          tradetype: resolvedTradeType,
           contract_type: storeContractType,
-          type: storeType,                    // <--- Passes correct purchase contract type
+          type: storeType,
           subtype: storeType,
           size: martingaleMultiplier,
           loss: payload.stopLoss,
