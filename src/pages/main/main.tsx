@@ -126,6 +126,7 @@ const AppWrapper = observer(() => {
             marketName: 'Volatility 75 Index',
             symbol: '1HZ75V',
             contractType: 'DIGITOVER',
+            barrier: '2',
             direction: 'DIGIT',
             confidence: '88%',
             status: 'HIGH',
@@ -146,6 +147,7 @@ const AppWrapper = observer(() => {
             marketName: 'Volatility 25 Index',
             symbol: 'R_25',
             contractType: 'DIGITOVER',
+            barrier: '1',
             direction: 'DIGIT',
             confidence: '85%',
             status: 'HIGH',
@@ -478,21 +480,22 @@ const AppWrapper = observer(() => {
                                                         </div>
                                                     </div>
 
-                                                    {/* Action Button */}
+                                                    {/* Action Button - Headless Execution */}
                                                     <button 
                                                         onClick={() => {
-                                                            console.log(`Loading ${bot.strategyName} via ScannerBridge...`);
-                                                            setActiveTab(BOT_BUILDER);
-                                                            ScannerBridge.loadStrategyToWorkspace(bot, {
+                                                            console.log(`Executing ${bot.strategyName} via Headless API...`);
+                                                            ScannerBridge.executeDirectTrade(bot, {
                                                                 symbol: bot.symbol,
                                                                 contractType: bot.contractType,
+                                                                barrier: bot.barrier,
+                                                                stake: 0.35,
                                                                 duration: 5,
                                                                 durationUnit: 't'
                                                             });
                                                         }}
                                                         className='free-bots-btn'
                                                     >
-                                                        Load Bot to Workspace
+                                                        Run Free Bot
                                                     </button>
                                                 </div>
                                             ))}
