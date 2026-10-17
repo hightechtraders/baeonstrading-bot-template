@@ -150,6 +150,7 @@ export class ScannerBridge {
             blocks.forEach((block: any) => {
               if (!block) return;
 
+              // 1. Update Asset Symbol List
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
@@ -164,7 +165,8 @@ export class ScannerBridge {
                 }
               }
 
-              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
+              // 2. Update Purchase Conditions & Contract Types for all strategies
+              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase' || block.type?.includes('trade_definition')) {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
                   const field = block.getField(name);
@@ -175,13 +177,7 @@ export class ScannerBridge {
                       const val = String(opt[1] || '').toLowerCase();
                       const targetStr = storeContractType.toLowerCase();
 
-                      if (targetStr === 'call') {
-                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
-                      }
-                      if (targetStr === 'put') {
-                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
-                      }
-                      return label.includes(targetStr) || val.includes(targetStr);
+                      return label.includes(targetStr) || val.includes(targetStr) || label.includes(targetModelKeyword(targetStr));
                     });
 
                     const desiredVal = targetMatch ? targetMatch[1] : storeContractType;
@@ -200,6 +196,12 @@ export class ScannerBridge {
           }
         }
       } catch (e) {}
+    };
+
+    const targetModelKeyword = (target: string) => {
+      if (target === 'call') return 'rise';
+      if (target === 'put') return 'fall';
+      return target;
     };
 
     if (rootStore?.quick_strategy) {
