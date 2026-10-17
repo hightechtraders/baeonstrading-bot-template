@@ -112,6 +112,7 @@ export class ScannerBridge {
       storeType = 'evenodd';
     } else {
       const isFall = strategyDirection.includes('DOWN') || strategyDirection.includes('PUT') || strategyDirection.includes('FALL');
+      resolvedTradeType = 'rise_fall';
       storeContractType = isFall ? 'PUT' : 'CALL';
       storeType = isFall ? 'fall' : 'rise';
     }
@@ -173,6 +174,13 @@ export class ScannerBridge {
                       const label = String(opt[0] || '').toLowerCase();
                       const val = String(opt[1] || '').toLowerCase();
                       const targetStr = storeContractType.toLowerCase();
+                      
+                      if (targetStr === 'call') {
+                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
+                      }
+                      if (targetStr === 'put') {
+                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
+                      }
                       return label.includes(targetStr) || val.includes(targetStr);
                     });
 
