@@ -155,27 +155,34 @@ export default class QuickStrategyStore implements IQuickStrategyStore {
     onSubmit = async (data: TFormData) => {
         const { contracts_for } = ApiHelpers?.instance ?? {};
         if (!contracts_for) return;
+
         const market = await contracts_for.getMarketBySymbol(data.symbol);
         const submarket = await contracts_for.getSubmarketBySymbol(data.symbol);
         const trade_type_cat = await contracts_for.getTradeTypeCategoryByTradeType(data.tradetype);
         const selected_strategy = STRATEGIES()[this.selected_strategy];
+        
         this.selected_strategy_for_notofy = this.selected_strategy;
-        // Persist the selected strategy for notifications in localStorage
         storeSetting('selected_strategy_for_notofy', this.selected_strategy);
+
         const strategy_xml = await import(/* webpackChunkName: `[request]` */ `../xml/${selected_strategy.name}.xml`);
         const strategy_dom = window.Blockly.utils.xml.textToDom(strategy_xml.default);
-        addDynamicBlockToDOM('PREDICTION', 'last_digit_prediction', trade_type_cat, strategy_dom);
+
+        // Safely add digit prediction block if needed
+        if (data.tradetype === 'matches_differs' || String(data.tradetype).includes('digit')) {
+            addDynamicBlockToDOM('PREDICTION', 'last_digit_prediction', trade_type_cat, strategy_dom);
+        }
 
         const modifyValueInputs = (key: string, value: number) => {
             const el_value_inputs = strategy_dom?.querySelectorAll(`value[strategy_value="${key}"]`);
             el_value_inputs?.forEach((el_value_input: HTMLElement) => {
-                if (key.includes('boolean'))
+                if (key.includes('boolean')) {
                     if (value)
                         el_value_input.innerHTML = `<block type="logic_boolean"><field name="BOOL">TRUE</field></block>`;
                     else
                         el_value_input.innerHTML = `<block type="logic_boolean"><field name="BOOL">FALSE</field></block>`;
-                else
+                } else {
                     el_value_input.innerHTML = `<shadow type="math_number"><field name="NUM">${value}</field></shadow>`;
+                }
             });
         };
 
@@ -186,16 +193,21 @@ export default class QuickStrategyStore implements IQuickStrategyStore {
                 el_block.innerHTML = value;
             });
         };
+
         const { unit, action, type, growth_rate, ...rest_data } = data;
+        
+        // Respect the selected contract type (Rise/Fall, Even/Odd, Digits) rather than overriding with 'both'
+        const resolvedType = type || 'CALL';
+
         const fields_to_update = {
             market,
             submarket,
             tradetypecat: trade_type_cat,
             dalembert_unit: unit,
             oscar_unit: unit,
-            type: 'both',
+            type: resolvedType,
             ...rest_data,
-            purchase: type,
+            purchase: resolvedType,
             growthrate: growth_rate ? growth_rate.toString() : undefined,
         };
 
@@ -204,7 +216,7 @@ export default class QuickStrategyStore implements IQuickStrategyStore {
 
             if (!isNaN(value as number) && key !== 'growthrate') {
                 modifyValueInputs(key, value as number);
-            } else if (typeof value === 'string') {
+            } else if (typeof value === 'string' && value !== undefined) {
                 modifyFieldDropdownValues(key, value);
             }
         });
