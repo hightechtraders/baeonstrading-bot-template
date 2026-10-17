@@ -134,6 +134,9 @@ export class ScannerBridge {
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     const martingaleMultiplier = payload.multiplier || 1.5;
 
+    // ==========================================
+    // RESTORED WORKSPACE BLOCK MUTATIONS
+    // ==========================================
     const applyBlockMutations = () => {
       try {
         const Blockly = (window as any).Blockly;
@@ -147,6 +150,7 @@ export class ScannerBridge {
             blocks.forEach((block: any) => {
               if (!block) return;
 
+              // Update symbol list fields across workspace
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
@@ -161,6 +165,7 @@ export class ScannerBridge {
                 }
               }
 
+              // Update purchase condition block types
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
@@ -202,7 +207,6 @@ export class ScannerBridge {
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
-        // Explicitly update the active trade type in the quick strategy store state first
         if (typeof quickStrategy.setSelectedStrategy === 'function') {
           quickStrategy.setSelectedStrategy(resolvedTradeType);
         } else if (typeof quickStrategy.setTradeType === 'function') {
@@ -245,7 +249,6 @@ export class ScannerBridge {
           take_profit: payload.takeProfit
         };
 
-        // Use createStrategy directly or fallback to safe strategy generation
         const generateAction = quickStrategy.createStrategy || quickStrategy.onSubmit;
         if (typeof generateAction === 'function') {
           Promise.resolve(generateAction.call(quickStrategy, mockFormData)).then(() => {
