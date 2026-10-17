@@ -84,12 +84,15 @@ export class ScannerBridge {
 
   /**
    * Executes a trade directly via Deriv API (Headless Execution)
-   * Perfect for Free Bot cards (Even/Odd, Digits, etc.) without messing up Blockly.
+   * Robust client lookup ensures "Run Free Bot" executes immediately.
    */
   public static async executeDirectTrade(strategy: any, options: any) {
-    const rootStore = (window as any).derivBotAppStore;
-    if (!rootStore?.client || typeof rootStore.client.send !== 'function') {
+    const rootStore = (window as any).derivBotAppStore || (window as any).Bot?.stores;
+    const client = rootStore?.client || rootStore?.root_store?.client;
+
+    if (!client || typeof client.send !== 'function') {
       console.error('Deriv client not available for headless execution.');
+      alert('Trading client not ready. Please verify your connection or account login.');
       return;
     }
 
@@ -105,7 +108,7 @@ export class ScannerBridge {
         proposal: 1,
         amount: stake,
         basis: 'stake',
-        currency: rootStore.client.currency || 'USD',
+        currency: client.currency || 'USD',
         symbol: strictSymbol,
         contract_type: contractType,
         duration: duration,
@@ -117,17 +120,13 @@ export class ScannerBridge {
       }
 
       console.log('Sending headless proposal request:', proposalReq);
-      const proposalResponse = await rootStore.client.send(proposalReq);
+      const proposalResponse = await client.send(proposalReq);
 
       if (proposalResponse?.proposal?.id) {
-        const proposalId = proposalResponse.proposal.id;
-        const buyReq = {
-          buy: proposalId,
+        const buyResponse = await client.send({
+          buy: proposalResponse.proposal.id,
           price: stake
-        };
-
-        console.log('Executing headless buy request:', buyReq);
-        const buyResponse = await rootStore.client.send(buyReq);
+        });
         
         if (buyResponse?.buy) {
           console.log('Headless trade executed successfully:', buyResponse.buy);
@@ -135,6 +134,9 @@ export class ScannerBridge {
             detail: { contract: buyResponse.buy, strategy: strategy.strategyName || strategy.name }
           }));
         }
+      } else if (proposalResponse?.error) {
+        console.error('Proposal error:', proposalResponse.error.message);
+        alert(`Trade Error: ${proposalResponse.error.message}`);
       }
     } catch (error) {
       console.error('Headless trade execution failed:', error);
@@ -150,9 +152,6 @@ export class ScannerBridge {
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = (options?.contractType || strategy?.direction || strategy?.tradeType || 'rise').toUpperCase();
 
-    // ==========================================
-    // DYNAMIC TRADE TYPE & FORM SCHEMA MAPPING
-    // ==========================================
     let resolvedTradeType = 'rise_fall';
     let storeContractType = 'CALL';
     let storeType = 'rise';
@@ -164,7 +163,7 @@ export class ScannerBridge {
     } else if (strategyDirection.includes('EVEN') || strategyDirection.includes('ODD')) {
       resolvedTradeType = 'even_odd';
       storeContractType = strategyDirection;
-      storeType = storeContractType;
+      storeType = strategyDirection;
     } else {
       const isFall = strategyDirection.includes('DOWN') || strategyDirection.includes('PUT') || strategyDirection.includes('FALL');
       resolvedTradeType = 'rise_fall';
@@ -185,11 +184,11 @@ export class ScannerBridge {
 
     RiskManager.configure(payload.stopLoss, payload.takeProfit);
 
-    const rootStore = (window as any).derivBotAppStore;
+    const rootStore = (window as any).derivBotAppStore || (window as any).Bot?.stores;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     const martingaleMultiplier = payload.multiplier || 1.5;
 
-    // Direct Workspace Field & Category Mutator
+    // Streamlined Block Mutator (Instant execution, zero unnecessary delays)
     const applyBlockMutations = () => {
       try {
         const Blockly = (window as any).Blockly;
@@ -203,7 +202,6 @@ export class ScannerBridge {
             blocks.forEach((block: any) => {
               if (!block) return;
 
-              // 1. Update Asset Symbol
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
@@ -218,7 +216,6 @@ export class ScannerBridge {
                 }
               }
 
-              // 2. Update Trade Definition category if present
               if (block.type === 'trade_definition') {
                 if (typeof block.setFieldValue === 'function') {
                   try {
@@ -227,7 +224,6 @@ export class ScannerBridge {
                 }
               }
 
-              // 3. Update Purchase Conditions & Contract Types
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
@@ -305,22 +301,19 @@ export class ScannerBridge {
         const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
         if (typeof submitAction === 'function') {
           Promise.resolve(submitAction.call(quickStrategy, mockFormData)).then(() => {
-            setTimeout(applyBlockMutations, 100);
-            setTimeout(applyBlockMutations, 300);
-            setTimeout(applyBlockMutations, 600);
-
-            if (rootStore?.client?.send) {
-              rootStore.client.send({ balance: 1, subscribe: 1 }).catch(() => {});
-            }
+            // Single optimized render pass instead of chained delays
+            setTimeout(() => {
+              applyBlockMutations();
+              if (rootStore?.client?.send) {
+                rootStore.client.send({ balance: 1, subscribe: 1 }).catch(() => {});
+              }
+            }, 150);
           }).catch(() => {});
         }
       } catch (error) {}
     }
 
     applyBlockMutations();
-    setTimeout(applyBlockMutations, 200);
-    setTimeout(applyBlockMutations, 500);
-
     return true;
   }
 }
