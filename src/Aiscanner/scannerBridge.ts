@@ -59,10 +59,6 @@ export class ScannerBridge {
     return symbolMap[clean] || rawSymbol;
   }
 
-  /**
-   * Intercepts live ticks, processes them through ScannerLogic,
-   * and broadcasts the fully updated strategy array to the UI components.
-   */
   public static pushTick(assetName: string, quote: number, strategies?: any[]) {
     const tickPayload: DerivTickResponse = {
       msg_type: 'tick',
@@ -121,9 +117,6 @@ export class ScannerBridge {
       subType = isFall ? 'fall' : 'rise';
     }
 
-    // ==========================================
-    // OPTIMIZED SESSION THRESHOLDS ($3 TP / $4.50 SL)
-    // ==========================================
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: 0.35, 
