@@ -84,51 +84,104 @@ export class ScannerBridge {
   }
 
   /**
-   * Executes a trade by loading the strategy into the workspace and 
-   * triggering the native run cycle so transactions and summaries populate live.
+   * Executes a trade directly via API while safely feeding 
+   * live contract events into the app's journal and transaction stores.
    */
   public static async executeDirectTrade(strategy: any, options: any) {
     const rootStore = (window as any).derivBotAppStore || (window as any).Bot?.stores;
+    const client = rootStore?.client || rootStore?.core?.client;
+    const api = client?.send ? client : (api_base?.api || (window as any).api_base || rootStore?.api);
 
-    if (!rootStore) {
-      alert('Trading application store not ready.');
+    if (!api || typeof api.send !== 'function') {
+      console.error('Deriv API client not available for headless execution.');
+      alert('Trading client not ready. Please make sure you are logged into your Deriv account.');
       return;
     }
 
+    const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V';
+    const strictSymbol = this.translateSymbol(rawSymbol);
+    const contractType = (options?.contractType || strategy?.direction || strategy?.tradeType || 'CALL').toUpperCase();
+    const stake = Number(options?.stake || strategy?.stake || 0.35);
+    const duration = Number(options?.duration || strategy?.duration || 5);
+    const durationUnit = options?.durationUnit || 't';
+    const currency = client?.currency || 'USD';
+
     try {
-      // 1. Populate the strategy parameters into the workspace first
-      this.loadStrategyToWorkspace(strategy, options);
+      const proposalReq: any = {
+        proposal: 1,
+        amount: stake,
+        basis: 'stake',
+        currency: currency,
+        underlying_symbol: strictSymbol, 
+        contract_type: contractType,
+        duration: duration,
+        duration_unit: durationUnit,
+      };
 
-      // 2. Trigger native run action if available on the store or UI controls
-      const runPanelStore = rootStore.run_panel || rootStore.quick_strategy;
+      if (contractType.includes('DIGIT') || contractType.includes('MATCH') || contractType.includes('DIFF') || contractType.includes('EVEN') || contractType.includes('ODD')) {
+        proposalReq.barrier = String(options?.barrier ?? strategy?.barrier ?? '2');
+      }
+
+      console.log('Sending headless proposal request:', proposalReq);
       
-      if (runPanelStore && typeof runPanelStore.onRunButtonClick === 'function') {
-        runPanelStore.onRunButtonClick();
-      } else {
-        // Fallback: Programmatically click the native Run button in the DOM
-        const runButton = document.querySelector('#runButton') || document.querySelector('.run-button') || document.querySelector('[data-testid="run_button"]');
-        if (runButton && (runButton as HTMLElement).click) {
-          (runButton as HTMLElement).click();
-        } else {
-          // Final fallback: Dispatch run event to UI controllers
-          window.dispatchEvent(new CustomEvent('bot_run_start'));
-        }
+      const sendPromise = api.send(proposalReq);
+      const proposalResponse = sendPromise?.then ? await sendPromise : await new Promise((resolve) => {
+        api.send(proposalReq, (response: any) => resolve(response));
+      });
+
+      if ((proposalResponse as any)?.error) {
+        console.error('Deriv Proposal Error:', (proposalResponse as any).error);
+        alert(`Deriv Error: ${(proposalResponse as any).error.message}`);
+        return;
       }
 
-      // 3. Automatically navigate/switch user to the run panel / transactions view
-      if (rootStore.ui && typeof rootStore.ui.setActiveTab === 'function') {
-        rootStore.ui.setActiveTab('summary'); // Switch to summary/transactions view tab
-      } else {
-        const summaryTab = document.querySelector('#summary-tab') || document.querySelector('[data-id="summary"]');
-        if (summaryTab && (summaryTab as HTMLElement).click) {
-          (summaryTab as HTMLElement).click();
-        }
-      }
+      const proposalId = (proposalResponse as any)?.proposal?.id;
+      if (proposalId) {
+        const buyReq = { buy: proposalId, price: stake };
+        const buySendPromise = api.send(buyReq);
+        const buyResponse = buySendPromise?.then ? await buySendPromise : await new Promise((resolve) => {
+          api.send(buyReq, (response: any) => resolve(response));
+        });
 
-      console.log('Successfully initiated native bot execution loop.');
+        if ((buyResponse as any)?.error) {
+          console.error('Deriv Buy Error:', (buyResponse as any).error);
+          alert(`Buy Error: ${(buyResponse as any).error.message}`);
+          return;
+        }
+        
+        if ((buyResponse as any)?.buy) {
+          const contract = (buyResponse as any).buy;
+          console.log('Headless trade executed successfully:', contract);
+
+          // Safely push to Journal and Transaction stores using official handlers
+          try {
+            if (rootStore?.journal?.pushMessage) {
+              rootStore.journal.pushMessage(`AI Bot Executed: ${strategy.strategyName || strategy.name || 'Strategy'} | ID: ${contract.contract_id} | Stake: ${stake} ${currency}`);
+            }
+            if (rootStore?.transactions?.onBotContractEvent) {
+              rootStore.transactions.onBotContractEvent({ event: 'buy', contract });
+            }
+          } catch (storeErr) {
+            console.warn('Store logging warning:', storeErr);
+          }
+
+          window.dispatchEvent(new CustomEvent('ai_trade_executed', {
+            detail: { contract, strategy: strategy.strategyName || strategy.name }
+          }));
+
+          // Automatically shift to summary tab so user can see it live
+          if (rootStore?.ui && typeof rootStore.ui.setActiveTab === 'function') {
+            rootStore.ui.setActiveTab('summary');
+          }
+
+          alert(`Trade executed successfully! Contract ID: ${contract.contract_id}`);
+        }
+      } else {
+        alert('Failed to obtain contract proposal ID from server.');
+      }
     } catch (error: any) {
-      console.error('Execution routing failed:', error);
-      alert(`Execution Failed: ${error?.message || 'Unknown error occurred'}`);
+      console.error('Headless trade execution failed:', error);
+      alert(`Trade Execution Failed: ${error?.message || JSON.stringify(error) || 'Unknown error occurred'}`);
     }
   }
 
