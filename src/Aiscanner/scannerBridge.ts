@@ -14,6 +14,7 @@ export interface AIScannerPayload {
   stopLoss?: number;
   takeProfit?: number;
   multiplier?: number;
+  barrier?: string;
 }
 
 export class ScannerBridge {
@@ -84,8 +85,8 @@ export class ScannerBridge {
   }
 
   /**
-   * Executes a trade by configuring the Quick Strategy store 
-   * and invoking the native run loop so summaries and transactions populate live.
+   * Executes a trade by dynamically mapping strategy parameters 
+   * and invoking the native run loop so transactions populate live.
    */
   public static async executeDirectTrade(strategy: any, options: any) {
     const rootStore = (window as any).derivBotAppStore || (window as any).Bot?.stores;
@@ -97,15 +98,12 @@ export class ScannerBridge {
     }
 
     try {
-      // 1. Populate workspace parameters and quick strategy form state
       this.loadStrategyToWorkspace(strategy, options);
 
-      // 2. Trigger the native run action on the app's run panel store
       const runPanelStore = rootStore.run_panel || rootStore.quick_strategy;
       if (runPanelStore && typeof runPanelStore.onRunButtonClick === 'function') {
         runPanelStore.onRunButtonClick();
       } else {
-        // Fallback to clicking the DOM run button directly
         const runButton = document.querySelector('#runButton') || document.querySelector('.run-button') || document.querySelector('[data-testid="run_button"]');
         if (runButton && (runButton as HTMLElement).click) {
           (runButton as HTMLElement).click();
@@ -114,12 +112,11 @@ export class ScannerBridge {
         }
       }
 
-      // 3. Switch to the summary/transactions tab view automatically
       if (rootStore.ui && typeof rootStore.ui.setActiveTab === 'function') {
         rootStore.ui.setActiveTab('summary');
       }
 
-      console.log('Successfully triggered native live run cycle.');
+      console.log('Successfully triggered native live run cycle with dynamic parameters.');
     } catch (error: any) {
       console.error('Trade execution routing failed:', error);
       alert(`Execution Failed: ${error?.message || 'Unknown error occurred'}`);
@@ -138,6 +135,9 @@ export class ScannerBridge {
     let resolvedTradeType = 'rise_fall';
     let storeContractType = 'CALL';
     let storeType = 'rise';
+    
+    // Dynamically resolve barrier/prediction from strategy object or options, with safe defaults based on contract type
+    let barrierValue = String(options?.barrier ?? strategy?.barrier ?? strategy?.prediction ?? '2');
 
     if (strategyDirection.includes('DIGIT') || strategyDirection.includes('OVER') || strategyDirection.includes('UNDER')) {
       resolvedTradeType = 'matches_differs';
@@ -147,6 +147,10 @@ export class ScannerBridge {
       resolvedTradeType = 'even_odd';
       storeContractType = strategyDirection;
       storeType = strategyDirection;
+    } else if (strategyDirection.includes('MATCH') || strategyDirection.includes('DIFF')) {
+      resolvedTradeType = 'matches_differs';
+      storeContractType = strategyDirection.includes('MATCH') ? 'DIGITMATCH' : 'DIGITDIFF';
+      storeType = storeContractType;
     } else {
       const isFall = strategyDirection.includes('DOWN') || strategyDirection.includes('PUT') || strategyDirection.includes('FALL');
       resolvedTradeType = 'rise_fall';
@@ -156,16 +160,17 @@ export class ScannerBridge {
 
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
-      stake: 0.35, 
-      duration: options?.duration || strategy?.duration || 5,
+      stake: Number(options?.stake || strategy?.stake || 0.35), 
+      duration: Number(options?.duration || strategy?.duration || 5),
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: 4.50,     
-      takeProfit: 3.00,   
-      multiplier: options?.multiplier || strategy?.multiplier || 1.5
+      stopLoss: Number(options?.stopLoss || strategy?.stopLoss || 4.50),     
+      takeProfit: Number(options?.takeProfit || strategy?.takeProfit || 3.00),   
+      multiplier: Number(options?.multiplier || strategy?.multiplier || 1.5),
+      barrier: barrierValue
     };
 
-    RiskManager.configure(payload.stopLoss, payload.takeProfit);
+    RiskManager.configure(payload.stopLoss!, payload.takeProfit!);
 
     const rootStore = (window as any).derivBotAppStore || (window as any).Bot?.stores;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
@@ -253,6 +258,11 @@ export class ScannerBridge {
           quickStrategy.setValue('type', storeType);
           quickStrategy.setValue('size', martingaleMultiplier);
           
+          if (storeContractType.includes('DIGIT') || storeContractType.includes('MATCH') || storeContractType.includes('DIFF')) {
+            quickStrategy.setValue('prediction', payload.barrier);
+            quickStrategy.setValue('barrier', payload.barrier);
+          }
+
           if (payload.stopLoss !== undefined) {
             quickStrategy.setValue('loss', payload.stopLoss);
             quickStrategy.setValue('stop_loss', payload.stopLoss);
@@ -263,7 +273,7 @@ export class ScannerBridge {
           }
         }
         
-        const mockFormData = {
+        const mockFormData: any = {
           symbol: strictDerivSymbol, 
           durationtype: payload.durationUnit || 't', 
           duration: payload.duration,
@@ -279,6 +289,11 @@ export class ScannerBridge {
           profit: payload.takeProfit,
           take_profit: payload.takeProfit
         };
+
+        if (storeContractType.includes('DIGIT') || storeContractType.includes('MATCH') || storeContractType.includes('DIFF')) {
+          mockFormData.prediction = payload.barrier;
+          mockFormData.barrier = payload.barrier;
+        }
 
         const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
         if (typeof submitAction === 'function') {
