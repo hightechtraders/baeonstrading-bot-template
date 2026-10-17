@@ -202,6 +202,13 @@ export class ScannerBridge {
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
+        // Explicitly update the active trade type in the quick strategy store state first
+        if (typeof quickStrategy.setSelectedStrategy === 'function') {
+          quickStrategy.setSelectedStrategy(resolvedTradeType);
+        } else if (typeof quickStrategy.setTradeType === 'function') {
+          quickStrategy.setTradeType(resolvedTradeType);
+        }
+
         if (typeof quickStrategy.setValue === 'function') {
           quickStrategy.setValue('symbol', strictDerivSymbol);
           quickStrategy.setValue('duration', payload.duration);
@@ -238,9 +245,10 @@ export class ScannerBridge {
           take_profit: payload.takeProfit
         };
 
-        const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
-        if (typeof submitAction === 'function') {
-          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).then(() => {
+        // Use createStrategy directly or fallback to safe strategy generation
+        const generateAction = quickStrategy.createStrategy || quickStrategy.onSubmit;
+        if (typeof generateAction === 'function') {
+          Promise.resolve(generateAction.call(quickStrategy, mockFormData)).then(() => {
             setTimeout(applyBlockMutations, 100);
             setTimeout(applyBlockMutations, 500);
 
