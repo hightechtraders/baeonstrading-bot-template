@@ -85,14 +85,15 @@ export class ScannerBridge {
 
   /**
    * Executes a trade directly via Deriv API (Headless Execution)
-   * Uses direct imported api_base connection to run Free Bots seamlessly.
+   * Uses authenticated client socket connection to run Free Bots seamlessly.
    */
   public static async executeDirectTrade(strategy: any, options: any) {
     const rootStore = (window as any).derivBotAppStore || (window as any).Bot?.stores;
-    const api = api_base?.api || (window as any).api_base || rootStore?.api || rootStore?.connection;
+    const client = rootStore?.client || rootStore?.core?.client;
+    const api = client?.send ? client : (api_base?.api || (window as any).api_base || rootStore?.api);
 
     if (!api || typeof api.send !== 'function') {
-      console.error('Deriv API connection not available for headless execution.');
+      console.error('Deriv API client not available for headless execution.');
       alert('Trading client not ready. Please make sure you are logged into your Deriv account.');
       return;
     }
@@ -103,31 +104,45 @@ export class ScannerBridge {
     const stake = options?.stake || strategy?.stake || 0.35;
     const duration = options?.duration || strategy?.duration || 5;
     const durationUnit = options?.durationUnit || 't';
+    const currency = client?.currency || 'USD';
 
     try {
       const proposalReq: any = {
         proposal: 1,
         amount: stake,
         basis: 'stake',
-        currency: rootStore?.client?.currency || 'USD',
+        currency: currency,
         symbol: strictSymbol,
         contract_type: contractType,
         duration: duration,
         duration_unit: durationUnit,
       };
 
-      if (contractType.includes('DIGIT') || contractType.includes('MATCH') || contractType.includes('DIFF')) {
+      if (contractType.includes('DIGIT') || contractType.includes('MATCH') || contractType.includes('DIFF') || contractType.includes('EVEN') || contractType.includes('ODD')) {
         proposalReq.barrier = String(options?.barrier ?? strategy?.barrier ?? '2');
       }
 
-      console.log('Sending headless proposal request via api_base:', proposalReq);
+      console.log('Sending headless proposal request:', proposalReq);
       const proposalResponse = await api.send(proposalReq);
 
-      if (proposalResponse?.proposal?.id) {
+      if (proposalResponse?.error) {
+        console.error('Deriv Proposal Error:', proposalResponse.error);
+        alert(`Deriv Error: ${proposalResponse.error.message}`);
+        return;
+      }
+
+      const proposalId = proposalResponse?.proposal?.id;
+      if (proposalId) {
         const buyResponse = await api.send({
-          buy: proposalResponse.proposal.id,
+          buy: proposalId,
           price: stake
         });
+
+        if (buyResponse?.error) {
+          console.error('Deriv Buy Error:', buyResponse.error);
+          alert(`Buy Error: ${buyResponse.error.message}`);
+          return;
+        }
         
         if (buyResponse?.buy) {
           console.log('Headless trade executed successfully:', buyResponse.buy);
@@ -135,13 +150,12 @@ export class ScannerBridge {
             detail: { contract: buyResponse.buy, strategy: strategy.strategyName || strategy.name }
           }));
         }
-      } else if (proposalResponse?.error) {
-        console.error('Proposal error:', proposalResponse.error.message);
-        alert(`Trade Error: ${proposalResponse.error.message}`);
+      } else {
+        alert('Failed to obtain contract proposal ID from server.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Headless trade execution failed:', error);
-      alert('Failed to execute trade. Check console for details.');
+      alert(`Trade Execution Failed: ${error?.message || 'Unknown error occurred'}`);
     }
   }
 
