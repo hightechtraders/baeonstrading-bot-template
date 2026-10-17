@@ -91,7 +91,9 @@ export class ScannerBridge {
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = (options?.contractType || strategy?.direction || strategy?.tradeType || 'rise').toUpperCase();
 
-    // 1. Classify Trade Type Family
+    // ==========================================
+    // DYNAMIC TRADE TYPE & FORM SCHEMA MAPPING
+    // ==========================================
     let resolvedTradeType = 'rise_fall';
     let storeContractType = 'CALL';
     let storeType = 'rise';
@@ -128,7 +130,7 @@ export class ScannerBridge {
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     const martingaleMultiplier = payload.multiplier || 1.5;
 
-    // 2. Direct Block Reconstruction / Mutation for Non-Standard Types
+    // Block Mutation & Dropdown Injector for workspace fields
     const applyBlockMutations = () => {
       try {
         const Blockly = (window as any).Blockly;
@@ -142,7 +144,7 @@ export class ScannerBridge {
             blocks.forEach((block: any) => {
               if (!block) return;
 
-              // Update Asset Symbol List
+              // 1. Update Asset Symbol List
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
@@ -157,7 +159,7 @@ export class ScannerBridge {
                 }
               }
 
-              // Update Purchase/Contract Types & Inject sub-blocks if Digit/EvenOdd
+              // 2. Update Purchase Conditions & Contract Types
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase' || block.type?.includes('trade_definition')) {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
@@ -170,7 +172,6 @@ export class ScannerBridge {
                       return label.includes(storeContractType.toLowerCase()) || val.includes(storeContractType.toLowerCase());
                     });
 
-                    // Force inject contract option if missing from menu
                     if (!targetMatch && field.menuGenerator_ && Array.isArray(field.menuGenerator_)) {
                       field.menuGenerator_.push([storeContractType, storeContractType]);
                     }
@@ -182,17 +183,6 @@ export class ScannerBridge {
                     }
                   }
                 });
-
-                // If it's a digit strategy, ensure prediction block input exists on the trade definition
-                if (resolvedTradeType === 'matches_differs' && block.type === 'trade_definition') {
-                  try {
-                    if (typeof block.getInput === 'function' && !block.getInput('PREDICTION')) {
-                      // Dynamically create prediction input statement if absent
-                      block.appendValueInput('PREDICTION').setCheck('Number');
-                      updated = true;
-                    }
-                  } catch (err) {}
-                }
               }
             });
 
