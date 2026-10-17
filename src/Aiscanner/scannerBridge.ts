@@ -162,6 +162,29 @@ export class ScannerBridge {
                   updated = true;
                 }
               }
+
+              // Only mutate purchase fields if it matches the current active strategy category
+              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
+                const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
+                fieldNames.forEach(name => {
+                  const field = block.getField(name);
+                  if (field && typeof field.setValue === 'function') {
+                    const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
+                    const targetMatch = options.find((opt: any) => {
+                      const label = String(opt[0] || '').toLowerCase();
+                      const val = String(opt[1] || '').toLowerCase();
+                      const targetStr = storeContractType.toLowerCase();
+                      return label.includes(targetStr) || val.includes(targetStr);
+                    });
+
+                    const desiredVal = targetMatch ? targetMatch[1] : storeContractType;
+                    if (field && field.getValue() !== desiredVal) {
+                      field.setValue(desiredVal);
+                      updated = true;
+                    }
+                  }
+                });
+              }
             });
 
             if (updated && typeof workspace.render === 'function') {
