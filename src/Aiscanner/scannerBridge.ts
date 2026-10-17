@@ -20,6 +20,7 @@ export interface AIScannerPayload {
 export class ScannerBridge {
   private static isScannerActive: boolean = false; 
   private static scannerLogicInstance = new ScannerLogic();
+  private static activePrediction: string = '2';
 
   static {
     if (typeof window !== 'undefined') {
@@ -35,7 +36,37 @@ export class ScannerBridge {
         const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
         ScannerBridge.isScannerActive = !!sessionStarted;
       }
+
+      // Intercept global API socket requests to automatically inject digit barriers if missing
+      ScannerBridge.interceptApiSocket();
     }
+  }
+
+  private static interceptApiSocket() {
+    try {
+      const globalAny = window as any;
+      const checkAndHookApi = () => {
+        const targetApi = globalAny.BinaryAPI || globalAny.DerivAPI || api_base?.api;
+        if (targetApi && typeof targetApi.send === 'function' && !targetApi.__scannerHooked) {
+          const originalSend = targetApi.send.bind(targetApi);
+          targetApi.send = function (data: any, cb?: any) {
+            if (data && data.proposal === 1 && ScannerBridge.isScannerActive) {
+              const contractType = String(data.contract_type || '').toUpperCase();
+              if ((contractType.includes('DIGIT') || contractType.includes('MATCH') || contractType.includes('DIFF') || contractType.includes('EVEN') || contractType.includes('ODD')) && !data.barrier && !data.duration) {
+                // Inject the active prediction barrier and duration required by the API server
+                data.barrier = ScannerBridge.activePrediction;
+                if (contractType.includes('DIGIT') && data.barrier === undefined) {
+                  data.barrier = '2';
+                }
+              }
+            }
+            return originalSend(data, cb);
+          };
+          targetApi.__scannerHooked = true;
+        }
+      };
+      setInterval(checkAndHookApi, 1000);
+    } catch (e) {}
   }
 
   private static translateSymbol(rawSymbol: string): string {
@@ -84,10 +115,6 @@ export class ScannerBridge {
     }
   }
 
-  /**
-   * Executes a trade by dynamically mapping strategy parameters 
-   * and invoking the native run loop so transactions populate live.
-   */
   public static async executeDirectTrade(strategy: any, options: any) {
     const rootStore = (window as any).derivBotAppStore || (window as any).Bot?.stores;
 
@@ -136,8 +163,8 @@ export class ScannerBridge {
     let storeContractType = 'CALL';
     let storeType = 'rise';
     
-    // Dynamically resolve barrier/prediction from strategy object or options, with safe defaults based on contract type
     let barrierValue = String(options?.barrier ?? strategy?.barrier ?? strategy?.prediction ?? '2');
+    ScannerBridge.activePrediction = barrierValue;
 
     if (strategyDirection.includes('DIGIT') || strategyDirection.includes('OVER') || strategyDirection.includes('UNDER')) {
       resolvedTradeType = 'matches_differs';
@@ -249,7 +276,7 @@ export class ScannerBridge {
       const quickStrategy = rootStore.quick_strategy;
       try {
         if (typeof quickStrategy.setValue === 'function') {
-          quickStrategy.setValue('symbol', strictDerivSymbol);
+          quickStrategy.setValue('symbol', strictDerivSocketSymbol = strictDerivSymbol);
           quickStrategy.setValue('duration', payload.duration);
           quickStrategy.setValue('duration_type', payload.durationUnit || 't'); 
           quickStrategy.setValue('amount', payload.stake);
