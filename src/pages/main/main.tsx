@@ -19,6 +19,7 @@ import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observab
 import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
+import { ScannerBridge } from '../../Aiscanner/scannerBridge';
 import {
     disableUrlParameterApplication,
     enableUrlParameterApplication,
@@ -86,71 +87,71 @@ const AppWrapper = observer(() => {
     const [left_tab_shadow, setLeftTabShadow] = useState<boolean>(false);
     const [right_tab_shadow, setRightTabShadow] = useState<boolean>(false);
 
-    // Free bots card visibility state & 7 fully explained working strategies
+    // Free bots card visibility state & 7 integrated working strategies
     const [is_card_visible, setIsCardVisible] = useState<boolean>(true);
     const [working_strategies] = useState([
         {
             id: 'strat_1',
             strategyName: 'EMA Crossover Breakpoint',
             marketName: 'Volatility 50 (1s) Index',
+            symbol: '1HZ50V',
             direction: 'DOWN',
             confidence: '84%',
             status: 'HIGH',
-            xmlPath: '/strategies/ema_crossover_v50_down.xml'
         },
         {
             id: 'strat_2',
             strategyName: 'Bollinger Band Squeeze',
             marketName: 'Volatility 100 (1s) Index',
+            symbol: '1HZ100V',
             direction: 'UP',
             confidence: '79%',
             status: 'HIGH',
-            xmlPath: '/strategies/bollinger_squeeze_v100_call.xml'
         },
         {
             id: 'strat_3',
             strategyName: 'Only Ups / Only Downs Momentum',
             marketName: 'Volatility 100 Index',
+            symbol: '1HZ100V',
             direction: 'UP',
             confidence: '91%',
             status: 'HIGH',
-            xmlPath: '/strategies/only_ups_downs.xml'
         },
         {
             id: 'strat_4',
             strategyName: 'Over 2, Recovery Over 7',
             marketName: 'Volatility 75 Index',
+            symbol: '1HZ75V',
             direction: 'DIGIT',
             confidence: '88%',
             status: 'HIGH',
-            xmlPath: '/strategies/over_2_recovery_7.xml'
         },
         {
             id: 'strat_5',
             strategyName: 'Even Botter Strategy',
             marketName: 'Volatility 10 Index',
+            symbol: 'R_10',
             direction: 'EVEN',
             confidence: '82%',
             status: 'MED',
-            xmlPath: '/strategies/even_botter.xml'
         },
         {
             id: 'strat_6',
             strategyName: 'Over 1, Recovery Under 7',
             marketName: 'Volatility 25 Index',
+            symbol: 'R_25',
             direction: 'DIGIT',
             confidence: '85%',
             status: 'HIGH',
-            xmlPath: '/strategies/over_1_recover_under_7.xml'
         },
         {
             id: 'strat_7',
             strategyName: 'Rise and Fall Copier',
             marketName: 'Volatility 50 Index',
-            direction: 'CALL/PUT',
+            symbol: 'R_50',
+            direction: 'CALL',
             confidence: '90%',
             status: 'HIGH',
-            xmlPath: '/strategies/rise_fall_copier.xml'
         }
     ]);
 
@@ -449,107 +450,54 @@ const AppWrapper = observer(() => {
                             >
                                 <div className='free-bots-container'>
                                     {is_card_visible ? (
-                                        working_strategies.map((bot, index) => (
-                                            <div className='free-bots-card' key={bot.id}>
-                                                {/* Header Section */}
-                                                <div className='free-bots-header'>
-                                                    <h3>Prebuilt Strategy #{index + 1}</h3>
-                                                    {index === 0 && (
-                                                        <span 
-                                                            className='close-btn' 
-                                                            onClick={() => setIsCardVisible(false)}
-                                                        >
-                                                            ✕
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                {/* Status Banner */}
-                                                <div className='free-bots-banner'>
-                                                    ✓ Live Scan Ready: High Probability Setup
-                                                </div>
-
-                                                {/* Strategy Card */}
-                                                <div className='free-bots-strategy-item'>
-                                                    <div className='strategy-meta'>
-                                                        <span>TOP VERIFIED STRATEGY</span>
-                                                        <span>CONFIDENCE {bot.confidence}</span>
+                                        <div className='free-bots-grid'>
+                                            {working_strategies.map((bot, index) => (
+                                                <div className='free-bots-card' key={bot.id}>
+                                                    {/* Header Section */}
+                                                    <div className='free-bots-header'>
+                                                        <span className='strategy-tag'>STRATEGY #{index + 1}</span>
+                                                        <span className='confidence-badge'>CONFIDENCE {bot.confidence}</span>
                                                     </div>
-                                                    <div className='strategy-content'>
-                                                        <div className='strategy-info'>
-                                                            <span className='badge-num'>#{index + 1}</span>
-                                                            <div>
-                                                                <h4>{bot.strategyName}</h4>
-                                                                <p>
-                                                                    <span>{bot.marketName}</span>
-                                                                    <span style={{ opacity: 0.4, margin: '0 6px' }}>•</span>
-                                                                    <span className={bot.direction === 'UP' ? 'badge-up' : 'badge-down'} style={{ color: bot.direction === 'UP' ? '#4caf50' : '#ec3f3f', fontWeight: 'bold' }}>
-                                                                        {bot.direction}
-                                                                    </span>
-                                                                </p>
-                                                            </div>
+
+                                                    {/* Strategy Body */}
+                                                    <div className='free-bots-body'>
+                                                        <h4 className='strategy-title'>{bot.strategyName}</h4>
+                                                        <div className='strategy-details'>
+                                                            <span className='market-name'>{bot.marketName}</span>
+                                                            <span className='dot-separator'>•</span>
+                                                            <span className={`direction-badge ${bot.direction === 'UP' ? 'up' : 'down'}`}>
+                                                                {bot.direction}
+                                                            </span>
                                                         </div>
-                                                        <span className='badge-high'>{bot.status} ▾</span>
                                                     </div>
+
+                                                    {/* Action Button */}
+                                                    <button 
+                                                        onClick={() => {
+                                                            console.log(`Loading ${bot.strategyName} via ScannerBridge...`);
+                                                            setActiveTab(BOT_BUILDER);
+                                                            ScannerBridge.loadStrategyToWorkspace(bot, {
+                                                                symbol: bot.symbol,
+                                                                contractType: bot.direction,
+                                                                duration: 5,
+                                                                durationUnit: 't'
+                                                            });
+                                                        }}
+                                                        className='free-bots-btn'
+                                                    >
+                                                        Load Bot to Workspace
+                                                    </button>
                                                 </div>
-
-                                                {/* Robust Action Button with Polling Workspace Loader */}
-                                                <button 
-                                                    onClick={async () => {
-                                                        console.log(`Loading ${bot.strategyName} into workspace from ${bot.xmlPath}...`);
-                                                        setActiveTab(BOT_BUILDER);
-
-                                                        try {
-                                                            const response = await fetch(bot.xmlPath);
-                                                            const xmlText = await response.text();
-
-                                                            let attempts = 0;
-                                                            const maxAttempts = 15;
-
-                                                            const tryInjectWorkspace = () => {
-                                                                const BlocklyInstance = window.Blockly || (window as any).Blockly;
-                                                                const workspace = 
-                                                                    BlocklyInstance?.derivWorkspace || 
-                                                                    BlocklyInstance?.mainWorkspace || 
-                                                                    (typeof BlocklyInstance?.getMainWorkspace === 'function' ? BlocklyInstance.getMainWorkspace() : null);
-
-                                                                if (workspace && BlocklyInstance?.Xml) {
-                                                                    try {
-                                                                        const xmlDom = BlocklyInstance.Xml.textToDom(xmlText);
-                                                                        workspace.clear();
-                                                                        BlocklyInstance.Xml.domToWorkspace(xmlDom, workspace);
-                                                                        console.log(`${bot.strategyName} successfully rendered in Blockly!`);
-                                                                    } catch (xmlError) {
-                                                                        console.error('Failed to parse or inject XML DOM:', xmlError);
-                                                                    }
-                                                                } else if (attempts < maxAttempts) {
-                                                                    attempts++;
-                                                                    setTimeout(tryInjectWorkspace, 200);
-                                                                } else {
-                                                                    console.warn('Blockly workspace could not be found after multiple attempts.');
-                                                                }
-                                                            };
-
-                                                            setTimeout(tryInjectWorkspace, 100);
-
-                                                        } catch (error) {
-                                                            console.error('Error fetching strategy XML file:', error);
-                                                        }
-                                                    }}
-                                                    className='free-bots-btn'
-                                                >
-                                                    Load Bot to Workspace
-                                                </button>
-                                            </div>
-                                        ))
+                                            ))}
+                                        </div>
                                     ) : (
                                         <div className='free-bots-closed-state'>
-                                            <p>Strategy card closed.</p>
+                                            <p>Strategy cards hidden.</p>
                                             <button 
                                                 onClick={() => setIsCardVisible(true)}
                                                 className='free-bots-btn rescan-btn'
                                             >
-                                                Rescan Market
+                                                Show Free Bots
                                             </button>
                                         </div>
                                     )}
