@@ -85,7 +85,7 @@ export class ScannerBridge {
 
   /**
    * Executes a trade directly via Deriv API (Headless Execution)
-   * Uses authenticated client socket connection to run Free Bots seamlessly.
+   * Uses dual-mode promise/callback wrapper for reliable API socket communication.
    */
   public static async executeDirectTrade(strategy: any, options: any) {
     const rootStore = (window as any).derivBotAppStore || (window as any).Bot?.stores;
@@ -101,8 +101,8 @@ export class ScannerBridge {
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V';
     const strictSymbol = this.translateSymbol(rawSymbol);
     const contractType = (options?.contractType || strategy?.direction || strategy?.tradeType || 'CALL').toUpperCase();
-    const stake = options?.stake || strategy?.stake || 0.35;
-    const duration = options?.duration || strategy?.duration || 5;
+    const stake = Number(options?.stake || strategy?.stake || 0.35);
+    const duration = Number(options?.duration || strategy?.duration || 5);
     const durationUnit = options?.durationUnit || 't';
     const currency = client?.currency || 'USD';
 
@@ -123,31 +123,37 @@ export class ScannerBridge {
       }
 
       console.log('Sending headless proposal request:', proposalReq);
-      const proposalResponse = await api.send(proposalReq);
+      
+      // Dual-mode execution support for both promise and callback socket architecture
+      const sendPromise = api.send(proposalReq);
+      const proposalResponse = sendPromise?.then ? await sendPromise : await new Promise((resolve) => {
+        api.send(proposalReq, (response: any) => resolve(response));
+      });
 
-      if (proposalResponse?.error) {
-        console.error('Deriv Proposal Error:', proposalResponse.error);
-        alert(`Deriv Error: ${proposalResponse.error.message}`);
+      if ((proposalResponse as any)?.error) {
+        console.error('Deriv Proposal Error:', (proposalResponse as any).error);
+        alert(`Deriv Error: ${(proposalResponse as any).error.message}`);
         return;
       }
 
-      const proposalId = proposalResponse?.proposal?.id;
+      const proposalId = (proposalResponse as any)?.proposal?.id;
       if (proposalId) {
-        const buyResponse = await api.send({
-          buy: proposalId,
-          price: stake
+        const buyReq = { buy: proposalId, price: stake };
+        const buySendPromise = api.send(buyReq);
+        const buyResponse = buySendPromise?.then ? await buySendPromise : await new Promise((resolve) => {
+          api.send(buyReq, (response: any) => resolve(response));
         });
 
-        if (buyResponse?.error) {
-          console.error('Deriv Buy Error:', buyResponse.error);
-          alert(`Buy Error: ${buyResponse.error.message}`);
+        if ((buyResponse as any)?.error) {
+          console.error('Deriv Buy Error:', (buyResponse as any).error);
+          alert(`Buy Error: ${(buyResponse as any).error.message}`);
           return;
         }
         
-        if (buyResponse?.buy) {
-          console.log('Headless trade executed successfully:', buyResponse.buy);
+        if ((buyResponse as any)?.buy) {
+          console.log('Headless trade executed successfully:', (buyResponse as any).buy);
           window.dispatchEvent(new CustomEvent('ai_trade_executed', {
-            detail: { contract: buyResponse.buy, strategy: strategy.strategyName || strategy.name }
+            detail: { contract: (buyResponse as any).buy, strategy: strategy.strategyName || strategy.name }
           }));
         }
       } else {
@@ -155,7 +161,7 @@ export class ScannerBridge {
       }
     } catch (error: any) {
       console.error('Headless trade execution failed:', error);
-      alert(`Trade Execution Failed: ${error?.message || 'Unknown error occurred'}`);
+      alert(`Trade Execution Failed: ${error?.message || JSON.stringify(error) || 'Unknown error occurred'}`);
     }
   }
 
