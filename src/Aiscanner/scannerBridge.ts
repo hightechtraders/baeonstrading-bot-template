@@ -3,6 +3,7 @@
 // ==========================================
 import { RiskManager } from './riskManager';
 import { ScannerLogic, DerivTickResponse } from './scannerLogic';
+import { api_base } from '@/external/bot-skeleton';
 
 export interface AIScannerPayload {
   stake: number;
@@ -84,11 +85,11 @@ export class ScannerBridge {
 
   /**
    * Executes a trade directly via Deriv API (Headless Execution)
-   * Connects via global api_base / websocket connection to run Free Bots seamlessly.
+   * Uses direct imported api_base connection to run Free Bots seamlessly.
    */
   public static async executeDirectTrade(strategy: any, options: any) {
     const rootStore = (window as any).derivBotAppStore || (window as any).Bot?.stores;
-    const api = (window as any).api_base || rootStore?.api || rootStore?.connection || rootStore?.client;
+    const api = api_base?.api || (window as any).api_base || rootStore?.api || rootStore?.connection;
 
     if (!api || typeof api.send !== 'function') {
       console.error('Deriv API connection not available for headless execution.');
@@ -119,7 +120,7 @@ export class ScannerBridge {
         proposalReq.barrier = String(options?.barrier ?? strategy?.barrier ?? '2');
       }
 
-      console.log('Sending headless proposal request via api:', proposalReq);
+      console.log('Sending headless proposal request via api_base:', proposalReq);
       const proposalResponse = await api.send(proposalReq);
 
       if (proposalResponse?.proposal?.id) {
@@ -189,7 +190,6 @@ export class ScannerBridge {
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     const martingaleMultiplier = payload.multiplier || 1.5;
 
-    // Streamlined Block Mutator (Instant execution, zero unnecessary delays)
     const applyBlockMutations = () => {
       try {
         const Blockly = (window as any).Blockly;
