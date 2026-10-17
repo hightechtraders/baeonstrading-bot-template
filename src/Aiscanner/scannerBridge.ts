@@ -53,7 +53,7 @@ export class ScannerBridge {
             if (data && data.proposal === 1 && ScannerBridge.isScannerActive) {
               const contractType = String(data.contract_type || '').toUpperCase();
               if ((contractType.includes('DIGIT') || contractType.includes('MATCH') || contractType.includes('DIFF') || contractType.includes('EVEN') || contractType.includes('ODD')) && !data.barrier && !data.duration) {
-                // Inject the active prediction barrier and duration required by the API server
+                // Inject the active prediction barrier required by the API server
                 data.barrier = ScannerBridge.activePrediction;
                 if (contractType.includes('DIGIT') && data.barrier === undefined) {
                   data.barrier = '2';
@@ -276,7 +276,7 @@ export class ScannerBridge {
       const quickStrategy = rootStore.quick_strategy;
       try {
         if (typeof quickStrategy.setValue === 'function') {
-          quickStrategy.setValue('symbol', strictDerivSocketSymbol = strictDerivSymbol);
+          quickStrategy.setValue('symbol', strictDerivSymbol);
           quickStrategy.setValue('duration', payload.duration);
           quickStrategy.setValue('duration_type', payload.durationUnit || 't'); 
           quickStrategy.setValue('amount', payload.stake);
