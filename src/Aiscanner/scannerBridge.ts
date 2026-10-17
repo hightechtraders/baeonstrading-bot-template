@@ -105,11 +105,11 @@ export class ScannerBridge {
     if (strategyDirection.includes('DIGIT') || strategyDirection.includes('OVER') || strategyDirection.includes('UNDER')) {
       resolvedTradeType = 'matches_differs';
       storeContractType = strategyDirection.includes('UNDER') ? 'DIGITUNDER' : 'DIGITOVER';
-      storeType = 'matchdiff';
+      storeType = storeContractType;
     } else if (strategyDirection.includes('EVEN') || strategyDirection.includes('ODD')) {
       resolvedTradeType = 'even_odd';
       storeContractType = strategyDirection;
-      storeType = 'evenodd';
+      storeType = strategyDirection;
     } else {
       const isFall = strategyDirection.includes('DOWN') || strategyDirection.includes('PUT') || strategyDirection.includes('FALL');
       resolvedTradeType = 'rise_fall';
@@ -126,8 +126,8 @@ export class ScannerBridge {
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: 4.50,     // Safe buffer to allow Martingale recovery to complete
-      takeProfit: 3.00,   // Capped at $3.00 to lock in quick, frequent session gains
+      stopLoss: 4.50,     
+      takeProfit: 3.00,   
       multiplier: options?.multiplier || strategy?.multiplier || 1.5
     };
 
@@ -150,6 +150,7 @@ export class ScannerBridge {
             blocks.forEach((block: any) => {
               if (!block) return;
 
+              // 1. Update Asset Symbol List
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
@@ -164,7 +165,8 @@ export class ScannerBridge {
                 }
               }
 
-              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
+              // 2. Update Purchase Conditions & Contract Types
+              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase' || block.type?.includes('trade_definition')) {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
                   const field = block.getField(name);
@@ -175,7 +177,7 @@ export class ScannerBridge {
                       const val = String(opt[1] || '').toLowerCase();
                       const targetStr = storeContractType.toLowerCase();
 
-                      return label.includes(targetStr) || val.includes(targetStr) || label.includes(targetModelKeyword(targetStr));
+                      return label.includes(targetStr) || val.includes(targetStr);
                     });
 
                     const desiredVal = targetMatch ? targetMatch[1] : storeContractType;
@@ -196,12 +198,6 @@ export class ScannerBridge {
       } catch (e) {}
     };
 
-    const targetModelKeyword = (target: string) => {
-      if (target === 'call') return 'rise';
-      if (target === 'put') return 'fall';
-      return target;
-    };
-
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -210,6 +206,7 @@ export class ScannerBridge {
           quickStrategy.setValue('duration', payload.duration);
           quickStrategy.setValue('duration_type', payload.durationUnit || 't'); 
           quickStrategy.setValue('amount', payload.stake);
+          quickStrategy.setValue('tradetype', resolvedTradeType);
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
           quickStrategy.setValue('size', martingaleMultiplier);
@@ -230,9 +227,9 @@ export class ScannerBridge {
           duration: payload.duration,
           stake: payload.stake,
           amount: payload.stake,
-          tradetype: resolvedTradeType, // <--- Dynamically supports rise_fall, even_odd, or matches_differs
+          tradetype: resolvedTradeType,       // <--- Passes even_odd, matches_differs, or rise_fall
           contract_type: storeContractType,
-          type: storeType,
+          type: storeType,                    // <--- Passes correct purchase contract type
           subtype: storeType,
           size: martingaleMultiplier,
           loss: payload.stopLoss,
