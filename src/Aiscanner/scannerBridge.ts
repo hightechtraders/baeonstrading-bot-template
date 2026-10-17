@@ -56,7 +56,7 @@ export class ScannerBridge {
       'VOLATILITY100':    'R_100',
     };
 
-    return symbolMap[clean] || '1HZ100V';
+    return symbolMap[clean] || rawSymbol;
   }
 
   /**
@@ -93,7 +93,28 @@ export class ScannerBridge {
     }
 
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
-    const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
+    const strategyDirection = (options?.contractType || strategy?.direction || strategy?.tradeType || 'rise').toUpperCase();
+
+    // ==========================================
+    // DYNAMIC TRADE TYPE & CONTRACT MAPPING
+    // ==========================================
+    let resolvedTradeType = 'rise_fall';
+    let storeContractType = 'CALL';
+    let storeType = 'rise';
+
+    if (strategyDirection.includes('DIGIT') || strategyDirection.includes('OVER') || strategyDirection.includes('UNDER')) {
+      resolvedTradeType = 'digits';
+      storeContractType = strategyDirection.includes('OVER') ? 'OVER' : 'DIGIT';
+      storeType = 'digits';
+    } else if (strategyDirection.includes('EVEN') || strategyDirection.includes('ODD')) {
+      resolvedTradeType = 'even_odd';
+      storeContractType = strategyDirection;
+      storeType = 'evenodd';
+    } else {
+      const isFall = strategyDirection.includes('DOWN') || strategyDirection.includes('PUT') || strategyDirection.includes('FALL');
+      storeContractType = isFall ? 'PUT' : 'CALL';
+      storeType = isFall ? 'fall' : 'rise';
+    }
 
     // ==========================================
     // OPTIMIZED SESSION THRESHOLDS ($3 TP / $4.50 SL)
@@ -101,11 +122,11 @@ export class ScannerBridge {
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: 0.35, 
-      duration: options?.duration || strategy?.duration || 5,
+      duration: options?.duration || strategy?.duration || 1,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: 4.50,     // Safe buffer to allow Martingale recovery to complete
-      takeProfit: 3.00,   // Capped at $3.00 to lock in quick, frequent session gains
+      stopLoss: 4.50,     
+      takeProfit: 3.00,   
       multiplier: options?.multiplier || strategy?.multiplier || 1.5
     };
 
@@ -113,13 +134,6 @@ export class ScannerBridge {
 
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
-    
-    const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
-    const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
-    
-    const storeContractType = isFall ? 'PUT' : 'CALL';
-    const storeType = isFall ? 'fall' : 'rise';
-    
     const martingaleMultiplier = payload.multiplier || 1.5;
 
     const applyBlockMutations = () => {
@@ -147,31 +161,6 @@ export class ScannerBridge {
                   symbolField.setValue(strictDerivSymbol);
                   updated = true;
                 }
-              }
-
-              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
-                const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
-                fieldNames.forEach(name => {
-                  const field = block.getField(name);
-                  if (field && typeof field.setValue === 'function') {
-                    const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
-                    const targetMatch = options.find((opt: any) => {
-                      const label = String(opt[0] || '').toLowerCase();
-                      const val = String(opt[1] || '').toLowerCase();
-                      if (isFall) {
-                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
-                      } else {
-                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
-                      }
-                    });
-
-                    const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
-                    if (field && field.getValue() !== desiredVal) {
-                      field.setValue(desiredVal);
-                      updated = true;
-                    }
-                  }
-                });
               }
             });
 
@@ -211,7 +200,7 @@ export class ScannerBridge {
           duration: payload.duration,
           stake: payload.stake,
           amount: payload.stake,
-          tradetype: 'rise_fall',
+          tradetype: resolvedTradeType,
           contract_type: storeContractType,
           type: storeType,
           subtype: storeType,
