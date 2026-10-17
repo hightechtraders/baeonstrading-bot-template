@@ -112,7 +112,7 @@ export class ScannerBridge {
         amount: stake,
         basis: 'stake',
         currency: currency,
-        symbol: strictSymbol,
+        underlying_symbol: strictSymbol, // FIXED: Deriv requires underlying_symbol for contract proposals
         contract_type: contractType,
         duration: duration,
         duration_unit: durationUnit,
@@ -155,6 +155,7 @@ export class ScannerBridge {
           window.dispatchEvent(new CustomEvent('ai_trade_executed', {
             detail: { contract: (buyResponse as any).buy, strategy: strategy.strategyName || strategy.name }
           }));
+          alert(`Trade executed successfully! Contract ID: ${(buyResponse as any).buy.contract_id}`);
         }
       } else {
         alert('Failed to obtain contract proposal ID from server.');
