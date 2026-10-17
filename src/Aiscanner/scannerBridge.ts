@@ -85,7 +85,7 @@ export class ScannerBridge {
 
   /**
    * Executes a trade directly via Deriv API (Headless Execution)
-   * Uses dual-mode promise/callback wrapper for reliable API socket communication.
+   * Synced with internal UI stores, journals, and transaction feeds.
    */
   public static async executeDirectTrade(strategy: any, options: any) {
     const rootStore = (window as any).derivBotAppStore || (window as any).Bot?.stores;
@@ -112,7 +112,7 @@ export class ScannerBridge {
         amount: stake,
         basis: 'stake',
         currency: currency,
-        underlying_symbol: strictSymbol, // FIXED: Deriv requires underlying_symbol for contract proposals
+        underlying_symbol: strictSymbol, 
         contract_type: contractType,
         duration: duration,
         duration_unit: durationUnit,
@@ -124,7 +124,6 @@ export class ScannerBridge {
 
       console.log('Sending headless proposal request:', proposalReq);
       
-      // Dual-mode execution support for both promise and callback socket architecture
       const sendPromise = api.send(proposalReq);
       const proposalResponse = sendPromise?.then ? await sendPromise : await new Promise((resolve) => {
         api.send(proposalReq, (response: any) => resolve(response));
@@ -151,11 +150,29 @@ export class ScannerBridge {
         }
         
         if ((buyResponse as any)?.buy) {
-          console.log('Headless trade executed successfully:', (buyResponse as any).buy);
+          const contract = (buyResponse as any).buy;
+          console.log('Headless trade executed successfully:', contract);
+
+          // 1. Dispatch custom event for UI components/listeners
           window.dispatchEvent(new CustomEvent('ai_trade_executed', {
-            detail: { contract: (buyResponse as any).buy, strategy: strategy.strategyName || strategy.name }
+            detail: { contract, strategy: strategy.strategyName || strategy.name }
           }));
-          alert(`Trade executed successfully! Contract ID: ${(buyResponse as any).buy.contract_id}`);
+
+          // 2. Push directly into Deriv Bot's internal stores so Journals & Transactions reflect it instantly
+          try {
+            if (rootStore?.journal?.pushMessage) {
+              rootStore.journal.pushMessage(`Free Bot trade placed. Contract ID: ${contract.contract_id}`);
+            }
+            if (rootStore?.transactions?.onBotContractEvent) {
+              rootStore.transactions.onBotContractEvent({ event: 'buy', contract });
+            } else if (rootStore?.transactions?.addContract) {
+              rootStore.transactions.addContract(contract);
+            }
+          } catch (storeSyncErr) {
+            console.warn('Store sync warning:', storeSyncErr);
+          }
+
+          alert(`Trade executed successfully! Contract ID: ${contract.contract_id}`);
         }
       } else {
         alert('Failed to obtain contract proposal ID from server.');
