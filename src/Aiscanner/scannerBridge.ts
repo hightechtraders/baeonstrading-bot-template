@@ -105,7 +105,7 @@ export class ScannerBridge {
     } else if (strategyDirection.includes('EVEN') || strategyDirection.includes('ODD')) {
       resolvedTradeType = 'even_odd';
       storeContractType = strategyDirection;
-      storeType = strategyDirection;
+      storeType = storeContractType;
     } else {
       const isFall = strategyDirection.includes('DOWN') || strategyDirection.includes('PUT') || strategyDirection.includes('FALL');
       resolvedTradeType = 'rise_fall';
@@ -130,7 +130,7 @@ export class ScannerBridge {
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     const martingaleMultiplier = payload.multiplier || 1.5;
 
-    // Block Mutation & Dropdown Injector for workspace fields
+    // Direct Workspace Field & Category Mutator
     const applyBlockMutations = () => {
       try {
         const Blockly = (window as any).Blockly;
@@ -144,7 +144,7 @@ export class ScannerBridge {
             blocks.forEach((block: any) => {
               if (!block) return;
 
-              // 1. Update Asset Symbol List
+              // 1. Update Asset Symbol
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
@@ -159,8 +159,17 @@ export class ScannerBridge {
                 }
               }
 
-              // 2. Update Purchase Conditions & Contract Types
-              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase' || block.type?.includes('trade_definition')) {
+              // 2. Update Trade Definition category if present
+              if (block.type === 'trade_definition') {
+                if (typeof block.setFieldValue === 'function') {
+                  try {
+                    block.setFieldValue(resolvedTradeType, 'TRADETYPE_LIST');
+                  } catch (e) {}
+                }
+              }
+
+              // 3. Update Purchase Conditions & Contract Types
+              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
                   const field = block.getField(name);
@@ -238,7 +247,8 @@ export class ScannerBridge {
         if (typeof submitAction === 'function') {
           Promise.resolve(submitAction.call(quickStrategy, mockFormData)).then(() => {
             setTimeout(applyBlockMutations, 100);
-            setTimeout(applyBlockMutations, 500);
+            setTimeout(applyBlockMutations, 300);
+            setTimeout(applyBlockMutations, 600);
 
             if (rootStore?.client?.send) {
               rootStore.client.send({ balance: 1, subscribe: 1 }).catch(() => {});
@@ -249,8 +259,8 @@ export class ScannerBridge {
     }
 
     applyBlockMutations();
-    setTimeout(applyBlockMutations, 150);
-    setTimeout(applyBlockMutations, 400);
+    setTimeout(applyBlockMutations, 200);
+    setTimeout(applyBlockMutations, 500);
 
     return true;
   }
