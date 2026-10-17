@@ -87,7 +87,7 @@ const AppWrapper = observer(() => {
     const [left_tab_shadow, setLeftTabShadow] = useState<boolean>(false);
     const [right_tab_shadow, setRightTabShadow] = useState<boolean>(false);
 
-    // Free bots card visibility state & 7 integrated working strategies with explicit contract bindings
+    // Free bots card visibility state & 7 integrated working strategies with accurate contract mappings
     const [is_card_visible, setIsCardVisible] = useState<boolean>(true);
     const [working_strategies] = useState([
         {
