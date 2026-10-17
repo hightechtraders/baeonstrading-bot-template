@@ -85,7 +85,7 @@ export class ScannerBridge {
 
   /**
    * Executes a trade directly via Deriv API (Headless Execution)
-   * Synced with internal UI stores, journals, and transaction feeds.
+   * Safely logs to journal without corrupting MobX UI store view models.
    */
   public static async executeDirectTrade(strategy: any, options: any) {
     const rootStore = (window as any).derivBotAppStore || (window as any).Bot?.stores;
@@ -153,24 +153,18 @@ export class ScannerBridge {
           const contract = (buyResponse as any).buy;
           console.log('Headless trade executed successfully:', contract);
 
-          // 1. Dispatch custom event for UI components/listeners
+          // Safe Journal logging without triggering store view model crashes
+          try {
+            if (rootStore?.journal?.pushMessage) {
+              rootStore.journal.pushMessage(`Free Bot executed [${strategy.strategyName || strategy.name || 'Strategy'}]. Contract ID: ${contract.contract_id} | Stake: ${stake} ${currency}`);
+            }
+          } catch (storeSyncErr) {
+            console.warn('Journal sync warning:', storeSyncErr);
+          }
+
           window.dispatchEvent(new CustomEvent('ai_trade_executed', {
             detail: { contract, strategy: strategy.strategyName || strategy.name }
           }));
-
-          // 2. Push directly into Deriv Bot's internal stores so Journals & Transactions reflect it instantly
-          try {
-            if (rootStore?.journal?.pushMessage) {
-              rootStore.journal.pushMessage(`Free Bot trade placed. Contract ID: ${contract.contract_id}`);
-            }
-            if (rootStore?.transactions?.onBotContractEvent) {
-              rootStore.transactions.onBotContractEvent({ event: 'buy', contract });
-            } else if (rootStore?.transactions?.addContract) {
-              rootStore.transactions.addContract(contract);
-            }
-          } catch (storeSyncErr) {
-            console.warn('Store sync warning:', storeSyncErr);
-          }
 
           alert(`Trade executed successfully! Contract ID: ${contract.contract_id}`);
         }
