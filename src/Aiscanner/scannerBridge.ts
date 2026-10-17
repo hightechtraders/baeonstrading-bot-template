@@ -163,7 +163,6 @@ export class ScannerBridge {
                 }
               }
 
-              // Only mutate purchase fields if it matches the current active strategy category
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
