@@ -1,3 +1,6 @@
+// ==========================================
+// FILE: src/pages/main/main.tsx
+// ==========================================
 import React, { lazy, Suspense, useEffect, useState } from 'react';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
@@ -83,7 +86,7 @@ const AppWrapper = observer(() => {
     const [left_tab_shadow, setLeftTabShadow] = useState<boolean>(false);
     const [right_tab_shadow, setRightTabShadow] = useState<boolean>(false);
 
-    // Free bots card visibility state & static working strategies
+    // Free bots card visibility state & 7 fully explained working strategies
     const [is_card_visible, setIsCardVisible] = useState<boolean>(true);
     const [working_strategies] = useState([
         {
@@ -103,6 +106,51 @@ const AppWrapper = observer(() => {
             confidence: '79%',
             status: 'HIGH',
             xmlPath: '/strategies/bollinger_squeeze_v100_call.xml'
+        },
+        {
+            id: 'strat_3',
+            strategyName: 'Only Ups / Only Downs Momentum',
+            marketName: 'Volatility 100 Index',
+            direction: 'UP',
+            confidence: '91%',
+            status: 'HIGH',
+            xmlPath: '/strategies/only_ups_downs.xml'
+        },
+        {
+            id: 'strat_4',
+            strategyName: 'Over 2, Recovery Over 7',
+            marketName: 'Volatility 75 Index',
+            direction: 'DIGIT',
+            confidence: '88%',
+            status: 'HIGH',
+            xmlPath: '/strategies/over_2_recovery_7.xml'
+        },
+        {
+            id: 'strat_5',
+            strategyName: 'Even Botter Strategy',
+            marketName: 'Volatility 10 Index',
+            direction: 'EVEN',
+            confidence: '82%',
+            status: 'MED',
+            xmlPath: '/strategies/even_botter.xml'
+        },
+        {
+            id: 'strat_6',
+            strategyName: 'Over 1, Recovery Under 7',
+            marketName: 'Volatility 25 Index',
+            direction: 'DIGIT',
+            confidence: '85%',
+            status: 'HIGH',
+            xmlPath: '/strategies/over_1_recover_under_7.xml'
+        },
+        {
+            id: 'strat_7',
+            strategyName: 'Rise and Fall Copier',
+            marketName: 'Volatility 50 Index',
+            direction: 'CALL/PUT',
+            confidence: '90%',
+            status: 'HIGH',
+            xmlPath: '/strategies/rise_fall_copier.xml'
         }
     ]);
 
@@ -405,7 +453,7 @@ const AppWrapper = observer(() => {
                                             <div className='free-bots-card' key={bot.id}>
                                                 {/* Header Section */}
                                                 <div className='free-bots-header'>
-                                                    <h3>AI Strategy #{index + 1}</h3>
+                                                    <h3>Prebuilt Strategy #{index + 1}</h3>
                                                     {index === 0 && (
                                                         <span 
                                                             className='close-btn' 
@@ -445,7 +493,7 @@ const AppWrapper = observer(() => {
                                                     </div>
                                                 </div>
 
-                                                {/* Action Button */}
+                                                {/* Robust Action Button with Polling Workspace Loader */}
                                                 <button 
                                                     onClick={async () => {
                                                         console.log(`Loading ${bot.strategyName} into workspace from ${bot.xmlPath}...`);
@@ -455,19 +503,37 @@ const AppWrapper = observer(() => {
                                                             const response = await fetch(bot.xmlPath);
                                                             const xmlText = await response.text();
 
-                                                            setTimeout(() => {
-                                                                const workspace = window.Blockly?.derivWorkspace || Blockly?.derivWorkspace;
-                                                                if (workspace && window.Blockly?.Xml) {
-                                                                    const xmlDom = window.Blockly.Xml.textToDom(xmlText);
-                                                                    workspace.clear();
-                                                                    window.Blockly.Xml.domToWorkspace(xmlDom, workspace);
-                                                                    console.log(`${bot.strategyName} successfully rendered in Blockly!`);
+                                                            let attempts = 0;
+                                                            const maxAttempts = 15;
+
+                                                            const tryInjectWorkspace = () => {
+                                                                const BlocklyInstance = window.Blockly || (window as any).Blockly;
+                                                                const workspace = 
+                                                                    BlocklyInstance?.derivWorkspace || 
+                                                                    BlocklyInstance?.mainWorkspace || 
+                                                                    (typeof BlocklyInstance?.getMainWorkspace === 'function' ? BlocklyInstance.getMainWorkspace() : null);
+
+                                                                if (workspace && BlocklyInstance?.Xml) {
+                                                                    try {
+                                                                        const xmlDom = BlocklyInstance.Xml.textToDom(xmlText);
+                                                                        workspace.clear();
+                                                                        BlocklyInstance.Xml.domToWorkspace(xmlDom, workspace);
+                                                                        console.log(`${bot.strategyName} successfully rendered in Blockly!`);
+                                                                    } catch (xmlError) {
+                                                                        console.error('Failed to parse or inject XML DOM:', xmlError);
+                                                                    }
+                                                                } else if (attempts < maxAttempts) {
+                                                                    attempts++;
+                                                                    setTimeout(tryInjectWorkspace, 200);
                                                                 } else {
-                                                                    console.warn('Blockly workspace is not initialized yet.');
+                                                                    console.warn('Blockly workspace could not be found after multiple attempts.');
                                                                 }
-                                                            }, 400);
+                                                            };
+
+                                                            setTimeout(tryInjectWorkspace, 100);
+
                                                         } catch (error) {
-                                                            console.error('Error loading strategy XML:', error);
+                                                            console.error('Error fetching strategy XML file:', error);
                                                         }
                                                     }}
                                                     className='free-bots-btn'
