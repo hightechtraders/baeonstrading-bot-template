@@ -84,15 +84,15 @@ export class ScannerBridge {
 
   /**
    * Executes a trade directly via Deriv API (Headless Execution)
-   * Robust client lookup ensures "Run Free Bot" executes immediately.
+   * Connects via global api_base / websocket connection to run Free Bots seamlessly.
    */
   public static async executeDirectTrade(strategy: any, options: any) {
     const rootStore = (window as any).derivBotAppStore || (window as any).Bot?.stores;
-    const client = rootStore?.client || rootStore?.root_store?.client;
+    const api = (window as any).api_base || rootStore?.api || rootStore?.connection || rootStore?.client;
 
-    if (!client || typeof client.send !== 'function') {
-      console.error('Deriv client not available for headless execution.');
-      alert('Trading client not ready. Please verify your connection or account login.');
+    if (!api || typeof api.send !== 'function') {
+      console.error('Deriv API connection not available for headless execution.');
+      alert('Trading client not ready. Please make sure you are logged into your Deriv account.');
       return;
     }
 
@@ -108,7 +108,7 @@ export class ScannerBridge {
         proposal: 1,
         amount: stake,
         basis: 'stake',
-        currency: client.currency || 'USD',
+        currency: rootStore?.client?.currency || 'USD',
         symbol: strictSymbol,
         contract_type: contractType,
         duration: duration,
@@ -119,11 +119,11 @@ export class ScannerBridge {
         proposalReq.barrier = String(options?.barrier ?? strategy?.barrier ?? '2');
       }
 
-      console.log('Sending headless proposal request:', proposalReq);
-      const proposalResponse = await client.send(proposalReq);
+      console.log('Sending headless proposal request via api:', proposalReq);
+      const proposalResponse = await api.send(proposalReq);
 
       if (proposalResponse?.proposal?.id) {
-        const buyResponse = await client.send({
+        const buyResponse = await api.send({
           buy: proposalResponse.proposal.id,
           price: stake
         });
@@ -140,6 +140,7 @@ export class ScannerBridge {
       }
     } catch (error) {
       console.error('Headless trade execution failed:', error);
+      alert('Failed to execute trade. Check console for details.');
     }
   }
 
@@ -301,7 +302,6 @@ export class ScannerBridge {
         const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
         if (typeof submitAction === 'function') {
           Promise.resolve(submitAction.call(quickStrategy, mockFormData)).then(() => {
-            // Single optimized render pass instead of chained delays
             setTimeout(() => {
               applyBlockMutations();
               if (rootStore?.client?.send) {
