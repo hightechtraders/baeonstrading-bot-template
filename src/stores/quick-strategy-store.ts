@@ -168,7 +168,7 @@ export default class QuickStrategyStore implements IQuickStrategyStore {
         const strategy_dom = window.Blockly.utils.xml.textToDom(strategy_xml.default);
 
         // Safely add digit prediction block if needed
-        if (data.tradetype === 'matches_differs' || String(data.tradetype).includes('digit')) {
+        if (data.tradetype === 'matches_differs' || String(data.tradetype).includes('digit') || String(data.tradetype).includes('over') || String(data.tradetype).includes('under')) {
             addDynamicBlockToDOM('PREDICTION', 'last_digit_prediction', trade_type_cat, strategy_dom);
         }
 
@@ -196,13 +196,14 @@ export default class QuickStrategyStore implements IQuickStrategyStore {
 
         const { unit, action, type, growth_rate, ...rest_data } = data;
         
-        // Respect the selected contract type (Rise/Fall, Even/Odd, Digits) rather than overriding with 'both'
+        // Respect the selected contract type and trade category
         const resolvedType = type || 'CALL';
+        const resolvedTradeTypeCat = trade_type_cat || 'rise_fall';
 
         const fields_to_update = {
             market,
             submarket,
-            tradetypecat: trade_type_cat,
+            tradetypecat: resolvedTradeTypeCat,
             dalembert_unit: unit,
             oscar_unit: unit,
             type: resolvedType,
@@ -218,6 +219,16 @@ export default class QuickStrategyStore implements IQuickStrategyStore {
                 modifyValueInputs(key, value as number);
             } else if (typeof value === 'string' && value !== undefined) {
                 modifyFieldDropdownValues(key, value);
+            }
+        });
+
+        // ========================================================
+        // CRITICAL FIX: Stamp tradetypecat attribute onto trade blocks
+        // ========================================================
+        const tradeDefBlocks = strategy_dom?.querySelectorAll('block[type="trade_definition"]');
+        tradeDefBlocks?.forEach((block: HTMLElement) => {
+            if (resolvedTradeTypeCat) {
+                block.setAttribute('tradetypecat', resolvedTradeTypeCat);
             }
         });
 
