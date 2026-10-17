@@ -56,9 +56,13 @@ export class ScannerBridge {
       'VOLATILITY100':    'R_100',
     };
 
-    return symbolMap[clean] || rawSymbol;
+    return symbolMap[clean] || '1HZ100V';
   }
 
+  /**
+   * Intercepts live ticks, processes them through ScannerLogic,
+   * and broadcasts the fully updated strategy array to the UI components.
+   */
   public static pushTick(assetName: string, quote: number, strategies?: any[]) {
     const tickPayload: DerivTickResponse = {
       msg_type: 'tick',
@@ -92,35 +96,34 @@ export class ScannerBridge {
     const strategyDirection = (options?.contractType || strategy?.direction || strategy?.tradeType || 'rise').toUpperCase();
 
     // ==========================================
-    // DYNAMIC TRADE TYPE & STORE CONFIG MAPPING
+    // DYNAMIC TRADE TYPE & FORM SCHEMA MAPPING
     // ==========================================
     let resolvedTradeType = 'rise_fall';
     let storeContractType = 'CALL';
     let storeType = 'rise';
-    let subType = 'rise';
 
     if (strategyDirection.includes('DIGIT') || strategyDirection.includes('OVER') || strategyDirection.includes('UNDER')) {
       resolvedTradeType = 'matches_differs';
       storeContractType = strategyDirection.includes('UNDER') ? 'DIGITUNDER' : 'DIGITOVER';
       storeType = 'matchdiff';
-      subType = 'matchdiff';
     } else if (strategyDirection.includes('EVEN') || strategyDirection.includes('ODD')) {
       resolvedTradeType = 'even_odd';
       storeContractType = strategyDirection;
       storeType = 'evenodd';
-      subType = 'evenodd';
     } else {
       const isFall = strategyDirection.includes('DOWN') || strategyDirection.includes('PUT') || strategyDirection.includes('FALL');
       resolvedTradeType = 'rise_fall';
       storeContractType = isFall ? 'PUT' : 'CALL';
       storeType = isFall ? 'fall' : 'rise';
-      subType = isFall ? 'fall' : 'rise';
     }
 
+    // ==========================================
+    // OPTIMIZED SESSION THRESHOLDS ($3 TP / $4.50 SL)
+    // ==========================================
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: 0.35, 
-      duration: options?.duration || strategy?.duration || 1,
+      duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
       stopLoss: 4.50,     
@@ -134,9 +137,6 @@ export class ScannerBridge {
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
     const martingaleMultiplier = payload.multiplier || 1.5;
 
-    // ==========================================
-    // RESTORED WORKSPACE BLOCK MUTATIONS
-    // ==========================================
     const applyBlockMutations = () => {
       try {
         const Blockly = (window as any).Blockly;
@@ -150,7 +150,6 @@ export class ScannerBridge {
             blocks.forEach((block: any) => {
               if (!block) return;
 
-              // Update symbol list fields across workspace
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
@@ -165,7 +164,6 @@ export class ScannerBridge {
                 }
               }
 
-              // Update purchase condition block types
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
@@ -176,7 +174,7 @@ export class ScannerBridge {
                       const label = String(opt[0] || '').toLowerCase();
                       const val = String(opt[1] || '').toLowerCase();
                       const targetStr = storeContractType.toLowerCase();
-                      
+
                       if (targetStr === 'call') {
                         return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
                       }
@@ -207,12 +205,6 @@ export class ScannerBridge {
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
-        if (typeof quickStrategy.setSelectedStrategy === 'function') {
-          quickStrategy.setSelectedStrategy(resolvedTradeType);
-        } else if (typeof quickStrategy.setTradeType === 'function') {
-          quickStrategy.setTradeType(resolvedTradeType);
-        }
-
         if (typeof quickStrategy.setValue === 'function') {
           quickStrategy.setValue('symbol', strictDerivSymbol);
           quickStrategy.setValue('duration', payload.duration);
@@ -241,7 +233,7 @@ export class ScannerBridge {
           tradetype: resolvedTradeType,
           contract_type: storeContractType,
           type: storeType,
-          subtype: subType,
+          subtype: storeType,
           size: martingaleMultiplier,
           loss: payload.stopLoss,
           stop_loss: payload.stopLoss,
@@ -249,9 +241,9 @@ export class ScannerBridge {
           take_profit: payload.takeProfit
         };
 
-        const generateAction = quickStrategy.createStrategy || quickStrategy.onSubmit;
-        if (typeof generateAction === 'function') {
-          Promise.resolve(generateAction.call(quickStrategy, mockFormData)).then(() => {
+        const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
+        if (typeof submitAction === 'function') {
+          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).then(() => {
             setTimeout(applyBlockMutations, 100);
             setTimeout(applyBlockMutations, 500);
 
