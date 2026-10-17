@@ -103,9 +103,9 @@ export class ScannerBridge {
     let storeType = 'rise';
 
     if (strategyDirection.includes('DIGIT') || strategyDirection.includes('OVER') || strategyDirection.includes('UNDER')) {
-      resolvedTradeType = 'digits';
-      storeContractType = strategyDirection.includes('OVER') ? 'OVER' : 'DIGIT';
-      storeType = 'digits';
+      resolvedTradeType = 'matches_differs';
+      storeContractType = strategyDirection.includes('UNDER') ? 'DIGITUNDER' : 'DIGITOVER';
+      storeType = 'matchdiff';
     } else if (strategyDirection.includes('EVEN') || strategyDirection.includes('ODD')) {
       resolvedTradeType = 'even_odd';
       storeContractType = strategyDirection;
