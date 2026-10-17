@@ -96,25 +96,29 @@ export class ScannerBridge {
     const strategyDirection = (options?.contractType || strategy?.direction || strategy?.tradeType || 'rise').toUpperCase();
 
     // ==========================================
-    // DYNAMIC TRADE TYPE & CONTRACT MAPPING
+    // DYNAMIC TRADE TYPE & STORE CONFIG MAPPING
     // ==========================================
     let resolvedTradeType = 'rise_fall';
     let storeContractType = 'CALL';
     let storeType = 'rise';
+    let subType = 'rise';
 
     if (strategyDirection.includes('DIGIT') || strategyDirection.includes('OVER') || strategyDirection.includes('UNDER')) {
       resolvedTradeType = 'matches_differs';
       storeContractType = strategyDirection.includes('UNDER') ? 'DIGITUNDER' : 'DIGITOVER';
       storeType = 'matchdiff';
+      subType = 'matchdiff';
     } else if (strategyDirection.includes('EVEN') || strategyDirection.includes('ODD')) {
       resolvedTradeType = 'even_odd';
       storeContractType = strategyDirection;
       storeType = 'evenodd';
+      subType = 'evenodd';
     } else {
       const isFall = strategyDirection.includes('DOWN') || strategyDirection.includes('PUT') || strategyDirection.includes('FALL');
       resolvedTradeType = 'rise_fall';
       storeContractType = isFall ? 'PUT' : 'CALL';
       storeType = isFall ? 'fall' : 'rise';
+      subType = isFall ? 'fall' : 'rise';
     }
 
     // ==========================================
@@ -233,7 +237,7 @@ export class ScannerBridge {
           tradetype: resolvedTradeType,
           contract_type: storeContractType,
           type: storeType,
-          subtype: storeType,
+          subtype: subType,
           size: martingaleMultiplier,
           loss: payload.stopLoss,
           stop_loss: payload.stopLoss,
