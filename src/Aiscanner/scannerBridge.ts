@@ -82,6 +82,65 @@ export class ScannerBridge {
     }
   }
 
+  /**
+   * Executes a trade directly via Deriv API (Headless Execution)
+   * Perfect for Free Bot cards (Even/Odd, Digits, etc.) without messing up Blockly.
+   */
+  public static async executeDirectTrade(strategy: any, options: any) {
+    const rootStore = (window as any).derivBotAppStore;
+    if (!rootStore?.client || typeof rootStore.client.send !== 'function') {
+      console.error('Deriv client not available for headless execution.');
+      return;
+    }
+
+    const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V';
+    const strictSymbol = this.translateSymbol(rawSymbol);
+    const contractType = (options?.contractType || strategy?.direction || strategy?.tradeType || 'CALL').toUpperCase();
+    const stake = options?.stake || strategy?.stake || 0.35;
+    const duration = options?.duration || strategy?.duration || 5;
+    const durationUnit = options?.durationUnit || 't';
+
+    try {
+      const proposalReq: any = {
+        proposal: 1,
+        amount: stake,
+        basis: 'stake',
+        currency: rootStore.client.currency || 'USD',
+        symbol: strictSymbol,
+        contract_type: contractType,
+        duration: duration,
+        duration_unit: durationUnit,
+      };
+
+      if (contractType.includes('DIGIT') || contractType.includes('MATCH') || contractType.includes('DIFF')) {
+        proposalReq.barrier = String(options?.barrier ?? strategy?.barrier ?? '2');
+      }
+
+      console.log('Sending headless proposal request:', proposalReq);
+      const proposalResponse = await rootStore.client.send(proposalReq);
+
+      if (proposalResponse?.proposal?.id) {
+        const proposalId = proposalResponse.proposal.id;
+        const buyReq = {
+          buy: proposalId,
+          price: stake
+        };
+
+        console.log('Executing headless buy request:', buyReq);
+        const buyResponse = await rootStore.client.send(buyReq);
+        
+        if (buyResponse?.buy) {
+          console.log('Headless trade executed successfully:', buyResponse.buy);
+          window.dispatchEvent(new CustomEvent('ai_trade_executed', {
+            detail: { contract: buyResponse.buy, strategy: strategy.strategyName || strategy.name }
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Headless trade execution failed:', error);
+    }
+  }
+
   public static loadStrategyToWorkspace(strategy: any, options: any) {
     ScannerBridge.isScannerActive = true;
     if (typeof window !== 'undefined') {
