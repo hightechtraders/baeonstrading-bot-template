@@ -78,7 +78,7 @@
 
 .ai-modal-content {
   background: linear-gradient(145deg, #131722 0%, #0b0e14 100%);
-  width: 480px;
+  width: 520px;
   max-width: 90vw;
   max-height: 85vh;
   border-radius: 16px;
@@ -204,11 +204,13 @@
 /* --- Strategy List & Premium Cards --- */
 .strategy-list {
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* Forces items into a vertical stack */
+  width: 100%;
   gap: 12px;
   max-height: 60vh;
   overflow-y: auto;
   padding-right: 4px;
+  box-sizing: border-box;
 }
 
 .strategy-list::-webkit-scrollbar {
@@ -224,12 +226,14 @@
 }
 
 .strategy-card {
+  display: flex;
+  flex-direction: column; /* Ensures inner elements stack correctly */
+  width: 100%;
+  box-sizing: border-box;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
   border: 1px solid rgba(255, 255, 255, 0.06);
   padding: 16px;
   border-radius: 12px;
-  display: flex;
-  flex-direction: column;
   gap: 12px;
   position: relative;
   overflow: hidden;
