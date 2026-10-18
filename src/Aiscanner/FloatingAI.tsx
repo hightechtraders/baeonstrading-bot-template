@@ -99,25 +99,15 @@ export const FloatingAI: React.FC = () => {
 
   const handleRunBot = (strat: Strategy) => {
     ScannerBridge.loadStrategyToWorkspace(strat);
-    alert(`Strategy "${strat.name}" successfully loaded! Click the main platform run button to execute.`);
+    alert(`Strategy "${strat.name}" successfully loaded to workspace!`);
     setIsOpen(false);
   };
 
   return (
-    <div className="floating-ai-container" style={{ display: 'contents' }}>
+    <div className="floating-ai-container">
       <button 
         className="dancing-orb-wrapper"
         onClick={() => setIsOpen(true)}
-        style={{
-          position: 'fixed',
-          bottom: '24px',
-          right: '24px',
-          zIndex: 9999,
-          background: 'transparent',
-          border: 'none',
-          padding: 0,
-          cursor: 'pointer'
-        }}
       >
         <div className="dancing-orb-inner">
           🤖 AI
@@ -134,37 +124,22 @@ export const FloatingAI: React.FC = () => {
             
             <div 
               id="ai-signal-banner"
-              style={{
-                background: isSignalLocked 
-                  ? 'rgba(46, 212, 121, 0.15)' 
-                  : isSweetSpot 
-                  ? 'rgba(245, 158, 11, 0.2)' 
-                  : '#141824',
-                border: `1px solid ${isSignalLocked ? '#2ed479' : isSweetSpot ? '#f59e0b' : '#1e2335'}`,
-                borderRadius: '8px',
-                padding: '10px 14px',
-                margin: '10px 0 16px 0',
-                color: isSignalLocked ? '#2ed479' : isSweetSpot ? '#f59e0b' : '#6c718c',
-                fontSize: '11px',
-                fontWeight: 'bold',
-                textAlign: 'center',
-                transition: 'all 0.3s ease'
-              }}
+              className={`signal-banner ${isSignalLocked ? 'locked' : isSweetSpot ? 'sweet-spot' : ''}`}
             >
               {signalBannerText}
             </div>
 
             {isScanningPhase ? (
-              <div className="scanner-loading-state" style={{ textAlign: 'center', padding: '40px 20px', color: '#6c718c' }}>
-                <div className="spinner-animation" style={{ fontSize: '32px', marginBottom: '12px' }}>🛰️</div>
-                <p style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>Analyzing tick streams across Volatility indices...</p>
-                <p style={{ fontSize: '11px', marginTop: '6px' }}>Evaluating momentum, spreads, and historical confidence layers.</p>
+              <div className="scanner-loading-state">
+                <div className="spinner-animation">🛰️</div>
+                <p className="loading-title">Analyzing tick streams across Volatility indices...</p>
+                <p className="loading-sub">Evaluating momentum, spreads, and historical confidence layers.</p>
               </div>
             ) : (
               <>
-                <p className="scanner-instruction">Balanced strategies ranked below. Load directly to workspace.</p>
+                <p className="scanner-instruction">Top balanced strategies ranked below. Click to load directly.</p>
 
-                <div className="strategy-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '65vh', overflowY: 'auto', paddingRight: '4px' }}>
+                <div className="strategy-list">
                   {sortedStrategies.map((strat, idx) => {
                     const key = strat.id || `${strat.name}-${idx}`;
                     const isGlobalWinner = idx === 0;
@@ -173,44 +148,33 @@ export const FloatingAI: React.FC = () => {
                       <div 
                         key={key} 
                         className={`strategy-card ${isGlobalWinner ? 'top-card' : ''}`}
-                        style={{ 
-                          background: isGlobalWinner ? 'rgba(46, 212, 121, 0.05)' : '#141824', 
-                          border: isGlobalWinner ? '1px solid rgba(46, 212, 121, 0.3)' : '1px solid #1e2335',
-                          borderRadius: '8px',
-                          padding: '12px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '8px'
-                        }}
                       >
                         {isGlobalWinner && (
-                          <div className="global-winner-meta" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 'bold', color: '#2ed479' }}>
-                            <span>GLOBAL WINNER</span>
+                          <div className="global-winner-meta">
+                            <span>⭐ GLOBAL WINNER</span>
                             <span>CONFIDENCE {strat.confidence}%</span>
                           </div>
                         )}
 
-                        <div className="card-main-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span className="badge-rank" style={{ background: '#1e2335', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', color: '#94a3b8' }}>#{idx + 1}</span>
-                            <div className="strategy-info">
-                              <strong style={{ color: '#fff', fontSize: '13px' }}>{strat.name}</strong>
-                              <div className="card-tags-row" style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                                <span className="market-tag" style={{ fontSize: '10px', background: '#1e2335', padding: '1px 6px', borderRadius: '4px', color: '#94a3b8' }}>{strat.market}</span>
-                                {strat.direction && (
-                                  <span className={`direction-tag ${strat.direction.toLowerCase()}`} style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px' }}>
-                                    {strat.direction}
-                                  </span>
-                                )}
-                              </div>
+                        <div className="card-main-row">
+                          <span className="badge-rank">#{idx + 1}</span>
+                          <div className="strategy-info">
+                            <strong>{strat.name}</strong>
+                            <div className="card-tags-row">
+                              <span className="market-tag">{strat.market}</span>
+                              {strat.direction && (
+                                <span className={`direction-tag ${strat.direction.toLowerCase()}`}>
+                                  {strat.direction}
+                                </span>
+                              )}
                             </div>
                           </div>
-                          <span className={isGlobalWinner ? "badge-high" : "badge-medium"} style={{ fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px', background: isGlobalWinner ? 'rgba(46, 212, 121, 0.2)' : 'rgba(59, 130, 246, 0.2)', color: isGlobalWinner ? '#2ed479' : '#60a5fa' }}>
+                          <span className={isGlobalWinner ? "badge-high" : "badge-medium"}>
                             {isGlobalWinner ? "HIGH" : "MEDIUM"}
                           </span>
                         </div>
 
-                        <div className="card-sub-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#6c718c' }}>
+                        <div className="card-sub-row">
                           <span>Score: {strat.score || strat.confidence}%</span>
                           <span>Confidence: {strat.confidence}%</span>
                         </div>
@@ -218,7 +182,6 @@ export const FloatingAI: React.FC = () => {
                         <button 
                           className="run-manual-btn" 
                           onClick={() => handleRunBot(strat)}
-                          style={{ width: '100%', padding: '8px', background: '#2ed479', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', marginTop: '4px' }}
                         >
                           Load Strategy to Workspace
                         </button>
