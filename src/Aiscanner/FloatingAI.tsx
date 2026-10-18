@@ -7,12 +7,6 @@ import { Strategy, INITIAL_STRATEGIES } from './strategies';
 import { useScannerFeed } from './useScannerFeed'; 
 import './FloatingAI.css';
 
-interface StrategyParams {
-  stake: number;
-  stopLoss: number;
-  takeProfit: number;
-}
-
 export const FloatingAI: React.FC = () => {
   useScannerFeed();
 
@@ -23,9 +17,6 @@ export const FloatingAI: React.FC = () => {
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
   const [isSweetSpot, setIsSweetSpot] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
-
-  // Store parameters per strategy key (id or index) so they don't share a single global input state
-  const [strategyParams, setStrategyParams] = useState<Record<string, StrategyParams>>({});
 
   const isOpenRef = useRef<boolean>(false);
   const isScanningPhaseRef = useRef<boolean>(true);
@@ -38,20 +29,6 @@ export const FloatingAI: React.FC = () => {
   useEffect(() => {
     isScanningPhaseRef.current = isScanningPhase;
   }, [isScanningPhase]);
-
-  // Initialize or update local parameter states when strategies change
-  useEffect(() => {
-    const initialParams: Record<string, StrategyParams> = {};
-    strategies.forEach((strat, idx) => {
-      const key = strat.id || `${strat.name}-${idx}`;
-      initialParams[key] = {
-        stake: strat.recommendedStake || 10,
-        stopLoss: strat.recommendedStopLoss || 20,
-        takeProfit: strat.recommendedTakeProfit || 50,
-      };
-    });
-    setStrategyParams(initialParams);
-  }, [strategies]);
 
   useEffect(() => {
     const handleStrategiesUpdated = (e: CustomEvent) => {
@@ -120,23 +97,8 @@ export const FloatingAI: React.FC = () => {
 
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
 
-  const handleParamChange = (key: string, field: keyof StrategyParams, value: number) => {
-    setStrategyParams(prev => ({
-      ...prev,
-      [key]: {
-        ...(prev[key] || { stake: 10, stopLoss: 20, takeProfit: 50 }),
-        [field]: value
-      }
-    }));
-  };
-
-  const handleRunBot = (strat: Strategy, key: string) => {
-    const params = strategyParams[key] || { stake: 10, stopLoss: 20, takeProfit: 50 };
-    ScannerBridge.loadStrategyToWorkspace(strat, { 
-      stake: params.stake, 
-      stopLoss: params.stopLoss, 
-      takeProfit: params.takeProfit 
-    });
+  const handleRunBot = (strat: Strategy) => {
+    ScannerBridge.loadStrategyToWorkspace(strat);
     alert(`Strategy "${strat.name}" successfully loaded! Click the main platform run button to execute.`);
     setIsOpen(false);
   };
@@ -200,89 +162,66 @@ export const FloatingAI: React.FC = () => {
               </div>
             ) : (
               <>
-                <p className="scanner-instruction">Balanced strategies ranked below. Adjust parameters and load directly.</p>
+                <p className="scanner-instruction">Balanced strategies ranked below. Load directly to workspace.</p>
 
-                <div className="strategy-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '65vh', overflowY: 'auto', paddingRight: '4px' }}>
+                <div className="strategy-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '65vh', overflowY: 'auto', paddingRight: '4px' }}>
                   {sortedStrategies.map((strat, idx) => {
                     const key = strat.id || `${strat.name}-${idx}`;
-                    const currentParams = strategyParams[key] || { stake: 10, stopLoss: 20, takeProfit: 50 };
                     const isGlobalWinner = idx === 0;
 
                     return (
                       <div 
                         key={key} 
                         className={`strategy-card ${isGlobalWinner ? 'top-card' : ''}`}
-                        style={{ background: isGlobalWinner ? 'rgba(46, 212, 121, 0.05)' : undefined, border: isGlobalWinner ? '1px solid rgba(46, 212, 121, 0.3)' : undefined }}
+                        style={{ 
+                          background: isGlobalWinner ? 'rgba(46, 212, 121, 0.05)' : '#141824', 
+                          border: isGlobalWinner ? '1px solid rgba(46, 212, 121, 0.3)' : '1px solid #1e2335',
+                          borderRadius: '8px',
+                          padding: '12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px'
+                        }}
                       >
                         {isGlobalWinner && (
-                          <div className="global-winner-meta" style={{ marginBottom: '8px' }}>
+                          <div className="global-winner-meta" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 'bold', color: '#2ed479' }}>
                             <span>GLOBAL WINNER</span>
                             <span>CONFIDENCE {strat.confidence}%</span>
                           </div>
                         )}
 
-                        <div className="card-main-row">
-                          <span className="badge-rank">#{idx + 1}</span>
-                          <div className="strategy-info">
-                            <strong>{strat.name}</strong>
-                            <div className="card-tags-row">
-                              <span className="market-tag">{strat.market}</span>
-                              {strat.direction && (
-                                <span className={`direction-tag ${strat.direction.toLowerCase()}`}>
-                                  {strat.direction}
-                                </span>
-                              )}
+                        <div className="card-main-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span className="badge-rank" style={{ background: '#1e2335', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', color: '#94a3b8' }}>#{idx + 1}</span>
+                            <div className="strategy-info">
+                              <strong style={{ color: '#fff', fontSize: '13px' }}>{strat.name}</strong>
+                              <div className="card-tags-row" style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                                <span className="market-tag" style={{ fontSize: '10px', background: '#1e2335', padding: '1px 6px', borderRadius: '4px', color: '#94a3b8' }}>{strat.market}</span>
+                                {strat.direction && (
+                                  <span className={`direction-tag ${strat.direction.toLowerCase()}`} style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px' }}>
+                                    {strat.direction}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <span className={isGlobalWinner ? "badge-high" : "badge-medium"}>
+                          <span className={isGlobalWinner ? "badge-high" : "badge-medium"} style={{ fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px', background: isGlobalWinner ? 'rgba(46, 212, 121, 0.2)' : 'rgba(59, 130, 246, 0.2)', color: isGlobalWinner ? '#2ed479' : '#60a5fa' }}>
                             {isGlobalWinner ? "HIGH" : "MEDIUM"}
                           </span>
                         </div>
 
-                        <div className="card-sub-row" style={{ marginBottom: '10px' }}>
-                          <span>Score {strat.score || strat.confidence}%</span>
-                          <span>Confidence {strat.confidence}%</span>
+                        <div className="card-sub-row" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#6c718c' }}>
+                          <span>Score: {strat.score || strat.confidence}%</span>
+                          <span>Confidence: {strat.confidence}%</span>
                         </div>
 
-                        {/* Always visible inline parameter inputs and load button */}
-                        <div className="parameter-drawer" style={{ display: 'block', background: 'rgba(0,0,0,0.15)', padding: '10px', borderRadius: '6px' }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '10px' }}>
-                            <div className="input-group" style={{ display: 'flex', flexDirection: 'column' }}>
-                              <label style={{ fontSize: '10px', marginBottom: '4px', color: '#94a3b8' }}>Stake ($):</label>
-                              <input 
-                                type="number" 
-                                value={currentParams.stake} 
-                                onChange={(e) => handleParamChange(key, 'stake', Number(e.target.value))}
-                                style={{ padding: '6px', borderRadius: '4px', border: '1px solid #334155', background: '#0f172a', color: '#fff', fontSize: '12px' }}
-                              />
-                            </div>
-                            <div className="input-group" style={{ display: 'flex', flexDirection: 'column' }}>
-                              <label style={{ fontSize: '10px', marginBottom: '4px', color: '#94a3b8' }}>Stop Loss ($):</label>
-                              <input 
-                                type="number" 
-                                value={currentParams.stopLoss} 
-                                onChange={(e) => handleParamChange(key, 'stopLoss', Number(e.target.value))}
-                                style={{ padding: '6px', borderRadius: '4px', border: '1px solid #334155', background: '#0f172a', color: '#fff', fontSize: '12px' }}
-                              />
-                            </div>
-                            <div className="input-group" style={{ display: 'flex', flexDirection: 'column' }}>
-                              <label style={{ fontSize: '10px', marginBottom: '4px', color: '#94a3b8' }}>Take Profit ($):</label>
-                              <input 
-                                type="number" 
-                                value={currentParams.takeProfit} 
-                                onChange={(e) => handleParamChange(key, 'takeProfit', Number(e.target.value))}
-                                style={{ padding: '6px', borderRadius: '4px', border: '1px solid #334155', background: '#0f172a', color: '#fff', fontSize: '12px' }}
-                              />
-                            </div>
-                          </div>
-                          <button 
-                            className="run-manual-btn" 
-                            onClick={() => handleRunBot(strat, key)}
-                            style={{ width: '100%', padding: '8px', background: '#2ed479', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                          >
-                            Load Strategy to Workspace
-                          </button>
-                        </div>
+                        <button 
+                          className="run-manual-btn" 
+                          onClick={() => handleRunBot(strat)}
+                          style={{ width: '100%', padding: '8px', background: '#2ed479', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', marginTop: '4px' }}
+                        >
+                          Load Strategy to Workspace
+                        </button>
                       </div>
                     );
                   })}
