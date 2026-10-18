@@ -129,9 +129,29 @@ export class ScannerBridge {
         sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
       }
 
-      const barrierValue = String(options?.barrier ?? strategy?.barrier ?? strategy?.prediction ?? '2');
+      // Extract properties dynamically from the clicked strategy card or options
+      const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V';
+      const strictSymbol = ScannerBridge.translateSymbol(rawSymbol);
+      const contractType = (options?.contractType || strategy?.contractType || strategy?.direction || 'CALL').toUpperCase();
+      const stake = Number(options?.stake || strategy?.recommendedStake || strategy?.stake || 0.35);
+      const barrierValue = String(options?.barrier || strategy?.barrier || strategy?.prediction || '2');
+      
       ScannerBridge.activePrediction = barrierValue;
 
+      // Programmatically update Deriv's Quick Strategy store with the clicked card's parameters
+      const quickStrategy = rootStore.quick_strategy;
+      if (quickStrategy && typeof quickStrategy.setValue === 'function') {
+        quickStrategy.setValue('symbol', strictSymbol);
+        quickStrategy.setValue('amount', stake);
+        quickStrategy.setValue('contract_type', contractType);
+        
+        if (contractType.includes('DIGIT') || contractType.includes('MATCH') || contractType.includes('DIFF')) {
+          quickStrategy.setValue('prediction', barrierValue);
+          quickStrategy.setValue('barrier', barrierValue);
+        }
+      }
+
+      // Trigger the run cycle
       const runPanelStore = rootStore.run_panel || rootStore.quick_strategy;
       if (runPanelStore && typeof runPanelStore.onRunButtonClick === 'function') {
         runPanelStore.onRunButtonClick();
@@ -148,14 +168,13 @@ export class ScannerBridge {
         rootStore.ui.setActiveTab('summary');
       }
 
-      console.log('Successfully triggered execution cycle.');
+      console.log(`Successfully executed strategy: ${strategy?.name || 'Custom'} on symbol ${strictSymbol}`);
     } catch (error: any) {
       console.error('Trade execution routing failed:', error);
     }
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    // Graceful fallback wrapper to prevent any unhandled workspace mutations from breaking the app
     try {
       ScannerBridge.executeDirectTrade(strategy, options);
     } catch (e) {
