@@ -73,6 +73,61 @@
     // Opacity
     --tw-border-opacity: 1;
 
+    // ==========================================
+    // PROFESSIONAL UI OVERHAUL & DESIGN SYSTEM
+    // ==========================================
+    
+    // Global Card & Panel Enhancements
+    .dc-card, 
+    .bot-builder-content, 
+    .dashboard__container,
+    .tab__content {
+        background: linear-gradient(145deg, #131722 0%, #0b0e14 100%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 14px !important;
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5) !important;
+        backdrop-filter: blur(8px);
+    }
+
+    // Professional Input Fields
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+        background-color: #0f172a !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: #ffffff !important;
+        border-radius: 8px !important;
+        padding: 8px 12px !important;
+        transition: all 0.2s ease;
+
+        &:focus {
+            border-color: #6366f1 !important;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25) !important;
+            outline: none;
+        }
+    }
+
+    // High-End Custom Scrollbars
+    *::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    *::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.2);
+    }
+
+    *::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
     .theme--light {
         // General
         --general-main-1: #{constants.$color-white};
@@ -349,7 +404,6 @@
         --badge-violet: #{constants.$color-blue-2};
         --badge-green: #{constants.$color-green-3};
 
-        // TradersHub Banner
         --traders-hub-banner-border-color: #{constants.$color-black-5};
 
         // Demo view
