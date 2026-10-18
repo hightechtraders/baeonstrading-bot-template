@@ -7,6 +7,12 @@ import { Strategy, INITIAL_STRATEGIES } from './strategies';
 import { useScannerFeed } from './useScannerFeed'; 
 import './FloatingAI.css';
 
+interface StrategyParams {
+  stake: number;
+  stopLoss: number;
+  takeProfit: number;
+}
+
 export const FloatingAI: React.FC = () => {
   useScannerFeed();
 
@@ -18,15 +24,12 @@ export const FloatingAI: React.FC = () => {
   const [isSweetSpot, setIsSweetSpot] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
 
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-  const expandedIndexRef = useRef<number | null>(null);
+  // Store parameters per strategy key (id or index) so they don't share a single global input state
+  const [strategyParams, setStrategyParams] = useState<Record<string, StrategyParams>>({});
+
   const isOpenRef = useRef<boolean>(false);
   const isScanningPhaseRef = useRef<boolean>(true);
-  const sweetSpotStreakRef = useRef<number>(0); // Anti-jitter consecutive counter
-
-  useEffect(() => {
-    expandedIndexRef.current = expandedIndex;
-  }, [expandedIndex]);
+  const sweetSpotStreakRef = useRef<number>(0);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -36,9 +39,19 @@ export const FloatingAI: React.FC = () => {
     isScanningPhaseRef.current = isScanningPhase;
   }, [isScanningPhase]);
 
-  const [stake, setStake] = useState<number>(10);
-  const [stopLoss, setStopLoss] = useState<number>(20);
-  const [takeProfit, setTakeProfit] = useState<number>(50);
+  // Initialize or update local parameter states when strategies change
+  useEffect(() => {
+    const initialParams: Record<string, StrategyParams> = {};
+    strategies.forEach((strat, idx) => {
+      const key = strat.id || `${strat.name}-${idx}`;
+      initialParams[key] = {
+        stake: strat.recommendedStake || 10,
+        stopLoss: strat.recommendedStopLoss || 20,
+        takeProfit: strat.recommendedTakeProfit || 50,
+      };
+    });
+    setStrategyParams(initialParams);
+  }, [strategies]);
 
   useEffect(() => {
     const handleStrategiesUpdated = (e: CustomEvent) => {
@@ -46,11 +59,9 @@ export const FloatingAI: React.FC = () => {
       if (Array.isArray(updated) && updated.length > 0) {
         setStrategies(updated);
 
-        // GUARD: Only evaluate when modal is fully open, scan phase is over, no drawer is expanded, and no signal is locked
         if (
           isOpenRef.current && 
           !isScanningPhaseRef.current && 
-          expandedIndexRef.current === null && 
           !isSignalLocked
         ) {
           const sorted = [...updated].sort((a, b) => b.confidence - a.confidence);
@@ -59,16 +70,12 @@ export const FloatingAI: React.FC = () => {
           const isHighConviction = topStrat && topStrat.confidence >= 80 && topStrat.confidence <= 89;
 
           if (isHighConviction) {
-            // Increment streak to prevent random tick jitter/flicker
             sweetSpotStreakRef.current += 1;
-
-            // Require at least 2 consecutive stable ticks before locking the sweet spot banner
             if (sweetSpotStreakRef.current >= 2) {
               setSignalBannerText(`🎯 HIGH MOMENTUM SWEET SPOT: ${topStrat.name} (${topStrat.market}) at ${topStrat.confidence}%! Ready to Load.`);
               setIsSweetSpot(true);
             }
           } else {
-            // Reset streak immediately if momentum dips
             sweetSpotStreakRef.current = 0;
             setSignalBannerText("✅ Market Scan Complete: Strategies Ranked");
             setIsSweetSpot(false);
@@ -96,11 +103,10 @@ export const FloatingAI: React.FC = () => {
 
   useEffect(() => {
     if (isOpen) {
-      setExpandedIndex(null);
       setIsSignalLocked(false);
       setIsSweetSpot(false);
       setIsScanningPhase(true);
-      sweetSpotStreakRef.current = 0; // Reset anti-jitter counter on open
+      sweetSpotStreakRef.current = 0;
       setSignalBannerText("🔍 Scanning Live Ticks Across Markets...");
 
       const timer = setTimeout(() => {
@@ -113,21 +119,26 @@ export const FloatingAI: React.FC = () => {
   }, [isOpen]);
 
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
-  const topWinner = sortedStrategies[0];
-  const otherStrategies = sortedStrategies.slice(1);
 
-  const handleRunBot = (strat: Strategy) => {
-    ScannerBridge.loadStrategyToWorkspace(strat, { stake, stopLoss, takeProfit });
-    alert(`Strategy "${strat.name}" successfully loaded! Click the main platform run button to execute.`);
-    setIsOpen(false);
+  const handleParamChange = (key: string, field: keyof StrategyParams, value: number) => {
+    setStrategyParams(prev => ({
+      ...prev,
+      [key]: {
+        ...(prev[key] || { stake: 10, stopLoss: 20, takeProfit: 50 }),
+        [field]: value
+      }
+    }));
   };
 
-  const handleCardClick = (strat: Strategy, index: number) => {
-    const newIndex = expandedIndex === index ? null : index;
-    setExpandedIndex(newIndex);
-    setStake(strat.recommendedStake || 10);
-    setStopLoss(strat.recommendedStopLoss || 20);
-    setTakeProfit(strat.recommendedTakeProfit || 50);
+  const handleRunBot = (strat: Strategy, key: string) => {
+    const params = strategyParams[key] || { stake: 10, stopLoss: 20, takeProfit: 50 };
+    ScannerBridge.loadStrategyToWorkspace(strat, { 
+      stake: params.stake, 
+      stopLoss: params.stopLoss, 
+      takeProfit: params.takeProfit 
+    });
+    alert(`Strategy "${strat.name}" successfully loaded! Click the main platform run button to execute.`);
+    setIsOpen(false);
   };
 
   return (
@@ -189,76 +200,29 @@ export const FloatingAI: React.FC = () => {
               </div>
             ) : (
               <>
-                <p className="scanner-instruction">Balanced strategies rank below. Tap card to edit.</p>
+                <p className="scanner-instruction">Balanced strategies ranked below. Adjust parameters and load directly.</p>
 
-                {topWinner && (
-                  <div className="global-winner-section">
-                    <div className="global-winner-meta">
-                      <span>GLOBAL WINNER</span>
-                      <span>CONFIDENCE {topWinner.confidence}%</span>
-                    </div>
-
-                    <div 
-                      className={`strategy-card top-card ${expandedIndex === 0 ? 'expanded' : ''}`}
-                      onClick={() => handleCardClick(topWinner, 0)}
-                    >
-                      <div className="card-main-row">
-                        <span className="badge-rank">#1</span>
-                        <div className="strategy-info">
-                          <strong>{topWinner.name}</strong>
-                          <div className="card-tags-row">
-                            <span className="market-tag">{topWinner.market}</span>
-                            {topWinner.direction && (
-                              <span className={`direction-tag ${topWinner.direction.toLowerCase()}`}>
-                                {topWinner.direction}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <span className="badge-high">HIGH</span>
-                        <span className="toggle-arrow">{expandedIndex === 0 ? '▲' : '▼'}</span>
-                      </div>
-                      <div className="card-sub-row">
-                        <span>Score {topWinner.score || topWinner.confidence}%</span>
-                        <span>Confidence {topWinner.confidence}%</span>
-                      </div>
-
-                      {expandedIndex === 0 && (
-                        <div className="parameter-drawer" onClick={(e) => e.stopPropagation()}>
-                          <div className="input-group">
-                            <label>Stake ($):</label>
-                            <input type="number" value={stake} onChange={(e) => setStake(Number(e.target.value))} />
-                          </div>
-                          <div className="input-group">
-                            <label>Stop Loss ($):</label>
-                            <input type="number" value={stopLoss} onChange={(e) => setStopLoss(Number(e.target.value))} />
-                          </div>
-                          <div className="input-group">
-                            <label>Take Profit ($):</label>
-                            <input type="number" value={takeProfit} onChange={(e) => setTakeProfit(Number(e.target.value))} />
-                          </div>
-                          <button className="run-manual-btn" onClick={() => handleRunBot(topWinner)}>
-                            Load Strategy to Workspace
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="strategy-list">
-                  {otherStrategies.map((strat, idx) => {
-                    const actualIndex = idx + 1;
-                    const isExpanded = expandedIndex === actualIndex;
+                <div className="strategy-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '65vh', overflowY: 'auto', paddingRight: '4px' }}>
+                  {sortedStrategies.map((strat, idx) => {
+                    const key = strat.id || `${strat.name}-${idx}`;
+                    const currentParams = strategyParams[key] || { stake: 10, stopLoss: 20, takeProfit: 50 };
+                    const isGlobalWinner = idx === 0;
 
                     return (
                       <div 
-                        key={strat.id || strat.name} 
-                        className={`strategy-card ${isExpanded ? 'expanded' : ''}`}
-                        onClick={() => handleCardClick(strat, actualIndex)}
+                        key={key} 
+                        className={`strategy-card ${isGlobalWinner ? 'top-card' : ''}`}
+                        style={{ background: isGlobalWinner ? 'rgba(46, 212, 121, 0.05)' : undefined, border: isGlobalWinner ? '1px solid rgba(46, 212, 121, 0.3)' : undefined }}
                       >
+                        {isGlobalWinner && (
+                          <div className="global-winner-meta" style={{ marginBottom: '8px' }}>
+                            <span>GLOBAL WINNER</span>
+                            <span>CONFIDENCE {strat.confidence}%</span>
+                          </div>
+                        )}
+
                         <div className="card-main-row">
-                          <span className="badge-rank">#{actualIndex + 1}</span>
+                          <span className="badge-rank">#{idx + 1}</span>
                           <div className="strategy-info">
                             <strong>{strat.name}</strong>
                             <div className="card-tags-row">
@@ -270,33 +234,55 @@ export const FloatingAI: React.FC = () => {
                               )}
                             </div>
                           </div>
-                          <span className="badge-medium">MEDIUM</span>
-                          <span className="toggle-arrow">{isExpanded ? '▲' : '▼'}</span>
+                          <span className={isGlobalWinner ? "badge-high" : "badge-medium"}>
+                            {isGlobalWinner ? "HIGH" : "MEDIUM"}
+                          </span>
                         </div>
-                        <div className="card-sub-row">
+
+                        <div className="card-sub-row" style={{ marginBottom: '10px' }}>
                           <span>Score {strat.score || strat.confidence}%</span>
                           <span>Confidence {strat.confidence}%</span>
                         </div>
 
-                        {isExpanded && (
-                          <div className="parameter-drawer" onClick={(e) => e.stopPropagation()}>
-                            <div className="input-group">
-                              <label>Stake ($):</label>
-                              <input type="number" value={stake} onChange={(e) => setStake(Number(e.target.value))} />
+                        {/* Always visible inline parameter inputs and load button */}
+                        <div className="parameter-drawer" style={{ display: 'block', background: 'rgba(0,0,0,0.15)', padding: '10px', borderRadius: '6px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '10px' }}>
+                            <div className="input-group" style={{ display: 'flex', flexDirection: 'column' }}>
+                              <label style={{ fontSize: '10px', marginBottom: '4px', color: '#94a3b8' }}>Stake ($):</label>
+                              <input 
+                                type="number" 
+                                value={currentParams.stake} 
+                                onChange={(e) => handleParamChange(key, 'stake', Number(e.target.value))}
+                                style={{ padding: '6px', borderRadius: '4px', border: '1px solid #334155', background: '#0f172a', color: '#fff', fontSize: '12px' }}
+                              />
                             </div>
-                            <div className="input-group">
-                              <label>Stop Loss ($):</label>
-                              <input type="number" value={stopLoss} onChange={(e) => setStopLoss(Number(e.target.value))} />
+                            <div className="input-group" style={{ display: 'flex', flexDirection: 'column' }}>
+                              <label style={{ fontSize: '10px', marginBottom: '4px', color: '#94a3b8' }}>Stop Loss ($):</label>
+                              <input 
+                                type="number" 
+                                value={currentParams.stopLoss} 
+                                onChange={(e) => handleParamChange(key, 'stopLoss', Number(e.target.value))}
+                                style={{ padding: '6px', borderRadius: '4px', border: '1px solid #334155', background: '#0f172a', color: '#fff', fontSize: '12px' }}
+                              />
                             </div>
-                            <div className="input-group">
-                              <label>Take Profit ($):</label>
-                              <input type="number" value={takeProfit} onChange={(e) => setTakeProfit(Number(e.target.value))} />
+                            <div className="input-group" style={{ display: 'flex', flexDirection: 'column' }}>
+                              <label style={{ fontSize: '10px', marginBottom: '4px', color: '#94a3b8' }}>Take Profit ($):</label>
+                              <input 
+                                type="number" 
+                                value={currentParams.takeProfit} 
+                                onChange={(e) => handleParamChange(key, 'takeProfit', Number(e.target.value))}
+                                style={{ padding: '6px', borderRadius: '4px', border: '1px solid #334155', background: '#0f172a', color: '#fff', fontSize: '12px' }}
+                              />
                             </div>
-                            <button className="run-manual-btn" onClick={() => handleRunBot(strat)}>
-                              Load Strategy to Workspace
-                            </button>
                           </div>
-                        )}
+                          <button 
+                            className="run-manual-btn" 
+                            onClick={() => handleRunBot(strat, key)}
+                            style={{ width: '100%', padding: '8px', background: '#2ed479', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                          >
+                            Load Strategy to Workspace
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
