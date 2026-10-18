@@ -8,10 +8,12 @@ export interface Strategy {
   symbol: string;          // True Deriv API WebSocket symbol key
   volatility: string;
   confidence: number;
-  direction: 'UP' | 'DOWN';
+  direction: 'UP' | 'DOWN' | 'DIGITOVER' | 'DIGITUNDER' | 'DIGITEVEN' | 'DIGITODD';
   recommendedStake: number;
   recommendedStopLoss: number;
   recommendedTakeProfit: number;
+  contractType?: string;   // Optional override for specific contract types (e.g. 'DIGITOVER')
+  barrier?: string;        // Optional prediction digit (e.g. '2' for Digit Over 2)
 }
 
 export const INITIAL_STRATEGIES: Strategy[] = [
@@ -89,15 +91,17 @@ export const INITIAL_STRATEGIES: Strategy[] = [
   },
   { 
     id: '7', 
-    name: 'High-Frequency Scalper', 
+    name: 'High-Frequency Digit Scalper', 
     market: 'Volatility 75 (1s) Index', 
     symbol: '1HZ75V', 
     volatility: '75s', 
     confidence: 50, 
-    direction: 'DOWN', 
-    recommendedStake: 25, 
-    recommendedStopLoss: 40, 
-    recommendedTakeProfit: 100 
+    direction: 'DIGITOVER', 
+    recommendedStake: 10, 
+    recommendedStopLoss: 20, 
+    recommendedTakeProfit: 40,
+    contractType: 'DIGITOVER',
+    barrier: '2' // Safe default prediction barrier for digit trades
   },
 ];
 
