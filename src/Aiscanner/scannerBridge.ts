@@ -3,7 +3,6 @@
 // ==========================================
 import { RiskManager } from './riskManager';
 import { ScannerLogic, DerivTickResponse } from './scannerLogic';
-import { api_base } from '@/external/bot-skeleton';
 
 export interface AIScannerPayload {
   stake: number;
@@ -14,13 +13,11 @@ export interface AIScannerPayload {
   stopLoss?: number;
   takeProfit?: number;
   multiplier?: number;
-  barrier?: string;
 }
 
 export class ScannerBridge {
   private static isScannerActive: boolean = false; 
-  private static scannerLogicInstance = new ScannerLogic();
-  private static activePrediction: string = '2';
+  private static scannerLogicInstance = new ScannerLogic(); // Instantiate core calculation logic
 
   static {
     if (typeof window !== 'undefined') {
@@ -36,32 +33,7 @@ export class ScannerBridge {
         const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
         ScannerBridge.isScannerActive = !!sessionStarted;
       }
-
-      ScannerBridge.interceptApiSocket();
     }
-  }
-
-  private static interceptApiSocket() {
-    try {
-      const globalAny = window as any;
-      const checkAndHookApi = () => {
-        const targetApi = globalAny.BinaryAPI || globalAny.DerivAPI || api_base?.api;
-        if (targetApi && typeof targetApi.send === 'function' && !targetApi.__scannerHooked) {
-          const originalSend = targetApi.send.bind(targetApi);
-          targetApi.send = function (data: any, cb?: any) {
-            if (data && data.proposal === 1 && ScannerBridge.isScannerActive) {
-              const contractType = String(data.contract_type || '').toUpperCase();
-              if ((contractType.includes('DIGIT') || contractType.includes('MATCH') || contractType.includes('DIFF') || contractType.includes('EVEN') || contractType.includes('ODD')) && !data.barrier) {
-                data.barrier = ScannerBridge.activePrediction || '2';
-              }
-            }
-            return originalSend(data, cb);
-          };
-          targetApi.__scannerHooked = true;
-        }
-      };
-      setInterval(checkAndHookApi, 1000);
-    } catch (e) {}
   }
 
   private static translateSymbol(rawSymbol: string): string {
@@ -87,99 +59,187 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
+  /**
+   * Intercepts live ticks, processes them through ScannerLogic,
+   * and broadcasts the fully updated strategy array to the UI components.
+   */
   public static pushTick(assetName: string, quote: number, strategies?: any[]) {
-    try {
-      const tickPayload: DerivTickResponse = {
-        msg_type: 'tick',
-        tick: {
-          symbol: assetName,
-          quote: quote,
-          epoch: Date.now(),
-          id: Math.random().toString()
-        }
-      };
-
-      const updatedStrategies = ScannerBridge.scannerLogicInstance.handleIncomingMessage(tickPayload);
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('ai-tick-received', {
-          detail: { assetName, quote, strategies: updatedStrategies }
-        }));
-        window.dispatchEvent(new CustomEvent('deriv_scanner_updated', {
-          detail: { assetName, quote, strategies: updatedStrategies }
-        }));
+    const tickPayload: DerivTickResponse = {
+      msg_type: 'tick',
+      tick: {
+        symbol: assetName,
+        quote: quote,
+        epoch: Date.now(),
+        id: Math.random().toString()
       }
-    } catch (err) {
-      console.error('Error processing live tick feed:', err);
-    }
-  }
+    };
 
-  public static async executeDirectTrade(strategy: any, options: any) {
-    const rootStore = (window as any).derivBotAppStore || (window as any).Bot?.stores;
+    const updatedStrategies = ScannerBridge.scannerLogicInstance.handleIncomingMessage(tickPayload);
 
-    if (!rootStore) {
-      console.error('Deriv bot app store not available.');
-      alert('Trading client not ready. Please make sure you are logged into your Deriv account.');
-      return;
-    }
-
-    try {
-      ScannerBridge.isScannerActive = true;
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
-      }
-
-      // Extract properties dynamically from the clicked strategy card or options
-      const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V';
-      const strictSymbol = ScannerBridge.translateSymbol(rawSymbol);
-      const contractType = (options?.contractType || strategy?.contractType || strategy?.direction || 'CALL').toUpperCase();
-      const stake = Number(options?.stake || strategy?.recommendedStake || strategy?.stake || 0.35);
-      const barrierValue = String(options?.barrier || strategy?.barrier || strategy?.prediction || '2');
-      
-      ScannerBridge.activePrediction = barrierValue;
-
-      // Programmatically update Deriv's Quick Strategy store with the clicked card's parameters
-      const quickStrategy = rootStore.quick_strategy;
-      if (quickStrategy && typeof quickStrategy.setValue === 'function') {
-        quickStrategy.setValue('symbol', strictSymbol);
-        quickStrategy.setValue('amount', stake);
-        quickStrategy.setValue('contract_type', contractType);
-        
-        if (contractType.includes('DIGIT') || contractType.includes('MATCH') || contractType.includes('DIFF')) {
-          quickStrategy.setValue('prediction', barrierValue);
-          quickStrategy.setValue('barrier', barrierValue);
-        }
-      }
-
-      // Trigger the run cycle
-      const runPanelStore = rootStore.run_panel || rootStore.quick_strategy;
-      if (runPanelStore && typeof runPanelStore.onRunButtonClick === 'function') {
-        runPanelStore.onRunButtonClick();
-      } else {
-        const runButton = document.querySelector('#runButton') || document.querySelector('.run-button') || document.querySelector('[data-testid="run_button"]');
-        if (runButton && (runButton as HTMLElement).click) {
-          (runButton as HTMLElement).click();
-        } else {
-          window.dispatchEvent(new CustomEvent('bot_run_start'));
-        }
-      }
-
-      if (rootStore.ui && typeof rootStore.ui.setActiveTab === 'function') {
-        rootStore.ui.setActiveTab('summary');
-      }
-
-      console.log(`Successfully executed strategy: ${strategy?.name || 'Custom'} on symbol ${strictSymbol}`);
-    } catch (error: any) {
-      console.error('Trade execution routing failed:', error);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ai-tick-received', {
+        detail: { assetName, quote, strategies: updatedStrategies }
+      }));
+      window.dispatchEvent(new CustomEvent('deriv_scanner_updated', {
+        detail: { assetName, quote, strategies: updatedStrategies }
+      }));
     }
   }
 
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    try {
-      ScannerBridge.executeDirectTrade(strategy, options);
-    } catch (e) {
-      console.warn('Workspace strategy load warning:', e);
+    ScannerBridge.isScannerActive = true;
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
     }
+
+    const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
+    const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
+
+    // ==========================================
+    // OPTIMIZED SESSION THRESHOLDS ($3 TP / $4.50 SL)
+    // ==========================================
+    const payload: AIScannerPayload = {
+      symbol: rawSymbol,
+      stake: 0.35, 
+      duration: options?.duration || strategy?.duration || 5,
+      tradeType: strategyDirection,
+      durationUnit: options?.durationUnit || 't',
+      stopLoss: 4.50,     // Safe buffer to allow Martingale recovery to complete
+      takeProfit: 3.00,   // Capped at $3.00 to lock in quick, frequent session gains
+      multiplier: options?.multiplier || strategy?.multiplier || 1.5
+    };
+
+    RiskManager.configure(payload.stopLoss, payload.takeProfit);
+
+    const rootStore = (window as any).derivBotAppStore;
+    const strictDerivSymbol = this.translateSymbol(payload.symbol);
+    
+    const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
+    const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
+    
+    const storeContractType = isFall ? 'PUT' : 'CALL';
+    const storeType = isFall ? 'fall' : 'rise';
+    
+    const martingaleMultiplier = payload.multiplier || 1.5;
+
+    const applyBlockMutations = () => {
+      try {
+        const Blockly = (window as any).Blockly;
+        const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
+
+        if (workspace && typeof workspace.getAllBlocks === 'function') {
+          const blocks = workspace.getAllBlocks(false);
+          if (Array.isArray(blocks)) {
+            let updated = false;
+
+            blocks.forEach((block: any) => {
+              if (!block) return;
+
+              if (typeof block.getField === 'function') {
+                const symbolField = block.getField('SYMBOL_LIST');
+                if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
+                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
+                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                    if (!exists) {
+                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
+                    }
+                  }
+                  symbolField.setValue(strictDerivSymbol);
+                  updated = true;
+                }
+              }
+
+              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
+                const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
+                fieldNames.forEach(name => {
+                  const field = block.getField(name);
+                  if (field && typeof field.setValue === 'function') {
+                    const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
+                    const targetMatch = options.find((opt: any) => {
+                      const label = String(opt[0] || '').toLowerCase();
+                      const val = String(opt[1] || '').toLowerCase();
+                      if (isFall) {
+                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
+                      } else {
+                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
+                      }
+                    });
+
+                    const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
+                    if (field && field.getValue() !== desiredVal) {
+                      field.setValue(desiredVal);
+                      updated = true;
+                    }
+                  }
+                });
+              }
+            });
+
+            if (updated && typeof workspace.render === 'function') {
+              workspace.render();
+            }
+          }
+        }
+      } catch (e) {}
+    };
+
+    if (rootStore?.quick_strategy) {
+      const quickStrategy = rootStore.quick_strategy;
+      try {
+        if (typeof quickStrategy.setValue === 'function') {
+          quickStrategy.setValue('symbol', strictDerivSymbol);
+          quickStrategy.setValue('duration', payload.duration);
+          quickStrategy.setValue('duration_type', payload.durationUnit || 't'); 
+          quickStrategy.setValue('amount', payload.stake);
+          quickStrategy.setValue('contract_type', storeContractType);
+          quickStrategy.setValue('type', storeType);
+          quickStrategy.setValue('size', martingaleMultiplier);
+          
+          if (payload.stopLoss !== undefined) {
+            quickStrategy.setValue('loss', payload.stopLoss);
+            quickStrategy.setValue('stop_loss', payload.stopLoss);
+          }
+          if (payload.takeProfit !== undefined) {
+            quickStrategy.setValue('profit', payload.takeProfit);
+            quickStrategy.setValue('take_profit', payload.takeProfit);
+          }
+        }
+        
+        const mockFormData = {
+          symbol: strictDerivSymbol, 
+          durationtype: payload.durationUnit || 't', 
+          duration: payload.duration,
+          stake: payload.stake,
+          amount: payload.stake,
+          tradetype: 'rise_fall',
+          contract_type: storeContractType,
+          type: storeType,
+          subtype: storeType,
+          size: martingaleMultiplier,
+          loss: payload.stopLoss,
+          stop_loss: payload.stopLoss,
+          profit: payload.takeProfit,
+          take_profit: payload.takeProfit
+        };
+
+        const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
+        if (typeof submitAction === 'function') {
+          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).then(() => {
+            setTimeout(applyBlockMutations, 100);
+            setTimeout(applyBlockMutations, 500);
+
+            if (rootStore?.client?.send) {
+              rootStore.client.send({ balance: 1, subscribe: 1 }).catch(() => {});
+            }
+          }).catch(() => {});
+        }
+      } catch (error) {}
+    }
+
+    applyBlockMutations();
+    setTimeout(applyBlockMutations, 150);
+    setTimeout(applyBlockMutations, 400);
+
     return true;
   }
 }
