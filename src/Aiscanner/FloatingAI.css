@@ -208,7 +208,6 @@
   padding-right: 4px;
 }
 
-/* Custom Scrollbar for list */
 .strategy-list::-webkit-scrollbar {
   width: 5px;
 }
