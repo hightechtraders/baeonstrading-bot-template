@@ -23,9 +23,9 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
-    private lockedUntil: number = 0;
-    private lockedStrategyId: string | null = null;
-    private readonly LOCK_DURATION_MS = 3000; // 3-second stable window for execution
+    // Sticky persistence state instead of time-locked windows
+    private activeSignalStrategyId: string | null = null;
+    private readonly DISENGAGE_THRESHOLD = 82; // Keeps signal active until confidence slides below this level
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Predictive momentum & confluence filter initialized.");
+        console.log("[AI Scanner]: Sticky momentum & persistent signal filter initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -51,18 +51,12 @@ export class ScannerLogic {
     }
 
     public processLiveTick(symbol: string, price: number): Strategy[] {
-        const now = Date.now();
-
         if (!this.priceBuffers[symbol]) {
             this.priceBuffers[symbol] = [];
         }
         this.priceBuffers[symbol].push(price);
         if (this.priceBuffers[symbol].length > 40) {
             this.priceBuffers[symbol].shift();
-        }
-
-        if (now < this.lockedUntil && this.lockedStrategyId) {
-            return this.getSortedStrategies();
         }
 
         const prices = this.priceBuffers[symbol];
@@ -80,7 +74,7 @@ export class ScannerLogic {
             this.directionHistory[symbol].shift();
         }
 
-        // Confluence Check: Are the last 3 ticks pointing in the exact same direction? (Cleaned slice parameter)
+        // Confluence Check: Are the last 3 ticks pointing in the exact same direction?
         const history = this.directionHistory[symbol];
         const isConfluent = history.length >= 3 && history.slice(-3).every(d => d === liveDirection);
 
@@ -98,11 +92,11 @@ export class ScannerLogic {
             // Boost score only if multi-tick confluence is met
             const confluenceBonus = isConfluent ? 15 : 0;
             
-            baseScore = Math.round(Math.min(96, Math.max(55, 65 + rawMagnitude + confluenceBonus)));
+            baseScore = Math.round(Math.min(97, Math.max(55, 65 + rawMagnitude + confluenceBonus)));
         }
 
-        let triggeredHighConfidence = false;
-        let targetStrategyId = '';
+        let highestCalculatedScore = 0;
+        let topStrategyId = '';
 
         this.strategies = this.strategies.map((strat, index) => {
             const uniqueWave = Math.sin(prices.length + index) * 3; 
@@ -110,10 +104,10 @@ export class ScannerLogic {
                 Math.min(97, Math.max(45, baseScore + uniqueWave))
             );
 
-            // Require high score AND strict multi-tick confluence before flagging high signal
-            if (strategySpecificScore >= 89 && isConfluent && !triggeredHighConfidence) {
-                triggeredHighConfidence = true;
-                targetStrategyId = strat.id || strat.name;
+            const stratId = strat.id || strat.name;
+            if (strategySpecificScore > highestCalculatedScore) {
+                highestCalculatedScore = strategySpecificScore;
+                topStrategyId = stratId;
             }
 
             return {
@@ -124,21 +118,36 @@ export class ScannerLogic {
             };
         });
 
-        if (triggeredHighConfidence && targetStrategyId) {
-            this.lockedUntil = now + this.LOCK_DURATION_MS;
-            this.lockedStrategyId = targetStrategyId;
+        // Sticky Signal Logic:
+        // If we already have an active signal, keep it pinned as long as its score stays above DISENGAGE_THRESHOLD and confluence holds.
+        // Otherwise, switch or disengage when momentum totally fades.
+        if (this.activeSignalStrategyId) {
+            const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
+            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && isConfluent) {
+                // Keep current active signal locked in place
+                return this.getSortedStrategies();
+            } else {
+                // Momentum faded or dropped below threshold, release active signal
+                this.activeSignalStrategyId = null;
+            }
+        }
+
+        // Trigger a new sticky signal if score hits the sweet spot (>= 89) with active confluence
+        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isConfluent && topStrategyId) {
+            this.activeSignalStrategyId = topStrategyId;
         }
 
         return this.getSortedStrategies();
     }
 
     private getSortedStrategies(): Strategy[] {
-        if (Date.now() < this.lockedUntil && this.lockedStrategyId) {
+        // If there is an active sticky signal, ensure it stays pinned at the very top index [0]
+        if (this.activeSignalStrategyId) {
             const copy = [...this.strategies];
-            const index = copy.findIndex(s => (s.id || s.name) === this.lockedStrategyId);
+            const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (index > 0) {
-                const [lockedItem] = copy.splice(index, 1);
-                copy.unshift(lockedItem);
+                const [stickyItem] = copy.splice(index, 1);
+                copy.unshift(stickyItem);
                 return copy;
             }
         }
