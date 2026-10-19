@@ -1,15 +1,19 @@
 @use 'components/shared/styles/themes' as *;
 
-// --- Global App Enhancements & Dark Background Force ---
-body, html, #app, .app, .main-wrapper {
-  background-color: #0b0e14 !important;
+/* ==========================================
+   PROFESSIONAL TRADING THEME & TEXT FIX
+   ========================================== */
+
+// 1. Force dark background and ensure readable light text everywhere globally
+body, html, #app, .app, .main-wrapper, div, span, p, label {
+  background-color: #0b0e14;
   color: #f8fafc !important;
   font-family: var(--brand-font-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-// --- Custom Modern Scrollbars for the Whole App ---
+// 2. Custom Modern Scrollbars for the Whole App
 *::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -28,26 +32,26 @@ body, html, #app, .app, .main-wrapper {
   background: rgba(255, 255, 255, 0.25);
 }
 
-// --- Global Icon Fixes from Template ---
+// 3. Global Icon Fixes from Template
 .icon-general-fill-path {
   path {
-    fill: var(--text-general);
+    fill: #f8fafc !important;
   }
 }
 
 .icon-general-fill-g-path {
   g {
     path {
-      fill: var(--text-general);
+      fill: #f8fafc !important;
     }
   }
 }
 
 // ==========================================
-// PROFESSIONAL DESIGN SYSTEM OVERRIDES
+// DESIGN SYSTEM: CONTAINERS & INPUTS
 // ==========================================
 
-// 1. Elevate Standard Containers & Panels across the Dashboard/Bot Builder
+// Elevate Standard Containers & Panels across Dashboard / Bot Builder
 .dc-card, 
 .bot-builder-content, 
 .dashboard__container,
@@ -60,7 +64,7 @@ body, html, #app, .app, .main-wrapper {
   color: #f8fafc !important;
 }
 
-// 2. Modernize Form Inputs & Dropdowns Globally
+// Modernize Form Inputs & Dropdowns Globally
 input[type="text"],
 input[type="number"],
 select,
@@ -79,13 +83,14 @@ textarea {
   }
 }
 
-// 3. Elevate Global Primary Action Buttons (like 'Run' or 'Submit')
+// Elevate Global Primary Action Buttons (like 'Run' or 'Submit')
 button.dc-btn--primary, 
 .run-btn-wrapper button {
   background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
   border: none !important;
   border-radius: 8px !important;
   font-weight: 700 !important;
+  color: #04080f !important;
   letter-spacing: 0.3px;
   box-shadow: 0 4px 15px rgba(34, 197, 94, 0.25);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
