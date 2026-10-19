@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Anti-lag momentum & live-updating breakout filter initialized.");
+        console.log("[AI Scanner]: Responsive momentum & breakout filter initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -74,33 +74,34 @@ export class ScannerLogic {
             this.directionHistory[symbol].shift();
         }
 
-        let marketMomentum = 55;
+        // Higher base momentum so scores start healthy
+        let marketMomentum = 65; 
         let isBreakoutValid = false;
 
-        if (prices.length >= 6) {
-            // Compare current price against a short lookback window to catch actual breakout velocity early
-            const windowSize = 6;
+        if (prices.length >= 4) {
+            // Shorter lookback window (4 ticks) to capture immediate price action faster
+            const windowSize = Math.min(prices.length, 6);
             const baselinePrice = prices[prices.length - windowSize];
             const priceDelta = latestPrice - baselinePrice;
             const percentageChange = (priceDelta / baselinePrice) * 100;
             
-            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 7000 : 5000;
+            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 9000 : 7000;
             const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
 
-            // Velocity check: ensure recent ticks support the move without being overly exhausted
-            const recentTicksMatch = prices[prices.length - 1] > prices[prices.length - 2] && 
-                                     prices[prices.length - 2] >= prices[prices.length - 3];
+            // Simplified, responsive velocity check
+            const isMovingForward = netDiff !== 0;
+            isBreakoutValid = rawMagnitude > 5 && isMovingForward;
+            
+            const breakoutBonus = isBreakoutValid ? 25 : 10;
 
-            isBreakoutValid = rawMagnitude > 15 && recentTicksMatch;
-            const breakoutBonus = isBreakoutValid ? 20 : 5;
-
-            marketMomentum = Math.min(97, Math.max(45, 58 + rawMagnitude + breakoutBonus));
+            // Scale naturally up to 97%
+            marketMomentum = Math.min(97, Math.max(50, 65 + rawMagnitude + breakoutBonus));
         }
 
         let highestCalculatedScore = 0;
         let topStrategyId = '';
 
-        // ALWAYS recalculate on every incoming tick so the UI updates live
+        // Recalculate on every incoming tick so UI updates live
         this.strategies = this.strategies.map((strat, index) => {
             const spreadOffset = (index === 0) ? 0 : (index * 2);
             const microNoise = (Math.sin(prices.length + index) * 1.5);
@@ -109,7 +110,7 @@ export class ScannerLogic {
                 marketMomentum - spreadOffset + microNoise
             );
 
-            strategySpecificScore = Math.min(97, Math.max(40, strategySpecificScore));
+            strategySpecificScore = Math.min(97, Math.max(45, strategySpecificScore));
 
             const stratId = strat.id || strat.name;
             if (strategySpecificScore > highestCalculatedScore) {
@@ -125,7 +126,7 @@ export class ScannerLogic {
             };
         });
 
-        // Manage sticky signal release or attachment without blocking tick calculations
+        // Manage sticky signal release or attachment
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (!currentActiveStrat || currentActiveStrat.confidence < this.DISENGAGE_THRESHOLD) {
@@ -133,12 +134,11 @@ export class ScannerLogic {
             }
         }
 
-        // Trigger new sticky signal based on genuine breakout velocity when sweet spot (>= 89) is met
+        // Trigger new sticky signal when sweet spot (>= 89) is met
         if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isBreakoutValid && topStrategyId) {
             this.activeSignalStrategyId = topStrategyId;
         }
 
-        // Return a fresh array copy so React triggers a clean re-render
         return [...this.getSortedStrategies()];
     }
 
