@@ -55,7 +55,7 @@ body {
   }
 }
 
-// ACTIVE TAB PERMANENT HIGHLIGHT (Locks the red color and underline to the active tab)
+// PERMANENT ACTIVE TAB STATE (Locks red color and underline when active)
 .dc-tabs__item--active,
 [role="tab"][aria-selected="true"],
 .tab__item--active {
