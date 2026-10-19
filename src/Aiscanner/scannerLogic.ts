@@ -23,7 +23,7 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
-    // Sticky persistence state & unified threshold (85%)
+    // Sticky persistence state & exact 85% threshold rule
     private activeSignalStrategyId: string | null = null;
     private readonly DISENGAGE_THRESHOLD = 85; 
 
@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Stable 85% Sweet Spot trigger initialized.");
+        console.log("[AI Scanner]: Strict 85% Persistent Sweet Spot Rule Initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -93,10 +93,9 @@ export class ScannerLogic {
             marketMomentum = Math.min(97, Math.max(50, 65 + rawMagnitude + breakoutBonus));
         }
 
-        let highestCalculatedScore = 0;
         let potentialSignalId = '';
 
-        // Recalculate strategy scores on every tick
+        // 1. Recalculate strategy scores on every tick
         this.strategies = this.strategies.map((strat, index) => {
             const spreadOffset = (index === 0) ? 0 : (index * 2);
             const microNoise = (Math.sin(prices.length + index) * 1.5);
@@ -108,13 +107,10 @@ export class ScannerLogic {
             strategySpecificScore = Math.min(97, Math.max(45, strategySpecificScore));
 
             const stratId = strat.id || strat.name;
-            
-            if (strategySpecificScore > highestCalculatedScore) {
-                highestCalculatedScore = strategySpecificScore;
-            }
+            const isHighConviction = strat.status === 'high';
 
-            // CLEAN TRIGGER: The moment confidence reaches >= 85%, mark it as our potential signal
-            if (strategySpecificScore >= this.DISENGAGE_THRESHOLD && !this.activeSignalStrategyId && !potentialSignalId) {
+            // Check if this strategy qualifies for a new signal trigger
+            if (!this.activeSignalStrategyId && strategySpecificScore >= this.DISENGAGE_THRESHOLD && isHighConviction) {
                 potentialSignalId = stratId;
             }
 
@@ -126,18 +122,24 @@ export class ScannerLogic {
             };
         });
 
-        // 1. Permanently lock in the signal the moment it hits >= 85%
+        // 2. If we don't have an active signal yet, bind it immediately to the candidate that hit >= 85%
         if (!this.activeSignalStrategyId && potentialSignalId) {
             this.activeSignalStrategyId = potentialSignalId;
         }
 
-        // 2. Maintain lock securely as long as its confidence stays at or above 85%
+        // 3. STRICT LOCK PERSISTENCE:
+        // If a signal is active, find its current score in the updated list.
+        // Keep it locked firmly at the top as it climbs towards 98%. 
+        // ONLY release it when its score physically drops below 85%.
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD) {
-                // Keep it locked firmly at the top as confidence climbs smoothly towards 97%
+            
+            if (currentActiveStrat) {
+                if (currentActiveStrat.confidence < this.DISENGAGE_THRESHOLD) {
+                    // Only drop the banner when it genuinely falls below 85%
+                    this.activeSignalStrategyId = null;
+                }
             } else {
-                // Drop lock ONLY when confidence drops below 85%
                 this.activeSignalStrategyId = null;
             }
         }
@@ -151,7 +153,7 @@ export class ScannerLogic {
             const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (index !== -1) {
                 const [stickyItem] = copy.splice(index, 1);
-                copy.unshift(stickyItem); // Pin active signal securely at the top
+                copy.unshift(stickyItem); // Keep the active signal permanently pinned at index [0]
                 return copy;
             }
         }
