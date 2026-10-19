@@ -23,9 +23,10 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
-    // Sticky persistence state & exact 85% threshold rule
+    // Sticky persistence state with Hysteresis (Trigger at 85%, Release only below 82%)
     private activeSignalStrategyId: string | null = null;
-    private readonly DISENGAGE_THRESHOLD = 85; 
+    private readonly TRIGGER_THRESHOLD = 85; 
+    private readonly RELEASE_THRESHOLD = 82; 
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -38,7 +39,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Clean architecture with sticky floor protection initialized.");
+        console.log("[AI Scanner]: Hysteresis anti-flashing persistent lock initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -89,7 +90,7 @@ export class ScannerLogic {
             marketMomentum = Math.min(97, Math.max(50, 65 + rawMagnitude + breakoutBonus));
         }
 
-        // 2. Refresh scores across all strategies with Sticky Floor Protection
+        // 2. Refresh scores across all strategies smoothly without clamping
         this.strategies = this.strategies.map((strat, index) => {
             const isTargetSymbol = strat.symbol === symbol;
             const effectiveMomentum = isTargetSymbol 
@@ -102,13 +103,6 @@ export class ScannerLogic {
             let strategySpecificScore = Math.round(effectiveMomentum - spreadOffset + microNoise);
             strategySpecificScore = Math.min(97, Math.max(45, strategySpecificScore));
 
-            const stratId = strat.id || strat.name;
-
-            // STICKY FLOOR PROTECTION: Prevent active signal from flickering below 85% due to micro-noise
-            if (this.activeSignalStrategyId === stratId && strategySpecificScore < this.DISENGAGE_THRESHOLD) {
-                strategySpecificScore = this.DISENGAGE_THRESHOLD;
-            }
-
             return {
                 ...strat,
                 confidence: strategySpecificScore,
@@ -117,16 +111,16 @@ export class ScannerLogic {
             };
         });
 
-        // 3. SEPARATED STATE MANAGEMENT: Handle Signal Locking & Disengaging independently
+        // 3. HYSTERESIS LOCK & RELEASE MANAGEMENT:
         if (this.activeSignalStrategyId) {
-            // Check if our currently locked signal has genuinely dropped below the 85% threshold
+            // Keep the lock secure as it climbs. Only release when it drops below the safety buffer (82%)
             const activeStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (!activeStrat || activeStrat.confidence < this.DISENGAGE_THRESHOLD) {
-                this.activeSignalStrategyId = null; // Release lock only when below 85%
+            if (!activeStrat || activeStrat.confidence < this.RELEASE_THRESHOLD) {
+                this.activeSignalStrategyId = null; 
             }
         } else {
-            // If no signal is locked, look for any high-conviction strategy that has crossed >= 85%
-            const candidate = this.strategies.find(s => s.status === 'high' && s.confidence >= this.DISENGAGE_THRESHOLD);
+            // Trigger when a high-conviction strategy crosses 85%
+            const candidate = this.strategies.find(s => s.status === 'high' && s.confidence >= this.TRIGGER_THRESHOLD);
             if (candidate) {
                 this.activeSignalStrategyId = candidate.id || candidate.name;
             }
@@ -141,7 +135,7 @@ export class ScannerLogic {
             const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (index !== -1) {
                 const [stickyItem] = copy.splice(index, 1);
-                copy.unshift(stickyItem); // Keep active signal pinned securely at index [0]
+                copy.unshift(stickyItem); // Permanently pin active signal at index [0]
                 return copy;
             }
         }
