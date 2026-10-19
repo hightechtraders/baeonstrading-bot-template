@@ -94,10 +94,45 @@
     top: 0;
     z-index: 1;
     background: var(--general-main-1);
+    border-bottom: 1px solid var(--border-divider);
 
+    // Tab items styling & hover
+    > div, 
+    a, 
+    button, 
     .derivs-text__size--md {
+        position: relative;
         font-size: 14px;
         line-height: 18px;
+        font-weight: 500;
+        transition: color 0.2s ease;
+        padding: 10px 16px;
+        cursor: pointer;
+        color: var(--text-general);
+
+        &:hover {
+            color: #ff444f !important;
+        }
+    }
+
+    // Permanent active state styling (Locks color and underline when active)
+    .is-active,
+    &--active,
+    [aria-selected="true"],
+    .dc-tabs__item--active {
+        color: #ff444f !important;
+        font-weight: 700 !important;
+
+        &::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background-color: #ff444f;
+            border-radius: 3px 3px 0 0;
+        }
     }
 }
 
@@ -275,7 +310,6 @@
         color: var(--text-prominent);
         animation: auth-spinner-rotate 0.8s linear infinite;
     }
-
 }
 
 .deriv-accordion--underline {
@@ -295,16 +329,6 @@
     background: linear-gradient(180deg, var(--general-main-1) 0%, var(--general-section-1) 100%) !important;
     border-bottom: 1px solid var(--border-normal) !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.derivs-secondary-tabs {
-    border-bottom: 1px solid var(--border-divider);
-    
-    .derivs-text__size--md {
-        font-weight: 600;
-        letter-spacing: 0.2px;
-        transition: color 0.2s ease;
-    }
 }
 
 .auth-actions {
