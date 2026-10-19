@@ -23,9 +23,9 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
-    // Sticky persistence state instead of time-locked windows
+    // Sticky persistence state & thresholds
     private activeSignalStrategyId: string | null = null;
-    private readonly DISENGAGE_THRESHOLD = 82; // Keeps signal active until confidence slides below this level
+    private readonly DISENGAGE_THRESHOLD = 80; // Keeps signal active until momentum fades
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Sticky momentum & persistent signal filter initialized.");
+        console.log("[AI Scanner]: Anti-lag momentum & breakout filter initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -65,7 +65,7 @@ export class ScannerLogic {
         const netDiff = latestPrice - prevPrice;
         const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
 
-        // Track directional history to check for multi-tick confluence
+        // Track directional history
         if (!this.directionHistory[symbol]) {
             this.directionHistory[symbol] = [];
         }
@@ -74,38 +74,41 @@ export class ScannerLogic {
             this.directionHistory[symbol].shift();
         }
 
-        // Confluence Check: Are the last 3 ticks pointing in the exact same direction?
-        const history = this.directionHistory[symbol];
-        const isConfluent = history.length >= 3 && history.slice(-3).every(d => d === liveDirection);
+        let marketMomentum = 55;
+        let isBreakoutValid = false;
 
-        let marketMomentum = 60; // Clean baseline
-        if (prices.length >= 5) {
-            const windowSize = Math.min(prices.length, 10);
-            const oldestInWindow = prices[prices.length - windowSize];
-            const priceDelta = latestPrice - oldestInWindow;
-            const percentageChange = (priceDelta / oldestInWindow) * 100;
+        if (prices.length >= 6) {
+            // Compare current price against a short lookback window to catch actual breakout velocity early
+            const windowSize = 6;
+            const baselinePrice = prices[prices.length - windowSize];
+            const priceDelta = latestPrice - baselinePrice;
+            const percentageChange = (priceDelta / baselinePrice) * 100;
             
-            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 6000 : 4500;
+            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 7000 : 5000;
             const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
-            const confluenceBonus = isConfluent ? 15 : 0;
-            
-            // Allow market momentum to climb naturally up to 97% on strong trends
-            marketMomentum = Math.min(97, Math.max(45, 60 + rawMagnitude + confluenceBonus));
+
+            // Velocity check: ensure recent ticks support the move without being overly exhausted
+            const recentTicksMatch = prices[prices.length - 1] > prices[prices.length - 2] && 
+                                     prices[prices.length - 2] >= prices[prices.length - 3];
+
+            isBreakoutValid = rawMagnitude > 15 && recentTicksMatch;
+            const breakoutBonus = isBreakoutValid ? 20 : 5;
+
+            marketMomentum = Math.min(97, Math.max(45, 58 + rawMagnitude + breakoutBonus));
         }
 
         let highestCalculatedScore = 0;
         let topStrategyId = '';
 
         this.strategies = this.strategies.map((strat, index) => {
-            // Keep top strategy untouched; minor natural spacing for others
             const spreadOffset = (index === 0) ? 0 : (index * 2);
-            const microNoise = (Math.sin(prices.length + index) * 2);
+            const microNoise = (Math.sin(prices.length + index) * 1.5);
 
             let strategySpecificScore = Math.round(
                 marketMomentum - spreadOffset + microNoise
             );
 
-            strategySpecificScore = Math.min(97, Math.max(42, strategySpecificScore));
+            strategySpecificScore = Math.min(97, Math.max(40, strategySpecificScore));
 
             const stratId = strat.id || strat.name;
             if (strategySpecificScore > highestCalculatedScore) {
@@ -124,15 +127,15 @@ export class ScannerLogic {
         // Sticky Signal Persistence Logic
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && isConfluent) {
+            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD) {
                 return this.getSortedStrategies();
             } else {
                 this.activeSignalStrategyId = null;
             }
         }
 
-        // Trigger new sticky signal when sweet spot (>= 89) is met with active confluence
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isConfluent && topStrategyId) {
+        // Trigger new sticky signal based on genuine breakout velocity rather than lagging 3-tick streaks
+        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isBreakoutValid && topStrategyId) {
             this.activeSignalStrategyId = topStrategyId;
         }
 
