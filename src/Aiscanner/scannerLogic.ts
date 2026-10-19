@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Anti-lag momentum & breakout filter initialized.");
+        console.log("[AI Scanner]: Anti-lag momentum & live-updating breakout filter initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -100,6 +100,7 @@ export class ScannerLogic {
         let highestCalculatedScore = 0;
         let topStrategyId = '';
 
+        // ALWAYS recalculate on every incoming tick so the UI updates live
         this.strategies = this.strategies.map((strat, index) => {
             const spreadOffset = (index === 0) ? 0 : (index * 2);
             const microNoise = (Math.sin(prices.length + index) * 1.5);
@@ -124,22 +125,21 @@ export class ScannerLogic {
             };
         });
 
-        // Sticky Signal Persistence Logic
+        // Manage sticky signal release or attachment without blocking tick calculations
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD) {
-                return this.getSortedStrategies();
-            } else {
+            if (!currentActiveStrat || currentActiveStrat.confidence < this.DISENGAGE_THRESHOLD) {
                 this.activeSignalStrategyId = null;
             }
         }
 
-        // Trigger new sticky signal based on genuine breakout velocity rather than lagging 3-tick streaks
+        // Trigger new sticky signal based on genuine breakout velocity when sweet spot (>= 89) is met
         if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isBreakoutValid && topStrategyId) {
             this.activeSignalStrategyId = topStrategyId;
         }
 
-        return this.getSortedStrategies();
+        // Return a fresh array copy so React triggers a clean re-render
+        return [...this.getSortedStrategies()];
     }
 
     private getSortedStrategies(): Strategy[] {
