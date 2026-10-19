@@ -15,7 +15,6 @@ body {
 // BULLETPROOF ACTIVE TAB STYLING
 // ==========================================
 
-// Force active state styling across any tab container or item in the app
 .dc-tabs__item, 
 .cq-tabs__item, 
 [role="tab"],
@@ -29,7 +28,7 @@ body {
   }
 }
 
-// Target every known variation of active/selected state used by Deriv's UI
+// Forces the active tab to show the accent color and underline permanently
 .dc-tabs__item--active,
 [role="tab"][aria-selected="true"],
 .tab__item--active,
