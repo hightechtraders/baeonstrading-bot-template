@@ -23,10 +23,10 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
-    // Sticky persistence state with Hysteresis (Trigger at 85%, Release only below 82%)
+    // Clean persistent signal lock state
     private activeSignalStrategyId: string | null = null;
-    private readonly TRIGGER_THRESHOLD = 85; 
-    private readonly RELEASE_THRESHOLD = 82; 
+    private readonly TRIGGER_THRESHOLD = 82; // Matches your comfortable sweet spot activation
+    private readonly RELEASE_THRESHOLD = 75; // Clean release buffer
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -39,7 +39,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Hysteresis anti-flashing persistent lock initialized.");
+        console.log("[AI Scanner]: Stable persistent signal architecture initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -52,7 +52,6 @@ export class ScannerLogic {
     }
 
     public processLiveTick(symbol: string, price: number): Strategy[] {
-        // 1. Maintain price buffers and directional momentum for live data feeds
         if (!this.priceBuffers[symbol]) {
             this.priceBuffers[symbol] = [];
         }
@@ -90,7 +89,7 @@ export class ScannerLogic {
             marketMomentum = Math.min(97, Math.max(50, 65 + rawMagnitude + breakoutBonus));
         }
 
-        // 2. Refresh scores across all strategies smoothly without clamping
+        // 1. Smooth score updates across all strategies
         this.strategies = this.strategies.map((strat, index) => {
             const isTargetSymbol = strat.symbol === symbol;
             const effectiveMomentum = isTargetSymbol 
@@ -111,34 +110,27 @@ export class ScannerLogic {
             };
         });
 
-        // 3. HYSTERESIS LOCK & RELEASE MANAGEMENT:
+        // 2. Stable Signal Latching (No flickering)
         if (this.activeSignalStrategyId) {
-            // Keep the lock secure as it climbs. Only release when it drops below the safety buffer (82%)
+            // Keep the signal locked until its confidence drops below the release floor
             const activeStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (!activeStrat || activeStrat.confidence < this.RELEASE_THRESHOLD) {
                 this.activeSignalStrategyId = null; 
             }
         } else {
-            // Trigger when a high-conviction strategy crosses 85%
+            // Latch onto the first high-conviction strategy crossing the trigger threshold
             const candidate = this.strategies.find(s => s.status === 'high' && s.confidence >= this.TRIGGER_THRESHOLD);
             if (candidate) {
                 this.activeSignalStrategyId = candidate.id || candidate.name;
             }
         }
 
-        return [...this.getSortedStrategies()];
+        return this.getSortedStrategies();
     }
 
     private getSortedStrategies(): Strategy[] {
-        if (this.activeSignalStrategyId) {
-            const copy = [...this.strategies];
-            const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (index !== -1) {
-                const [stickyItem] = copy.splice(index, 1);
-                copy.unshift(stickyItem); // Permanently pin active signal at index [0]
-                return copy;
-            }
-        }
+        // Standard sort by confidence so the highest score naturally stays at the top #1 spot 
+        // without forcing jagged array splices that break React rendering.
         return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
     }
 }
