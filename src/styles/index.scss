@@ -24,3 +24,63 @@ body {
   background: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
 }
+
+// ==========================================
+// PROFESSIONAL WORKSPACE & TAB ENHANCEMENTS
+// ==========================================
+
+// 1. Elevate Dashboard, Bot Builder, Charts, and Free Bots Tab Navigation
+.dashboard__tabs, 
+.derivs-secondary-tabs, 
+.bot-builder__tabs {
+  background: var(--general-main-1) !important;
+  border-bottom: 1px solid var(--border-divider) !important;
+  padding: 0 16px;
+
+  .dc-tabs__item, 
+  .tab__item {
+    font-weight: 600 !important;
+    color: var(--text-general) !important;
+    transition: all 0.2s ease;
+    padding: 12px 20px !important;
+
+    &--active {
+      color: var(--brand-primary, #ff444f) !important;
+      border-bottom: 2px solid var(--brand-primary, #ff444f) !important;
+    }
+
+    &:hover {
+      color: var(--text-prominent) !important;
+    }
+  }
+}
+
+// 2. Give Cards and Workspace Panels a Clean, Modern Finish
+.dc-card, 
+.bot-builder-content, 
+.dashboard__container,
+.tab__content {
+  border-radius: 12px !important;
+  border: 1px solid var(--border-normal) !important;
+  background: var(--general-main-2) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03) !important;
+  transition: all 0.2s ease;
+}
+
+// 3. Modernize Inputs and Controls
+input[type="text"],
+input[type="number"],
+select {
+  background-color: var(--general-section-1) !important;
+  border: 1px solid var(--border-normal) !important;
+  color: var(--text-prominent) !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  transition: all 0.2s ease;
+
+  &:focus {
+    border-color: var(--brand-primary, #ff444f) !important;
+    box-shadow: 0 0 0 2px rgba(255, 68, 79, 0.15) !important;
+    outline: none;
+  }
+}
