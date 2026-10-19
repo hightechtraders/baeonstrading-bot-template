@@ -26,59 +26,56 @@ body {
 }
 
 // ==========================================
-// TAB & WORKSPACE HIGHLIGHT ENHANCEMENTS
+// HIGH-END TAB & WORKSPACE OVERHAUL
 // ==========================================
 
+// Target the main navigation tabs container
 .dc-tabs__list, 
 .cq-tabs__list, 
 [role="tablist"] {
-  border-bottom: 1px solid var(--border-divider) !important;
+  border-bottom: 2px solid var(--border-divider) !important;
   background: var(--general-main-1) !important;
   padding: 0 16px;
 }
 
-// Default Tab Items & Hover State
+// Individual Tab Items & States (Flattened to avoid Sass nesting suffixes on attribute selectors)
 .dc-tabs__item, 
 .cq-tabs__item, 
 [role="tab"] {
   position: relative !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
   font-size: 15px !important;
   color: var(--text-general) !important;
-  padding: 10px 20px !important;
-  border-radius: 8px !important;
+  padding: 12px 24px !important;
   transition: all 0.2s ease !important;
   background: transparent !important;
   border: none !important;
 
   &:hover {
-    background-color: var(--general-hover) !important;
-    color: var(--text-prominent) !important;
+    color: var(--brand-primary, #ff444f) !important;
   }
 }
 
-// ACTIVE TAB STATE: Distinct text color, bold weight, and a clear accent indicator line
+// Active States explicitly targeted
 .dc-tabs__item--active,
 [role="tab"][aria-selected="true"],
 .tab__item--active {
-  background-color: transparent !important;
-  color: #ff444f !important; // Distinct vibrant brand color for active text
+  color: var(--brand-primary, #ff444f) !important;
   font-weight: 700 !important;
 
-  // Solid accent underline to make the active tab unmistakably clear
   &::after {
     content: '' !important;
     position: absolute !important;
-    bottom: 0 !important;
-    left: 12px !important;
-    right: 12px !important;
+    bottom: -2px !important;
+    left: 0 !important;
+    right: 0 !important;
     height: 3px !important;
-    background-color: #ff444f !important;
+    background-color: var(--brand-primary, #ff444f) !important;
     border-radius: 3px 3px 0 0 !important;
   }
 }
 
-// Elevate Content Panels
+// Elevate Content Panels under those tabs
 .dc-card, 
 .dashboard__container,
 .bot-builder-content,
@@ -89,7 +86,7 @@ body {
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.04) !important;
 }
 
-// Modernize Form Inputs & Controls
+// Modernize Form Inputs & Controls across tabs
 input[type="text"],
 input[type="number"],
 select {
@@ -100,7 +97,7 @@ select {
   padding: 8px 12px !important;
 
   &:focus {
-    border-color: #ff444f !important;
+    border-color: var(--brand-primary, #ff444f) !important;
     box-shadow: 0 0 0 2px rgba(255, 68, 79, 0.15) !important;
     outline: none;
   }
