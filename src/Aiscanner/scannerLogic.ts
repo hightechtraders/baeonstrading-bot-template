@@ -23,7 +23,7 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
-    // Sticky persistence state instead of time-locked windows
+    // Sticky persistence state & thresholds
     private activeSignalStrategyId: string | null = null;
     private readonly DISENGAGE_THRESHOLD = 82; // Keeps signal active until confidence slides below this level
 
@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Sticky momentum & persistent signal filter initialized.");
+        console.log("[AI Scanner]: Balanced momentum & sticky signal filter initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -78,31 +78,33 @@ export class ScannerLogic {
         const history = this.directionHistory[symbol];
         const isConfluent = history.length >= 3 && history.slice(-3).every(d => d === liveDirection);
 
-        let baseScore = 60; // Lower baseline so weak markets don't trigger false flags
+        let marketMomentum = 50; // Neutral baseline
         if (prices.length >= 5) {
-            const windowSize = Math.min(prices.length, 10);
+            const windowSize = Math.min(prices.length, 12);
             const oldestInWindow = prices[prices.length - windowSize];
             const priceDelta = latestPrice - oldestInWindow;
             const percentageChange = (priceDelta / oldestInWindow) * 100;
             
-            // Scaled magnitude: optimizes Vol 10 micro-trends without altering other indices
-            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 5500 : 4000;
+            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 6000 : 4500;
             const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
+            const confluenceBonus = isConfluent ? 12 : 0;
             
-            // Boost score only if multi-tick confluence is met
-            const confluenceBonus = isConfluent ? 15 : 0;
-            
-            baseScore = Math.round(Math.min(97, Math.max(55, 65 + rawMagnitude + confluenceBonus)));
+            marketMomentum = Math.min(90, Math.max(40, 50 + rawMagnitude + confluenceBonus));
         }
 
         let highestCalculatedScore = 0;
         let topStrategyId = '';
 
         this.strategies = this.strategies.map((strat, index) => {
-            const uniqueWave = Math.sin(prices.length + index) * 3; 
-            const strategySpecificScore = Math.round(
-                Math.min(97, Math.max(45, baseScore + uniqueWave))
+            // Give each strategy a unique weighting factor so scores spread out nicely
+            const strategyMultiplier = 0.85 + ((index % 4) * 0.08); 
+            const microNoise = (Math.sin(prices.length * 1.5 + index * 2) * 4);
+
+            let strategySpecificScore = Math.round(
+                (marketMomentum * strategyMultiplier) + microNoise
             );
+
+            strategySpecificScore = Math.min(96, Math.max(42, strategySpecificScore));
 
             const stratId = strat.id || strat.name;
             if (strategySpecificScore > highestCalculatedScore) {
@@ -118,21 +120,17 @@ export class ScannerLogic {
             };
         });
 
-        // Sticky Signal Logic:
-        // If we already have an active signal, keep it pinned as long as its score stays above DISENGAGE_THRESHOLD and confluence holds.
-        // Otherwise, switch or disengage when momentum totally fades.
+        // Sticky Signal Persistence Logic
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && isConfluent) {
-                // Keep current active signal locked in place
                 return this.getSortedStrategies();
             } else {
-                // Momentum faded or dropped below threshold, release active signal
                 this.activeSignalStrategyId = null;
             }
         }
 
-        // Trigger a new sticky signal if score hits the sweet spot (>= 89) with active confluence
+        // Trigger new sticky signal when sweet spot (>= 89) is met with active confluence
         if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isConfluent && topStrategyId) {
             this.activeSignalStrategyId = topStrategyId;
         }
@@ -141,7 +139,6 @@ export class ScannerLogic {
     }
 
     private getSortedStrategies(): Strategy[] {
-        // If there is an active sticky signal, ensure it stays pinned at the very top index [0]
         if (this.activeSignalStrategyId) {
             const copy = [...this.strategies];
             const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
