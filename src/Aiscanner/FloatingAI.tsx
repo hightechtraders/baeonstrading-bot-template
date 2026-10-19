@@ -20,6 +20,9 @@ export const FloatingAI: React.FC = () => {
 
   const isOpenRef = useRef<boolean>(false);
   const isScanningPhaseRef = useRef<boolean>(true);
+  
+  // PERSISTENT LATCH: Track the exact strategy currently holding the banner so it never flickers
+  const lockedSweetSpotIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -35,19 +38,33 @@ export const FloatingAI: React.FC = () => {
       if (Array.isArray(updated) && updated.length > 0) {
         setStrategies(updated);
 
-        if (
-          isOpenRef.current && 
-          !isScanningPhaseRef.current && 
-          !isSignalLocked
-        ) {
+        if (isOpenRef.current && !isScanningPhaseRef.current && !isSignalLocked) {
           const sorted = [...updated].sort((a, b) => b.confidence - a.confidence);
-          const topStrat = sorted[0];
+          
+          let activeStrat = null;
 
-          // STRICT 85% to 97% HOLDING RULE: Lock in immediately and hold steady across the full range
-          const isValidSweetSpot = topStrat && topStrat.confidence >= 85 && topStrat.confidence <= 97 && topStrat.status === 'high';
+          // 1. If we already have a locked sweet spot strategy, keep checking IT as long as it stays >= 85%
+          if (lockedSweetSpotIdRef.current) {
+            const foundLocked = sorted.find(s => (s.id || s.name) === lockedSweetSpotIdRef.current);
+            if (foundLocked && foundLocked.confidence >= 85) {
+              activeStrat = foundLocked; // Keep holding it!
+            } else {
+              lockedSweetSpotIdRef.current = null; // Release if it dropped below 85%
+            }
+          }
 
-          if (isValidSweetSpot) {
-            setSignalBannerText(`🎯 HIGH MOMENTUM SWEET SPOT: ${topStrat.name} (${topStrat.market}) at ${topStrat.confidence}%! Ready to Load.`);
+          // 2. If no lock exists, check if the top strategy qualifies to lock in (85% to 97%)
+          if (!lockedSweetSpotIdRef.current) {
+            const topStrat = sorted[0];
+            if (topStrat && topStrat.confidence >= 85 && topStrat.confidence <= 97 && topStrat.status === 'high') {
+              lockedSweetSpotIdRef.current = topStrat.id || topStrat.name;
+              activeStrat = topStrat;
+            }
+          }
+
+          // 3. Update UI banner based on our persistent latch state
+          if (activeStrat && lockedSweetSpotIdRef.current) {
+            setSignalBannerText(`🎯 HIGH MOMENTUM SWEET SPOT: ${activeStrat.name} (${activeStrat.market}) at ${activeStrat.confidence}%! Ready to Load.`);
             setIsSweetSpot(true);
           } else {
             setSignalBannerText("✅ Market Scan Complete: Strategies Ranked");
@@ -79,6 +96,7 @@ export const FloatingAI: React.FC = () => {
       setIsSignalLocked(false);
       setIsSweetSpot(false);
       setIsScanningPhase(true);
+      lockedSweetSpotIdRef.current = null; // Reset latch on modal open
       setSignalBannerText("🔍 Scanning Live Ticks Across Markets...");
 
       const timer = setTimeout(() => {
@@ -137,7 +155,10 @@ export const FloatingAI: React.FC = () => {
                 <div className="strategy-list">
                   {sortedStrategies.map((strat, idx) => {
                     const key = strat.id || `${strat.name}-${idx}`;
-                    const isGlobalWinner = idx === 0;
+                    // If we have a locked sweet spot ID, highlight that specific card as the global winner banner
+                    const isGlobalWinner = lockedSweetSpotIdRef.current 
+                      ? (strat.id || strat.name) === lockedSweetSpotIdRef.current 
+                      : idx === 0;
 
                     return (
                       <div 
