@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Clean decoupled architecture & persistent 85% rule initialized.");
+        console.log("[AI Scanner]: Clean architecture with sticky floor protection initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -89,7 +89,7 @@ export class ScannerLogic {
             marketMomentum = Math.min(97, Math.max(50, 65 + rawMagnitude + breakoutBonus));
         }
 
-        // 2. Refresh scores across all strategies cleanly without mutating locks inside the loop
+        // 2. Refresh scores across all strategies with Sticky Floor Protection
         this.strategies = this.strategies.map((strat, index) => {
             const isTargetSymbol = strat.symbol === symbol;
             const effectiveMomentum = isTargetSymbol 
@@ -102,6 +102,13 @@ export class ScannerLogic {
             let strategySpecificScore = Math.round(effectiveMomentum - spreadOffset + microNoise);
             strategySpecificScore = Math.min(97, Math.max(45, strategySpecificScore));
 
+            const stratId = strat.id || strat.name;
+
+            // STICKY FLOOR PROTECTION: Prevent active signal from flickering below 85% due to micro-noise
+            if (this.activeSignalStrategyId === stratId && strategySpecificScore < this.DISENGAGE_THRESHOLD) {
+                strategySpecificScore = this.DISENGAGE_THRESHOLD;
+            }
+
             return {
                 ...strat,
                 confidence: strategySpecificScore,
@@ -112,7 +119,7 @@ export class ScannerLogic {
 
         // 3. SEPARATED STATE MANAGEMENT: Handle Signal Locking & Disengaging independently
         if (this.activeSignalStrategyId) {
-            // Check if our currently locked signal has dropped below the 85% threshold
+            // Check if our currently locked signal has genuinely dropped below the 85% threshold
             const activeStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (!activeStrat || activeStrat.confidence < this.DISENGAGE_THRESHOLD) {
                 this.activeSignalStrategyId = null; // Release lock only when below 85%
