@@ -23,7 +23,7 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
-    // Sticky persistence state & thresholds (Disengage threshold updated to 85%)
+    // Sticky persistence state & unified threshold (85%)
     private activeSignalStrategyId: string | null = null;
     private readonly DISENGAGE_THRESHOLD = 85; 
 
@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Stable persistent banner logic initialized (85% threshold).");
+        console.log("[AI Scanner]: Unified 85% signal trigger & persistent banner initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -94,7 +94,7 @@ export class ScannerLogic {
         }
 
         let highestCalculatedScore = 0;
-        let potentialSweetSpotId = '';
+        let potentialSignalId = '';
 
         // Recalculate strategy scores on every tick
         this.strategies = this.strategies.map((strat, index) => {
@@ -113,9 +113,9 @@ export class ScannerLogic {
                 highestCalculatedScore = strategySpecificScore;
             }
 
-            // Flag strategy immediately if it crosses the 89% sweet spot
-            if (strategySpecificScore >= 89 && !this.activeSignalStrategyId && !potentialSweetSpotId) {
-                potentialSweetSpotId = stratId;
+            // TRIGGER FIX: Fires the moment a strategy hits >= 85%
+            if (strategySpecificScore >= this.DISENGAGE_THRESHOLD && !this.activeSignalStrategyId && !potentialSignalId) {
+                potentialSignalId = stratId;
             }
 
             return {
@@ -126,18 +126,18 @@ export class ScannerLogic {
             };
         });
 
-        // 1. Lock in the sweet spot signal immediately when discovered
-        if (!this.activeSignalStrategyId && potentialSweetSpotId) {
-            this.activeSignalStrategyId = potentialSweetSpotId;
+        // 1. Lock in the signal immediately when discovered at >= 85%
+        if (!this.activeSignalStrategyId && potentialSignalId) {
+            this.activeSignalStrategyId = potentialSignalId;
         }
 
-        // 2. Maintain lock as long as confidence stays at or above 85%
+        // 2. Maintain lock securely as long as confidence stays at or above 85%
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD) {
-                // Securely retain lock as confidence climbs towards 97%
+                // Retain lock as confidence climbs towards 97%
             } else {
-                // Drop lock only when confidence cools down below 85%
+                // Drop lock only when confidence drops below 85%
                 this.activeSignalStrategyId = null;
             }
         }
@@ -151,7 +151,7 @@ export class ScannerLogic {
             const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (index !== -1) {
                 const [stickyItem] = copy.splice(index, 1);
-                copy.unshift(stickyItem); // Keep active signal pinned securely at the top
+                copy.unshift(stickyItem); // Pin active signal securely at the top
                 return copy;
             }
         }
