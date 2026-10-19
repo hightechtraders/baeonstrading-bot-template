@@ -17,7 +17,7 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static isScannerActive: boolean = false; 
-  private static scannerLogicInstance = new ScannerLogic(); // Instantiate core calculation logic
+  private static scannerLogicInstance = new ScannerLogic(); // Core calculation logic
 
   static {
     if (typeof window !== 'undefined') {
@@ -90,7 +90,7 @@ export class ScannerBridge {
     const confidence = strategy?.confidence || strategy?.score || 0;
     const isHighStatus = strategy?.status === 'high' || confidence >= 85;
 
-    // SAFETY GUARD: Block execution if confidence is below 85% or exceeds 97% bounds
+    // CAPITAL PROTECTION GUARD: Block execution if confidence is outside the 85% - 97% sweet spot
     if (confidence < 85 || confidence > 97 || !isHighStatus) {
       console.warn(`[AI Scanner Guard]: Execution blocked! Strategy "${strategy?.name}" confidence (${confidence}%) is outside the required 85%-97% strong signal zone.`);
       if (typeof window !== 'undefined') {
