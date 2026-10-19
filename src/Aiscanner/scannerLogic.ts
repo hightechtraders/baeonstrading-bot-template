@@ -23,9 +23,9 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
-    // Sticky persistence state & thresholds
+    // Sticky persistence state & thresholds (Disengage threshold updated to 85%)
     private activeSignalStrategyId: string | null = null;
-    private readonly DISENGAGE_THRESHOLD = 80; // Keeps signal active until momentum fades below 80
+    private readonly DISENGAGE_THRESHOLD = 85; 
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Stable sticky signal & breakout filter initialized.");
+        console.log("[AI Scanner]: Stable persistent banner logic initialized (85% threshold).");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -94,7 +94,7 @@ export class ScannerLogic {
         }
 
         let highestCalculatedScore = 0;
-        let topStrategyId = '';
+        let potentialSweetSpotId = '';
 
         // Recalculate strategy scores on every tick
         this.strategies = this.strategies.map((strat, index) => {
@@ -108,9 +108,14 @@ export class ScannerLogic {
             strategySpecificScore = Math.min(97, Math.max(45, strategySpecificScore));
 
             const stratId = strat.id || strat.name;
+            
             if (strategySpecificScore > highestCalculatedScore) {
                 highestCalculatedScore = strategySpecificScore;
-                topStrategyId = stratId;
+            }
+
+            // Flag strategy immediately if it crosses the 89% sweet spot
+            if (strategySpecificScore >= 89 && !this.activeSignalStrategyId && !potentialSweetSpotId) {
+                potentialSweetSpotId = stratId;
             }
 
             return {
@@ -121,22 +126,20 @@ export class ScannerLogic {
             };
         });
 
-        // STICKY PERSISTENCE FIX:
-        // If we already have an active signal, look up its CURRENT score.
-        // As long as its score stays at or above DISENGAGE_THRESHOLD (80), KEEP IT LOCKED no matter what.
+        // 1. Lock in the sweet spot signal immediately when discovered
+        if (!this.activeSignalStrategyId && potentialSweetSpotId) {
+            this.activeSignalStrategyId = potentialSweetSpotId;
+        }
+
+        // 2. Maintain lock as long as confidence stays at or above 85%
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD) {
-                // Retain lock securely as confidence climbs or fluctuates safely above 80
+                // Securely retain lock as confidence climbs towards 97%
             } else {
-                // Drop lock only when momentum truly cools below threshold
+                // Drop lock only when confidence cools down below 85%
                 this.activeSignalStrategyId = null;
             }
-        }
-
-        // Trigger new sticky signal cleanly whenever any strategy hits the sweet spot (>= 89)
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && topStrategyId) {
-            this.activeSignalStrategyId = topStrategyId;
         }
 
         return [...this.getSortedStrategies()];
@@ -146,9 +149,9 @@ export class ScannerLogic {
         if (this.activeSignalStrategyId) {
             const copy = [...this.strategies];
             const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (index > 0) {
+            if (index !== -1) {
                 const [stickyItem] = copy.splice(index, 1);
-                copy.unshift(stickyItem);
+                copy.unshift(stickyItem); // Keep active signal pinned securely at the top
                 return copy;
             }
         }
