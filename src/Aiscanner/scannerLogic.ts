@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Unconstrained momentum & sticky signal filter initialized.");
+        console.log("[AI Scanner]: Unconstrained high-momentum & sticky signal filter initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -78,34 +78,35 @@ export class ScannerLogic {
         const history = this.directionHistory[symbol];
         const isConfluent = history.length >= 3 && history.slice(-3).every(d => d === liveDirection);
 
-        let marketMomentum = 50; // Neutral baseline
+        let marketMomentum = 65; // Higher baseline starting point so we stay close to sweet spots
         if (prices.length >= 5) {
-            const windowSize = Math.min(prices.length, 12);
+            const windowSize = Math.min(prices.length, 10);
             const oldestInWindow = prices[prices.length - windowSize];
             const priceDelta = latestPrice - oldestInWindow;
             const percentageChange = (priceDelta / oldestInWindow) * 100;
             
-            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 6000 : 4500;
+            // Generous scaling factor so price movement packs a real punch
+            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 8000 : 6000;
             const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
-            const confluenceBonus = isConfluent ? 12 : 0;
+            const confluenceBonus = isConfluent ? 18 : 0; // Strong reward for multi-tick confluence
             
-            // Allow market momentum to climb up to 96% on strong trends so sweet spot is reachable
-            marketMomentum = Math.min(96, Math.max(40, 52 + rawMagnitude + confluenceBonus));
+            // Allow momentum to easily reach up to 97%
+            marketMomentum = Math.min(97, Math.max(50, 65 + rawMagnitude + confluenceBonus));
         }
 
         let highestCalculatedScore = 0;
         let topStrategyId = '';
 
         this.strategies = this.strategies.map((strat, index) => {
-            // Top strategy takes full momentum; secondary strategies get clean variance spacing
-            const variancePenalty = (index === 0) ? 0 : ((index % 3) * 3); 
-            const microNoise = (Math.sin(prices.length * 1.5 + index * 2) * 2);
+            // Keep top performer completely untouched; minor natural spacing for others
+            const spreadOffset = (index === 0) ? 0 : (index * 2.5);
+            const microNoise = (Math.sin(prices.length + index) * 2);
 
             let strategySpecificScore = Math.round(
-                marketMomentum - variancePenalty + microNoise
+                marketMomentum - spreadOffset + microNoise
             );
 
-            strategySpecificScore = Math.min(97, Math.max(42, strategySpecificScore));
+            strategySpecificScore = Math.min(97, Math.max(45, strategySpecificScore));
 
             const stratId = strat.id || strat.name;
             if (strategySpecificScore > highestCalculatedScore) {
