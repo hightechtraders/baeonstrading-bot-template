@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Balanced momentum & sticky signal filter initialized.");
+        console.log("[AI Scanner]: Unconstrained momentum & sticky signal filter initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -89,22 +89,23 @@ export class ScannerLogic {
             const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
             const confluenceBonus = isConfluent ? 12 : 0;
             
-            marketMomentum = Math.min(90, Math.max(40, 50 + rawMagnitude + confluenceBonus));
+            // Allow market momentum to climb up to 96% on strong trends so sweet spot is reachable
+            marketMomentum = Math.min(96, Math.max(40, 52 + rawMagnitude + confluenceBonus));
         }
 
         let highestCalculatedScore = 0;
         let topStrategyId = '';
 
         this.strategies = this.strategies.map((strat, index) => {
-            // Give each strategy a unique weighting factor so scores spread out nicely
-            const strategyMultiplier = 0.85 + ((index % 4) * 0.08); 
-            const microNoise = (Math.sin(prices.length * 1.5 + index * 2) * 4);
+            // Top strategy takes full momentum; secondary strategies get clean variance spacing
+            const variancePenalty = (index === 0) ? 0 : ((index % 3) * 3); 
+            const microNoise = (Math.sin(prices.length * 1.5 + index * 2) * 2);
 
             let strategySpecificScore = Math.round(
-                (marketMomentum * strategyMultiplier) + microNoise
+                marketMomentum - variancePenalty + microNoise
             );
 
-            strategySpecificScore = Math.min(96, Math.max(42, strategySpecificScore));
+            strategySpecificScore = Math.min(97, Math.max(42, strategySpecificScore));
 
             const stratId = strat.id || strat.name;
             if (strategySpecificScore > highestCalculatedScore) {
