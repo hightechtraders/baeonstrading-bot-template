@@ -20,7 +20,6 @@ export const FloatingAI: React.FC = () => {
 
   const isOpenRef = useRef<boolean>(false);
   const isScanningPhaseRef = useRef<boolean>(true);
-  const sweetSpotStreakRef = useRef<number>(0);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -44,16 +43,13 @@ export const FloatingAI: React.FC = () => {
           const sorted = [...updated].sort((a, b) => b.confidence - a.confidence);
           const topStrat = sorted[0];
 
-          const isHighConviction = topStrat && topStrat.confidence >= 80 && topStrat.confidence <= 89;
+          // STRICT 85% to 97% HOLDING RULE: Lock in immediately and hold steady across the full range
+          const isValidSweetSpot = topStrat && topStrat.confidence >= 85 && topStrat.confidence <= 97 && topStrat.status === 'high';
 
-          if (isHighConviction) {
-            sweetSpotStreakRef.current += 1;
-            if (sweetSpotStreakRef.current >= 2) {
-              setSignalBannerText(`🎯 HIGH MOMENTUM SWEET SPOT: ${topStrat.name} (${topStrat.market}) at ${topStrat.confidence}%! Ready to Load.`);
-              setIsSweetSpot(true);
-            }
+          if (isValidSweetSpot) {
+            setSignalBannerText(`🎯 HIGH MOMENTUM SWEET SPOT: ${topStrat.name} (${topStrat.market}) at ${topStrat.confidence}%! Ready to Load.`);
+            setIsSweetSpot(true);
           } else {
-            sweetSpotStreakRef.current = 0;
             setSignalBannerText("✅ Market Scan Complete: Strategies Ranked");
             setIsSweetSpot(false);
           }
@@ -63,7 +59,7 @@ export const FloatingAI: React.FC = () => {
 
     const handleSignalLock = (e: CustomEvent) => {
       if (isOpenRef.current && !isScanningPhaseRef.current) {
-        setSignalBannerText(e.detail?.message || "🎯 90%+ HIGH CONFIDENCE LOCKED: Ready to Load Strategy");
+        setSignalBannerText(e.detail?.message || "🎯 85%–97% HIGH CONFIDENCE LOCKED: Ready to Load Strategy");
         setIsSignalLocked(true);
         setIsSweetSpot(false);
       }
@@ -83,7 +79,6 @@ export const FloatingAI: React.FC = () => {
       setIsSignalLocked(false);
       setIsSweetSpot(false);
       setIsScanningPhase(true);
-      sweetSpotStreakRef.current = 0;
       setSignalBannerText("🔍 Scanning Live Ticks Across Markets...");
 
       const timer = setTimeout(() => {
