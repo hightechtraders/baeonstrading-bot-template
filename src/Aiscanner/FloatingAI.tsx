@@ -20,9 +20,7 @@ export const FloatingAI: React.FC = () => {
 
   const isOpenRef = useRef<boolean>(false);
   const isScanningPhaseRef = useRef<boolean>(true);
-  
-  // PERSISTENT LATCH: Track the exact strategy currently holding the banner so it never flickers
-  const lockedSweetSpotIdRef = useRef<string | null>(null);
+  const sweetSpotStreakRef = useRef<number>(0);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -38,35 +36,24 @@ export const FloatingAI: React.FC = () => {
       if (Array.isArray(updated) && updated.length > 0) {
         setStrategies(updated);
 
-        if (isOpenRef.current && !isScanningPhaseRef.current && !isSignalLocked) {
+        if (
+          isOpenRef.current && 
+          !isScanningPhaseRef.current && 
+          !isSignalLocked
+        ) {
           const sorted = [...updated].sort((a, b) => b.confidence - a.confidence);
-          
-          let activeStrat = null;
+          const topStrat = sorted[0];
 
-          // 1. If we already have a locked sweet spot strategy, keep checking IT as long as it stays >= 85%
-          if (lockedSweetSpotIdRef.current) {
-            const foundLocked = sorted.find(s => (s.id || s.name) === lockedSweetSpotIdRef.current);
-            if (foundLocked && foundLocked.confidence >= 85) {
-              activeStrat = foundLocked; // Keep holding it!
-            } else {
-              lockedSweetSpotIdRef.current = null; // Release if it dropped below 85%
+          const isHighConviction = topStrat && topStrat.confidence >= 80 && topStrat.confidence <= 89;
+
+          if (isHighConviction) {
+            sweetSpotStreakRef.current += 1;
+            if (sweetSpotStreakRef.current >= 2) {
+              setSignalBannerText(`🎯 HIGH MOMENTUM SWEET SPOT: ${topStrat.name} (${topStrat.market}) at ${topStrat.confidence}%! Ready to Load.`);
+              setIsSweetSpot(true);
             }
-          }
-
-          // 2. If no lock exists, check if the top strategy qualifies to lock in (85% to 97%)
-          if (!lockedSweetSpotIdRef.current) {
-            const topStrat = sorted[0];
-            if (topStrat && topStrat.confidence >= 85 && topStrat.confidence <= 97 && topStrat.status === 'high') {
-              lockedSweetSpotIdRef.current = topStrat.id || topStrat.name;
-              activeStrat = topStrat;
-            }
-          }
-
-          // 3. Update UI banner based on our persistent latch state
-          if (activeStrat && lockedSweetSpotIdRef.current) {
-            setSignalBannerText(`🎯 HIGH MOMENTUM SWEET SPOT: ${activeStrat.name} (${activeStrat.market}) at ${activeStrat.confidence}%! Ready to Load.`);
-            setIsSweetSpot(true);
           } else {
+            sweetSpotStreakRef.current = 0;
             setSignalBannerText("✅ Market Scan Complete: Strategies Ranked");
             setIsSweetSpot(false);
           }
@@ -76,7 +63,7 @@ export const FloatingAI: React.FC = () => {
 
     const handleSignalLock = (e: CustomEvent) => {
       if (isOpenRef.current && !isScanningPhaseRef.current) {
-        setSignalBannerText(e.detail?.message || "🎯 85%–97% HIGH CONFIDENCE LOCKED: Ready to Load Strategy");
+        setSignalBannerText(e.detail?.message || "🎯 90%+ HIGH CONFIDENCE LOCKED: Ready to Load Strategy");
         setIsSignalLocked(true);
         setIsSweetSpot(false);
       }
@@ -96,7 +83,7 @@ export const FloatingAI: React.FC = () => {
       setIsSignalLocked(false);
       setIsSweetSpot(false);
       setIsScanningPhase(true);
-      lockedSweetSpotIdRef.current = null; // Reset latch on modal open
+      sweetSpotStreakRef.current = 0;
       setSignalBannerText("🔍 Scanning Live Ticks Across Markets...");
 
       const timer = setTimeout(() => {
@@ -155,10 +142,7 @@ export const FloatingAI: React.FC = () => {
                 <div className="strategy-list">
                   {sortedStrategies.map((strat, idx) => {
                     const key = strat.id || `${strat.name}-${idx}`;
-                    // If we have a locked sweet spot ID, highlight that specific card as the global winner banner
-                    const isGlobalWinner = lockedSweetSpotIdRef.current 
-                      ? (strat.id || strat.name) === lockedSweetSpotIdRef.current 
-                      : idx === 0;
+                    const isGlobalWinner = idx === 0;
 
                     return (
                       <div 
