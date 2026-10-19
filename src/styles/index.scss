@@ -29,50 +29,49 @@ body {
 // HIGH-END TAB & WORKSPACE OVERHAUL
 // ==========================================
 
-// Target the main navigation tabs container (Dashboard, Bot Builder, Charts, Free Bots)
+// Target the main navigation tabs container
 .dc-tabs__list, 
 .cq-tabs__list, 
 [role="tablist"] {
   border-bottom: 2px solid var(--border-divider) !important;
   background: var(--general-main-1) !important;
   padding: 0 16px;
+}
 
-  // Individual Tab Items
-  .dc-tabs__item, 
-  .cq-tabs__item, 
-  [role="tab"] {
-    position: relative !important;
-    font-weight: 600 !important;
-    font-size: 15px !important;
-    color: var(--text-general) !important;
-    padding: 12px 24px !important;
-    transition: all 0.2s ease !important;
-    background: transparent !important;
-    border: none !important;
+// Individual Tab Items & States (Flattened to avoid Sass nesting suffixes on attribute selectors)
+.dc-tabs__item, 
+.cq-tabs__item, 
+[role="tab"] {
+  position: relative !important;
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  color: var(--text-general) !important;
+  padding: 12px 24px !important;
+  transition: all 0.2s ease !important;
+  background: transparent !important;
+  border: none !important;
 
-    // Hover state
-    &:hover {
-      color: var(--brand-primary, #ff444f) !important;
-    }
+  &:hover {
+    color: var(--brand-primary, #ff444f) !important;
+  }
+}
 
-    // Active Tab State (Underlined and colored distinctly)
-    &--active,
-    &[aria-selected="true"],
-    &.dc-tabs__item--active {
-      color: var(--brand-primary, #ff444f) !important;
-      font-weight: 700 !important;
+// Active States explicitly targeted
+.dc-tabs__item--active,
+[role="tab"][aria-selected="true"],
+.tab__item--active {
+  color: var(--brand-primary, #ff444f) !important;
+  font-weight: 700 !important;
 
-      &::after {
-        content: '' !important;
-        position: absolute !important;
-        bottom: -2px !important;
-        left: 0 !important;
-        right: 0 !important;
-        height: 3px !important;
-        background-color: var(--brand-primary, #ff444f) !important;
-        border-radius: 3px 3px 0 0 !important;
-      }
-    }
+  &::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: -2px !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 3px !important;
+    background-color: var(--brand-primary, #ff444f) !important;
+    border-radius: 3px 3px 0 0 !important;
   }
 }
 
