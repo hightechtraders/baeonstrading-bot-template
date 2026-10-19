@@ -23,10 +23,10 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
-    // Clean persistent signal lock state
+    // Strict 85% to 97% holding rule
     private activeSignalStrategyId: string | null = null;
-    private readonly TRIGGER_THRESHOLD = 82; // Matches your comfortable sweet spot activation
-    private readonly RELEASE_THRESHOLD = 75; // Clean release buffer
+    private readonly MIN_LOCK_THRESHOLD = 85; 
+    private readonly MAX_LOCK_THRESHOLD = 97; 
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -39,7 +39,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Stable persistent signal architecture initialized.");
+        console.log("[AI Scanner]: Strict 85%-97% persistent signal hold initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -86,10 +86,10 @@ export class ScannerLogic {
             const isBreakoutValid = rawMagnitude > 5 && netDiff !== 0;
             const breakoutBonus = isBreakoutValid ? 25 : 10;
             
-            marketMomentum = Math.min(97, Math.max(50, 65 + rawMagnitude + breakoutBonus));
+            marketMomentum = Math.min(this.MAX_LOCK_THRESHOLD, Math.max(50, 65 + rawMagnitude + breakoutBonus));
         }
 
-        // 1. Smooth score updates across all strategies
+        // 1. Refresh scores across all strategies
         this.strategies = this.strategies.map((strat, index) => {
             const isTargetSymbol = strat.symbol === symbol;
             const effectiveMomentum = isTargetSymbol 
@@ -100,7 +100,7 @@ export class ScannerLogic {
             const microNoise = (Math.sin(prices.length + index) * 1.5);
 
             let strategySpecificScore = Math.round(effectiveMomentum - spreadOffset + microNoise);
-            strategySpecificScore = Math.min(97, Math.max(45, strategySpecificScore));
+            strategySpecificScore = Math.min(this.MAX_LOCK_THRESHOLD, Math.max(45, strategySpecificScore));
 
             return {
                 ...strat,
@@ -110,16 +110,20 @@ export class ScannerLogic {
             };
         });
 
-        // 2. Stable Signal Latching (No flickering)
+        // 2. Strict Holding & Release Enforcement
         if (this.activeSignalStrategyId) {
-            // Keep the signal locked until its confidence drops below the release floor
+            // Find the currently locked strategy in our fresh array
             const activeStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (!activeStrat || activeStrat.confidence < this.RELEASE_THRESHOLD) {
+            
+            // RELEASE: Only drop the signal if it drops below 85% or loses its 'high' status
+            if (!activeStrat || activeStrat.confidence < this.MIN_LOCK_THRESHOLD || activeStrat.status !== 'high') {
                 this.activeSignalStrategyId = null; 
             }
         } else {
-            // Latch onto the first high-conviction strategy crossing the trigger threshold
-            const candidate = this.strategies.find(s => s.status === 'high' && s.confidence >= this.TRIGGER_THRESHOLD);
+            // LOCK: Trigger when a 'high' strategy hits between 85% and 97%
+            const candidate = this.strategies.find(
+                s => s.status === 'high' && s.confidence >= this.MIN_LOCK_THRESHOLD && s.confidence <= this.MAX_LOCK_THRESHOLD
+            );
             if (candidate) {
                 this.activeSignalStrategyId = candidate.id || candidate.name;
             }
@@ -129,8 +133,17 @@ export class ScannerLogic {
     }
 
     private getSortedStrategies(): Strategy[] {
-        // Standard sort by confidence so the highest score naturally stays at the top #1 spot 
-        // without forcing jagged array splices that break React rendering.
+        // FORCE PIN: If a signal is active, splice it and anchor it permanently at index [0].
+        // This guarantees the UI banner stays locked on screen without flashing or shifting out of place.
+        if (this.activeSignalStrategyId) {
+            const copy = [...this.strategies];
+            const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
+            if (index !== -1) {
+                const [stickyItem] = copy.splice(index, 1);
+                copy.unshift(stickyItem);
+                return copy;
+            }
+        }
         return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
     }
 }
