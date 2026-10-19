@@ -29,7 +29,6 @@ body {
 // HIGH-END TAB & WORKSPACE OVERHAUL
 // ==========================================
 
-// Target the main navigation tabs container
 .dc-tabs__list, 
 .cq-tabs__list, 
 [role="tablist"] {
@@ -38,12 +37,12 @@ body {
   padding: 0 16px;
 }
 
-// Individual Tab Items & States (Flattened to avoid Sass nesting suffixes on attribute selectors)
+// Default Tab Items & Hover State
 .dc-tabs__item, 
 .cq-tabs__item, 
 [role="tab"] {
   position: relative !important;
-  font-weight: 600 !important;
+  font-weight: 500 !important;
   font-size: 15px !important;
   color: var(--text-general) !important;
   padding: 12px 24px !important;
@@ -56,11 +55,11 @@ body {
   }
 }
 
-// Active States explicitly targeted
+// ACTIVE TAB PERMANENT HIGHLIGHT (Locks the red color and underline to the active tab)
 .dc-tabs__item--active,
 [role="tab"][aria-selected="true"],
 .tab__item--active {
-  color: var(--brand-primary, #ff444f) !important;
+  color: #ff444f !important;
   font-weight: 700 !important;
 
   &::after {
@@ -70,7 +69,7 @@ body {
     left: 0 !important;
     right: 0 !important;
     height: 3px !important;
-    background-color: var(--brand-primary, #ff444f) !important;
+    background-color: #ff444f !important;
     border-radius: 3px 3px 0 0 !important;
   }
 }
