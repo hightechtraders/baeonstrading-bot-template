@@ -25,7 +25,7 @@ export class ScannerLogic {
     
     // Sticky persistence state & thresholds
     private activeSignalStrategyId: string | null = null;
-    private readonly DISENGAGE_THRESHOLD = 80; // Keeps signal active until momentum fades
+    private readonly DISENGAGE_THRESHOLD = 80; // Keeps signal active until momentum fades below 80
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Responsive momentum & breakout filter initialized.");
+        console.log("[AI Scanner]: Stable sticky signal & breakout filter initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -74,12 +74,10 @@ export class ScannerLogic {
             this.directionHistory[symbol].shift();
         }
 
-        // Higher base momentum so scores start healthy
         let marketMomentum = 65; 
         let isBreakoutValid = false;
 
         if (prices.length >= 4) {
-            // Shorter lookback window (4 ticks) to capture immediate price action faster
             const windowSize = Math.min(prices.length, 6);
             const baselinePrice = prices[prices.length - windowSize];
             const priceDelta = latestPrice - baselinePrice;
@@ -88,20 +86,17 @@ export class ScannerLogic {
             const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 9000 : 7000;
             const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
 
-            // Simplified, responsive velocity check
             const isMovingForward = netDiff !== 0;
             isBreakoutValid = rawMagnitude > 5 && isMovingForward;
             
             const breakoutBonus = isBreakoutValid ? 25 : 10;
-
-            // Scale naturally up to 97%
             marketMomentum = Math.min(97, Math.max(50, 65 + rawMagnitude + breakoutBonus));
         }
 
         let highestCalculatedScore = 0;
         let topStrategyId = '';
 
-        // Recalculate on every incoming tick so UI updates live
+        // Recalculate strategy scores on every tick
         this.strategies = this.strategies.map((strat, index) => {
             const spreadOffset = (index === 0) ? 0 : (index * 2);
             const microNoise = (Math.sin(prices.length + index) * 1.5);
@@ -126,16 +121,21 @@ export class ScannerLogic {
             };
         });
 
-        // Manage sticky signal release or attachment
+        // STICKY PERSISTENCE FIX:
+        // If we already have an active signal, look up its CURRENT score.
+        // As long as its score stays at or above DISENGAGE_THRESHOLD (80), KEEP IT LOCKED no matter what.
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (!currentActiveStrat || currentActiveStrat.confidence < this.DISENGAGE_THRESHOLD) {
+            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD) {
+                // Retain lock securely as confidence climbs or fluctuates safely above 80
+            } else {
+                // Drop lock only when momentum truly cools below threshold
                 this.activeSignalStrategyId = null;
             }
         }
 
-        // Trigger new sticky signal when sweet spot (>= 89) is met
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isBreakoutValid && topStrategyId) {
+        // Trigger new sticky signal cleanly whenever any strategy hits the sweet spot (>= 89)
+        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && topStrategyId) {
             this.activeSignalStrategyId = topStrategyId;
         }
 
