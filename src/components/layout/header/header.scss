@@ -286,3 +286,55 @@
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
 }
+
+/* ==========================================
+   PROFESSIONAL HEADER UI ENHANCEMENTS
+   ========================================== */
+
+.app-header {
+    background: linear-gradient(180deg, var(--general-main-1) 0%, var(--general-section-1) 100%) !important;
+    border-bottom: 1px solid var(--border-normal) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.derivs-secondary-tabs {
+    border-bottom: 1px solid var(--border-divider);
+    
+    .derivs-text__size--md {
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        transition: color 0.2s ease;
+    }
+}
+
+.auth-actions {
+    button {
+        font-weight: 600 !important;
+        border-radius: 8px !important;
+        padding: 6px 16px !important;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+
+        &:first-child {
+            background: transparent !important;
+            border: 1px solid var(--border-normal) !important;
+            color: var(--text-prominent) !important;
+
+            &:hover {
+                background: var(--general-hover) !important;
+                border-color: var(--border-hover) !important;
+            }
+        }
+
+        &:last-child:not(.auth-actions--loading) {
+            background: var(--brand-primary, #ff444f) !important;
+            color: #ffffff !important;
+            border: none !important;
+            box-shadow: 0 4px 12px rgba(255, 68, 79, 0.25);
+
+            &:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 6px 16px rgba(255, 68, 79, 0.35);
+            }
+        }
+    }
+}
