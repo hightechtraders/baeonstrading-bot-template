@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Multi-market live anti-stagnation & persistent 85% rule initialized.");
+        console.log("[AI Scanner]: Clean decoupled architecture & persistent 85% rule initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -51,6 +51,7 @@ export class ScannerLogic {
     }
 
     public processLiveTick(symbol: string, price: number): Strategy[] {
+        // 1. Maintain price buffers and directional momentum for live data feeds
         if (!this.priceBuffers[symbol]) {
             this.priceBuffers[symbol] = [];
         }
@@ -65,7 +66,6 @@ export class ScannerLogic {
         const netDiff = latestPrice - prevPrice;
         const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
 
-        // Track directional history
         if (!this.directionHistory[symbol]) {
             this.directionHistory[symbol] = [];
         }
@@ -75,8 +75,6 @@ export class ScannerLogic {
         }
 
         let marketMomentum = 65; 
-        let isBreakoutValid = false;
-
         if (prices.length >= 4) {
             const windowSize = Math.min(prices.length, 6);
             const baselinePrice = prices[prices.length - windowSize];
@@ -85,39 +83,24 @@ export class ScannerLogic {
             
             const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 9000 : 7000;
             const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
-
-            const isMovingForward = netDiff !== 0;
-            isBreakoutValid = rawMagnitude > 5 && isMovingForward;
-            
+            const isBreakoutValid = rawMagnitude > 5 && netDiff !== 0;
             const breakoutBonus = isBreakoutValid ? 25 : 10;
+            
             marketMomentum = Math.min(97, Math.max(50, 65 + rawMagnitude + breakoutBonus));
         }
 
-        let potentialSignalId = '';
-
-        // 1. Map and recalculate ALL strategies dynamically on every incoming tick
+        // 2. Refresh scores across all strategies cleanly without mutating locks inside the loop
         this.strategies = this.strategies.map((strat, index) => {
-            // If this strategy corresponds to the active symbol, use live momentum. 
-            // For other strategies, maintain smooth continuous live variance so nothing freezes or goes stagnant.
             const isTargetSymbol = strat.symbol === symbol;
-            const effectiveMomentum = isTargetSymbol ? marketMomentum : Math.min(95, Math.max(50, strat.confidence + (Math.random() > 0.5 ? 1 : -1)));
+            const effectiveMomentum = isTargetSymbol 
+                ? marketMomentum 
+                : Math.min(95, Math.max(50, strat.confidence + (Math.random() > 0.5 ? 1 : -1)));
 
             const spreadOffset = (index === 0) ? 0 : (index * 2);
             const microNoise = (Math.sin(prices.length + index) * 1.5);
 
-            let strategySpecificScore = Math.round(
-                effectiveMomentum - spreadOffset + microNoise
-            );
-
+            let strategySpecificScore = Math.round(effectiveMomentum - spreadOffset + microNoise);
             strategySpecificScore = Math.min(97, Math.max(45, strategySpecificScore));
-
-            const stratId = strat.id || strat.name;
-            const isHighConviction = strat.status === 'high';
-
-            // Check if this strategy qualifies for a new signal trigger
-            if (!this.activeSignalStrategyId && strategySpecificScore >= this.DISENGAGE_THRESHOLD && isHighConviction) {
-                potentialSignalId = stratId;
-            }
 
             return {
                 ...strat,
@@ -127,22 +110,18 @@ export class ScannerLogic {
             };
         });
 
-        // 2. Bind active signal immediately if triggered
-        if (!this.activeSignalStrategyId && potentialSignalId) {
-            this.activeSignalStrategyId = potentialSignalId;
-        }
-
-        // 3. Strict lock persistence: Hold securely until score drops below 85%
+        // 3. SEPARATED STATE MANAGEMENT: Handle Signal Locking & Disengaging independently
         if (this.activeSignalStrategyId) {
-            const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
-            
-            if (currentActiveStrat) {
-                if (currentActiveStrat.confidence < this.DISENGAGE_THRESHOLD) {
-                    // Only drop the banner when it genuinely falls below 85%
-                    this.activeSignalStrategyId = null;
-                }
-            } else {
-                this.activeSignalStrategyId = null;
+            // Check if our currently locked signal has dropped below the 85% threshold
+            const activeStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
+            if (!activeStrat || activeStrat.confidence < this.DISENGAGE_THRESHOLD) {
+                this.activeSignalStrategyId = null; // Release lock only when below 85%
+            }
+        } else {
+            // If no signal is locked, look for any high-conviction strategy that has crossed >= 85%
+            const candidate = this.strategies.find(s => s.status === 'high' && s.confidence >= this.DISENGAGE_THRESHOLD);
+            if (candidate) {
+                this.activeSignalStrategyId = candidate.id || candidate.name;
             }
         }
 
@@ -155,7 +134,7 @@ export class ScannerLogic {
             const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (index !== -1) {
                 const [stickyItem] = copy.splice(index, 1);
-                copy.unshift(stickyItem); // Keep the active signal permanently pinned at index [0]
+                copy.unshift(stickyItem); // Keep active signal pinned securely at index [0]
                 return copy;
             }
         }
