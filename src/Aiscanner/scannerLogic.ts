@@ -23,10 +23,9 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
-    // Strict 85% to 97% holding rule
+    // Sticky persistence state instead of time-locked windows
     private activeSignalStrategyId: string | null = null;
-    private readonly MIN_LOCK_THRESHOLD = 85; 
-    private readonly MAX_LOCK_THRESHOLD = 97; 
+    private readonly DISENGAGE_THRESHOLD = 82; // Keeps signal active until confidence slides below this level
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -39,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Strict 85%-97% persistent signal hold initialized.");
+        console.log("[AI Scanner]: Sticky momentum & persistent signal filter initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -66,6 +65,7 @@ export class ScannerLogic {
         const netDiff = latestPrice - prevPrice;
         const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
 
+        // Track directional history to check for multi-tick confluence
         if (!this.directionHistory[symbol]) {
             this.directionHistory[symbol] = [];
         }
@@ -74,71 +74,76 @@ export class ScannerLogic {
             this.directionHistory[symbol].shift();
         }
 
-        let marketMomentum = 65; 
-        if (prices.length >= 4) {
-            const windowSize = Math.min(prices.length, 6);
-            const baselinePrice = prices[prices.length - windowSize];
-            const priceDelta = latestPrice - baselinePrice;
-            const percentageChange = (priceDelta / baselinePrice) * 100;
+        // Confluence Check: Are the last 3 ticks pointing in the exact same direction?
+        const history = this.directionHistory[symbol];
+        const isConfluent = history.length >= 3 && history.slice(-3).every(d => d === liveDirection);
+
+        let marketMomentum = 60; // Clean baseline
+        if (prices.length >= 5) {
+            const windowSize = Math.min(prices.length, 10);
+            const oldestInWindow = prices[prices.length - windowSize];
+            const priceDelta = latestPrice - oldestInWindow;
+            const percentageChange = (priceDelta / oldestInWindow) * 100;
             
-            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 9000 : 7000;
+            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 6000 : 4500;
             const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
-            const isBreakoutValid = rawMagnitude > 5 && netDiff !== 0;
-            const breakoutBonus = isBreakoutValid ? 25 : 10;
+            const confluenceBonus = isConfluent ? 15 : 0;
             
-            marketMomentum = Math.min(this.MAX_LOCK_THRESHOLD, Math.max(50, 65 + rawMagnitude + breakoutBonus));
+            // Allow market momentum to climb naturally up to 97% on strong trends
+            marketMomentum = Math.min(97, Math.max(45, 60 + rawMagnitude + confluenceBonus));
         }
 
-        // 1. Refresh scores across all strategies
+        let highestCalculatedScore = 0;
+        let topStrategyId = '';
+
         this.strategies = this.strategies.map((strat, index) => {
-            const isTargetSymbol = strat.symbol === symbol;
-            const effectiveMomentum = isTargetSymbol 
-                ? marketMomentum 
-                : Math.min(95, Math.max(50, strat.confidence + (Math.random() > 0.5 ? 1 : -1)));
-
+            // Keep top strategy untouched; minor natural spacing for others
             const spreadOffset = (index === 0) ? 0 : (index * 2);
-            const microNoise = (Math.sin(prices.length + index) * 1.5);
+            const microNoise = (Math.sin(prices.length + index) * 2);
 
-            let strategySpecificScore = Math.round(effectiveMomentum - spreadOffset + microNoise);
-            strategySpecificScore = Math.min(this.MAX_LOCK_THRESHOLD, Math.max(45, strategySpecificScore));
+            let strategySpecificScore = Math.round(
+                marketMomentum - spreadOffset + microNoise
+            );
+
+            strategySpecificScore = Math.min(97, Math.max(42, strategySpecificScore));
+
+            const stratId = strat.id || strat.name;
+            if (strategySpecificScore > highestCalculatedScore) {
+                highestCalculatedScore = strategySpecificScore;
+                topStrategyId = stratId;
+            }
 
             return {
                 ...strat,
                 confidence: strategySpecificScore,
                 score: strategySpecificScore,
-                direction: isTargetSymbol ? liveDirection : strat.direction
+                direction: liveDirection
             };
         });
 
-        // 2. Strict Holding & Release Enforcement
+        // Sticky Signal Persistence Logic
         if (this.activeSignalStrategyId) {
-            // Find the currently locked strategy in our fresh array
-            const activeStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
-            
-            // RELEASE: Only drop the signal if it drops below 85% or loses its 'high' status
-            if (!activeStrat || activeStrat.confidence < this.MIN_LOCK_THRESHOLD || activeStrat.status !== 'high') {
-                this.activeSignalStrategyId = null; 
+            const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
+            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && isConfluent) {
+                return this.getSortedStrategies();
+            } else {
+                this.activeSignalStrategyId = null;
             }
-        } else {
-            // LOCK: Trigger when a 'high' strategy hits between 85% and 97%
-            const candidate = this.strategies.find(
-                s => s.status === 'high' && s.confidence >= this.MIN_LOCK_THRESHOLD && s.confidence <= this.MAX_LOCK_THRESHOLD
-            );
-            if (candidate) {
-                this.activeSignalStrategyId = candidate.id || candidate.name;
-            }
+        }
+
+        // Trigger new sticky signal when sweet spot (>= 89) is met with active confluence
+        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isConfluent && topStrategyId) {
+            this.activeSignalStrategyId = topStrategyId;
         }
 
         return this.getSortedStrategies();
     }
 
     private getSortedStrategies(): Strategy[] {
-        // FORCE PIN: If a signal is active, splice it and anchor it permanently at index [0].
-        // This guarantees the UI banner stays locked on screen without flashing or shifting out of place.
         if (this.activeSignalStrategyId) {
             const copy = [...this.strategies];
             const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (index !== -1) {
+            if (index > 0) {
                 const [stickyItem] = copy.splice(index, 1);
                 copy.unshift(stickyItem);
                 return copy;
