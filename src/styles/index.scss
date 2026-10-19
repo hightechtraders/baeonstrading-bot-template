@@ -26,41 +26,68 @@ body {
 }
 
 // ==========================================
-// TRUE DERIV TAB & WORKSPACE OVERHAUL
+// HIGH-END TAB & WORKSPACE OVERHAUL
 // ==========================================
 
-// 1. Target Deriv's native tab container and active states
-.dc-tabs, 
-.cq-tabs, 
-[class*="tabs"] {
+// Target the main navigation tabs container (Dashboard, Bot Builder, Charts, Free Bots)
+.dc-tabs__list, 
+.cq-tabs__list, 
+[role="tablist"] {
+  border-bottom: 2px solid var(--border-divider) !important;
   background: var(--general-main-1) !important;
-  
-  // Tab headers (Dashboard, Bot Builder, Charts, Free Bots)
-  button, 
-  .dc-tabs__item,
+  padding: 0 16px;
+
+  // Individual Tab Items
+  .dc-tabs__item, 
+  .cq-tabs__item, 
   [role="tab"] {
+    position: relative !important;
     font-weight: 600 !important;
-    transition: all 0.2s ease;
-    
+    font-size: 15px !important;
+    color: var(--text-general) !important;
+    padding: 12px 24px !important;
+    transition: all 0.2s ease !important;
+    background: transparent !important;
+    border: none !important;
+
+    // Hover state
+    &:hover {
+      color: var(--brand-primary, #ff444f) !important;
+    }
+
+    // Active Tab State (Underlined and colored distinctly)
+    &--active,
     &[aria-selected="true"],
     &.dc-tabs__item--active {
       color: var(--brand-primary, #ff444f) !important;
-      border-bottom: 2px solid var(--brand-primary, #ff444f) !important;
+      font-weight: 700 !important;
+
+      &::after {
+        content: '' !important;
+        position: absolute !important;
+        bottom: -2px !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 3px !important;
+        background-color: var(--brand-primary, #ff444f) !important;
+        border-radius: 3px 3px 0 0 !important;
+      }
     }
   }
 }
 
-// 2. Elevate Content Cards, Import Widgets, and Dashboard Containers
+// Elevate Content Panels under those tabs
 .dc-card, 
 .dashboard__container,
+.bot-builder-content,
 [class*="dashboard"],
-[class*="card"] {
-  border-radius: 12px !important;
+[class*="tab__content"] {
+  border-radius: 14px !important;
   border: 1px solid var(--border-normal) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.04) !important;
 }
 
-// 3. Modernize Form Controls
+// Modernize Form Inputs & Controls across tabs
 input[type="text"],
 input[type="number"],
 select {
