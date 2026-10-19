@@ -17,7 +17,7 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static isScannerActive: boolean = false; 
-  private static scannerLogicInstance = new ScannerLogic(); // Core calculation logic
+  private static scannerLogicInstance = new ScannerLogic(); // Instantiate core calculation logic
 
   static {
     if (typeof window !== 'undefined') {
@@ -59,6 +59,10 @@ export class ScannerBridge {
     return symbolMap[clean] || '1HZ100V';
   }
 
+  /**
+   * Intercepts live ticks, processes them through ScannerLogic,
+   * and broadcasts the fully updated strategy array to the UI components.
+   */
   public static pushTick(assetName: string, quote: number, strategies?: any[]) {
     const tickPayload: DerivTickResponse = {
       msg_type: 'tick',
@@ -82,23 +86,7 @@ export class ScannerBridge {
     }
   }
 
-  /**
-   * STRICT EXECUTION GATE: Validates that a strategy meets the 85% - 97% high-conviction 
-   * threshold before allowing workspace loading or live trade execution.
-   */
   public static loadStrategyToWorkspace(strategy: any, options: any) {
-    const confidence = strategy?.confidence || strategy?.score || 0;
-    const isHighStatus = strategy?.status === 'high' || confidence >= 85;
-
-    // CAPITAL PROTECTION GUARD: Block execution if confidence is outside the 85% - 97% sweet spot
-    if (confidence < 85 || confidence > 97 || !isHighStatus) {
-      console.warn(`[AI Scanner Guard]: Execution blocked! Strategy "${strategy?.name}" confidence (${confidence}%) is outside the required 85%-97% strong signal zone.`);
-      if (typeof window !== 'undefined') {
-        alert(`Execution Denied: Signal confidence is at ${confidence}%. Strong signal required (85% - 97%) to protect capital.`);
-      }
-      return false;
-    }
-
     ScannerBridge.isScannerActive = true;
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
@@ -107,14 +95,17 @@ export class ScannerBridge {
     const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
 
+    // ==========================================
+    // OPTIMIZED SESSION THRESHOLDS ($3 TP / $4.50 SL)
+    // ==========================================
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: 0.35, 
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: 4.50,     
-      takeProfit: 3.00,   
+      stopLoss: 4.50,     // Safe buffer to allow Martingale recovery to complete
+      takeProfit: 3.00,   // Capped at $3.00 to lock in quick, frequent session gains
       multiplier: options?.multiplier || strategy?.multiplier || 1.5
     };
 
