@@ -12,7 +12,7 @@ export interface DerivTickResponse {
         id: string;
     };
 }
-     
+    
 export class ScannerLogic {
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Strict 85% Persistent Sweet Spot Rule Initialized.");
+        console.log("[AI Scanner]: Multi-market live anti-stagnation & persistent 85% rule initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -95,13 +95,18 @@ export class ScannerLogic {
 
         let potentialSignalId = '';
 
-        // 1. Recalculate strategy scores on every tick
+        // 1. Map and recalculate ALL strategies dynamically on every incoming tick
         this.strategies = this.strategies.map((strat, index) => {
+            // If this strategy corresponds to the active symbol, use live momentum. 
+            // For other strategies, maintain smooth continuous live variance so nothing freezes or goes stagnant.
+            const isTargetSymbol = strat.symbol === symbol;
+            const effectiveMomentum = isTargetSymbol ? marketMomentum : Math.min(95, Math.max(50, strat.confidence + (Math.random() > 0.5 ? 1 : -1)));
+
             const spreadOffset = (index === 0) ? 0 : (index * 2);
             const microNoise = (Math.sin(prices.length + index) * 1.5);
 
             let strategySpecificScore = Math.round(
-                marketMomentum - spreadOffset + microNoise
+                effectiveMomentum - spreadOffset + microNoise
             );
 
             strategySpecificScore = Math.min(97, Math.max(45, strategySpecificScore));
@@ -118,19 +123,16 @@ export class ScannerLogic {
                 ...strat,
                 confidence: strategySpecificScore,
                 score: strategySpecificScore,
-                direction: liveDirection
+                direction: isTargetSymbol ? liveDirection : strat.direction
             };
         });
 
-        // 2. If we don't have an active signal yet, bind it immediately to the candidate that hit >= 85%
+        // 2. Bind active signal immediately if triggered
         if (!this.activeSignalStrategyId && potentialSignalId) {
             this.activeSignalStrategyId = potentialSignalId;
         }
 
-        // 3. STRICT LOCK PERSISTENCE:
-        // If a signal is active, find its current score in the updated list.
-        // Keep it locked firmly at the top as it climbs towards 98%. 
-        // ONLY release it when its score physically drops below 85%.
+        // 3. Strict lock persistence: Hold securely until score drops below 85%
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
             
