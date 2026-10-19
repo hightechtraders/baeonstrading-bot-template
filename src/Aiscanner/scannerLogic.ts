@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: 85% High-Conviction Sweet Spot trigger initialized.");
+        console.log("[AI Scanner]: Stable 85% Sweet Spot trigger initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -113,12 +113,8 @@ export class ScannerLogic {
                 highestCalculatedScore = strategySpecificScore;
             }
 
-            // Determine if strategy meets the "high" status requirement (checks signal, status, or type property if present)
-            const stratStatus = (strat as any).status || (strat as any).signal || (strat as any).type || 'high';
-            const isHighConviction = typeof stratStatus === 'string' && stratStatus.toLowerCase().includes('high');
-
-            // TRIGGER: Must be >= 85% AND marked as "high" conviction
-            if (strategySpecificScore >= this.DISENGAGE_THRESHOLD && isHighConviction && !this.activeSignalStrategyId && !potentialSignalId) {
+            // CLEAN TRIGGER: The moment confidence reaches >= 85%, mark it as our potential signal
+            if (strategySpecificScore >= this.DISENGAGE_THRESHOLD && !this.activeSignalStrategyId && !potentialSignalId) {
                 potentialSignalId = stratId;
             }
 
@@ -130,7 +126,7 @@ export class ScannerLogic {
             };
         });
 
-        // 1. Lock in the signal immediately when conditions are met
+        // 1. Permanently lock in the signal the moment it hits >= 85%
         if (!this.activeSignalStrategyId && potentialSignalId) {
             this.activeSignalStrategyId = potentialSignalId;
         }
@@ -139,9 +135,9 @@ export class ScannerLogic {
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD) {
-                // Keep it pinned securely at the top banner as confidence climbs towards 97%
+                // Keep it locked firmly at the top as confidence climbs smoothly towards 97%
             } else {
-                // Drop lock only when confidence drops below 85%
+                // Drop lock ONLY when confidence drops below 85%
                 this.activeSignalStrategyId = null;
             }
         }
