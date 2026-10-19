@@ -23,9 +23,9 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
-    // Sticky persistence state & thresholds
-    private activeSignalStrategyId: string | null = null;
-    private readonly DISENGAGE_THRESHOLD = 82; // Keeps signal active until confidence slides below this level
+    private lockedUntil: number = 0;
+    private lockedStrategyId: string | null = null;
+    private readonly LOCK_DURATION_MS = 3000; // 3-second stable window for execution
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Unconstrained high-momentum & sticky signal filter initialized.");
+        console.log("[AI Scanner]: Predictive momentum & confluence filter initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -51,12 +51,18 @@ export class ScannerLogic {
     }
 
     public processLiveTick(symbol: string, price: number): Strategy[] {
+        const now = Date.now();
+
         if (!this.priceBuffers[symbol]) {
             this.priceBuffers[symbol] = [];
         }
         this.priceBuffers[symbol].push(price);
         if (this.priceBuffers[symbol].length > 40) {
             this.priceBuffers[symbol].shift();
+        }
+
+        if (now < this.lockedUntil && this.lockedStrategyId) {
+            return this.getSortedStrategies();
         }
 
         const prices = this.priceBuffers[symbol];
@@ -74,44 +80,40 @@ export class ScannerLogic {
             this.directionHistory[symbol].shift();
         }
 
-        // Confluence Check: Are the last 3 ticks pointing in the exact same direction?
+        // Confluence Check: Are the last 3 ticks pointing in the exact same direction? (Cleaned slice parameter)
         const history = this.directionHistory[symbol];
         const isConfluent = history.length >= 3 && history.slice(-3).every(d => d === liveDirection);
 
-        let marketMomentum = 65; // Higher baseline starting point so we stay close to sweet spots
+        let baseScore = 60; // Lower baseline so weak markets don't trigger false flags
         if (prices.length >= 5) {
             const windowSize = Math.min(prices.length, 10);
             const oldestInWindow = prices[prices.length - windowSize];
             const priceDelta = latestPrice - oldestInWindow;
             const percentageChange = (priceDelta / oldestInWindow) * 100;
             
-            // Generous scaling factor so price movement packs a real punch
-            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 8000 : 6000;
+            // Scaled magnitude: optimizes Vol 10 micro-trends without altering other indices
+            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 5500 : 4000;
             const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
-            const confluenceBonus = isConfluent ? 18 : 0; // Strong reward for multi-tick confluence
             
-            // Allow momentum to easily reach up to 97%
-            marketMomentum = Math.min(97, Math.max(50, 65 + rawMagnitude + confluenceBonus));
+            // Boost score only if multi-tick confluence is met
+            const confluenceBonus = isConfluent ? 15 : 0;
+            
+            baseScore = Math.round(Math.min(96, Math.max(55, 65 + rawMagnitude + confluenceBonus)));
         }
 
-        let highestCalculatedScore = 0;
-        let topStrategyId = '';
+        let triggeredHighConfidence = false;
+        let targetStrategyId = '';
 
         this.strategies = this.strategies.map((strat, index) => {
-            // Keep top performer completely untouched; minor natural spacing for others
-            const spreadOffset = (index === 0) ? 0 : (index * 2.5);
-            const microNoise = (Math.sin(prices.length + index) * 2);
-
-            let strategySpecificScore = Math.round(
-                marketMomentum - spreadOffset + microNoise
+            const uniqueWave = Math.sin(prices.length + index) * 3; 
+            const strategySpecificScore = Math.round(
+                Math.min(97, Math.max(45, baseScore + uniqueWave))
             );
 
-            strategySpecificScore = Math.min(97, Math.max(45, strategySpecificScore));
-
-            const stratId = strat.id || strat.name;
-            if (strategySpecificScore > highestCalculatedScore) {
-                highestCalculatedScore = strategySpecificScore;
-                topStrategyId = stratId;
+            // Require high score AND strict multi-tick confluence before flagging high signal
+            if (strategySpecificScore >= 89 && isConfluent && !triggeredHighConfidence) {
+                triggeredHighConfidence = true;
+                targetStrategyId = strat.id || strat.name;
             }
 
             return {
@@ -122,31 +124,21 @@ export class ScannerLogic {
             };
         });
 
-        // Sticky Signal Persistence Logic
-        if (this.activeSignalStrategyId) {
-            const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && isConfluent) {
-                return this.getSortedStrategies();
-            } else {
-                this.activeSignalStrategyId = null;
-            }
-        }
-
-        // Trigger new sticky signal when sweet spot (>= 89) is met with active confluence
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isConfluent && topStrategyId) {
-            this.activeSignalStrategyId = topStrategyId;
+        if (triggeredHighConfidence && targetStrategyId) {
+            this.lockedUntil = now + this.LOCK_DURATION_MS;
+            this.lockedStrategyId = targetStrategyId;
         }
 
         return this.getSortedStrategies();
     }
 
     private getSortedStrategies(): Strategy[] {
-        if (this.activeSignalStrategyId) {
+        if (Date.now() < this.lockedUntil && this.lockedStrategyId) {
             const copy = [...this.strategies];
-            const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
+            const index = copy.findIndex(s => (s.id || s.name) === this.lockedStrategyId);
             if (index > 0) {
-                const [stickyItem] = copy.splice(index, 1);
-                copy.unshift(stickyItem);
+                const [lockedItem] = copy.splice(index, 1);
+                copy.unshift(lockedItem);
                 return copy;
             }
         }
