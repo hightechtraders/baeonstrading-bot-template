@@ -11,7 +11,7 @@ export const useScannerFeed = () => {
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        // 1. Listen directly to raw live ticks dispatched from your working api-base.ts
+        // 1. Listen directly to raw live ticks dispatched from api-base.ts
         const handleLiveTick = (event: CustomEvent) => {
             const { symbol, price } = event.detail || {};
             if (symbol && typeof price === 'number') {
@@ -35,7 +35,7 @@ export const useScannerFeed = () => {
 
         window.addEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
 
-        // 2. Request subscriptions through your existing api_base instance once open
+        // 2. Reliable subscription mechanism via api_base instance
         let intervalId: any = null;
         let isSubscribed = false;
 
@@ -43,21 +43,26 @@ export const useScannerFeed = () => {
             if (isSubscribed) return;
 
             try {
+                // Check if api_base connection is open and available
                 if (api_base && api_base.api && api_base.api.connection && api_base.api.connection.readyState === WebSocket.OPEN) {
+                    console.log("[AI Scanner Feed]: Connection open. Subscribing to scanner markets...");
+                    
                     ScannerLogic.SCANNER_MARKETS.forEach((symbol: string) => {
                         api_base.api.send({
                             ticks: symbol,
                             subscribe: 1
                         });
                     });
+
                     isSubscribed = true;
                     if (intervalId) clearInterval(intervalId);
                 }
             } catch (err) {
-                // Silently retry on next interval
+                console.warn("[AI Scanner Feed]: Waiting for socket stability...", err);
             }
         };
 
+        // Try immediately, then poll every second until successful
         attemptSubscription();
         intervalId = setInterval(attemptSubscription, 1000);
 
