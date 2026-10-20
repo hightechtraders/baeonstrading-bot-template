@@ -44,12 +44,12 @@ export const FloatingAI: React.FC = () => {
           const sorted = [...updated].sort((a, b) => b.confidence - a.confidence);
           const topStrat = sorted[0];
 
-          const isHighConviction = topStrat && topStrat.confidence >= 80 && topStrat.confidence <= 89;
+          const isHighConviction = topStrat && topStrat.confidence >= 78 && topStrat.confidence <= 96;
 
           if (isHighConviction) {
             sweetSpotStreakRef.current += 1;
             if (sweetSpotStreakRef.current >= 2) {
-              setSignalBannerText(`🎯 HIGH MOMENTUM SWEET SPOT: ${topStrat.name} (${topStrat.market}) at ${topStrat.confidence}%! Ready to Load.`);
+              setSignalBannerText(`🎯 HIGH MOMENTUM SWEET SPOT: ${topStrat.name} (${topStrat.market}) at ${topStrat.confidence}%! Ready to Load & Run.`);
               setIsSweetSpot(true);
             }
           } else {
@@ -63,7 +63,7 @@ export const FloatingAI: React.FC = () => {
 
     const handleSignalLock = (e: CustomEvent) => {
       if (isOpenRef.current && !isScanningPhaseRef.current) {
-        setSignalBannerText(e.detail?.message || "🎯 90%+ HIGH CONFIDENCE LOCKED: Ready to Load Strategy");
+        setSignalBannerText(e.detail?.message || "🎯 HIGH CONFIDENCE LOCKED: Ready to Load Strategy");
         setIsSignalLocked(true);
         setIsSweetSpot(false);
       }
@@ -97,10 +97,22 @@ export const FloatingAI: React.FC = () => {
 
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
 
+  // Instantly loads the strategy and triggers the workspace Run button simultaneously
   const handleRunBot = (strat: Strategy) => {
+    // 1. Load configuration into workspace
     ScannerBridge.loadStrategyToWorkspace(strat);
-    alert(`Strategy "${strat.name}" successfully loaded to workspace!`);
     setIsOpen(false);
+
+    // 2. Programmatically fire the workspace [Run] execution sequence after a brief DOM tick
+    setTimeout(() => {
+      const allButtons = Array.from(document.querySelectorAll('button'));
+      // Find the primary Run execution button in the workspace dashboard
+      const targetRunBtn = allButtons.find(b => b.textContent?.trim() === 'Run');
+      
+      if (targetRunBtn instanceof HTMLElement) {
+        targetRunBtn.click();
+      }
+    }, 100);
   };
 
   return (
@@ -137,7 +149,7 @@ export const FloatingAI: React.FC = () => {
               </div>
             ) : (
               <>
-                <p className="scanner-instruction">Top balanced strategies ranked below. Click to load directly.</p>
+                <p className="scanner-instruction">Top balanced strategies ranked below. Click to load and execute instantly.</p>
 
                 <div className="strategy-list">
                   {sortedStrategies.map((strat, idx) => {
@@ -183,7 +195,7 @@ export const FloatingAI: React.FC = () => {
                           className="run-manual-btn" 
                           onClick={() => handleRunBot(strat)}
                         >
-                          Load Strategy to Workspace
+                          Load Strategy & Run Instantly
                         </button>
                       </div>
                     );
