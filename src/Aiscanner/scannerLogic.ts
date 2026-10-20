@@ -14,30 +14,37 @@ export interface DerivTickResponse {
 }
     
 export class ScannerLogic {
-    private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
-        ...s,
-        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'Volatility AI Trend Scalper',
-        market: s.market || 'Volatility 50 (1s) Index',
-        symbol: s.symbol || '1HZ50V',
-        confidence: s.confidence || 50
+    // Keep base strategy archetypes/templates
+    private strategyTemplates: Omit<Strategy, 'symbol' | 'market' | 'confidence' | 'score'>[] = INITIAL_STRATEGIES.map(s => ({
+        id: s.id,
+        name: s.name,
+        volatility: s.volatility,
+        direction: s.direction,
+        recommendedStake: s.recommendedStake,
+        recommendedStopLoss: s.recommendedStopLoss,
+        recommendedTakeProfit: s.recommendedTakeProfit,
+        contractType: s.contractType,
+        barrier: s.barrier,
+        status: s.status
     }));
-    
+
     private priceBuffers: { [symbol: string]: number[] } = {};
     private assetScores: { [symbol: string]: number } = {};
     private assetDirections: { [symbol: string]: 'UP' | 'DOWN' } = {};
+    private lastTickTimes: { [symbol: string]: number } = {};
 
-    public static readonly SCANNER_MARKETS: string[] = [
-        '1HZ50V',  // Volatility 50 (1s) Index
-        '1HZ75V',  // Volatility 75 (1s) Index
-        '1HZ10V',  // Volatility 10 (1s) Index
-        '1HZ100V', // Volatility 100 (1s) Index
-        'R_25',    // Volatility 25 Index
-        'R_75',    // Volatility 75 Index
-        'R_10'     // Volatility 10 Index
+    public static readonly SCANNER_MARKETS: Array<{ symbol: string; marketName: string }> = [
+        { symbol: '1HZ50V', marketName: 'Volatility 50 (1s) Index' },
+        { symbol: '1HZ75V', marketName: 'Volatility 75 (1s) Index' },
+        { symbol: '1HZ10V', marketName: 'Volatility 10 (1s) Index' },
+        { symbol: '1HZ100V', marketName: 'Volatility 100 (1s) Index' },
+        { symbol: 'R_25', marketName: 'Volatility 25 Index' },
+        { symbol: 'R_75', marketName: 'Volatility 75 Index' },
+        { symbol: 'R_10', marketName: 'Volatility 10 Index' }
     ];
 
     constructor() {
-        console.log("[AI Scanner]: High-Confluence Filtered Engine Initialized.");
+        console.log("[AI Scanner]: Fully Dynamic Multi-Market Rotational Engine Initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -104,23 +111,29 @@ export class ScannerLogic {
             this.priceBuffers[symbol] = [];
         }
         this.priceBuffers[symbol].push(price);
+        this.lastTickTimes[symbol] = Date.now();
         
         if (this.priceBuffers[symbol].length > 35) {
             this.priceBuffers[symbol].shift();
         }
 
         const prices = this.priceBuffers[symbol];
+        const currentTime = Date.now();
 
-        // Apply natural cooldown/decay to un-ticked assets
+        // Apply score decay to all un-ticked assets so idle markets cool down
         Object.keys(this.assetScores).forEach((sym) => {
-            if (sym !== symbol) {
-                const current = this.assetScores[sym];
-                if (current > 50) this.assetScores[sym] = Math.max(50, current - 1);
-                else if (current < 50) this.assetScores[sym] = Math.min(50, current + 1);
+            const current = this.assetScores[sym] || 50;
+            const timeSinceLastTick = currentTime - (this.lastTickTimes[sym] || currentTime);
+            const decayAmount = sym === symbol ? 1 : (timeSinceLastTick > 1500 ? 3 : 2);
+
+            if (current > 50) {
+                this.assetScores[sym] = Math.max(50, current - decayAmount);
+            } else if (current < 50) {
+                this.assetScores[sym] = Math.min(50, current + decayAmount);
             }
         });
 
-        // Compute indicators once buffer has enough data (>= 20 ticks)
+        // Compute technical indicators for the active tick symbol
         if (prices.length >= 20) {
             const emaFast = this.calculateEMA(prices, 5);
             const emaSlow = this.calculateEMA(prices, 13);
@@ -132,32 +145,18 @@ export class ScannerLogic {
             let score = 50;
             const isEmaBullish = emaFast > emaSlow;
             const isEmaBearish = emaFast < emaSlow;
-
-            // STRICT CONFLUENCE GATE: Require EMA trend alignment first
             const isTrendAligned = (direction === 'UP' && isEmaBullish) || (direction === 'DOWN' && isEmaBearish);
 
             if (isTrendAligned) {
-                score += 18; // Base reward for trend agreement
-
-                // Strict RSI Momentum Thresholds (> 65 for Bullish, < 35 for Bearish)
-                const isRsiStrongBullish = rsi > 65 && direction === 'UP';
-                const isRsiStrongBearish = rsi < 35 && direction === 'DOWN';
-
-                // Bollinger Band Breakout Confirmation (%B > 0.85 or %B < 0.15)
-                const isBbBreakoutBullish = percentB > 0.85 && direction === 'UP';
-                const isBbBreakoutBearish = percentB < 0.15 && direction === 'DOWN';
-
-                if (isRsiStrongBullish) score += 15;
-                if (isRsiStrongBearish) score += 15;
-
-                if (isBbBreakoutBullish) score += 13;
-                if (isBbBreakoutBearish) score += 13;
+                score += 18;
+                if (rsi > 65 && direction === 'UP') score += 15;
+                if (rsi < 35 && direction === 'DOWN') score += 15;
+                if (percentB > 0.85 && direction === 'UP') score += 13;
+                if (percentB < 0.15 && direction === 'DOWN') score += 13;
             } else {
-                // Penalize counter-trend ticks so choppy assets drop below neutral
                 score -= 8;
             }
 
-            // Clamp score between 40 and 96
             const finalScore = Math.min(96, Math.max(40, Math.round(score)));
             this.assetScores[symbol] = finalScore;
         } else {
@@ -167,29 +166,40 @@ export class ScannerLogic {
             this.assetDirections[symbol] = prices.length >= 2 && prices[prices.length - 1] >= prices[prices.length - 2] ? 'UP' : 'DOWN';
         }
 
-        // Map scores to strategy cards
-        this.strategies = this.strategies.map((strat) => {
-            const stratSymbol = strat.symbol || '1HZ50V';
-            const marketScore = this.assetScores[stratSymbol] ?? 50;
-            const marketDirection = this.assetDirections[stratSymbol] || strat.direction || 'UP';
+        return this.getSortedStrategies();
+    }
+
+    private getSortedStrategies(): Strategy[] {
+        // 1. Build an array of all available markets paired with their current calculated scores & directions
+        const marketRankings = ScannerLogic.SCANNER_MARKETS.map(({ symbol, marketName }) => {
+            const score = this.assetScores[symbol] ?? 50;
+            const direction = this.assetDirections[symbol] || 'UP';
+            return { symbol, marketName, score, direction };
+        });
+
+        // 2. Sort markets strictly from highest score to lowest score
+        marketRankings.sort((a, b) => b.score - a.score);
+
+        // 3. Dynamically map the sorted markets to our strategy template slots so cards shuffle freely
+        return marketRankings.map((marketData, index) => {
+            // Pick a template archetype for this card slot
+            const template = this.strategyTemplates[index % this.strategyTemplates.length];
+            const marketScore = marketData.score;
 
             let dynamicStatus = 'medium';
             if (marketScore >= 75) dynamicStatus = 'high';
             else if (marketScore < 55) dynamicStatus = 'low';
 
             return {
-                ...strat,
+                ...template,
+                id: `dynamic-slot-${index + 1}`,
+                market: marketData.marketName,
+                symbol: marketData.symbol,
                 confidence: marketScore,
                 score: marketScore,
-                direction: marketDirection,
+                direction: marketData.direction,
                 status: dynamicStatus
             };
         });
-
-        return this.getSortedStrategies();
-    }
-
-    private getSortedStrategies(): Strategy[] {
-        return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
     }
 }
