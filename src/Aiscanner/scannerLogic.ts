@@ -12,7 +12,7 @@ export interface DerivTickResponse {
         id: string;
     };
 }
-
+    
 export class ScannerLogic {
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
@@ -20,7 +20,6 @@ export class ScannerLogic {
         market: s.market || '1HZ50V',
         confidence: s.confidence || 78
     }));
-    
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
@@ -38,7 +37,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Structured Trend & Confluence Filter Initialized.");
+        console.log("[AI Scanner]: Structured Trend, Confluence & Magnitude Filter Initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -73,7 +72,13 @@ export class ScannerLogic {
         const netDiff = latestPrice - prevPrice;
         const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
 
-        // 1. Track Directional History (Confluence Check)
+        // 1. Minimum Magnitude Filter (Prevents trading on microscopic noise/chop)
+        // Adjusts threshold depending on index scale differences
+        const minMagnitude = symbol.includes('100') ? 0.5 : (symbol.includes('50') ? 0.2 : 0.05);
+        const absoluteDelta = Math.abs(netDiff);
+        const isSignificantMove = absoluteDelta >= minMagnitude;
+
+        // 2. Track Directional History (Confluence Check)
         if (!this.directionHistory[symbol]) {
             this.directionHistory[symbol] = [];
         }
@@ -86,20 +91,20 @@ export class ScannerLogic {
         // Require at least 3 consecutive ticks moving in the same direction
         const isConfluent = history.length >= 3 && history.slice(-3).every(d => d === liveDirection);
 
-        // 2. Trend Environment Filter (Simple Moving Average of last 20 ticks)
+        // 3. Trend Environment Filter (Simple Moving Average of last 20 ticks)
         const sma20 = prices.slice(-20).reduce((acc, val) => acc + val, 0) / 20;
         const isAboveTrend = latestPrice > sma20;
         const isBelowTrend = latestPrice < sma20;
 
-        // 3. Score Calculation based on structural alignment instead of noise
+        // 4. Score Calculation incorporating Magnitude
         let baseScore = 50;
-        if ((isAboveTrend && liveDirection === 'UP') || (isBelowTrend && liveDirection === 'DOWN')) {
+        if (isSignificantMove && ((isAboveTrend && liveDirection === 'UP') || (isBelowTrend && liveDirection === 'DOWN'))) {
             baseScore = 70;
             if (isConfluent) {
                 baseScore = 88; // High-probability sweet spot
             }
         } else {
-            baseScore = 45; // Penalize counter-trend ticks
+            baseScore = 42; // Heavy penalty if price movement is just dead chop or counter-trend
         }
 
         let highestCalculatedScore = 0;
@@ -123,7 +128,7 @@ export class ScannerLogic {
             };
         });
 
-        // 4. Sticky Signal Management
+        // 5. Sticky Signal Management
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD) {
@@ -133,8 +138,8 @@ export class ScannerLogic {
             }
         }
 
-        // Trigger signal only when strict confluence and trend alignment hit >= 88 confidence
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 88 && isConfluent && topStrategyId) {
+        // Trigger signal only when magnitude, confluence, trend alignment, and score threshold (>= 88) align
+        if (!this.activeSignalStrategyId && highestCalculatedScore >= 88 && isConfluent && isSignificantMove && topStrategyId) {
             this.activeSignalStrategyId = topStrategyId;
         }
 
