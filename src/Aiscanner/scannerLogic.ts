@@ -12,20 +12,20 @@ export interface DerivTickResponse {
         id: string;
     };
 }
-    
+
 export class ScannerLogic {
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
-        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'Volatility 50 AI Scalper',
+        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'Volatility AI Trend Scalper',
         market: s.market || '1HZ50V',
         confidence: s.confidence || 78
     }));
+    
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
-    // Sticky persistence state instead of time-locked windows
     private activeSignalStrategyId: string | null = null;
-    private readonly DISENGAGE_THRESHOLD = 82; // Keeps signal active until confidence slides below this level
+    private readonly DISENGAGE_THRESHOLD = 75; 
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -38,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Sticky momentum & persistent signal filter initialized.");
+        console.log("[AI Scanner]: Structured Trend & Confluence Filter Initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -55,17 +55,25 @@ export class ScannerLogic {
             this.priceBuffers[symbol] = [];
         }
         this.priceBuffers[symbol].push(price);
-        if (this.priceBuffers[symbol].length > 40) {
+        
+        // Keep a healthy buffer size for moving average calculations (e.g., last 30 ticks)
+        if (this.priceBuffers[symbol].length > 30) {
             this.priceBuffers[symbol].shift();
         }
 
         const prices = this.priceBuffers[symbol];
+        
+        // Need at least 20 ticks to calculate a stable trend baseline
+        if (prices.length < 20) {
+            return this.getSortedStrategies();
+        }
+
         const latestPrice = prices[prices.length - 1];
-        const prevPrice = prices.length > 1 ? prices[prices.length - 2] : latestPrice;
+        const prevPrice = prices[prices.length - 2];
         const netDiff = latestPrice - prevPrice;
         const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
 
-        // Track directional history to check for multi-tick confluence
+        // 1. Track Directional History (Confluence Check)
         if (!this.directionHistory[symbol]) {
             this.directionHistory[symbol] = [];
         }
@@ -74,65 +82,59 @@ export class ScannerLogic {
             this.directionHistory[symbol].shift();
         }
 
-        // Confluence Check: Are the last 3 ticks pointing in the exact same direction?
         const history = this.directionHistory[symbol];
+        // Require at least 3 consecutive ticks moving in the same direction
         const isConfluent = history.length >= 3 && history.slice(-3).every(d => d === liveDirection);
 
-        let marketMomentum = 60; // Clean baseline
-        if (prices.length >= 5) {
-            const windowSize = Math.min(prices.length, 10);
-            const oldestInWindow = prices[prices.length - windowSize];
-            const priceDelta = latestPrice - oldestInWindow;
-            const percentageChange = (priceDelta / oldestInWindow) * 100;
-            
-            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 6000 : 4500;
-            const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
-            const confluenceBonus = isConfluent ? 15 : 0;
-            
-            // Allow market momentum to climb naturally up to 97% on strong trends
-            marketMomentum = Math.min(97, Math.max(45, 60 + rawMagnitude + confluenceBonus));
+        // 2. Trend Environment Filter (Simple Moving Average of last 20 ticks)
+        const sma20 = prices.slice(-20).reduce((acc, val) => acc + val, 0) / 20;
+        const isAboveTrend = latestPrice > sma20;
+        const isBelowTrend = latestPrice < sma20;
+
+        // 3. Score Calculation based on structural alignment instead of noise
+        let baseScore = 50;
+        if ((isAboveTrend && liveDirection === 'UP') || (isBelowTrend && liveDirection === 'DOWN')) {
+            baseScore = 70;
+            if (isConfluent) {
+                baseScore = 88; // High-probability sweet spot
+            }
+        } else {
+            baseScore = 45; // Penalize counter-trend ticks
         }
 
         let highestCalculatedScore = 0;
         let topStrategyId = '';
 
         this.strategies = this.strategies.map((strat, index) => {
-            // Keep top strategy untouched; minor natural spacing for others
-            const spreadOffset = (index === 0) ? 0 : (index * 2);
-            const microNoise = (Math.sin(prices.length + index) * 2);
-
-            let strategySpecificScore = Math.round(
-                marketMomentum - spreadOffset + microNoise
-            );
-
-            strategySpecificScore = Math.min(97, Math.max(42, strategySpecificScore));
+            const spreadOffset = (index === 0) ? 0 : (index * 3);
+            let strategyScore = Math.min(96, Math.max(40, baseScore - spreadOffset));
 
             const stratId = strat.id || strat.name;
-            if (strategySpecificScore > highestCalculatedScore) {
-                highestCalculatedScore = strategySpecificScore;
+            if (strategyScore > highestCalculatedScore) {
+                highestCalculatedScore = strategyScore;
                 topStrategyId = stratId;
             }
 
             return {
                 ...strat,
-                confidence: strategySpecificScore,
-                score: strategySpecificScore,
+                confidence: strategyScore,
+                score: strategyScore,
                 direction: liveDirection
             };
         });
 
-        // Sticky Signal Persistence Logic
+        // 4. Sticky Signal Management
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && isConfluent) {
+            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD) {
                 return this.getSortedStrategies();
             } else {
                 this.activeSignalStrategyId = null;
             }
         }
 
-        // Trigger new sticky signal when sweet spot (>= 89) is met with active confluence
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isConfluent && topStrategyId) {
+        // Trigger signal only when strict confluence and trend alignment hit >= 88 confidence
+        if (!this.activeSignalStrategyId && highestCalculatedScore >= 88 && isConfluent && topStrategyId) {
             this.activeSignalStrategyId = topStrategyId;
         }
 
