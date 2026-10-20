@@ -111,16 +111,19 @@ export class ScannerLogic {
         this.strategies = this.strategies.map((strat) => {
             const targetSymbol = strat.symbol || '1HZ50V';
             
-            if (!this.priceBuffers[targetSymbol] || this.priceBuffers[targetSymbol].length === 0) {
-                this.priceBuffers[targetSymbol] = [price];
-            }
-            if (!this.directionHistory[targetSymbol] || this.directionHistory[targetSymbol].length === 0) {
-                this.directionHistory[targetSymbol] = [liveDirection];
+            // INDEPENDENT PROTECTION FILTER: Keep dormant assets at neutral baseline (50) until unique ticks land
+            if (!this.priceBuffers[targetSymbol] || this.priceBuffers[targetSymbol].length < 5) {
+                return {
+                    ...strat,
+                    confidence: 50,
+                    score: 50,
+                    direction: liveDirection
+                };
             }
 
             const prices = this.priceBuffers[targetSymbol];
-            const stratDirHistory = this.directionHistory[targetSymbol];
-            const stratLiveDirection = stratDirHistory[stratDirHistory.length - 1];
+            const stratDirHistory = this.directionHistory[targetSymbol] || [liveDirection];
+            const stratLiveDirection = stratDirHistory[stratDirHistory.length - 1] || 'UP';
             const isConfluent = stratDirHistory.length >= 3 && stratDirHistory.slice(-3).every(d => d === stratLiveDirection);
 
             const rsi14 = this.calculateRSI(prices, 14);
@@ -131,47 +134,52 @@ export class ScannerLogic {
             let strategySpecificScore = 50; 
             const stratId = strat.id;
 
+            // UPGRADED TRADING LOGIC MATRIX WITH SMOOTHING CONFLUENCE FILTERS
             switch (stratId) {
-                case '1': // RSI Momentum Spike
-                    if (rsi14 < 30 && stratLiveDirection === 'UP') strategySpecificScore = 88;
-                    else if (rsi14 > 70 && stratLiveDirection === 'DOWN') strategySpecificScore = 88;
-                    else strategySpecificScore = Math.round(50 - Math.abs(50 - rsi14));
-                    break;
-
-                case '2': // Bollinger Band Squeeze (Dynamic Gradient Scaling)
-                    if (bbp20 < 0.10 && stratLiveDirection === 'UP') {
-                        strategySpecificScore = Math.round(80 + ((0.10 - bbp20) * 100)); 
-                    } else if (bbp20 > 0.90 && stratLiveDirection === 'DOWN') {
-                        strategySpecificScore = Math.round(80 + ((bbp20 - 0.90) * 100));
+                case '1': // RSI Momentum Spike (Requires oversold zones AND structural trend reversal pings)
+                    if (rsi14 < 25 && isConfluent && stratLiveDirection === 'UP') {
+                        strategySpecificScore = 92;
+                    } else if (rsi14 > 75 && isConfluent && stratLiveDirection === 'DOWN') {
+                        strategySpecificScore = 92;
                     } else {
-                        strategySpecificScore = 55;
+                        strategySpecificScore = Math.max(40, Math.round(50 - Math.abs(50 - rsi14)));
                     }
                     break;
 
-                case '3': // EMA Crossover Breakout (Proportional Moving Gradient)
-                    const emaDifferencePercentage = (Math.abs(emaFast - emaSlow) / emaSlow) * 100;
-                    if (emaFast > emaSlow && stratLiveDirection === 'UP') {
-                        strategySpecificScore = Math.round(78 + Math.min(12, emaDifferencePercentage * 150));
-                    } else if (emaFast < emaSlow && stratLiveDirection === 'DOWN') {
-                        strategySpecificScore = Math.round(78 + Math.min(12, emaDifferencePercentage * 150));
+                case '2': // Bollinger Band Squeeze (Requires clean reverse cross-back INSIDE the outer volatility channels)
+                    if (bbp20 > 0.02 && bbp20 < 0.15 && stratLiveDirection === 'UP' && isConfluent) {
+                        strategySpecificScore = 91;
+                    } else if (bbp20 < 0.98 && bbp20 > 0.85 && stratLiveDirection === 'DOWN' && isConfluent) {
+                        strategySpecificScore = 91;
                     } else {
-                        strategySpecificScore = 48; 
+                        strategySpecificScore = 52;
+                    }
+                    break;
+
+                case '3': // EMA Crossover Breakout (Proportional Moving Gradient based on separation expansion width)
+                    const emaDifferencePercentage = (Math.abs(emaFast - emaSlow) / emaSlow) * 100;
+                    if (emaFast > emaSlow && stratLiveDirection === 'UP' && isConfluent) {
+                        strategySpecificScore = Math.round(80 + Math.min(13, emaDifferencePercentage * 250));
+                    } else if (emaFast < emaSlow && stratLiveDirection === 'DOWN' && isConfluent) {
+                        strategySpecificScore = Math.round(80 + Math.min(13, emaDifferencePercentage * 250));
+                    } else {
+                        strategySpecificScore = 45; 
                     }
                     break;
 
                 case '4': // Tick Reversal Pattern
                 case '6': // Support/Resistance Bounce
-                    strategySpecificScore = isConfluent ? 84 : 52;
+                    strategySpecificScore = isConfluent ? 85 : 48;
                     break;
 
-                default: // Catch-all for Digit and MACD layouts
+                default: // Catch-all fallback for non-indexed configurations
                     const trendAligns = (emaFast > emaSlow && stratLiveDirection === 'UP') || (emaFast < emaSlow && stratLiveDirection === 'DOWN');
-                    strategySpecificScore = (trendAligns && isConfluent) ? 83 : 60;
+                    strategySpecificScore = (trendAligns && isConfluent) ? 81 : 55;
                     break;
             }
 
-            if (isConfluent && strategySpecificScore >= 70) {
-                strategySpecificScore += 6;
+            if (isConfluent && strategySpecificScore >= 70 && strategySpecificScore < 89) {
+                strategySpecificScore += 5;
             }
 
             strategySpecificScore = Math.min(97, Math.max(42, strategySpecificScore));
@@ -189,7 +197,7 @@ export class ScannerLogic {
             };
         });
 
-        // Time-Locked Pinning Routine
+        // Time-Locked Pinning Layout Routine
         const currentEpoch = Math.floor(Date.now() / 1000);
 
         if (this.activeSignalStrategyId) {
