@@ -17,7 +17,8 @@ export class ScannerLogic {
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
         name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'Volatility AI Trend Scalper',
-        market: s.market || '1HZ50V',
+        market: s.market || 'Volatility 50 (1s) Index',
+        symbol: s.symbol || '1HZ50V',
         confidence: s.confidence || 50
     }));
     
@@ -120,11 +121,11 @@ export class ScannerLogic {
             }
         }
 
-        // Always update strategies mapping so cards reflect current scores or warmup state
+        // Always update strategies mapping using strat.symbol to match assetScores keys
         this.strategies = this.strategies.map((strat) => {
-            const stratSymbol = strat.market || '1HZ50V';
+            const stratSymbol = strat.symbol || '1HZ50V';
             const marketScore = this.assetScores[stratSymbol] || 50;
-            const marketDirection = this.assetDirections[stratSymbol] || 'UP';
+            const marketDirection = this.assetDirections[stratSymbol] || strat.direction || 'UP';
 
             return {
                 ...strat,
@@ -139,11 +140,11 @@ export class ScannerLogic {
 
     private getSortedStrategies(): Strategy[] {
         return [...this.strategies].sort((a, b) => {
-            const marketA = a.market || '';
-            const marketB = b.market || '';
+            const symbolA = a.symbol || '';
+            const symbolB = b.symbol || '';
             
-            if (marketA === this.activeSignalSymbol) return -1;
-            if (marketB === this.activeSignalSymbol) return 1;
+            if (symbolA === this.activeSignalSymbol) return -1;
+            if (symbolB === this.activeSignalSymbol) return 1;
             
             return b.confidence - a.confidence;
         });
