@@ -14,7 +14,7 @@ export interface DerivTickResponse {
 }
 
 export class ScannerLogic {
-    // FIXED: Maps your strategy array utilizing .symbol cleanly to prevent fallback freezes
+    // Maps your strategy array utilizing .symbol cleanly to prevent fallback freezes
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
         name: s.name || 'Volatility AI Scalper',
@@ -25,7 +25,10 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
+    // Time-locked hysteresis states to balance visualization readability
     private activeSignalStrategyId: string | null = null;
+    private signalLockExpiryEpoch: number = 0; 
+    private readonly MIN_LOCK_DURATION_TICKS = 5; 
     private readonly DISENGAGE_THRESHOLD = 82; 
     private totalTicksReceived = 0;
 
@@ -37,6 +40,7 @@ export class ScannerLogic {
         console.log("[AI Scanner]: Mathematical indicators & persistent filter engine online.");
     }
 
+    // Helper: Exponential Moving Average (EMA)
     private calculateEMA(prices: number[], period: number): number {
         if (prices.length === 0) return 0;
         if (prices.length < period) return prices[prices.length - 1];
@@ -48,6 +52,7 @@ export class ScannerLogic {
         return ema;
     }
 
+    // Helper: Relative Strength Index (RSI)
     private calculateRSI(prices: number[], period: number = 14): number {
         if (prices.length <= period) return 50;
         let gains = 0, losses = 0;
@@ -59,6 +64,7 @@ export class ScannerLogic {
         return 100 - (100 / (1 + (gains / losses)));
     }
 
+    // Helper: Bollinger Bands Percent B (%B)
     private calculateBollingerBandsPercent(prices: number[], period: number = 20, multiplier: number = 2): number {
         if (prices.length < period) return 0.5;
         const slice = prices.slice(-period);
@@ -103,7 +109,6 @@ export class ScannerLogic {
         let topStrategyId = '';
 
         this.strategies = this.strategies.map((strat) => {
-            // FIXED: Standardized target symbol identification checks mapping properties cleanly
             const targetSymbol = strat.symbol || '1HZ50V';
             
             if (!this.priceBuffers[targetSymbol] || this.priceBuffers[targetSymbol].length === 0) {
@@ -126,7 +131,6 @@ export class ScannerLogic {
             let strategySpecificScore = 50; 
             const stratId = strat.id;
 
-            // FIXED: Switch routes now evaluate your explicit string ID mappings ('1' through '7')
             switch (stratId) {
                 case '1': // RSI Momentum Spike
                     if (rsi14 < 30 && stratLiveDirection === 'UP') strategySpecificScore = 88;
@@ -134,16 +138,25 @@ export class ScannerLogic {
                     else strategySpecificScore = Math.round(50 - Math.abs(50 - rsi14));
                     break;
 
-                case '2': // Bollinger Band Squeeze
-                    if (bbp20 < 0.05 && stratLiveDirection === 'UP') strategySpecificScore = 91;
-                    else if (bbp20 > 0.95 && stratLiveDirection === 'DOWN') strategySpecificScore = 91;
-                    else strategySpecificScore = 58;
+                case '2': // Bollinger Band Squeeze (Dynamic Gradient Scaling)
+                    if (bbp20 < 0.10 && stratLiveDirection === 'UP') {
+                        strategySpecificScore = Math.round(80 + ((0.10 - bbp20) * 100)); 
+                    } else if (bbp20 > 0.90 && stratLiveDirection === 'DOWN') {
+                        strategySpecificScore = Math.round(80 + ((bbp20 - 0.90) * 100));
+                    } else {
+                        strategySpecificScore = 55;
+                    }
                     break;
 
-                case '3': // EMA Crossover Breakout
-                    if (emaFast > emaSlow && stratLiveDirection === 'UP') strategySpecificScore = 89;
-                    else if (emaFast < emaSlow && stratLiveDirection === 'DOWN') strategySpecificScore = 89;
-                    else strategySpecificScore = 48;
+                case '3': // EMA Crossover Breakout (Proportional Moving Gradient)
+                    const emaDifferencePercentage = (Math.abs(emaFast - emaSlow) / emaSlow) * 100;
+                    if (emaFast > emaSlow && stratLiveDirection === 'UP') {
+                        strategySpecificScore = Math.round(78 + Math.min(12, emaDifferencePercentage * 150));
+                    } else if (emaFast < emaSlow && stratLiveDirection === 'DOWN') {
+                        strategySpecificScore = Math.round(78 + Math.min(12, emaDifferencePercentage * 150));
+                    } else {
+                        strategySpecificScore = 48; 
+                    }
                     break;
 
                 case '4': // Tick Reversal Pattern
@@ -151,7 +164,7 @@ export class ScannerLogic {
                     strategySpecificScore = isConfluent ? 84 : 52;
                     break;
 
-                default: // Catch-all for Digit Scalpers and MACD strategies
+                default: // Catch-all for Digit and MACD layouts
                     const trendAligns = (emaFast > emaSlow && stratLiveDirection === 'UP') || (emaFast < emaSlow && stratLiveDirection === 'DOWN');
                     strategySpecificScore = (trendAligns && isConfluent) ? 83 : 60;
                     break;
@@ -176,17 +189,19 @@ export class ScannerLogic {
             };
         });
 
-        // Sticky Signal Locking Routine
+        // Time-Locked Pinning Routine
+        const currentEpoch = Math.floor(Date.now() / 1000);
+
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => s.id === this.activeSignalStrategyId);
-            const activeSymbol = currentActiveStrat?.symbol || '1HZ50V';
-            const activeHistory = this.directionHistory[activeSymbol] || [];
-            const activeConfluent = activeHistory.length >= 3 && activeHistory.slice(-3).every(d => d === activeHistory[activeHistory.length - 1]);
+            const timeWindowExpired = currentEpoch >= this.signalLockExpiryEpoch;
 
-            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && activeConfluent) {
-                return this.getSortedStrategies();
-            } else {
-                this.activeSignalStrategyId = null;
+            if (currentActiveStrat) {
+                if (currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && !timeWindowExpired) {
+                    return this.getSortedStrategies();
+                } else {
+                    this.activeSignalStrategyId = null;
+                }
             }
         }
 
@@ -197,6 +212,7 @@ export class ScannerLogic {
 
         if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && topConfluent && topStrategyId) {
             this.activeSignalStrategyId = topStrategyId;
+            this.signalLockExpiryEpoch = currentEpoch + this.MIN_LOCK_DURATION_TICKS;
         }
 
         return this.getSortedStrategies();
