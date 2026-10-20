@@ -24,7 +24,8 @@ export class ScannerLogic {
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
     private activeSignalStrategyId: string | null = null;
-    private readonly DISENGAGE_THRESHOLD = 75; 
+    // Hysteresis Fix: Lower disengage threshold to prevent fast 65/80 flickering
+    private readonly DISENGAGE_THRESHOLD = 68; 
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -37,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Graduated Weighted Scoring & Live UI Filter Initialized.");
+        console.log("[AI Scanner]: Smooth Granular Scoring & Hysteresis Initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -72,12 +73,12 @@ export class ScannerLogic {
         const netDiff = latestPrice - prevPrice;
         const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
 
-        // 1. Track Directional History (Confluence Check)
+        // 1. Track Deeper Directional History (10 ticks for fine fractional percentages)
         if (!this.directionHistory[symbol]) {
             this.directionHistory[symbol] = [];
         }
         this.directionHistory[symbol].push(liveDirection);
-        if (this.directionHistory[symbol].length > 5) {
+        if (this.directionHistory[symbol].length > 10) {
             this.directionHistory[symbol].shift();
         }
 
@@ -90,8 +91,8 @@ export class ScannerLogic {
         const distanceToSMA = latestPrice - sma20;
         const isAlignedWithTrend = (distanceToSMA > 0 && liveDirection === 'UP') || (distanceToSMA < 0 && liveDirection === 'DOWN');
 
-        // 3. Graduated Weighted Point System (Replaces binary flatlining with live breathing UI numbers)
-        let calculatedScore = 45; // Healthy baseline starting point
+        // 3. Graduated Granular Point System (Produces smooth values like 71%, 74%, 78%)
+        let calculatedScore = 48; // Healthy baseline starting point
 
         // A. Magnitude Contribution (Worth up to 20 points)
         const absoluteDelta = Math.abs(netDiff);
@@ -99,8 +100,8 @@ export class ScannerLogic {
         const magnitudePoints = Math.min(20, (absoluteDelta / scaleRef) * 20);
         calculatedScore += magnitudePoints;
 
-        // B. Confluence Contribution (Worth up to 20 points based on recent streak)
-        const confluencePoints = history.length > 0 ? (sameDirectionCount / history.length) * 20 : 0;
+        // B. Granular Confluence Contribution (Worth up to 22 points based on 10-tick ratio)
+        const confluencePoints = history.length > 0 ? (sameDirectionCount / history.length) * 22 : 0;
         calculatedScore += confluencePoints;
 
         // C. Trend Alignment Bonus (Worth up to 15 points)
@@ -132,9 +133,10 @@ export class ScannerLogic {
             };
         });
 
-        // 4. Sticky Signal Management
+        // 4. Sticky Signal Management with Hysteresis
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
+            // Stays locked on screen until it genuinely slides below 68%
             if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD) {
                 return this.getSortedStrategies();
             } else {
@@ -142,8 +144,8 @@ export class ScannerLogic {
             }
         }
 
-        // 5. Trigger Signal when accumulated score crosses >= 85 with strong confluence & trend alignment
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 85 && isConfluent && isAlignedWithTrend && topStrategyId) {
+        // 5. Trigger Signal when score crosses >= 78 cleanly (stable sweet spot)
+        if (!this.activeSignalStrategyId && highestCalculatedScore >= 78 && isConfluent && isAlignedWithTrend && topStrategyId) {
             this.activeSignalStrategyId = topStrategyId;
         }
 
