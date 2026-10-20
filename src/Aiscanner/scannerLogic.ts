@@ -37,7 +37,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: True Indicator-Driven Engine Initialized (EMA, RSI, BB %B).");
+        console.log("[AI Scanner]: High-Confluence Filtered Engine Initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -129,28 +129,32 @@ export class ScannerLogic {
 
             this.assetDirections[symbol] = direction;
 
-            // Scoring Logic based on technical indicators:
-            // 1. EMA Crossover alignment (Fast above Slow = Bullish)
             let score = 50;
             const isEmaBullish = emaFast > emaSlow;
             const isEmaBearish = emaFast < emaSlow;
 
-            if ((direction === 'UP' && isEmaBullish) || (direction === 'DOWN' && isEmaBearish)) {
-                score += 15;
-            }
+            // STRICT CONFLUENCE GATE: Require EMA trend alignment first
+            const isTrendAligned = (direction === 'UP' && isEmaBullish) || (direction === 'DOWN' && isEmaBearish);
 
-            // 2. RSI Momentum bounds (Overbought > 70 or Oversold < 30 give strong directional weights)
-            if (rsi > 60 && direction === 'UP') {
-                score += ((rsi - 60) / 40) * 20; // Up to +20 points for strong upward RSI momentum
-            } else if (rsi < 40 && direction === 'DOWN') {
-                score += (((40 - rsi) / 40)) * 20; // Up to +20 points for strong downward RSI momentum
-            }
+            if (isTrendAligned) {
+                score += 18; // Base reward for trend agreement
 
-            // 3. Bollinger Band %B Extremes (%B > 0.8 or %B < 0.2 indicates breakout pressure)
-            if (percentB > 0.8 && direction === 'UP') {
-                score += 12;
-            } else if (percentB < 0.2 && direction === 'DOWN') {
-                score += 12;
+                // Strict RSI Momentum Thresholds (> 65 for Bullish, < 35 for Bearish)
+                const isRsiStrongBullish = rsi > 65 && direction === 'UP';
+                const isRsiStrongBearish = rsi < 35 && direction === 'DOWN';
+
+                // Bollinger Band Breakout Confirmation (%B > 0.85 or %B < 0.15)
+                const isBbBreakoutBullish = percentB > 0.85 && direction === 'UP';
+                const isBbBreakoutBearish = percentB < 0.15 && direction === 'DOWN';
+
+                if (isRsiStrongBullish) score += 15;
+                if (isRsiStrongBearish) score += 15;
+
+                if (isBbBreakoutBullish) score += 13;
+                if (isBbBreakoutBearish) score += 13;
+            } else {
+                // Penalize counter-trend ticks so choppy assets drop below neutral
+                score -= 8;
             }
 
             // Clamp score between 40 and 96
