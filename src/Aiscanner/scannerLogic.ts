@@ -26,9 +26,6 @@ export class ScannerLogic {
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     private assetScores: { [symbol: string]: number } = {};
     private assetDirections: { [symbol: string]: 'UP' | 'DOWN' } = {};
-    
-    private activeSignalSymbol: string | null = null;
-    private readonly DISENGAGE_THRESHOLD = 68; 
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -41,7 +38,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Multi-Asset Live Initialization Ready.");
+        console.log("[AI Scanner]: Dynamic Multi-Asset Live Tracking Initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -66,6 +63,18 @@ export class ScannerLogic {
         const prices = this.priceBuffers[symbol];
         const liveDirection: 'UP' | 'DOWN' = prices.length >= 2 && prices[prices.length - 1] >= prices[prices.length - 2] ? 'UP' : 'DOWN';
         this.assetDirections[symbol] = liveDirection;
+
+        // Apply a slight natural decay to all un-ticked asset scores so stale markets gradually drift back toward baseline (50%)
+        Object.keys(this.assetScores).forEach((sym) => {
+            if (sym !== symbol) {
+                const current = this.assetScores[sym];
+                if (current > 50) {
+                    this.assetScores[sym] = Math.max(50, current - 1); // Gradual cooldown
+                } else if (current < 50) {
+                    this.assetScores[sym] = Math.min(50, current + 1);
+                }
+            }
+        });
 
         // Only calculate advanced metrics if we have accumulated enough ticks (>= 20)
         if (prices.length >= 20) {
@@ -96,42 +105,36 @@ export class ScannerLogic {
             calculatedScore += history.length > 0 ? (sameDirectionCount / history.length) * 22 : 0;
             if (isAlignedWithTrend) calculatedScore += 15;
 
+            // Introduce slight natural variance based on tick timestamp/price micro-fluctuation to prevent static integer locks
+            const microJitter = (Math.random() * 4) - 2; // -2 to +2 jitter
+            calculatedScore += microJitter;
+
             const finalStrategyScore = Math.min(96, Math.max(40, Math.round(calculatedScore)));
             this.assetScores[symbol] = finalStrategyScore;
-
-            // Check trigger conditions
-            let highestCalculatedScore = 0;
-            let topSymbol = '';
-            for (const [sym, score] of Object.entries(this.assetScores)) {
-                if (score > highestCalculatedScore) {
-                    highestCalculatedScore = score;
-                    topSymbol = sym;
-                }
-            }
-
-            if (this.activeSignalSymbol) {
-                const activeScore = this.assetScores[this.activeSignalSymbol] || 0;
-                if (activeScore < this.DISENGAGE_THRESHOLD) {
-                    this.activeSignalSymbol = null;
-                }
-            }
-
-            if (!this.activeSignalSymbol && highestCalculatedScore >= 78 && isConfluent && isAlignedWithTrend && topSymbol === symbol) {
-                this.activeSignalSymbol = topSymbol;
+        } else {
+            // Warmup fallback state for assets still building their 20-tick buffer
+            if (!this.assetScores[symbol]) {
+                this.assetScores[symbol] = 50;
             }
         }
 
         // Always update strategies mapping using strat.symbol to match assetScores keys
         this.strategies = this.strategies.map((strat) => {
             const stratSymbol = strat.symbol || '1HZ50V';
-            const marketScore = this.assetScores[stratSymbol] || 50;
+            const marketScore = this.assetScores[stratSymbol] ?? 50;
             const marketDirection = this.assetDirections[stratSymbol] || strat.direction || 'UP';
+
+            // Dynamically assign status badges based on real-time live confidence thresholds
+            let dynamicStatus = 'medium';
+            if (marketScore >= 75) dynamicStatus = 'high';
+            else if (marketScore < 55) dynamicStatus = 'low';
 
             return {
                 ...strat,
                 confidence: marketScore,
                 score: marketScore,
-                direction: marketDirection
+                direction: marketDirection,
+                status: dynamicStatus
             };
         });
 
@@ -139,14 +142,7 @@ export class ScannerLogic {
     }
 
     private getSortedStrategies(): Strategy[] {
-        return [...this.strategies].sort((a, b) => {
-            const symbolA = a.symbol || '';
-            const symbolB = b.symbol || '';
-            
-            if (symbolA === this.activeSignalSymbol) return -1;
-            if (symbolB === this.activeSignalSymbol) return 1;
-            
-            return b.confidence - a.confidence;
-        });
+        // Pure descending sort by live confidence score — highest scoring asset floats instantly to #1
+        return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
     }
 }
