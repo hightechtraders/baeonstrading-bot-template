@@ -14,26 +14,31 @@ export interface DerivTickResponse {
 }
     
 export class ScannerLogic {
-    // Extract static templates (rules, stakes, barriers) from INITIAL_STRATEGIES
-    private strategyTemplates = INITIAL_STRATEGIES;
-
+    private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
+        ...s,
+        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'Volatility 50 AI Scalper',
+        market: s.market || '1HZ50V',
+        confidence: s.confidence || 78
+    }));
     private priceBuffers: { [symbol: string]: number[] } = {};
-    private assetScores: { [symbol: string]: number } = {};
-    private assetDirections: { [symbol: string]: 'UP' | 'DOWN' } = {};
-    private lastTickTimes: { [symbol: string]: number } = {};
+    private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
+    
+    // Sticky persistence state instead of time-locked windows
+    private activeSignalStrategyId: string | null = null;
+    private readonly DISENGAGE_THRESHOLD = 82; // Keeps signal active until confidence slides below this level
 
-    public static readonly SCANNER_MARKETS: Array<{ symbol: string; marketName: string; volatility: string }> = [
-        { symbol: '1HZ50V', marketName: 'Volatility 50 (1s) Index', volatility: '50s' },
-        { symbol: '1HZ75V', marketName: 'Volatility 75 (1s) Index', volatility: '75s' },
-        { symbol: '1HZ10V', marketName: 'Volatility 10 (1s) Index', volatility: '10s' },
-        { symbol: '1HZ100V', marketName: 'Volatility 100 (1s) Index', volatility: '100s' },
-        { symbol: 'R_25', marketName: 'Volatility 25 Index', volatility: '25' },
-        { symbol: 'R_75', marketName: 'Volatility 75 Index', volatility: '75' },
-        { symbol: 'R_10', marketName: 'Volatility 10 Index', volatility: '10' }
+    public static readonly SCANNER_MARKETS: string[] = [
+        '1HZ50V',  // Volatility 50 (1s) Index
+        '1HZ75V',  // Volatility 75 (1s) Index
+        '1HZ10V',  // Volatility 10 (1s) Index
+        '1HZ100V', // Volatility 100 (1s) Index
+        'R_25',    // Volatility 25 Index
+        'R_75',    // Volatility 75 Index
+        'R_10'     // Volatility 10 Index
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Fully Rotational Dynamic Engine Initialized.");
+        console.log("[AI Scanner]: Sticky momentum & persistent signal filter initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -45,150 +50,105 @@ export class ScannerLogic {
         return this.processLiveTick(symbol, Number(quote));
     }
 
-    private calculateEMA(prices: number[], period: number): number {
-        if (prices.length === 0) return 0;
-        const k = 2 / (period + 1);
-        let ema = prices[0];
-        for (let i = 1; i < prices.length; i++) {
-            ema = (prices[i] * k) + (ema * (1 - k));
-        }
-        return ema;
-    }
-
-    private calculateRSI(prices: number[], period: number = 14): number {
-        if (prices.length < period + 1) return 50;
-        
-        let gains = 0;
-        let losses = 0;
-
-        for (let i = prices.length - period; i < prices.length; i++) {
-            const diff = prices[i] - prices[i - 1];
-            if (diff >= 0) gains += diff;
-            else losses += Math.abs(diff);
-        }
-
-        const avgGain = gains / period;
-        const avgLoss = losses / period;
-
-        if (avgLoss === 0) return 100;
-        const rs = avgGain / avgLoss;
-        return 100 - (100 / (1 + rs));
-    }
-
-    private calculateBollingerBandPercentB(prices: number[], period: number = 20, stdDevMultiplier: number = 2): { percentB: number, direction: 'UP' | 'DOWN' } {
-        if (prices.length < period) return { percentB: 0.5, direction: 'UP' };
-
-        const slice = prices.slice(-period);
-        const sma = slice.reduce((acc, val) => acc + val, 0) / period;
-        
-        const variance = slice.reduce((acc, val) => acc + Math.pow(val - sma, 2), 0) / period;
-        const stdDev = Math.sqrt(variance);
-
-        const upperBand = sma + (stdDevMultiplier * stdDev);
-        const lowerBand = sma - (stdDevMultiplier * stdDev);
-        const currentPrice = prices[prices.length - 1];
-
-        const bandWidth = upperBand - lowerBand;
-        const percentB = bandWidth === 0 ? 0.5 : (currentPrice - lowerBand) / bandWidth;
-        const direction = currentPrice >= sma ? 'UP' : 'DOWN';
-
-        return { percentB, direction };
-    }
-
     public processLiveTick(symbol: string, price: number): Strategy[] {
         if (!this.priceBuffers[symbol]) {
             this.priceBuffers[symbol] = [];
         }
         this.priceBuffers[symbol].push(price);
-        this.lastTickTimes[symbol] = Date.now();
-        
-        if (this.priceBuffers[symbol].length > 35) {
+        if (this.priceBuffers[symbol].length > 40) {
             this.priceBuffers[symbol].shift();
         }
 
         const prices = this.priceBuffers[symbol];
-        const currentTime = Date.now();
+        const latestPrice = prices[prices.length - 1];
+        const prevPrice = prices.length > 1 ? prices[prices.length - 2] : latestPrice;
+        const netDiff = latestPrice - prevPrice;
+        const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
 
-        // Decay scores for all markets so inactive ones cool down toward 50%
-        Object.keys(this.assetScores).forEach((sym) => {
-            const current = this.assetScores[sym] || 50;
-            const timeSinceLastTick = currentTime - (this.lastTickTimes[sym] || currentTime);
-            const decayAmount = sym === symbol ? 1 : (timeSinceLastTick > 1500 ? 3 : 2);
+        // Track directional history to check for multi-tick confluence
+        if (!this.directionHistory[symbol]) {
+            this.directionHistory[symbol] = [];
+        }
+        this.directionHistory[symbol].push(liveDirection);
+        if (this.directionHistory[symbol].length > 5) {
+            this.directionHistory[symbol].shift();
+        }
 
-            if (current > 50) {
-                this.assetScores[sym] = Math.max(50, current - decayAmount);
-            } else if (current < 50) {
-                this.assetScores[sym] = Math.min(50, current + 1);
+        // Confluence Check: Are the last 3 ticks pointing in the exact same direction?
+        const history = this.directionHistory[symbol];
+        const isConfluent = history.length >= 3 && history.slice(-3).every(d => d === liveDirection);
+
+        let marketMomentum = 60; // Clean baseline
+        if (prices.length >= 5) {
+            const windowSize = Math.min(prices.length, 10);
+            const oldestInWindow = prices[prices.length - windowSize];
+            const priceDelta = latestPrice - oldestInWindow;
+            const percentageChange = (priceDelta / oldestInWindow) * 100;
+            
+            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 6000 : 4500;
+            const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
+            const confluenceBonus = isConfluent ? 15 : 0;
+            
+            // Allow market momentum to climb naturally up to 97% on strong trends
+            marketMomentum = Math.min(97, Math.max(45, 60 + rawMagnitude + confluenceBonus));
+        }
+
+        let highestCalculatedScore = 0;
+        let topStrategyId = '';
+
+        this.strategies = this.strategies.map((strat, index) => {
+            // Keep top strategy untouched; minor natural spacing for others
+            const spreadOffset = (index === 0) ? 0 : (index * 2);
+            const microNoise = (Math.sin(prices.length + index) * 2);
+
+            let strategySpecificScore = Math.round(
+                marketMomentum - spreadOffset + microNoise
+            );
+
+            strategySpecificScore = Math.min(97, Math.max(42, strategySpecificScore));
+
+            const stratId = strat.id || strat.name;
+            if (strategySpecificScore > highestCalculatedScore) {
+                highestCalculatedScore = strategySpecificScore;
+                topStrategyId = stratId;
             }
+
+            return {
+                ...strat,
+                confidence: strategySpecificScore,
+                score: strategySpecificScore,
+                direction: liveDirection
+            };
         });
 
-        // Compute technical indicators for the ticked symbol
-        if (prices.length >= 20) {
-            const emaFast = this.calculateEMA(prices, 5);
-            const emaSlow = this.calculateEMA(prices, 13);
-            const rsi = this.calculateRSI(prices, 14);
-            const { percentB, direction } = this.calculateBollingerBandPercentB(prices, 20);
-
-            this.assetDirections[symbol] = direction;
-
-            let score = 50;
-            const isEmaBullish = emaFast > emaSlow;
-            const isEmaBearish = emaFast < emaSlow;
-            const isTrendAligned = (direction === 'UP' && isEmaBullish) || (direction === 'DOWN' && isEmaBearish);
-
-            if (isTrendAligned) {
-                score += 18;
-                if (rsi > 65 && direction === 'UP') score += 15;
-                if (rsi < 35 && direction === 'DOWN') score += 15;
-                if (percentB > 0.85 && direction === 'UP') score += 13;
-                if (percentB < 0.15 && direction === 'DOWN') score += 13;
+        // Sticky Signal Persistence Logic
+        if (this.activeSignalStrategyId) {
+            const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
+            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && isConfluent) {
+                return this.getSortedStrategies();
             } else {
-                score -= 8;
+                this.activeSignalStrategyId = null;
             }
+        }
 
-            const finalScore = Math.min(96, Math.max(40, Math.round(score)));
-            this.assetScores[symbol] = finalScore;
-        } else {
-            if (!this.assetScores[symbol]) {
-                this.assetScores[symbol] = 50;
-            }
-            this.assetDirections[symbol] = prices.length >= 2 && prices[prices.length - 1] >= prices[prices.length - 2] ? 'UP' : 'DOWN';
+        // Trigger new sticky signal when sweet spot (>= 89) is met with active confluence
+        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isConfluent && topStrategyId) {
+            this.activeSignalStrategyId = topStrategyId;
         }
 
         return this.getSortedStrategies();
     }
 
     private getSortedStrategies(): Strategy[] {
-        // 1. Gather all markets and attach their live scores & directions
-        const marketRankings = ScannerLogic.SCANNER_MARKETS.map(({ symbol, marketName, volatility }) => {
-            const score = this.assetScores[symbol] ?? 50;
-            const direction = this.assetDirections[symbol] || 'UP';
-            return { symbol, marketName, volatility, score, direction };
-        });
-
-        // 2. Sort by highest score first
-        marketRankings.sort((a, b) => b.score - a.score);
-
-        // 3. Map sorted markets dynamically into strategy cards so cards shuffle freely
-        return marketRankings.map((marketData, index) => {
-            const template = this.strategyTemplates[index % this.strategyTemplates.length];
-            const marketScore = marketData.score;
-
-            let dynamicStatus = 'medium';
-            if (marketScore >= 75) dynamicStatus = 'high';
-            else if (marketScore < 55) dynamicStatus = 'low';
-
-            return {
-                ...template,
-                id: `strat-${index + 1}`,
-                market: marketData.marketName,
-                symbol: marketData.symbol,
-                volatility: marketData.volatility,
-                confidence: marketScore,
-                score: marketScore,
-                direction: marketData.direction,
-                status: dynamicStatus
-            };
-        });
+        if (this.activeSignalStrategyId) {
+            const copy = [...this.strategies];
+            const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
+            if (index > 0) {
+                const [stickyItem] = copy.splice(index, 1);
+                copy.unshift(stickyItem);
+                return copy;
+            }
+        }
+        return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
     }
 }
