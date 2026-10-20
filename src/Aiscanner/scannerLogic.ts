@@ -20,10 +20,13 @@ export class ScannerLogic {
         market: s.market || '1HZ50V',
         confidence: s.confidence || 78
     }));
+    
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
+    private assetScores: { [symbol: string]: number } = {};
+    private assetDirections: { [symbol: string]: 'UP' | 'DOWN' } = {};
     
-    private activeSignalStrategyId: string | null = null;
+    private activeSignalSymbol: string | null = null;
     // Hysteresis Fix: Lower disengage threshold to prevent fast 65/80 flickering
     private readonly DISENGAGE_THRESHOLD = 68; 
 
@@ -38,7 +41,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Smooth Granular Scoring & Hysteresis Initialized.");
+        console.log("[AI Scanner]: Independent Multi-Asset Granular Scoring & Hysteresis Initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -72,6 +75,7 @@ export class ScannerLogic {
         const prevPrice = prices[prices.length - 2];
         const netDiff = latestPrice - prevPrice;
         const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
+        this.assetDirections[symbol] = liveDirection;
 
         // 1. Track Deeper Directional History (10 ticks for fine fractional percentages)
         if (!this.directionHistory[symbol]) {
@@ -111,57 +115,60 @@ export class ScannerLogic {
 
         // Clamp final score between 40% and 96%
         const finalStrategyScore = Math.min(96, Math.max(40, Math.round(calculatedScore)));
+        
+        // Save score specifically for this market symbol
+        this.assetScores[symbol] = finalStrategyScore;
 
-        let highestCalculatedScore = 0;
-        let topStrategyId = '';
-
-        this.strategies = this.strategies.map((strat, index) => {
-            const spreadOffset = (index === 0) ? 0 : (index * 3);
-            let strategyScore = Math.min(96, Math.max(40, finalStrategyScore - spreadOffset));
-
-            const stratId = strat.id || strat.name;
-            if (strategyScore > highestCalculatedScore) {
-                highestCalculatedScore = strategyScore;
-                topStrategyId = stratId;
-            }
+        // Update strategies array mapping each card to its respective market score
+        this.strategies = this.strategies.map((strat) => {
+            const stratSymbol = strat.market || '1HZ50V';
+            const marketScore = this.assetScores[stratSymbol] || 50;
+            const marketDirection = this.assetDirections[stratSymbol] || 'UP';
 
             return {
                 ...strat,
-                confidence: strategyScore,
-                score: strategyScore,
-                direction: liveDirection
+                confidence: marketScore,
+                score: marketScore,
+                direction: marketDirection
             };
         });
 
-        // 4. Sticky Signal Management with Hysteresis
-        if (this.activeSignalStrategyId) {
-            const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
-            // Stays locked on screen until it genuinely slides below 68%
-            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD) {
-                return this.getSortedStrategies();
-            } else {
-                this.activeSignalStrategyId = null;
+        // Find overall highest scoring asset across all markets
+        let highestCalculatedScore = 0;
+        let topSymbol = '';
+        for (const [sym, score] of Object.entries(this.assetScores)) {
+            if (score > highestCalculatedScore) {
+                highestCalculatedScore = score;
+                topSymbol = sym;
             }
         }
 
-        // 5. Trigger Signal when score crosses >= 78 cleanly (stable sweet spot)
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 78 && isConfluent && isAlignedWithTrend && topStrategyId) {
-            this.activeSignalStrategyId = topStrategyId;
+        // 4. Sticky Signal Management with Hysteresis (Per-Asset)
+        if (this.activeSignalSymbol) {
+            const activeScore = this.assetScores[this.activeSignalSymbol] || 0;
+            if (activeScore < this.DISENGAGE_THRESHOLD) {
+                this.activeSignalSymbol = null;
+            }
+        }
+
+        // 5. Trigger Signal when top market crosses >= 78 cleanly with confluence and trend alignment
+        if (!this.activeSignalSymbol && highestCalculatedScore >= 78 && isConfluent && isAlignedWithTrend && topSymbol === symbol) {
+            this.activeSignalSymbol = topSymbol;
         }
 
         return this.getSortedStrategies();
     }
 
     private getSortedStrategies(): Strategy[] {
-        if (this.activeSignalStrategyId) {
-            const copy = [...this.strategies];
-            const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (index > 0) {
-                const [stickyItem] = copy.splice(index, 1);
-                copy.unshift(stickyItem);
-                return copy;
-            }
-        }
-        return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
+        return [...this.strategies].sort((a, b) => {
+            const marketA = a.market || '';
+            const marketB = b.market || '';
+            
+            // Prioritize active sticky signal asset if present
+            if (marketA === this.activeSignalSymbol) return -1;
+            if (marketB === this.activeSignalSymbol) return 1;
+            
+            return b.confidence - a.confidence;
+        });
     }
 }
