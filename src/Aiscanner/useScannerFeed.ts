@@ -11,50 +11,57 @@ export const useScannerFeed = () => {
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        // 1. Listen directly to raw live ticks dispatched from api-base.ts
-        const handleLiveTick = (event: CustomEvent) => {
-            const { symbol, price } = event.detail || {};
-            if (symbol && typeof price === 'number') {
-                const updatedStrategies = scanner.handleIncomingMessage({
-                    msg_type: 'tick',
-                    tick: {
-                        symbol,
-                        quote: price,
-                        epoch: Math.floor(Date.now() / 1000),
-                        id: `${symbol}-${Date.now()}`
-                    }
-                });
-
-                if (updatedStrategies && updatedStrategies.length > 0) {
-                    window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
-                        detail: { strategies: [...updatedStrategies] }
-                    }));
-                }
-            }
-        };
-
-        window.addEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
-
-        // 2. Reliable subscription mechanism via api_base instance
         let intervalId: any = null;
         let isSubscribed = false;
 
         const attemptSubscription = async () => {
-            if (isSubscribed) return;
-
             try {
                 // Check if api_base connection is open and available
                 if (api_base && api_base.api && api_base.api.connection && api_base.api.connection.readyState === WebSocket.OPEN) {
-                    console.log("[AI Scanner Feed]: Connection open. Subscribing to scanner markets...");
                     
-                    ScannerLogic.SCANNER_MARKETS.forEach((symbol: string) => {
-                        api_base.api.send({
-                            ticks: symbol,
-                            subscribe: 1
-                        });
-                    });
+                    // 1. Listen to raw WebSocket messages directly from Deriv API connection
+                    const messageListener = (event: MessageEvent) => {
+                        try {
+                            const dataParsed = JSON.parse(event.data);
+                            
+                            if (dataParsed.msg_type === 'tick' && dataParsed.tick) {
+                                const { symbol, quote, epoch, id } = dataParsed.tick;
+                                
+                                const updatedStrategies = scanner.handleIncomingMessage({
+                                    msg_type: 'tick',
+                                    tick: {
+                                        symbol,
+                                        quote: Number(quote),
+                                        epoch: epoch || Math.floor(Date.now() / 1000),
+                                        id: id || `${symbol}-${Date.now()}`
+                                    }
+                                });
 
-                    isSubscribed = true;
+                                if (updatedStrategies && updatedStrategies.length > 0) {
+                                    window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
+                                        detail: { strategies: [...updatedStrategies] }
+                                    }));
+                                }
+                            }
+                        } catch (parseErr) {
+                            // Ignore non-JSON or malformed frame messages
+                        }
+                    };
+
+                    api_base.api.connection.addEventListener('message', messageListener);
+
+                    // 2. Subscribe to all markets defined in SCANNER_MARKETS simultaneously
+                    if (!isSubscribed) {
+                        console.log("[AI Scanner Feed]: Connection open. Subscribing to all scanner markets...");
+                        ScannerLogic.SCANNER_MARKETS.forEach((symbol: string) => {
+                            api_base.api.send({
+                                ticks: symbol,
+                                subscribe: 1
+                            });
+                        });
+                        isSubscribed = true;
+                    }
+
                     if (intervalId) clearInterval(intervalId);
                 }
             } catch (err) {
@@ -62,12 +69,11 @@ export const useScannerFeed = () => {
             }
         };
 
-        // Try immediately, then poll every second until successful
+        // Try immediately, then poll every second until connection is open
         attemptSubscription();
         intervalId = setInterval(attemptSubscription, 1000);
 
         return () => {
-            window.removeEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
             if (intervalId) clearInterval(intervalId);
         };
     }, []);
