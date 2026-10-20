@@ -14,37 +14,26 @@ export interface DerivTickResponse {
 }
     
 export class ScannerLogic {
-    // Keep base strategy archetypes/templates
-    private strategyTemplates: Omit<Strategy, 'symbol' | 'market' | 'confidence' | 'score'>[] = INITIAL_STRATEGIES.map(s => ({
-        id: s.id,
-        name: s.name,
-        volatility: s.volatility,
-        direction: s.direction,
-        recommendedStake: s.recommendedStake,
-        recommendedStopLoss: s.recommendedStopLoss,
-        recommendedTakeProfit: s.recommendedTakeProfit,
-        contractType: s.contractType,
-        barrier: s.barrier,
-        status: s.status
-    }));
+    // Extract static templates (rules, stakes, barriers) from INITIAL_STRATEGIES
+    private strategyTemplates = INITIAL_STRATEGIES;
 
     private priceBuffers: { [symbol: string]: number[] } = {};
     private assetScores: { [symbol: string]: number } = {};
     private assetDirections: { [symbol: string]: 'UP' | 'DOWN' } = {};
     private lastTickTimes: { [symbol: string]: number } = {};
 
-    public static readonly SCANNER_MARKETS: Array<{ symbol: string; marketName: string }> = [
-        { symbol: '1HZ50V', marketName: 'Volatility 50 (1s) Index' },
-        { symbol: '1HZ75V', marketName: 'Volatility 75 (1s) Index' },
-        { symbol: '1HZ10V', marketName: 'Volatility 10 (1s) Index' },
-        { symbol: '1HZ100V', marketName: 'Volatility 100 (1s) Index' },
-        { symbol: 'R_25', marketName: 'Volatility 25 Index' },
-        { symbol: 'R_75', marketName: 'Volatility 75 Index' },
-        { symbol: 'R_10', marketName: 'Volatility 10 Index' }
+    public static readonly SCANNER_MARKETS: Array<{ symbol: string; marketName: string; volatility: string }> = [
+        { symbol: '1HZ50V', marketName: 'Volatility 50 (1s) Index', volatility: '50s' },
+        { symbol: '1HZ75V', marketName: 'Volatility 75 (1s) Index', volatility: '75s' },
+        { symbol: '1HZ10V', marketName: 'Volatility 10 (1s) Index', volatility: '10s' },
+        { symbol: '1HZ100V', marketName: 'Volatility 100 (1s) Index', volatility: '100s' },
+        { symbol: 'R_25', marketName: 'Volatility 25 Index', volatility: '25' },
+        { symbol: 'R_75', marketName: 'Volatility 75 Index', volatility: '75' },
+        { symbol: 'R_10', marketName: 'Volatility 10 Index', volatility: '10' }
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Fully Dynamic Multi-Market Rotational Engine Initialized.");
+        console.log("[AI Scanner]: Fully Rotational Dynamic Engine Initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -120,7 +109,7 @@ export class ScannerLogic {
         const prices = this.priceBuffers[symbol];
         const currentTime = Date.now();
 
-        // Apply score decay to all un-ticked assets so idle markets cool down
+        // Decay scores for all markets so inactive ones cool down toward 50%
         Object.keys(this.assetScores).forEach((sym) => {
             const current = this.assetScores[sym] || 50;
             const timeSinceLastTick = currentTime - (this.lastTickTimes[sym] || currentTime);
@@ -129,11 +118,11 @@ export class ScannerLogic {
             if (current > 50) {
                 this.assetScores[sym] = Math.max(50, current - decayAmount);
             } else if (current < 50) {
-                this.assetScores[sym] = Math.min(50, current + decayAmount);
+                this.assetScores[sym] = Math.min(50, current + 1);
             }
         });
 
-        // Compute technical indicators for the active tick symbol
+        // Compute technical indicators for the ticked symbol
         if (prices.length >= 20) {
             const emaFast = this.calculateEMA(prices, 5);
             const emaSlow = this.calculateEMA(prices, 13);
@@ -170,19 +159,18 @@ export class ScannerLogic {
     }
 
     private getSortedStrategies(): Strategy[] {
-        // 1. Build an array of all available markets paired with their current calculated scores & directions
-        const marketRankings = ScannerLogic.SCANNER_MARKETS.map(({ symbol, marketName }) => {
+        // 1. Gather all markets and attach their live scores & directions
+        const marketRankings = ScannerLogic.SCANNER_MARKETS.map(({ symbol, marketName, volatility }) => {
             const score = this.assetScores[symbol] ?? 50;
             const direction = this.assetDirections[symbol] || 'UP';
-            return { symbol, marketName, score, direction };
+            return { symbol, marketName, volatility, score, direction };
         });
 
-        // 2. Sort markets strictly from highest score to lowest score
+        // 2. Sort by highest score first
         marketRankings.sort((a, b) => b.score - a.score);
 
-        // 3. Dynamically map the sorted markets to our strategy template slots so cards shuffle freely
+        // 3. Map sorted markets dynamically into strategy cards so cards shuffle freely
         return marketRankings.map((marketData, index) => {
-            // Pick a template archetype for this card slot
             const template = this.strategyTemplates[index % this.strategyTemplates.length];
             const marketScore = marketData.score;
 
@@ -192,9 +180,10 @@ export class ScannerLogic {
 
             return {
                 ...template,
-                id: `dynamic-slot-${index + 1}`,
+                id: `strat-${index + 1}`,
                 market: marketData.marketName,
                 symbol: marketData.symbol,
+                volatility: marketData.volatility,
                 confidence: marketScore,
                 score: marketScore,
                 direction: marketData.direction,
