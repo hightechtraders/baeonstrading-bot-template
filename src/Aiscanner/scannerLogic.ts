@@ -23,7 +23,6 @@ export class ScannerLogic {
     }));
     
     private priceBuffers: { [symbol: string]: number[] } = {};
-    private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     private assetScores: { [symbol: string]: number } = {};
     private assetDirections: { [symbol: string]: 'UP' | 'DOWN' } = {};
 
@@ -38,7 +37,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Dynamic Multi-Asset Live Tracking Initialized.");
+        console.log("[AI Scanner]: True Indicator-Driven Engine Initialized (EMA, RSI, BB %B).");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -50,81 +49,126 @@ export class ScannerLogic {
         return this.processLiveTick(symbol, Number(quote));
     }
 
+    private calculateEMA(prices: number[], period: number): number {
+        if (prices.length === 0) return 0;
+        const k = 2 / (period + 1);
+        let ema = prices[0];
+        for (let i = 1; i < prices.length; i++) {
+            ema = (prices[i] * k) + (ema * (1 - k));
+        }
+        return ema;
+    }
+
+    private calculateRSI(prices: number[], period: number = 14): number {
+        if (prices.length < period + 1) return 50;
+        
+        let gains = 0;
+        let losses = 0;
+
+        for (let i = prices.length - period; i < prices.length; i++) {
+            const diff = prices[i] - prices[i - 1];
+            if (diff >= 0) gains += diff;
+            else losses += Math.abs(diff);
+        }
+
+        const avgGain = gains / period;
+        const avgLoss = losses / period;
+
+        if (avgLoss === 0) return 100;
+        const rs = avgGain / avgLoss;
+        return 100 - (100 / (1 + rs));
+    }
+
+    private calculateBollingerBandPercentB(prices: number[], period: number = 20, stdDevMultiplier: number = 2): { percentB: number, direction: 'UP' | 'DOWN' } {
+        if (prices.length < period) return { percentB: 0.5, direction: 'UP' };
+
+        const slice = prices.slice(-period);
+        const sma = slice.reduce((acc, val) => acc + val, 0) / period;
+        
+        const variance = slice.reduce((acc, val) => acc + Math.pow(val - sma, 2), 0) / period;
+        const stdDev = Math.sqrt(variance);
+
+        const upperBand = sma + (stdDevMultiplier * stdDev);
+        const lowerBand = sma - (stdDevMultiplier * stdDev);
+        const currentPrice = prices[prices.length - 1];
+
+        const bandWidth = upperBand - lowerBand;
+        const percentB = bandWidth === 0 ? 0.5 : (currentPrice - lowerBand) / bandWidth;
+        const direction = currentPrice >= sma ? 'UP' : 'DOWN';
+
+        return { percentB, direction };
+    }
+
     public processLiveTick(symbol: string, price: number): Strategy[] {
         if (!this.priceBuffers[symbol]) {
             this.priceBuffers[symbol] = [];
         }
         this.priceBuffers[symbol].push(price);
         
-        if (this.priceBuffers[symbol].length > 30) {
+        if (this.priceBuffers[symbol].length > 35) {
             this.priceBuffers[symbol].shift();
         }
 
         const prices = this.priceBuffers[symbol];
-        const liveDirection: 'UP' | 'DOWN' = prices.length >= 2 && prices[prices.length - 1] >= prices[prices.length - 2] ? 'UP' : 'DOWN';
-        this.assetDirections[symbol] = liveDirection;
 
-        // Apply a slight natural decay to all un-ticked asset scores so stale markets gradually drift back toward baseline (50%)
+        // Apply natural cooldown/decay to un-ticked assets
         Object.keys(this.assetScores).forEach((sym) => {
             if (sym !== symbol) {
                 const current = this.assetScores[sym];
-                if (current > 50) {
-                    this.assetScores[sym] = Math.max(50, current - 1); // Gradual cooldown
-                } else if (current < 50) {
-                    this.assetScores[sym] = Math.min(50, current + 1);
-                }
+                if (current > 50) this.assetScores[sym] = Math.max(50, current - 1);
+                else if (current < 50) this.assetScores[sym] = Math.min(50, current + 1);
             }
         });
 
-        // Only calculate advanced metrics if we have accumulated enough ticks (>= 20)
+        // Compute indicators once buffer has enough data (>= 20 ticks)
         if (prices.length >= 20) {
-            const latestPrice = prices[prices.length - 1];
-            const prevPrice = prices[prices.length - 2];
-            const netDiff = latestPrice - prevPrice;
+            const emaFast = this.calculateEMA(prices, 5);
+            const emaSlow = this.calculateEMA(prices, 13);
+            const rsi = this.calculateRSI(prices, 14);
+            const { percentB, direction } = this.calculateBollingerBandPercentB(prices, 20);
 
-            if (!this.directionHistory[symbol]) {
-                this.directionHistory[symbol] = [];
+            this.assetDirections[symbol] = direction;
+
+            // Scoring Logic based on technical indicators:
+            // 1. EMA Crossover alignment (Fast above Slow = Bullish)
+            let score = 50;
+            const isEmaBullish = emaFast > emaSlow;
+            const isEmaBearish = emaFast < emaSlow;
+
+            if ((direction === 'UP' && isEmaBullish) || (direction === 'DOWN' && isEmaBearish)) {
+                score += 15;
             }
-            this.directionHistory[symbol].push(liveDirection);
-            if (this.directionHistory[symbol].length > 10) {
-                this.directionHistory[symbol].shift();
+
+            // 2. RSI Momentum bounds (Overbought > 70 or Oversold < 30 give strong directional weights)
+            if (rsi > 60 && direction === 'UP') {
+                score += ((rsi - 60) / 40) * 20; // Up to +20 points for strong upward RSI momentum
+            } else if (rsi < 40 && direction === 'DOWN') {
+                score += (((40 - rsi) / 40)) * 20; // Up to +20 points for strong downward RSI momentum
             }
 
-            const history = this.directionHistory[symbol];
-            const sameDirectionCount = history.filter(d => d === liveDirection).length;
-            const isConfluent = history.length >= 3 && history.slice(-3).every(d => d === liveDirection);
+            // 3. Bollinger Band %B Extremes (%B > 0.8 or %B < 0.2 indicates breakout pressure)
+            if (percentB > 0.8 && direction === 'UP') {
+                score += 12;
+            } else if (percentB < 0.2 && direction === 'DOWN') {
+                score += 12;
+            }
 
-            const sma20 = prices.slice(-20).reduce((acc, val) => acc + val, 0) / 20;
-            const distanceToSMA = latestPrice - sma20;
-            const isAlignedWithTrend = (distanceToSMA > 0 && liveDirection === 'UP') || (distanceToSMA < 0 && liveDirection === 'DOWN');
-
-            let calculatedScore = 48;
-            const absoluteDelta = Math.abs(netDiff);
-            const scaleRef = symbol.includes('100') ? 0.5 : (symbol.includes('50') ? 0.2 : 0.05);
-            calculatedScore += Math.min(20, (absoluteDelta / scaleRef) * 20);
-            calculatedScore += history.length > 0 ? (sameDirectionCount / history.length) * 22 : 0;
-            if (isAlignedWithTrend) calculatedScore += 15;
-
-            // Introduce slight natural variance based on tick timestamp/price micro-fluctuation to prevent static integer locks
-            const microJitter = (Math.random() * 4) - 2; // -2 to +2 jitter
-            calculatedScore += microJitter;
-
-            const finalStrategyScore = Math.min(96, Math.max(40, Math.round(calculatedScore)));
-            this.assetScores[symbol] = finalStrategyScore;
+            // Clamp score between 40 and 96
+            const finalScore = Math.min(96, Math.max(40, Math.round(score)));
+            this.assetScores[symbol] = finalScore;
         } else {
-            // Warmup fallback state for assets still building their 20-tick buffer
             if (!this.assetScores[symbol]) {
                 this.assetScores[symbol] = 50;
             }
+            this.assetDirections[symbol] = prices.length >= 2 && prices[prices.length - 1] >= prices[prices.length - 2] ? 'UP' : 'DOWN';
         }
 
-        // Always update strategies mapping using strat.symbol to match assetScores keys
+        // Map scores to strategy cards
         this.strategies = this.strategies.map((strat) => {
             const stratSymbol = strat.symbol || '1HZ50V';
             const marketScore = this.assetScores[stratSymbol] ?? 50;
             const marketDirection = this.assetDirections[stratSymbol] || strat.direction || 'UP';
 
-            // Dynamically assign status badges based on real-time live confidence thresholds
             let dynamicStatus = 'medium';
             if (marketScore >= 75) dynamicStatus = 'high';
             else if (marketScore < 55) dynamicStatus = 'low';
@@ -142,7 +186,6 @@ export class ScannerLogic {
     }
 
     private getSortedStrategies(): Strategy[] {
-        // Pure descending sort by live confidence score — highest scoring asset floats instantly to #1
         return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
     }
 }
