@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/useScannerFeed.ts (PARALLEL JSON-RPC MULTI-MARKET)
+// FILE: src/Aiscanner/useScannerFeed.ts (FIXED UNIQUE REQ_ID MULTI-MARKET)
 // ==========================================
 import { useEffect } from 'react';
 import { ScannerLogic } from './scannerLogic';
@@ -40,7 +40,7 @@ export const useScannerFeed = () => {
                 await delay(300);
             }
 
-            console.log("[AI Scanner]: WebSocket open. Dispatching multi-market tick subscriptions...");
+            console.log("[AI Scanner]: WebSocket open. Dispatching multi-market tick subscriptions with unique IDs...");
 
             // Listen to global raw socket messages to catch incoming ticks for all 7 symbols
             const rawConnection = api_base?.api?.connection;
@@ -62,16 +62,19 @@ export const useScannerFeed = () => {
                 rawConnection.addEventListener('message', globalMessageListener);
             }
 
-            // Send explicit subscription request for each market
+            // Send explicit subscription request for each market with a unique req_id counter
+            let requestIdCounter = 5000;
             for (const symbolKey of ScannerLogic.SCANNER_MARKETS) {
                 try {
                     if (typeof api_base?.api?.send === 'function') {
+                        requestIdCounter++;
                         await api_base.api.send({
                             ticks: symbolKey,
-                            subscribe: 1
+                            subscribe: 1,
+                            req_id: requestIdCounter // 🔑 Forces the server to handle each asset stream uniquely
                         });
                     }
-                    await delay(200); // Stagger requests slightly to prevent rate limits
+                    await delay(250); // Stagger requests slightly to prevent rate limits
                 } catch (subErr) {
                     console.error(`Sub error for ${symbolKey}:`, subErr);
                 }
@@ -85,7 +88,7 @@ export const useScannerFeed = () => {
             window.removeEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
             console.log("[AI Scanner]: Cleaning up multi-market feeds...");
             
-            // Optional: Unsubscribe from markets on cleanup to keep socket clean
+            // Unsubscribe from markets on cleanup to keep socket clean
             ScannerLogic.SCANNER_MARKETS.forEach(symbolKey => {
                 try {
                     api_base?.api?.send({ forget_all: 'ticks' }).catch(() => {});
