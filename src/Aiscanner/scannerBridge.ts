@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/scannerBridge.ts (CORRECTED)
+// FILE: src/Aiscanner/scannerBridge.ts (FIXED & HARDENED)
 // ==========================================
 import { RiskManager } from './riskManager';
 import { ScannerLogic, DerivTickResponse } from './scannerLogic';
@@ -112,8 +112,9 @@ export class ScannerBridge {
     
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
-    
     const martingaleMultiplier = payload.multiplier || 1.5;
+
+    console.log("[AI Bridge]: Loading strategy for symbol:", strictDerivSymbol, "Contract:", storeContractType);
 
     const applyBlockMutations = () => {
       try {
@@ -122,27 +123,33 @@ export class ScannerBridge {
 
         if (workspace && typeof workspace.getAllBlocks === 'function') {
           const blocks = workspace.getAllBlocks(false);
+          console.log("[AI Bridge]: Found blocks on workspace canvas:", blocks.length);
+
           if (Array.isArray(blocks)) {
             let updated = false;
 
             blocks.forEach((block: any) => {
               if (!block) return;
 
+              // 1. Properly scoped field check
               if (typeof block.getField === 'function') {
-                // 1. Symbol Field Mutation & Menu Check Fix
+                
+                // Symbol Field Mutation
                 const symbolField = block.getField('SYMBOL_LIST');
-                if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
+                if (symbolField) {
                   if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
                     const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
                     if (!exists) {
                       symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
                     }
                   }
-                  symbolField.setValue(strictDerivSymbol);
-                  updated = true;
+                  if (symbolField.getValue() !== strictDerivSymbol) {
+                    symbolField.setValue(strictDerivSymbol);
+                    updated = true;
+                  }
                 }
 
-                // 2. Duration Enforcement
+                // Duration Enforcement
                 const durationField = block.getField('DURATION') || block.getField('DURATION_LIST') || block.getField('DURATION_VAL');
                 if (durationField && durationField.getValue() !== '5') {
                   durationField.setValue('5');
@@ -154,37 +161,38 @@ export class ScannerBridge {
                   unitField.setValue('t');
                   updated = true;
                 }
-              }
 
-              // 3. Purchase Block Conditions
-              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
-                const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
-                fieldNames.forEach(name => {
-                  const field = block.getField(name);
-                  if (field && typeof field.setValue === 'function') {
-                    const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
-                    const targetMatch = options.find((opt: any) => {
-                      const label = String(opt[0] || '').toLowerCase();
-                      const val = String(opt[1] || '').toLowerCase();
-                      if (isFall) {
-                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
-                      } else {
-                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
+                // 2. Purchase Block Conditions (Now safely inside field scope)
+                if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
+                  const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
+                  fieldNames.forEach(name => {
+                    const field = block.getField(name);
+                    if (field && typeof field.setValue === 'function') {
+                      const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
+                      const targetMatch = options.find((opt: any) => {
+                        const label = String(opt[0] || '').toLowerCase();
+                        const val = String(opt[1] || '').toLowerCase();
+                        if (isFall) {
+                          return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
+                        } else {
+                          return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
+                        }
+                      });
+
+                      const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
+                      if (field.getValue() !== desiredVal) {
+                        field.setValue(desiredVal);
+                        updated = true;
                       }
-                    });
-
-                    const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
-                    if (field && field.getValue() !== desiredVal) {
-                      field.setValue(desiredVal);
-                      updated = true;
                     }
-                  }
-                });
+                  });
+                }
               }
             });
 
             if (updated && typeof workspace.render === 'function') {
               workspace.render();
+              console.log("[AI Bridge]: Workspace successfully mutated and re-rendered.");
             }
           }
         }
@@ -193,6 +201,7 @@ export class ScannerBridge {
       }
     };
 
+    // Store & Quick Strategy Injection Route
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -214,9 +223,14 @@ export class ScannerBridge {
             quickStrategy.setValue('take_profit', payload.takeProfit);
           }
           
+          // If quick_strategy has a build or change handler, invoke it
+          if (typeof quickStrategy.onChanged === 'function') {
+            quickStrategy.onChanged();
+          }
+
           setTimeout(() => {
             applyBlockMutations();
-          }, 50);
+          }, 100);
         }
       } catch (err) {
         console.error("[AI Scanner Bridge Error]: Store injection failed, running fallback block updates:", err);
