@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/scannerLogic.ts
+// FILE: src/Aiscanner/scannerLogic.ts (PART 1)
 // ==========================================
 import { Strategy, INITIAL_STRATEGIES } from './strategies';
 
@@ -14,10 +14,10 @@ export interface DerivTickResponse {
 }
 
 export class ScannerLogic {
-    // Force all dashboard cards to focus on your single target asset
+    // Dedicated Single Asset Focus Registry targeting Volatility 10 Index exclusively
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
-        symbol: 'R_10', // Dedicated Single Asset Focus (Volatility 10 Index)
+        symbol: 'R_10', 
         market: 'Volatility 10 Index',
         confidence: s.confidence || 50
     }));
@@ -31,8 +31,10 @@ export class ScannerLogic {
     private readonly DISENGAGE_THRESHOLD = 84; 
     private totalTicksReceived = 0;
 
+    public static readonly SCANNER_MARKETS: string[] = ['R_10'];
+
     constructor() {
-        console.log("[AI Scanner]: High-performance SINGLE-ASSET engine active.");
+        console.log("[AI Scanner]: High-performance SINGLE-ASSET engine active targeting R_10.");
     }
 
     private calculateEMA(prices: number[], period: number): number {
@@ -68,13 +70,16 @@ export class ScannerLogic {
         if (upperBand === lowerBand) return 0.5;
         return (prices[prices.length - 1] - lowerBand) / (upperBand - lowerBand);
     }
+// ==========================================
+// FILE: src/Aiscanner/scannerLogic.ts (PART 2)
+// ==========================================
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
         this.totalTicksReceived++;
         if (!dataParsed || dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
             return this.getSortedStrategies();
         }
-        // ONLY accept data if it belongs to our target asset to block residual noise
+        // Strict boundary shield: Discard any external market assets to keep calculations clean
         if (dataParsed.tick.symbol !== 'R_10') return this.getSortedStrategies();
 
         return this.processLiveTick(dataParsed.tick.symbol, Number(dataParsed.tick.quote));
@@ -95,10 +100,11 @@ export class ScannerLogic {
         if (this.directionHistory[symbol].length > 8) this.directionHistory[symbol].shift();
 
         const dirHistory = this.directionHistory[symbol];
-        const isConfluent = dirHistory.length >= 3 && dirHistory.slice(-3).every(d => d === liveDirection);
-        const isHighlyConfluent = dirHistory.length >= 5 && dirHistory.slice(-5).every(d => d === liveDirection);
+        // Tightened micro-trend constraint: Requires 4 consecutive identical tick updates
+        const isConfluent = dirHistory.length >= 4 && dirHistory.slice(-4).every(d => d === liveDirection);
+        const isHighlyConfluent = dirHistory.length >= 6 && dirHistory.slice(-6).every(d => d === liveDirection);
 
-        // Core Mathematical Indicators Calculated From the Same Asset Feed
+        // Indicator metrics computed entirely from your decoupled Volatility 10 buffer pool
         const rsiShort = this.calculateRSI(prices, 9);
         const rsiMedium = this.calculateRSI(prices, 14);
         const bbp20 = this.calculateBollingerBandsPercent(prices, 20, 2);
@@ -110,66 +116,101 @@ export class ScannerLogic {
         let topStrategyId = '';
 
         this.strategies = this.strategies.map((strat) => {
-            let score = 50; 
+            let strategySpecificScore = 50; 
             const stratId = strat.id;
 
-            // 7 Highly Filtered Strategy Implementations Built for One Continuous Stream
+            // =====================================================================
+            // TRIPLE CONFLUENCE SIGNAL ENGINE OPTIMIZED SPECIFICALLY FOR R_10 TICKS
+            // =====================================================================
             switch (stratId) {
-                case '1': // Strategy 1: RSI Over-Extended Spike Reversal
-                    if (rsiMedium < 22 && isConfluent && liveDirection === 'UP') score = 94;
-                    else if (rsiMedium > 78 && isConfluent && liveDirection === 'DOWN') score = 94;
-                    break;
-
-                case '2': // Strategy 2: Bollinger Band Extreme Reversion
-                    if (bbp20 < 0.02 && liveDirection === 'UP' && isConfluent) score = 92;
-                    else if (bbp20 > 0.98 && liveDirection === 'DOWN' && isConfluent) score = 92;
-                    break;
-
-                case '3': // Strategy 3: Fast Momentum Scalper
-                    const emaDiff = (Math.abs(emaFast - emaSlow) / emaSlow) * 100;
-                    if (emaFast > emaSlow && liveDirection === 'UP' && isHighlyConfluent) {
-                        score = Math.round(84 + Math.min(11, emaDiff * 400));
-                    } else if (emaFast < emaSlow && liveDirection === 'DOWN' && isHighlyConfluent) {
-                        score = Math.round(84 + Math.min(11, emaDiff * 400));
+                case '1': // RSI Momentum Spike Reversal 
+                    if (rsiMedium < 28 && stratLiveDirection === 'UP' && isConfluent) {
+                        strategySpecificScore = 93; 
+                    } else if (rsiMedium > 72 && stratLiveDirection === 'DOWN' && isConfluent) {
+                        strategySpecificScore = 93; 
+                    } else {
+                        strategySpecificScore = 50; 
                     }
                     break;
 
-                case '4': // Strategy 4: High-Velocity Tick Reversal
-                    if (isHighlyConfluent) score = 89;
+                case '2': // Bollinger Band Squeeze Cross-Back
+                    if (bbp20 > 0.02 && bbp20 < 0.12 && stratLiveDirection === 'UP' && isConfluent) {
+                        strategySpecificScore = 94;
+                    } else if (bbp20 < 0.98 && bbp20 > 0.88 && stratLiveDirection === 'DOWN' && isConfluent) {
+                        strategySpecificScore = 94;
+                    } else {
+                        strategySpecificScore = 50;
+                    }
                     break;
 
-                case '5': // Strategy 5: Macro Trend Rider (Uses Extended 40-Period Volatility Bands)
-                    if (emaFast > emaSlow && bbp40 > 0.60 && liveDirection === 'UP') score = 86;
-                    else if (emaFast < emaSlow && bbp40 < 0.40 && liveDirection === 'DOWN') score = 86;
+                case '3': // EMA Breakout Distance Velocity Expansion
+                    const emaDifferencePercentage = (Math.abs(emaFast - emaSlow) / emaSlow) * 100;
+                    if (emaFast > emaSlow && stratLiveDirection === 'UP' && isHighlyConfluent && emaDifferencePercentage > 0.03) {
+                        strategySpecificScore = Math.round(82 + Math.min(13, emaDifferencePercentage * 280));
+                    } else if (emaFast < emaSlow && stratLiveDirection === 'DOWN' && isHighlyConfluent && emaDifferencePercentage > 0.03) {
+                        strategySpecificScore = Math.round(82 + Math.min(13, emaDifferencePercentage * 280));
+                    } else {
+                        strategySpecificScore = 50; 
+                    }
                     break;
 
-                case '6': // Strategy 6: Support/Resistance Bounce Check
-                    if (rsiShort < 30 && bbp20 < 0.10 && liveDirection === 'UP') score = 91;
-                    else if (rsiShort > 70 && bbp20 > 0.90 && liveDirection === 'DOWN') score = 91;
+                case '4': // Micro-Tick Momentum Exhaustion Pattern Tracker
+                    strategySpecificScore = isConfluent ? 88 : 50;
                     break;
 
-                default: // Strategy 7: Dual-RSI Confluence Matrix
-                    if (rsiShort < 25 && rsiMedium < 30 && liveDirection === 'UP') score = 93;
-                    else if (rsiShort > 75 && rsiMedium > 70 && liveDirection === 'DOWN') score = 93;
+                case '5': // Bollinger Trend Rider (Uses 40-Period Wide Bands)
+                    if (emaFast > emaSlow && bbp40 > 0.60 && stratLiveDirection === 'UP') {
+                        strategySpecificScore = 86;
+                    } else if (emaFast < emaSlow && bbp40 < 0.40 && stratLiveDirection === 'DOWN') {
+                        strategySpecificScore = 86;
+                    } else {
+                        strategySpecificScore = 50;
+                    }
+                    break;
+
+                case '6': // TRIPLE CONFLUENCE GOLDEN REVERSAL MASTER SIGNAL
+                    const isOversoldReversal = rsiMedium < 30 && bbp20 < 0.08 && stratLiveDirection === 'UP' && isConfluent;
+                    const isOverboughtReversal = rsiMedium > 70 && bbp20 > 0.92 && stratLiveDirection === 'DOWN' && isConfluent;
+
+                    if (isOversoldReversal || isOverboughtReversal) {
+                        strategySpecificScore = 96; 
+                    } else {
+                        strategySpecificScore = 50;
+                    }
+                    break;
+
+                default: // Strategy 7: Dual-RSI Band Confluence Matrix
+                    if (rsiShort < 25 && rsiMedium < 30 && stratLiveDirection === 'UP' && isConfluent) {
+                        strategySpecificScore = 95;
+                    } else if (rsiShort > 75 && rsiMedium > 70 && stratLiveDirection === 'DOWN' && isConfluent) {
+                        strategySpecificScore = 95;
+                    } else {
+                        strategySpecificScore = 50;
+                    }
                     break;
             }
 
-            score = Math.min(97, Math.max(45, score));
+            // High-Conviction Accelerator: Add booster only to cards that cleared entry thresholds
+            if (isConfluent && strategySpecificScore >= 88) {
+                strategySpecificScore += 3;
+            }
 
-            if (score > highestCalculatedScore) {
-                highestCalculatedScore = score;
+            strategySpecificScore = Math.min(97, Math.max(42, strategySpecificScore));
+
+            if (strategySpecificScore > highestCalculatedScore) {
+                highestCalculatedScore = strategySpecificScore;
                 topStrategyId = stratId;
             }
 
             return {
                 ...strat,
-                confidence: score,
-                score: score,
+                confidence: strategySpecificScore,
+                score: strategySpecificScore,
                 direction: liveDirection
             };
         });
 
-        // Time-Locked Layout Window updates
+        // Time-Locked Layout Stabilization Routine
         const currentEpoch = Math.floor(Date.now() / 1000);
 
         if (this.activeSignalStrategyId) {
