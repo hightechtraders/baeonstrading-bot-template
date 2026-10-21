@@ -14,7 +14,6 @@ export interface DerivTickResponse {
 }
 
 export class ScannerLogic {
-    // Map individual symbols correctly out-of-the-box
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
         symbol: s.symbol, 
@@ -43,7 +42,7 @@ export class ScannerLogic {
         if (prices.length === 0) return 0;
         if (prices.length < period) return prices[prices.length - 1];
         const k = 2 / (period + 1);
-        let ema = prices;
+        let ema = prices[0];
         for (let i = 1; i < prices.length; i++) {
             ema = prices[i] * k + ema * (1 - k);
         }
@@ -81,11 +80,9 @@ export class ScannerLogic {
         if (!dataParsed || dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
             return this.getSortedStrategies();
         }
-        // Verification: Ensure the incoming symbol is one of our 7 tracked scanner markets
         if (!ScannerLogic.SCANNER_MARKETS.includes(dataParsed.tick.symbol)) {
             return this.getSortedStrategies();
         }
-
         return this.processLiveTick(dataParsed.tick.symbol, Number(dataParsed.tick.quote));
     }
 
@@ -109,8 +106,8 @@ export class ScannerLogic {
         this.strategies = this.strategies.map((strat) => {
             const targetSymbol = strat.symbol;
 
-            // FIXED PROTECTION SHIELD: Keep quiet or slow loading asset indices locked at neutral 50
-            if (!this.priceBuffers[targetSymbol] || this.priceBuffers[targetSymbol].length < 25) {
+            // FIXED CAP: Lowered memory allocation block filter constraint from 25 to 5 ticks
+            if (!this.priceBuffers[targetSymbol] || this.priceBuffers[targetSymbol].length < 5) {
                 return { ...strat, confidence: 50, score: 50, direction: liveDirection };
             }
 
@@ -131,15 +128,15 @@ export class ScannerLogic {
             const stratId = strat.id;
 
             switch (stratId) {
-                case '1': // RSI Momentum Spike Reversal 
+                case '1': 
                     if (rsiMedium < 25 && stratLiveDirection === 'UP' && isConfluent) strategySpecificScore = 93; 
                     else if (rsiMedium > 75 && stratLiveDirection === 'DOWN' && isConfluent) strategySpecificScore = 93; 
                     break;
-                case '2': // Bollinger Band Squeeze Cross-Back
+                case '2': 
                     if (bbp20 > 0.02 && bbp20 < 0.15 && stratLiveDirection === 'UP' && isConfluent) strategySpecificScore = 94;
                     else if (bbp20 < 0.98 && bbp20 > 0.85 && stratLiveDirection === 'DOWN' && isConfluent) strategySpecificScore = 94;
                     break;
-                case '3': // EMA Crossover Breakout Gradient
+                case '3': 
                     const emaDifferencePercentage = (Math.abs(emaFast - emaSlow) / emaSlow) * 100;
                     if (emaFast > emaSlow && stratLiveDirection === 'UP' && isHighlyConfluent && emaDifferencePercentage > 0.02) {
                         strategySpecificScore = Math.round(82 + Math.min(13, emaDifferencePercentage * 280));
@@ -147,19 +144,19 @@ export class ScannerLogic {
                         strategySpecificScore = Math.round(82 + Math.min(13, emaDifferencePercentage * 280));
                     }
                     break;
-                case '4': // Micro-Tick Momentum Exhaustion
+                case '4': 
                     strategySpecificScore = isConfluent ? 88 : 50;
                     break;
-                case '5': // Bollinger Trend Rider (40-Period)
+                case '5': 
                     if (emaFast > emaSlow && bbp40 > 0.60 && stratLiveDirection === 'UP') strategySpecificScore = 86;
                     else if (emaFast < emaSlow && bbp40 < 0.40 && stratLiveDirection === 'DOWN') strategySpecificScore = 86;
                     break;
-                case '6': // TRIPLE CONFLUENCE GOLDEN MASTER SIGNAL
+                case '6': 
                     const isOversoldReversal = rsiMedium < 30 && bbp20 < 0.08 && stratLiveDirection === 'UP' && isConfluent;
                     const isOverboughtReversal = rsiMedium > 70 && bbp20 > 0.92 && stratLiveDirection === 'DOWN' && isConfluent;
                     if (isOversoldReversal || isOverboughtReversal) strategySpecificScore = 96;
                     break;
-                default: // Dual-RSI Band Confluence Matrix
+                default: 
                     if (rsiShort < 25 && rsiMedium < 30 && stratLiveDirection === 'UP' && isConfluent) strategySpecificScore = 95;
                     else if (rsiShort > 75 && rsiMedium > 70 && stratLiveDirection === 'DOWN' && isConfluent) strategySpecificScore = 95;
                     break;
