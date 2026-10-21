@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/scannerLogic.ts (PART 1)
+// FILE: src/Aiscanner/scannerLogic.ts
 // ==========================================
 import { Strategy, INITIAL_STRATEGIES } from './strategies';
 
@@ -71,97 +71,155 @@ export class ScannerLogic {
         if (upperBand === lowerBand) return 0.5;
         return (prices[prices.length - 1] - lowerBand) / (upperBand - lowerBand);
     }
-// ==========================================
-// FILE: src/Aiscanner/useScannerFeed.ts
-// ==========================================
-import { useEffect } from 'react';
-import { ScannerLogic } from './scannerLogic';
-import { api_base } from '@/external/bot-skeleton/services/api/api-base';
 
-const scanner = new ScannerLogic();
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
+        this.totalTicksReceived++;
+        if (this.totalTicksReceived % 20 === 0 && dataParsed?.tick) {
+            console.log(`[WebSocket Stream]: Ingesting ${dataParsed.tick.symbol} | Quote: ${dataParsed.tick.quote}`);
+        }
+        if (!dataParsed || dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
+            return this.getSortedStrategies();
+        }
+        return this.processLiveTick(dataParsed.tick.symbol, Number(dataParsed.tick.quote));
+    }
 
-export const useScannerFeed = () => {
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
+    public processLiveTick(symbol: string, price: number): Strategy[] {
+        if (!this.priceBuffers[symbol]) this.priceBuffers[symbol] = [];
+        this.priceBuffers[symbol].push(price);
+        if (this.priceBuffers[symbol].length > 100) this.priceBuffers[symbol].shift();
 
-        const handleLiveTick = (event: CustomEvent) => {
-            const { symbol, price } = event.detail || {};
-            if (symbol && typeof price === 'number') {
-                const updatedStrategies = scanner.handleIncomingMessage({
-                    msg_type: 'tick',
-                    tick: {
-                        symbol,
-                        quote: price,
-                        epoch: Math.floor(Date.now() / 1000),
-                        id: `${symbol}-${Date.now()}`
-                    }
-                });
+        const currentPrices = this.priceBuffers[symbol];
+        const latestPrice = currentPrices[currentPrices.length - 1];
+        const prevPrice = currentPrices.length > 1 ? currentPrices[currentPrices.length - 2] : latestPrice;
+        const liveDirection: 'UP' | 'DOWN' = (latestPrice - prevPrice) >= 0 ? 'UP' : 'DOWN';
 
-                if (updatedStrategies && updatedStrategies.length > 0) {
-                    window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
-                        detail: { strategies: [...updatedStrategies] }
-                    }));
-                }
-            }
-        };
+        if (!this.directionHistory[symbol]) this.directionHistory[symbol] = [];
+        this.directionHistory[symbol].push(liveDirection);
+        if (this.directionHistory[symbol].length > 5) this.directionHistory[symbol].shift();
 
-        window.addEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
+        let highestCalculatedScore = 0;
+        let topStrategyId = '';
 
-        let intervalId: any = null;
-        let isSubscribed = false;
-
-        const attemptSubscription = async () => {
-            if (isSubscribed) return;
-
-            try {
-                if (
-                    api_base && 
-                    api_base.api && 
-                    api_base.api.connection && 
-                    api_base.api.connection.readyState === WebSocket.OPEN
-                ) {
-                    console.log("[AI Scanner Feed]: Socket connection active. Dispatching isolated subscription tracks...");
-                    
-                    if (intervalId) {
-                        clearInterval(intervalId);
-                        intervalId = null;
-                    }
-                    isSubscribed = true;
-
-                    // Sequenced looped execution completely prevents WebSocket race conditions
-                    for (const symbolKey of ScannerLogic.SCANNER_MARKETS) {
-                        api_base.api.send({
-                            ticks: symbolKey,
-                            subscribe: 1
-                        });
-                        console.log(` -> Channel connected for asset stream: ${symbolKey}`);
-                        await delay(150); 
-                    }
-
-                    console.log("[AI Scanner Feed]: All multi-asset connection tracks active.");
-                }
-            } catch (err) {
-                console.warn("[AI Scanner Feed]: Ingestion channel waiting for stability...", err);
-                isSubscribed = false; 
-            }
-        };
-
-        attemptSubscription();
-        intervalId = setInterval(attemptSubscription, 1500);
-
-        return () => {
-            window.removeEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
-            if (intervalId) clearInterval(intervalId);
+        this.strategies = this.strategies.map((strat) => {
+            const targetSymbol = strat.symbol || '1HZ50V';
             
-            if (isSubscribed && api_base?.api?.connection?.readyState === WebSocket.OPEN) {
-                try {
-                    api_base.api.send({ forget_all: 'ticks' });
-                    console.log("[AI Scanner Feed]: Closed subscription channels cleanly.");
-                } catch (e) {
-                    console.error("Cleanup error:", e);
+            if (!this.priceBuffers[targetSymbol] || this.priceBuffers[targetSymbol].length < 25) {
+                return { ...strat, confidence: 50, score: 50, direction: liveDirection };
+            }
+
+            const prices = this.priceBuffers[targetSymbol];
+            const stratDirHistory = this.directionHistory[targetSymbol] || [liveDirection];
+            const stratLiveDirection = stratDirHistory[stratDirHistory.length - 1] || 'UP';
+            const isConfluent = stratDirHistory.length >= 3 && stratDirHistory.slice(-3).every(d => d === stratLiveDirection);
+
+            const rsi14 = this.calculateRSI(prices, 14);
+            const bbp20 = this.calculateBollingerBandsPercent(prices, 20, 2);
+            const emaFast = this.calculateEMA(prices, 9);
+            const emaSlow = this.calculateEMA(prices, 21);
+
+            let strategySpecificScore = 50; 
+            const stratId = strat.id;
+
+            switch (stratId) {
+                case '1': 
+                    if (rsi14 < 25 && isConfluent && stratLiveDirection === 'UP') {
+                        strategySpecificScore = 93;
+                    } else if (rsi14 > 75 && isConfluent && stratLiveDirection === 'DOWN') {
+                        strategySpecificScore = 93;
+                    } else {
+                        strategySpecificScore = 50; 
+                    }
+                    break;
+
+                case '2': 
+                    if (bbp20 > 0.02 && bbp20 < 0.15 && stratLiveDirection === 'UP' && isConfluent) {
+                        strategySpecificScore = 92;
+                    } else if (bbp20 < 0.98 && bbp20 > 0.85 && stratLiveDirection === 'DOWN' && isConfluent) {
+                        strategySpecificScore = 92;
+                    } else {
+                        strategySpecificScore = 50;
+                    }
+                    break;
+
+                case '3': 
+                    const emaDifferencePercentage = (Math.abs(emaFast - emaSlow) / emaSlow) * 100;
+                    if (emaFast > emaSlow && stratLiveDirection === 'UP' && isConfluent && emaDifferencePercentage > 0.02) {
+                        strategySpecificScore = Math.round(82 + Math.min(13, emaDifferencePercentage * 300));
+                    } else if (emaFast < emaSlow && stratLiveDirection === 'DOWN' && isConfluent && emaDifferencePercentage > 0.02) {
+                        strategySpecificScore = Math.round(82 + Math.min(13, emaDifferencePercentage * 300));
+                    } else {
+                        strategySpecificScore = 50; 
+                    }
+                    break;
+
+                case '4': 
+                case '6': 
+                    strategySpecificScore = isConfluent ? 86 : 50;
+                    break;
+
+                default:
+                    const trendAligns = (emaFast > emaSlow && stratLiveDirection === 'UP') || (emaFast < emaSlow && stratLiveDirection === 'DOWN');
+                    strategySpecificScore = (trendAligns && isConfluent) ? 82 : 50;
+                    break;
+            }
+
+            if (isConfluent && strategySpecificScore > 75) {
+                strategySpecificScore += 5;
+            }
+
+            strategySpecificScore = Math.min(97, Math.max(42, strategySpecificScore));
+
+            if (strategySpecificScore > highestCalculatedScore) {
+                highestCalculatedScore = strategySpecificScore;
+                topStrategyId = stratId;
+            }
+
+            return {
+                ...strat,
+                confidence: strategySpecificScore,
+                score: strategySpecificScore,
+                direction: stratLiveDirection
+            };
+        });
+
+        const currentEpoch = Math.floor(Date.now() / 1000);
+
+        if (this.activeSignalStrategyId) {
+            const currentActiveStrat = this.strategies.find(s => s.id === this.activeSignalStrategyId);
+            const timeWindowExpired = currentEpoch >= this.signalLockExpiryEpoch;
+
+            if (currentActiveStrat) {
+                if (currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && !timeWindowExpired) {
+                    return this.getSortedStrategies();
+                } else {
+                    this.activeSignalStrategyId = null;
                 }
             }
-        };
-    }, []);
-};
+        }
+
+        const topStrat = this.strategies.find(s => s.id === topStrategyId);
+        const topSymbol = topStrat?.symbol || '1HZ50V';
+        const topHistory = this.directionHistory[topSymbol] || [];
+        const topConfluent = topHistory.length >= 3 && topHistory.slice(-3).every(d => d === topHistory[topHistory.length - 1]);
+
+        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && topConfluent && topStrategyId) {
+            this.activeSignalStrategyId = topStrategyId;
+            this.signalLockExpiryEpoch = currentEpoch + this.MIN_LOCK_DURATION_TICKS;
+        }
+
+        return this.getSortedStrategies();
+    }
+
+    private getSortedStrategies(): Strategy[] {
+        if (this.activeSignalStrategyId) {
+            const copy = [...this.strategies];
+            const index = copy.findIndex(s => s.id === this.activeSignalStrategyId);
+            if (index > 0) {
+                const [stickyItem] = copy.splice(index, 1);
+                copy.unshift(stickyItem);
+                return copy;
+            }
+        }
+        return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
+    }
+}
