@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/scannerLogic.ts
+// FILE: src/Aiscanner/scannerLogic.ts (WITH LIVE TICK LOGGING)
 // ==========================================
 import { Strategy, INITIAL_STRATEGIES } from './strategies';
 
@@ -42,11 +42,15 @@ export class ScannerLogic {
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
-        if (dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
+        if (!dataParsed || dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
             return this.getSortedStrategies();
         }
 
         const { symbol, quote } = dataParsed.tick;
+
+        // 🔍 RESTORED LIVE TICK CONSOLE LOG
+        console.log(`[WebSocket Stream]: Ingesting ${symbol} | Quote: ${quote}`);
+
         return this.processLiveTick(symbol, Number(quote));
     }
 
