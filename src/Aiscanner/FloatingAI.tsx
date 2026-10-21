@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/FloatingAI.tsx
+// FILE: src/Aiscanner/FloatingAI.tsx (PART 1)
 // ==========================================
 import React, { useState, useEffect, useRef } from 'react';
 import { ScannerBridge } from './scannerBridge';
@@ -36,9 +36,11 @@ export const FloatingAI: React.FC = () => {
 
         if (isOpenRef.current && !isScanningPhaseRef.current && !isSignalLocked) {
           const sorted = [...updated].sort((a, b) => b.confidence - a.confidence);
-          const topStrat = sorted[0]; // CRITICAL FIX: Proper array element target wrapper extract
+          
+          // FIXED: Wrapped with element zero [0] extractor to pull the object, not the full array reference pointer
+          const topStrat = sorted[0]; 
 
-          // UNBOUNDED: Keep banners locked up all the way through 97% max ceilings
+          // High conviction triggers supported smoothly past 96%
           const isHighConviction = topStrat && topStrat.confidence >= 78;
 
           if (isHighConviction) {
@@ -89,6 +91,9 @@ export const FloatingAI: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+// ==========================================
+// FILE: src/Aiscanner/FloatingAI.tsx (PART 2)
+// ==========================================
 
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
 
