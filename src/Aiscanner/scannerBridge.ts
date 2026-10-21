@@ -104,9 +104,9 @@ export class ScannerBridge {
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: 0.35, 
-      duration: options?.duration || strategy?.duration || 5,
+      duration: 5, // FIXED: Locked to 5 ticks to override any raw canvas defaults
       tradeType: strategyDirection,
-      durationUnit: options?.durationUnit || 't',
+      durationUnit: 't', // Enforced flat constant 't' for Ticks execution window
       stopLoss: 4.50,     // Allows Martingale loops to complete smoothly without hitting limits
       takeProfit: 3.00,   // Locks in quick, persistent session gains
       multiplier: options?.multiplier || strategy?.multiplier || 1.5
@@ -150,6 +150,19 @@ export class ScannerBridge {
                   symbolField.setValue(strictDerivSymbol);
                   updated = true;
                 }
+
+                // HARD DURATION ENFORCEMENT: Crawls the canvas blocks and replaces any '1' with '5'
+                const durationField = block.getField('DURATION') || block.getField('DURATION_LIST') || block.getField('DURATION_VAL');
+                if (durationField && durationField.getValue() !== '5') {
+                  durationField.setValue('5');
+                  updated = true;
+                }
+
+                const unitField = block.getField('DURATION_UNIT') || block.getField('DURATION_UNIT_LIST');
+                if (unitField && unitField.getValue() !== 't') {
+                  unitField.setValue('t');
+                  updated = true;
+                }
               }
 
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
@@ -187,15 +200,40 @@ export class ScannerBridge {
     };
 
     // ==========================================================
-    // COMPLETE STRATEGY INJECTOR INTERFACE RESOLUTION
+    // COMPLETE STRATEGY INJECTOR INTERFACE RESOLUTION (FIXED)
     // ==========================================================
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
         if (typeof quickStrategy.setValue === 'function') {
           quickStrategy.setValue('symbol', strictDerivSymbol);
-          quickStrategy.setValue('duration', payload.duration);
-          quickStrategy.setValue('duration_type', payload.durationUnit || 't'); 
+          quickStrategy.setValue('duration', 5); // Forces 5 ticks value
+          quickStrategy.setValue('duration_type', 't'); 
           quickStrategy.setValue('amount', payload.stake);
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
+          quickStrategy.setValue('size', martingaleMultiplier);
+          
+          if (payload.stopLoss !== undefined) {
+            quickStrategy.setValue('loss', payload.stopLoss);
+            quickStrategy.setValue('stop_loss', payload.stopLoss);
+          }
+          if (payload.takeProfit !== undefined) {
+            quickStrategy.setValue('profit', payload.takeProfit);
+            quickStrategy.setValue('take_profit', payload.takeProfit);
+          }
+          
+          // Trigger synchronization loop
+          setTimeout(() => {
+            applyBlockMutations();
+          }, 50);
+        }
+      } catch (err) {
+        console.error("[AI Scanner Bridge Error]: Store injection failed, running fallback block updates:", err);
+        applyBlockMutations();
+      }
+    } else {
+      applyBlockMutations();
+    }
+  }
+}
