@@ -1,154 +1,247 @@
 // ==========================================
-// FILE: src/Aiscanner/scannerLogic.ts
+// FILE: src/Aiscanner/scannerBridge.ts
 // ==========================================
-import { Strategy, INITIAL_STRATEGIES } from './strategies';
+import { RiskManager } from './riskManager';
+import { ScannerLogic, DerivTickResponse } from './scannerLogic';
 
-export interface DerivTickResponse {
-    msg_type: string;
-    tick?: {
-        symbol: string;
-        quote: number;
-        epoch: number;
-        id: string;
+export interface AIScannerPayload {
+  stake: number;
+  duration: number;
+  symbol: string;          
+  tradeType?: string;      
+  durationUnit?: string;   
+  stopLoss?: number;
+  takeProfit?: number;
+  multiplier?: number;
+}
+
+export class ScannerBridge {
+  private static isScannerActive: boolean = false; 
+  private static scannerLogicInstance = new ScannerLogic(); // Instantiate core calculation logic
+
+  static {
+    if (typeof window !== 'undefined') {
+      const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+      const isFreshPageLoad = navEntries.length > 0 && navEntries[0].type === 'navigate';
+
+      if (isFreshPageLoad) {
+        ScannerBridge.isScannerActive = false;
+        try {
+          sessionStorage.removeItem('AI_SCANNER_SESSION_ACTIVE');
+        } catch (e) {}
+      } else {
+        const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
+        ScannerBridge.isScannerActive = !!sessionStarted;
+      }
+    }
+  }
+
+  private static translateSymbol(rawSymbol: string): string {
+    if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
+    
+    const clean = rawSymbol
+      .toUpperCase()
+      .replace(/INDEX/g, '')
+      .replace(/[\s\(\)]+/g, '');
+    
+    const symbolMap: Record<string, string> = {
+      'VOLATILITY101S':  '1HZ10V',
+      'VOLATILITY501S': '1HZ50V',
+      'VOLATILITY751S': '1HZ75V',
+      'VOLATILITY1001S':'1HZ100V',
+      'VOLATILITY10':     'R_10',
+      'VOLATILITY25':     'R_25',
+      'VOLATILITY50':     'R_50',
+      'VOLATILITY75':     'R_75',
+      'VOLATILITY100':    'R_100',
     };
-}
+
+    return symbolMap[clean] || '1HZ100V';
+  }
+
+  /**
+   * Intercepts live ticks, processes them through ScannerLogic,
+   * and broadcasts the fully updated strategy array to the UI components.
+   */
+  public static pushTick(assetName: string, quote: number, strategies?: any[]) {
+    const tickPayload: DerivTickResponse = {
+      msg_type: 'tick',
+      tick: {
+        symbol: assetName,
+        quote: quote,
+        epoch: Date.now(),
+        id: Math.random().toString()
+      }
+    };
+
+    const updatedStrategies = ScannerBridge.scannerLogicInstance.handleIncomingMessage(tickPayload);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ai-tick-received', {
+        detail: { assetName, quote, strategies: updatedStrategies }
+      }));
+      window.dispatchEvent(new CustomEvent('deriv_scanner_updated', {
+        detail: { assetName, quote, strategies: updatedStrategies }
+      }));
+    }
+  }
+
+  public static loadStrategyToWorkspace(strategy: any, options: any) {
+    ScannerBridge.isScannerActive = true;
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
+    }
+
+    const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
+    const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
+
+    // ==========================================
+    // OPTIMIZED SESSION THRESHOLDS ($3 TP / $4.50 SL)
+    // ==========================================
+    const payload: AIScannerPayload = {
+      symbol: rawSymbol,
+      stake: 0.35, 
+      duration: options?.duration || strategy?.duration || 5,
+      tradeType: strategyDirection,
+      durationUnit: options?.durationUnit || 't',
+      stopLoss: 4.50,     // Safe buffer to allow Martingale recovery to complete
+      takeProfit: 3.00,   // Capped at $3.00 to lock in quick, frequent session gains
+      multiplier: options?.multiplier || strategy?.multiplier || 1.5
+    };
+
+    RiskManager.configure(payload.stopLoss, payload.takeProfit);
+
+    const rootStore = (window as any).derivBotAppStore;
+    const strictDerivSymbol = this.translateSymbol(payload.symbol);
     
-export class ScannerLogic {
-    private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
-        ...s,
-        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'Volatility 50 AI Scalper',
-        market: s.market || '1HZ50V',
-        confidence: s.confidence || 78
-    }));
-    private priceBuffers: { [symbol: string]: number[] } = {};
-    private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
+    const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
+    const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
     
-    // Sticky persistence state instead of time-locked windows
-    private activeSignalStrategyId: string | null = null;
-    private readonly DISENGAGE_THRESHOLD = 82; // Keeps signal active until confidence slides below this level
+    const storeContractType = isFall ? 'PUT' : 'CALL';
+    const storeType = isFall ? 'fall' : 'rise';
+    
+    const martingaleMultiplier = payload.multiplier || 1.5;
 
-    public static readonly SCANNER_MARKETS: string[] = [
-        '1HZ50V',  // Volatility 50 (1s) Index
-        '1HZ75V',  // Volatility 75 (1s) Index
-        '1HZ10V',  // Volatility 10 (1s) Index
-        '1HZ100V', // Volatility 100 (1s) Index
-        'R_25',    // Volatility 25 Index
-        'R_75',    // Volatility 75 Index
-        'R_10'     // Volatility 10 Index
-    ];
+    const applyBlockMutations = () => {
+      try {
+        const Blockly = (window as any).Blockly;
+        const workspace = Blockly?.mainWorkspace || Blockly?.derivWorkspace;
 
-    constructor() {
-        console.log("[AI Scanner]: Sticky momentum & persistent signal filter initialized.");
-    }
+        if (workspace && typeof workspace.getAllBlocks === 'function') {
+          const blocks = workspace.getAllBlocks(false);
+          if (Array.isArray(blocks)) {
+            let updated = false;
 
-    public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
-        if (dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
-            return this.getSortedStrategies();
-        }
+            blocks.forEach((block: any) => {
+              if (!block) return;
 
-        const { symbol, quote } = dataParsed.tick;
-        return this.processLiveTick(symbol, Number(quote));
-    }
+              if (typeof block.getField === 'function') {
+                const symbolField = block.getField('SYMBOL_LIST');
+                if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
+                  if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
+                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                    if (!exists) {
+                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
+                    }
+                  }
+                  symbolField.setValue(strictDerivSymbol);
+                  updated = true;
+                }
+              }
 
-    public processLiveTick(symbol: string, price: number): Strategy[] {
-        if (!this.priceBuffers[symbol]) {
-            this.priceBuffers[symbol] = [];
-        }
-        this.priceBuffers[symbol].push(price);
-        if (this.priceBuffers[symbol].length > 40) {
-            this.priceBuffers[symbol].shift();
-        }
+              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
+                const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
+                fieldNames.forEach(name => {
+                  const field = block.getField(name);
+                  if (field && typeof field.setValue === 'function') {
+                    const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
+                    const targetMatch = options.find((opt: any) => {
+                      const label = String(opt[0] || '').toLowerCase();
+                      const val = String(opt[1] || '').toLowerCase();
+                      if (isFall) {
+                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
+                      } else {
+                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
+                      }
+                    });
 
-        const prices = this.priceBuffers[symbol];
-        const latestPrice = prices[prices.length - 1];
-        const prevPrice = prices.length > 1 ? prices[prices.length - 2] : latestPrice;
-        const netDiff = latestPrice - prevPrice;
-        const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
+                    const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
+                    if (field && field.getValue() !== desiredVal) {
+                      field.setValue(desiredVal);
+                      updated = true;
+                    }
+                  }
+                });
+              }
+            });
 
-        // Track directional history to check for multi-tick confluence
-        if (!this.directionHistory[symbol]) {
-            this.directionHistory[symbol] = [];
-        }
-        this.directionHistory[symbol].push(liveDirection);
-        if (this.directionHistory[symbol].length > 5) {
-            this.directionHistory[symbol].shift();
-        }
-
-        // Confluence Check: Are the last 3 ticks pointing in the exact same direction?
-        const history = this.directionHistory[symbol];
-        const isConfluent = history.length >= 3 && history.slice(-3).every(d => d === liveDirection);
-
-        let marketMomentum = 60; // Clean baseline
-        if (prices.length >= 5) {
-            const windowSize = Math.min(prices.length, 10);
-            const oldestInWindow = prices[prices.length - windowSize];
-            const priceDelta = latestPrice - oldestInWindow;
-            const percentageChange = (priceDelta / oldestInWindow) * 100;
-            
-            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 6000 : 4500;
-            const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
-            const confluenceBonus = isConfluent ? 15 : 0;
-            
-            // Allow market momentum to climb naturally up to 97% on strong trends
-            marketMomentum = Math.min(97, Math.max(45, 60 + rawMagnitude + confluenceBonus));
-        }
-
-        let highestCalculatedScore = 0;
-        let topStrategyId = '';
-
-        this.strategies = this.strategies.map((strat, index) => {
-            // Keep top strategy untouched; minor natural spacing for others
-            const spreadOffset = (index === 0) ? 0 : (index * 2);
-            const microNoise = (Math.sin(prices.length + index) * 2);
-
-            let strategySpecificScore = Math.round(
-                marketMomentum - spreadOffset + microNoise
-            );
-
-            strategySpecificScore = Math.min(97, Math.max(42, strategySpecificScore));
-
-            const stratId = strat.id || strat.name;
-            if (strategySpecificScore > highestCalculatedScore) {
-                highestCalculatedScore = strategySpecificScore;
-                topStrategyId = stratId;
+            if (updated && typeof workspace.render === 'function') {
+              workspace.render();
             }
+          }
+        }
+      } catch (e) {}
+    };
 
-            return {
-                ...strat,
-                confidence: strategySpecificScore,
-                score: strategySpecificScore,
-                direction: liveDirection
-            };
-        });
+    if (rootStore?.quick_strategy) {
+      const quickStrategy = rootStore.quick_strategy;
+      try {
+        if (typeof quickStrategy.setValue === 'function') {
+          quickStrategy.setValue('symbol', strictDerivSymbol);
+          quickStrategy.setValue('duration', payload.duration);
+          quickStrategy.setValue('duration_type', payload.durationUnit || 't'); 
+          quickStrategy.setValue('amount', payload.stake);
+          quickStrategy.setValue('contract_type', storeContractType);
+          quickStrategy.setValue('type', storeType);
+          quickStrategy.setValue('size', martingaleMultiplier);
+          
+          if (payload.stopLoss !== undefined) {
+            quickStrategy.setValue('loss', payload.stopLoss);
+            quickStrategy.setValue('stop_loss', payload.stopLoss);
+          }
+          if (payload.takeProfit !== undefined) {
+            quickStrategy.setValue('profit', payload.takeProfit);
+            quickStrategy.setValue('take_profit', payload.takeProfit);
+          }
+        }
+        
+        const mockFormData = {
+          symbol: strictDerivSymbol, 
+          durationtype: payload.durationUnit || 't', 
+          duration: payload.duration,
+          stake: payload.stake,
+          amount: payload.stake,
+          tradetype: 'rise_fall',
+          contract_type: storeContractType,
+          type: storeType,
+          subtype: storeType,
+          size: martingaleMultiplier,
+          loss: payload.stopLoss,
+          stop_loss: payload.stopLoss,
+          profit: payload.takeProfit,
+          take_profit: payload.takeProfit
+        };
 
-        // Sticky Signal Persistence Logic
-        if (this.activeSignalStrategyId) {
-            const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && isConfluent) {
-                return this.getSortedStrategies();
-            } else {
-                this.activeSignalStrategyId = null;
+        const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
+        if (typeof submitAction === 'function') {
+          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).then(() => {
+            setTimeout(applyBlockMutations, 100);
+            setTimeout(applyBlockMutations, 500);
+
+            if (rootStore?.client?.send) {
+              rootStore.client.send({ balance: 1, subscribe: 1 }).catch(() => {});
             }
+          }).catch(() => {});
         }
-
-        // Trigger new sticky signal when sweet spot (>= 89) is met with active confluence
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isConfluent && topStrategyId) {
-            this.activeSignalStrategyId = topStrategyId;
-        }
-
-        return this.getSortedStrategies();
+      } catch (error) {}
     }
 
-    private getSortedStrategies(): Strategy[] {
-        if (this.activeSignalStrategyId) {
-            const copy = [...this.strategies];
-            const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (index > 0) {
-                const [stickyItem] = copy.splice(index, 1);
-                copy.unshift(stickyItem);
-                return copy;
-            }
-        }
-        return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
-    }
+    applyBlockMutations();
+    setTimeout(applyBlockMutations, 150);
+    setTimeout(applyBlockMutations, 400);
+
+    return true;
+  }
 }
+
+export const scannerBridge = ScannerBridge;
