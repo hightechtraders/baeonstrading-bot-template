@@ -26,7 +26,7 @@ export const useScannerFeed = () => {
                 }
             }
         };
-
+ 
         window.addEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
 
         let isInitialized = false;
