@@ -3,9 +3,9 @@
 // ==========================================
 import { useEffect } from 'react';
 import { ScannerLogic } from './scannerLogic';
+import { api_base } from '@/external/bot-skeleton/services/api/api-base';
 
 const scanner = new ScannerLogic();
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const useScannerFeed = () => {
     useEffect(() => {
@@ -35,72 +35,76 @@ export const useScannerFeed = () => {
 
         window.addEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
 
-        // 2. Spawn an isolated, raw WebSocket dedicated purely to your multi-asset scanner
-        // Uses app_id 1089 (Deriv's official public testing id) to guarantee immediate connection stability
-        let socket: WebSocket | null = null;
-        let isClosedManually = false;
+        // 2. Intercept the Template Master Stream directly at the WebSocket level
+        let subscriptionLoopInterval: any = null;
+        let isInterceptActive = false;
 
-        const startScannerNetworkPipeline = async () => {
-            if (isClosedManually) return;
+        const injectScannerToMasterStream = () => {
+            if (isInterceptActive) return;
 
-            console.log("[AI Scanner Direct]: Spawning standalone network pipeline connection...");
-            socket = new WebSocket('wss://://derivws.com');
+            try {
+                const nativeSocket = api_base?.api?.connection;
 
-            socket.onopen = async () => {
-                console.log("[AI Scanner Direct]: Pipeline connected. Deploying sequential subscriptions...");
-                
-                // Sequentially register each distinct target index over our own dedicated stream channel
-                for (const marketKey of ScannerLogic.SCANNER_MARKETS) {
-                    if (socket && socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({
-                            ticks: marketKey,
-                            subscribe: 1
-                        }));
-                        await delay(200); // 200ms safety window prevents socket channel flooding
+                if (nativeSocket && nativeSocket.readyState === WebSocket.OPEN) {
+                    console.log("[AI Scanner Intercept]: Master stream intercepted. Injecting multi-asset triggers...");
+                    
+                    if (subscriptionLoopInterval) {
+                        clearInterval(subscriptionLoopInterval);
+                        subscriptionLoopInterval = null;
                     }
-                }
-                console.log("[AI Scanner Direct]: All 7 assets successfully registered.");
-            };
+                    isInterceptActive = true;
 
-            socket.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data?.msg_type === 'tick' && data?.tick) {
-                        // Directly dispatch the raw values into your scannerLogic ingestion router
-                        window.dispatchEvent(new CustomEvent('deriv_live_tick', {
-                            detail: {
-                                symbol: data.tick.symbol,
-                                price: Number(data.tick.quote)
+                    // Tap directly into the open socket's message event pipeline
+                    const originalOnMessage = nativeSocket.onmessage;
+
+                    nativeSocket.onmessage = function (event: MessageEvent) {
+                        try {
+                            const data = JSON.parse(event.data);
+                            
+                            // Whenever ANY tick flies through the master template connection, push it to our logic arrays
+                            if (data?.msg_type === 'tick' && data?.tick) {
+                                window.dispatchEvent(new CustomEvent('deriv_live_tick', {
+                                    detail: {
+                                        symbol: data.tick.symbol,
+                                        price: Number(data.tick.quote)
+                                    }
+                                }));
                             }
-                        }));
-                    }
-                } catch (e) {
-                    // Fail silently for heartbeat pings or system config logs
-                }
-            };
+                        } catch (e) {
+                            // Fall through quietly
+                        }
 
-            socket.onerror = (error) => {
-                console.error("[AI Scanner Direct]: Stream encountered a connection error:", error);
-            };
+                        // Maintain native functionality so your Blockly blocks and strategy charts still execute perfectly
+                        if (originalOnMessage) {
+                            originalOnMessage.call(nativeSocket, event);
+                        }
+                    };
 
-            socket.onclose = async () => {
-                if (!isClosedManually) {
-                    console.warn("[AI Scanner Direct]: Pipeline disconnected. Re-establishing link in 3 seconds...");
-                    await delay(3000);
-                    startScannerNetworkPipeline();
+                    // Force the template connection to open streaming pipelines for all scanner markets safely
+                    ScannerLogic.SCANNER_MARKETS.forEach((symbolKey, index) => {
+                        setTimeout(() => {
+                            if (nativeSocket.readyState === WebSocket.OPEN) {
+                                nativeSocket.send(JSON.stringify({
+                                    ticks: symbolKey,
+                                    subscribe: 1
+                                }));
+                                console.log(` -> Master channel routed for: ${symbolKey}`);
+                            }
+                        }, index * 200); // 200ms stagger window to completely avoid rate limits and timeouts
+                    });
                 }
-            };
+            } catch (err) {
+                console.warn("[AI Scanner Intercept]: Waiting for master connection lines to warm up...", err);
+                isInterceptActive = false;
+            }
         };
 
-        startScannerNetworkPipeline();
+        injectScannerToMasterStream();
+        subscriptionLoopInterval = setInterval(injectScannerToMasterStream, 1500);
 
         return () => {
-            isClosedManually = true;
             window.removeEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
-            if (socket) {
-                console.log("[AI Scanner Direct]: Closing dedicated tracking connection lines cleanly.");
-                socket.close();
-            }
+            if (subscriptionLoopInterval) clearInterval(subscriptionLoopInterval);
         };
     }, []);
 };
