@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/scannerBridge.ts (PART 1)
+// FILE: src/Aiscanner/scannerBridge.ts (CORRECTED)
 // ==========================================
 import { RiskManager } from './riskManager';
 import { ScannerLogic, DerivTickResponse } from './scannerLogic';
@@ -17,7 +17,7 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static isScannerActive: boolean = false; 
-  private static scannerLogicInstance = new ScannerLogic(); // Instantiate core calculation logic
+  private static scannerLogicInstance = new ScannerLogic();
 
   static {
     if (typeof window !== 'undefined') {
@@ -59,10 +59,6 @@ export class ScannerBridge {
     return symbolMap[clean] || 'R_10';
   }
 
-  /**
-   * Intercepts live ticks, processes them through ScannerLogic,
-   * and broadcasts the fully updated strategy array to the UI components.
-   */
   public static pushTick(assetName: string, quote: number, strategies?: any[]) {
     const tickPayload: DerivTickResponse = {
       msg_type: 'tick',
@@ -85,9 +81,6 @@ export class ScannerBridge {
       }));
     }
   }
-// ==========================================
-// FILE: src/Aiscanner/scannerBridge.ts (PART 2)
-// ==========================================
 
   public static loadStrategyToWorkspace(strategy: any, options?: any) {
     ScannerBridge.isScannerActive = true;
@@ -98,17 +91,14 @@ export class ScannerBridge {
     const rawSymbol = options?.symbol || strategy?.symbol || strategy?.market || 'R_10'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
 
-    // ==========================================================
-    // FIXED SINGLE ASSET STRATEGY THRESHOLDS ($3.00 TP / $4.50 SL)
-    // ==========================================================
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: 0.35, 
-      duration: 5, // FIXED: Locked to 5 ticks to override any raw canvas defaults
+      duration: 5, 
       tradeType: strategyDirection,
-      durationUnit: 't', // Enforced flat constant 't' for Ticks execution window
-      stopLoss: 4.50,     // Allows Martingale loops to complete smoothly without hitting limits
-      takeProfit: 3.00,   // Locks in quick, persistent session gains
+      durationUnit: 't', 
+      stopLoss: 4.50,     
+      takeProfit: 3.00,   
       multiplier: options?.multiplier || strategy?.multiplier || 1.5
     };
 
@@ -139,6 +129,7 @@ export class ScannerBridge {
               if (!block) return;
 
               if (typeof block.getField === 'function') {
+                // 1. Symbol Field Mutation & Menu Check Fix
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
                   if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
@@ -151,7 +142,7 @@ export class ScannerBridge {
                   updated = true;
                 }
 
-                // HARD DURATION ENFORCEMENT: Crawls the canvas blocks and replaces any '1' with '5'
+                // 2. Duration Enforcement
                 const durationField = block.getField('DURATION') || block.getField('DURATION_LIST') || block.getField('DURATION_VAL');
                 if (durationField && durationField.getValue() !== '5') {
                   durationField.setValue('5');
@@ -165,6 +156,7 @@ export class ScannerBridge {
                 }
               }
 
+              // 3. Purchase Block Conditions
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
@@ -196,18 +188,17 @@ export class ScannerBridge {
             }
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error("[AI Scanner Bridge]: Error mutating blocks", e);
+      }
     };
 
-    // ==========================================================
-    // COMPLETE STRATEGY INJECTOR INTERFACE RESOLUTION (FIXED)
-    // ==========================================================
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
         if (typeof quickStrategy.setValue === 'function') {
           quickStrategy.setValue('symbol', strictDerivSymbol);
-          quickStrategy.setValue('duration', 5); // Forces 5 ticks value
+          quickStrategy.setValue('duration', 5);
           quickStrategy.setValue('duration_type', 't'); 
           quickStrategy.setValue('amount', payload.stake);
           quickStrategy.setValue('contract_type', storeContractType);
@@ -223,7 +214,6 @@ export class ScannerBridge {
             quickStrategy.setValue('take_profit', payload.takeProfit);
           }
           
-          // Trigger synchronization loop
           setTimeout(() => {
             applyBlockMutations();
           }, 50);
