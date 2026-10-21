@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/scannerBridge.ts (PART 1)
+// FILE: src/Aiscanner/scannerBridge.ts
 // ==========================================
 import { RiskManager } from './riskManager';
 import { ScannerLogic, DerivTickResponse } from './scannerLogic';
@@ -17,18 +17,16 @@ export interface AIScannerPayload {
 
 export class ScannerBridge {
   private static isScannerActive: boolean = false; 
-  private static scannerLogicInstance = new ScannerLogic(); // Instantiate core calculation logic
+  private static scannerLogicInstance = new ScannerLogic();
 
   static {
     if (typeof window !== 'undefined') {
       const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
-      const isFreshPageLoad = navEntries.length > 0 && navEntries[0].type === 'navigate';
+      const isFreshPageLoad = navEntries.length > 0 && navEntries.type === 'navigate';
 
       if (isFreshPageLoad) {
         ScannerBridge.isScannerActive = false;
-        try {
-          sessionStorage.removeItem('AI_SCANNER_SESSION_ACTIVE');
-        } catch (e) {}
+        try { sessionStorage.removeItem('AI_SCANNER_SESSION_ACTIVE'); } catch (e) {}
       } else {
         const sessionStarted = sessionStorage.getItem('AI_SCANNER_SESSION_ACTIVE');
         ScannerBridge.isScannerActive = !!sessionStarted;
@@ -37,57 +35,27 @@ export class ScannerBridge {
   }
 
   private static translateSymbol(rawSymbol: string): string {
-    if (!rawSymbol || typeof rawSymbol !== 'string') return 'R_10';
-    
-    const clean = rawSymbol
-      .toUpperCase()
-      .replace(/INDEX/g, '')
-      .replace(/[\s\(\)]+/g, '');
-    
+    if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ50V';
+    const clean = rawSymbol.toUpperCase().replace(/INDEX/g, '').replace(/[\s\(\)]+/g, '');
     const symbolMap: Record<string, string> = {
-      'VOLATILITY101S':   '1HZ10V',
-      'VOLATILITY501S':  '1HZ50V',
-      'VOLATILITY751S':  '1HZ75V',
-      'VOLATILITY1001S': '1HZ100V',
-      'VOLATILITY10':     'R_10',
-      'VOLATILITY25':     'R_25',
-      'VOLATILITY50':     'R_50',
-      'VOLATILITY75':     'R_75',
-      'VOLATILITY100':    'R_100',
+      'VOLATILITY101S': '1HZ10V', 'VOLATILITY501S': '1HZ50V', 'VOLATILITY751S': '1HZ75V',
+      'VOLATILITY1001S': '1HZ100V', 'VOLATILITY10': 'R_10', 'VOLATILITY25': 'R_25',
+      'VOLATILITY50': 'R_50', 'VOLATILITY75': 'R_75', 'VOLATILITY100': 'R_100',
     };
-
-    return symbolMap[clean] || 'R_10';
+    return symbolMap[clean] || '1HZ50V';
   }
 
-  /**
-   * Intercepts live ticks, processes them through ScannerLogic,
-   * and broadcasts the fully updated strategy array to the UI components.
-   */
-  public static pushTick(assetName: string, quote: number, strategies?: any[]) {
+  public static pushTick(assetName: string, quote: number) {
     const tickPayload: DerivTickResponse = {
       msg_type: 'tick',
-      tick: {
-        symbol: assetName,
-        quote: quote,
-        epoch: Date.now(),
-        id: Math.random().toString()
-      }
+      tick: { symbol: assetName, quote: quote, epoch: Date.now(), id: Math.random().toString() }
     };
-
     const updatedStrategies = ScannerBridge.scannerLogicInstance.handleIncomingMessage(tickPayload);
-
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('ai-tick-received', {
-        detail: { assetName, quote, strategies: updatedStrategies }
-      }));
-      window.dispatchEvent(new CustomEvent('deriv_scanner_updated', {
-        detail: { assetName, quote, strategies: updatedStrategies }
-      }));
+      window.dispatchEvent(new CustomEvent('ai-tick-received', { detail: { assetName, quote, strategies: updatedStrategies } }));
+      window.dispatchEvent(new CustomEvent('deriv_scanner_updated', { detail: { assetName, quote, strategies: updatedStrategies } }));
     }
   }
-// ==========================================
-// FILE: src/Aiscanner/scannerBridge.ts (PART 2)
-// ==========================================
 
   public static loadStrategyToWorkspace(strategy: any, options?: any) {
     ScannerBridge.isScannerActive = true;
@@ -95,20 +63,17 @@ export class ScannerBridge {
       sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
     }
 
-    const rawSymbol = options?.symbol || strategy?.symbol || strategy?.market || 'R_10'; 
+    const rawSymbol = options?.symbol || strategy?.symbol || strategy?.market || '1HZ50V'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
 
-    // ==========================================================
-    // FIXED SINGLE ASSET STRATEGY THRESHOLDS ($3.00 TP / $4.50 SL)
-    // ==========================================================
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: 0.35, 
-      duration: options?.duration || strategy?.duration || 5,
+      duration: 5,       // HARD CONSTRAINTS FORCED TO 5 TICKS 
       tradeType: strategyDirection,
-      durationUnit: options?.durationUnit || 't',
-      stopLoss: 4.50,     // Allows Martingale loops to complete smoothly without hitting limits
-      takeProfit: 3.00,   // Locks in quick, persistent session gains
+      durationUnit: 't', 
+      stopLoss: 4.50,     
+      takeProfit: 3.00,   
       multiplier: options?.multiplier || strategy?.multiplier || 1.5
     };
 
@@ -116,13 +81,11 @@ export class ScannerBridge {
 
     const rootStore = (window as any).derivBotAppStore;
     const strictDerivSymbol = this.translateSymbol(payload.symbol);
-    
     const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
     const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
     
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
-    
     const martingaleMultiplier = payload.multiplier || 1.5;
 
     const applyBlockMutations = () => {
@@ -143,11 +106,21 @@ export class ScannerBridge {
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
                   if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
                     const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
-                    if (!exists) {
-                      symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
-                    }
+                    if (!exists) symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
                   }
                   symbolField.setValue(strictDerivSymbol);
+                  updated = true;
+                }
+
+                // FIXED: Enforce 5 Ticks block mutation variables
+                const durationField = block.getField('DURATION') || block.getField('DURATION_LIST') || block.getField('DURATION_VAL');
+                if (durationField && durationField.getValue() !== '5') {
+                  durationField.setValue('5');
+                  updated = true;
+                }
+                const unitField = block.getField('DURATION_UNIT') || block.getField('DURATION_UNIT_LIST');
+                if (unitField && unitField.getValue() !== 't') {
+                  unitField.setValue('t');
                   updated = true;
                 }
               }
@@ -161,15 +134,11 @@ export class ScannerBridge {
                     const targetMatch = options.find((opt: any) => {
                       const label = String(opt[0] || '').toLowerCase();
                       const val = String(opt[1] || '').toLowerCase();
-                      if (isFall) {
-                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
-                      } else {
-                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
-                      }
+                      return isFall ? (label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put'))
+                                    : (label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call'));
                     });
-
                     const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
-                    if (field && field.getValue() !== desiredVal) {
+                    if (field.getValue() !== desiredVal) {
                       field.setValue(desiredVal);
                       updated = true;
                     }
@@ -178,24 +147,20 @@ export class ScannerBridge {
               }
             });
 
-            if (updated && typeof workspace.render === 'function') {
-              workspace.render();
-            }
+            if (updated && typeof workspace.render === 'function') workspace.render();
           }
         }
       } catch (e) {}
     };
 
-    // ==========================================================
-    // COMPLETE STRATEGY INJECTOR INTERFACE RESOLUTION
-    // ==========================================================
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
         if (typeof quickStrategy.setValue === 'function') {
           quickStrategy.setValue('symbol', strictDerivSymbol);
-          quickStrategy.setValue('duration', payload.duration);
-          quickStrategy.setValue('duration_type', payload.durationUnit || 't'); 
+          quickStrategy.setValue('duration', 5);
+          quickStrategy.setValue('quick_strategy_duration', 5);
+          quickStrategy.setValue('duration_type', 't'); 
           quickStrategy.setValue('amount', payload.stake);
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
@@ -209,18 +174,13 @@ export class ScannerBridge {
             quickStrategy.setValue('profit', payload.takeProfit);
             quickStrategy.setValue('take_profit', payload.takeProfit);
           }
-          
-          // Fire structural workspace synchronization events after data mutations clear
-          setTimeout(() => {
-            applyBlockMutations();
-          }, 50);
+          setTimeout(() => { applyBlockMutations(); }, 50);
         }
       } catch (err) {
-        console.error("[AI Scanner Bridge Error]: Failed injecting via quick_strategy store:", err);
+        console.error("[AI Scanner Bridge Error]: Store injection fallback initiated:", err);
         applyBlockMutations();
       }
     } else {
-      // Direct block mutation fallback if the active state store is cold or unmounted
       applyBlockMutations();
     }
   }
