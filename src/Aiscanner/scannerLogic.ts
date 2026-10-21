@@ -14,7 +14,6 @@ export interface DerivTickResponse {
 }
 
 export class ScannerLogic {
-    // Maps your strategy array utilizing .symbol cleanly to prevent fallback freezes
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
         name: s.name || 'Volatility AI Scalper',
@@ -25,7 +24,6 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
-    // Time-locked hysteresis states to balance visualization readability
     private activeSignalStrategyId: string | null = null;
     private signalLockExpiryEpoch: number = 0; 
     private readonly MIN_LOCK_DURATION_TICKS = 5; 
@@ -37,10 +35,9 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Mathematical indicators & persistent filter engine online.");
+        console.log("[AI Scanner]: Strict threshold calculation engine initialized.");
     }
 
-    // Helper: Exponential Moving Average (EMA)
     private calculateEMA(prices: number[], period: number): number {
         if (prices.length === 0) return 0;
         if (prices.length < period) return prices[prices.length - 1];
@@ -52,7 +49,6 @@ export class ScannerLogic {
         return ema;
     }
 
-    // Helper: Relative Strength Index (RSI)
     private calculateRSI(prices: number[], period: number = 14): number {
         if (prices.length <= period) return 50;
         let gains = 0, losses = 0;
@@ -64,7 +60,6 @@ export class ScannerLogic {
         return 100 - (100 / (1 + (gains / losses)));
     }
 
-    // Helper: Bollinger Bands Percent B (%B)
     private calculateBollingerBandsPercent(prices: number[], period: number = 20, multiplier: number = 2): number {
         if (prices.length < period) return 0.5;
         const slice = prices.slice(-period);
@@ -77,165 +72,96 @@ export class ScannerLogic {
         return (prices[prices.length - 1] - lowerBand) / (upperBand - lowerBand);
     }
 // ==========================================
-// FILE: src/Aiscanner/scannerLogic.ts (PART 2)
+// FILE: src/Aiscanner/useScannerFeed.ts
 // ==========================================
+import { useEffect } from 'react';
+import { ScannerLogic } from './scannerLogic';
+import { api_base } from '@/external/bot-skeleton/services/api/api-base';
 
-    public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
-        this.totalTicksReceived++;
-        if (this.totalTicksReceived % 20 === 0 && dataParsed?.tick) {
-            console.log(`[WebSocket Stream]: Ingesting ${dataParsed.tick.symbol} | Quote: ${dataParsed.tick.quote}`);
-        }
-        if (!dataParsed || dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
-            return this.getSortedStrategies();
-        }
-        return this.processLiveTick(dataParsed.tick.symbol, Number(dataParsed.tick.quote));
-    }
+const scanner = new ScannerLogic();
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    public processLiveTick(symbol: string, price: number): Strategy[] {
-        if (!this.priceBuffers[symbol]) this.priceBuffers[symbol] = [];
-        this.priceBuffers[symbol].push(price);
-        if (this.priceBuffers[symbol].length > 100) this.priceBuffers[symbol].shift();
+export const useScannerFeed = () => {
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
 
-        const currentPrices = this.priceBuffers[symbol];
-        const latestPrice = currentPrices[currentPrices.length - 1];
-        const prevPrice = currentPrices.length > 1 ? currentPrices[currentPrices.length - 2] : latestPrice;
-        const liveDirection: 'UP' | 'DOWN' = (latestPrice - prevPrice) >= 0 ? 'UP' : 'DOWN';
-
-        if (!this.directionHistory[symbol]) this.directionHistory[symbol] = [];
-        this.directionHistory[symbol].push(liveDirection);
-        if (this.directionHistory[symbol].length > 5) this.directionHistory[symbol].shift();
-
-        let highestCalculatedScore = 0;
-        let topStrategyId = '';
-
-        this.strategies = this.strategies.map((strat) => {
-            const targetSymbol = strat.symbol || '1HZ50V';
-            
-            // INDEPENDENT PROTECTION FILTER: Keep dormant assets at neutral baseline (50) until unique ticks land
-            if (!this.priceBuffers[targetSymbol] || this.priceBuffers[targetSymbol].length < 5) {
-                return {
-                    ...strat,
-                    confidence: 50,
-                    score: 50,
-                    direction: liveDirection
-                };
-            }
-
-            const prices = this.priceBuffers[targetSymbol];
-            const stratDirHistory = this.directionHistory[targetSymbol] || [liveDirection];
-            const stratLiveDirection = stratDirHistory[stratDirHistory.length - 1] || 'UP';
-            const isConfluent = stratDirHistory.length >= 3 && stratDirHistory.slice(-3).every(d => d === stratLiveDirection);
-
-            const rsi14 = this.calculateRSI(prices, 14);
-            const bbp20 = this.calculateBollingerBandsPercent(prices, 20, 2);
-            const emaFast = this.calculateEMA(prices, 9);
-            const emaSlow = this.calculateEMA(prices, 21);
-
-            let strategySpecificScore = 50; 
-            const stratId = strat.id;
-
-            // UPGRADED TRADING LOGIC MATRIX WITH SMOOTHING CONFLUENCE FILTERS
-            switch (stratId) {
-                case '1': // RSI Momentum Spike (Requires oversold zones AND structural trend reversal pings)
-                    if (rsi14 < 25 && isConfluent && stratLiveDirection === 'UP') {
-                        strategySpecificScore = 92;
-                    } else if (rsi14 > 75 && isConfluent && stratLiveDirection === 'DOWN') {
-                        strategySpecificScore = 92;
-                    } else {
-                        strategySpecificScore = Math.max(40, Math.round(50 - Math.abs(50 - rsi14)));
+        const handleLiveTick = (event: CustomEvent) => {
+            const { symbol, price } = event.detail || {};
+            if (symbol && typeof price === 'number') {
+                const updatedStrategies = scanner.handleIncomingMessage({
+                    msg_type: 'tick',
+                    tick: {
+                        symbol,
+                        quote: price,
+                        epoch: Math.floor(Date.now() / 1000),
+                        id: `${symbol}-${Date.now()}`
                     }
-                    break;
+                });
 
-                case '2': // Bollinger Band Squeeze (Requires clean reverse cross-back INSIDE the outer volatility channels)
-                    if (bbp20 > 0.02 && bbp20 < 0.15 && stratLiveDirection === 'UP' && isConfluent) {
-                        strategySpecificScore = 91;
-                    } else if (bbp20 < 0.98 && bbp20 > 0.85 && stratLiveDirection === 'DOWN' && isConfluent) {
-                        strategySpecificScore = 91;
-                    } else {
-                        strategySpecificScore = 52;
-                    }
-                    break;
-
-                case '3': // EMA Crossover Breakout (Proportional Moving Gradient based on separation expansion width)
-                    const emaDifferencePercentage = (Math.abs(emaFast - emaSlow) / emaSlow) * 100;
-                    if (emaFast > emaSlow && stratLiveDirection === 'UP' && isConfluent) {
-                        strategySpecificScore = Math.round(80 + Math.min(13, emaDifferencePercentage * 250));
-                    } else if (emaFast < emaSlow && stratLiveDirection === 'DOWN' && isConfluent) {
-                        strategySpecificScore = Math.round(80 + Math.min(13, emaDifferencePercentage * 250));
-                    } else {
-                        strategySpecificScore = 45; 
-                    }
-                    break;
-
-                case '4': // Tick Reversal Pattern
-                case '6': // Support/Resistance Bounce
-                    strategySpecificScore = isConfluent ? 85 : 48;
-                    break;
-
-                default: // Catch-all fallback for non-indexed configurations
-                    const trendAligns = (emaFast > emaSlow && stratLiveDirection === 'UP') || (emaFast < emaSlow && stratLiveDirection === 'DOWN');
-                    strategySpecificScore = (trendAligns && isConfluent) ? 81 : 55;
-                    break;
-            }
-
-            if (isConfluent && strategySpecificScore >= 70 && strategySpecificScore < 89) {
-                strategySpecificScore += 5;
-            }
-
-            strategySpecificScore = Math.min(97, Math.max(42, strategySpecificScore));
-
-            if (strategySpecificScore > highestCalculatedScore) {
-                highestCalculatedScore = strategySpecificScore;
-                topStrategyId = stratId;
-            }
-
-            return {
-                ...strat,
-                confidence: strategySpecificScore,
-                score: strategySpecificScore,
-                direction: stratLiveDirection
-            };
-        });
-
-        // Time-Locked Pinning Layout Routine
-        const currentEpoch = Math.floor(Date.now() / 1000);
-
-        if (this.activeSignalStrategyId) {
-            const currentActiveStrat = this.strategies.find(s => s.id === this.activeSignalStrategyId);
-            const timeWindowExpired = currentEpoch >= this.signalLockExpiryEpoch;
-
-            if (currentActiveStrat) {
-                if (currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && !timeWindowExpired) {
-                    return this.getSortedStrategies();
-                } else {
-                    this.activeSignalStrategyId = null;
+                if (updatedStrategies && updatedStrategies.length > 0) {
+                    window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
+                        detail: { strategies: [...updatedStrategies] }
+                    }));
                 }
             }
-        }
+        };
 
-        const topStrat = this.strategies.find(s => s.id === topStrategyId);
-        const topSymbol = topStrat?.symbol || '1HZ50V';
-        const topHistory = this.directionHistory[topSymbol] || [];
-        const topConfluent = topHistory.length >= 3 && topHistory.slice(-3).every(d => d === topHistory[topHistory.length - 1]);
+        window.addEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
 
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && topConfluent && topStrategyId) {
-            this.activeSignalStrategyId = topStrategyId;
-            this.signalLockExpiryEpoch = currentEpoch + this.MIN_LOCK_DURATION_TICKS;
-        }
+        let intervalId: any = null;
+        let isSubscribed = false;
 
-        return this.getSortedStrategies();
-    }
+        const attemptSubscription = async () => {
+            if (isSubscribed) return;
 
-    private getSortedStrategies(): Strategy[] {
-        if (this.activeSignalStrategyId) {
-            const copy = [...this.strategies];
-            const index = copy.findIndex(s => s.id === this.activeSignalStrategyId);
-            if (index > 0) {
-                const [stickyItem] = copy.splice(index, 1);
-                copy.unshift(stickyItem);
-                return copy;
+            try {
+                if (
+                    api_base && 
+                    api_base.api && 
+                    api_base.api.connection && 
+                    api_base.api.connection.readyState === WebSocket.OPEN
+                ) {
+                    console.log("[AI Scanner Feed]: Socket connection active. Dispatching isolated subscription tracks...");
+                    
+                    if (intervalId) {
+                        clearInterval(intervalId);
+                        intervalId = null;
+                    }
+                    isSubscribed = true;
+
+                    // Sequenced looped execution completely prevents WebSocket race conditions
+                    for (const symbolKey of ScannerLogic.SCANNER_MARKETS) {
+                        api_base.api.send({
+                            ticks: symbolKey,
+                            subscribe: 1
+                        });
+                        console.log(` -> Channel connected for asset stream: ${symbolKey}`);
+                        await delay(150); 
+                    }
+
+                    console.log("[AI Scanner Feed]: All multi-asset connection tracks active.");
+                }
+            } catch (err) {
+                console.warn("[AI Scanner Feed]: Ingestion channel waiting for stability...", err);
+                isSubscribed = false; 
             }
-        }
-        return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
-    }
-}
+        };
+
+        attemptSubscription();
+        intervalId = setInterval(attemptSubscription, 1500);
+
+        return () => {
+            window.removeEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
+            if (intervalId) clearInterval(intervalId);
+            
+            if (isSubscribed && api_base?.api?.connection?.readyState === WebSocket.OPEN) {
+                try {
+                    api_base.api.send({ forget_all: 'ticks' });
+                    console.log("[AI Scanner Feed]: Closed subscription channels cleanly.");
+                } catch (e) {
+                    console.error("Cleanup error:", e);
+                }
+            }
+        };
+    }, []);
+};
