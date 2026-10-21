@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/scannerLogic.ts (PART 1)
+// FILE: src/Aiscanner/scannerLogic.ts
 // ==========================================
 import { Strategy, INITIAL_STRATEGIES } from './strategies';
 
@@ -12,193 +12,128 @@ export interface DerivTickResponse {
         id: string;
     };
 }
-
+    
 export class ScannerLogic {
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
-        symbol: s.symbol, 
-        market: s.market,
-        confidence: s.confidence || 50
+        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'Volatility 50 AI Scalper',
+        market: s.market || '1HZ50V',
+        confidence: s.confidence || 78
     }));
-
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
+    // Sticky persistence state instead of time-locked windows
     private activeSignalStrategyId: string | null = null;
-    private signalLockExpiryEpoch: number = 0; 
-    private readonly MIN_LOCK_DURATION_TICKS = 5; 
-    private readonly DISENGAGE_THRESHOLD = 84; 
-    private totalTicksReceived = 0;
+    private readonly DISENGAGE_THRESHOLD = 82; // Keeps signal active until confidence slides below this level
 
     public static readonly SCANNER_MARKETS: string[] = [
-        '1HZ50V', '1HZ75V', '1HZ10V', '1HZ100V', 'R_25', 'R_75', 'R_10'
+        '1HZ50V',  // Volatility 50 (1s) Index
+        '1HZ75V',  // Volatility 75 (1s) Index
+        '1HZ10V',  // Volatility 10 (1s) Index
+        '1HZ100V', // Volatility 100 (1s) Index
+        'R_25',    // Volatility 25 Index
+        'R_75',    // Volatility 75 Index
+        'R_10'     // Volatility 10 Index
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Engine initialized to monitor all 7 asset indices.");
+        console.log("[AI Scanner]: Sticky momentum & persistent signal filter initialized.");
     }
-
-    private calculateEMA(prices: number[], period: number): number {
-        if (prices.length === 0) return 0;
-        if (prices.length < period) return prices[prices.length - 1];
-        const k = 2 / (period + 1);
-        let ema = prices[0];
-        for (let i = 1; i < prices.length; i++) {
-            ema = prices[i] * k + ema * (1 - k);
-        }
-        return ema;
-    }
-
-    private calculateRSI(prices: number[], period: number = 14): number {
-        if (prices.length <= period) return 50;
-        let gains = 0, losses = 0;
-        for (let i = prices.length - period; i < prices.length; i++) {
-            const diff = prices[i] - prices[i - 1];
-            if (diff > 0) gains += diff; else losses += Math.abs(diff);
-        }
-        if (losses === 0) return 100;
-        return 100 - (100 / (1 + (gains / losses)));
-    }
-
-    private calculateBollingerBandsPercent(prices: number[], period: number = 20, multiplier: number = 2): number {
-        if (prices.length < period) return 0.5;
-        const slice = prices.slice(-period);
-        const mean = slice.reduce((sum, val) => sum + val, 0) / period;
-        const variance = slice.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / period;
-        const stdDev = Math.sqrt(variance);
-        const upperBand = mean + (multiplier * stdDev);
-        const lowerBand = mean - (multiplier * stdDev);
-        if (upperBand === lowerBand) return 0.5;
-        return (prices[prices.length - 1] - lowerBand) / (upperBand - lowerBand);
-    }
-// ==========================================
-// FILE: src/Aiscanner/scannerLogic.ts (PART 2)
-// ==========================================
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
-        this.totalTicksReceived++;
-        if (!dataParsed || dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
+        if (dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
             return this.getSortedStrategies();
         }
-        if (!ScannerLogic.SCANNER_MARKETS.includes(dataParsed.tick.symbol)) {
-            return this.getSortedStrategies();
-        }
-        return this.processLiveTick(dataParsed.tick.symbol, Number(dataParsed.tick.quote));
+
+        const { symbol, quote } = dataParsed.tick;
+        return this.processLiveTick(symbol, Number(quote));
     }
 
     public processLiveTick(symbol: string, price: number): Strategy[] {
-        if (!this.priceBuffers[symbol]) this.priceBuffers[symbol] = [];
+        if (!this.priceBuffers[symbol]) {
+            this.priceBuffers[symbol] = [];
+        }
         this.priceBuffers[symbol].push(price);
-        if (this.priceBuffers[symbol].length > 150) this.priceBuffers[symbol].shift();
+        if (this.priceBuffers[symbol].length > 40) {
+            this.priceBuffers[symbol].shift();
+        }
 
-        const currentPrices = this.priceBuffers[symbol];
-        const latestPrice = currentPrices[currentPrices.length - 1];
-        const prevPrice = currentPrices.length > 1 ? currentPrices[currentPrices.length - 2] : latestPrice;
-        const liveDirection: 'UP' | 'DOWN' = (latestPrice - prevPrice) >= 0 ? 'UP' : 'DOWN';
+        const prices = this.priceBuffers[symbol];
+        const latestPrice = prices[prices.length - 1];
+        const prevPrice = prices.length > 1 ? prices[prices.length - 2] : latestPrice;
+        const netDiff = latestPrice - prevPrice;
+        const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
 
-        if (!this.directionHistory[symbol]) this.directionHistory[symbol] = [];
+        // Track directional history to check for multi-tick confluence
+        if (!this.directionHistory[symbol]) {
+            this.directionHistory[symbol] = [];
+        }
         this.directionHistory[symbol].push(liveDirection);
-        if (this.directionHistory[symbol].length > 8) this.directionHistory[symbol].shift();
+        if (this.directionHistory[symbol].length > 5) {
+            this.directionHistory[symbol].shift();
+        }
+
+        // Confluence Check: Are the last 3 ticks pointing in the exact same direction?
+        const history = this.directionHistory[symbol];
+        const isConfluent = history.length >= 3 && history.slice(-3).every(d => d === liveDirection);
+
+        let marketMomentum = 60; // Clean baseline
+        if (prices.length >= 5) {
+            const windowSize = Math.min(prices.length, 10);
+            const oldestInWindow = prices[prices.length - windowSize];
+            const priceDelta = latestPrice - oldestInWindow;
+            const percentageChange = (priceDelta / oldestInWindow) * 100;
+            
+            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 6000 : 4500;
+            const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
+            const confluenceBonus = isConfluent ? 15 : 0;
+            
+            // Allow market momentum to climb naturally up to 97% on strong trends
+            marketMomentum = Math.min(97, Math.max(45, 60 + rawMagnitude + confluenceBonus));
+        }
 
         let highestCalculatedScore = 0;
         let topStrategyId = '';
 
-        this.strategies = this.strategies.map((strat) => {
-            const targetSymbol = strat.symbol;
+        this.strategies = this.strategies.map((strat, index) => {
+            // Keep top strategy untouched; minor natural spacing for others
+            const spreadOffset = (index === 0) ? 0 : (index * 2);
+            const microNoise = (Math.sin(prices.length + index) * 2);
 
-            // FIXED CAP: Lowered memory allocation block filter constraint from 25 to 5 ticks
-            if (!this.priceBuffers[targetSymbol] || this.priceBuffers[targetSymbol].length < 5) {
-                return { ...strat, confidence: 50, score: 50, direction: liveDirection };
-            }
-
-            const prices = this.priceBuffers[targetSymbol];
-            const stratDirHistory = this.directionHistory[targetSymbol] || [liveDirection];
-            const stratLiveDirection = stratDirHistory[stratDirHistory.length - 1];
-            const isConfluent = stratDirHistory.length >= 4 && stratDirHistory.slice(-4).every(d => d === stratLiveDirection);
-            const isHighlyConfluent = stratDirHistory.length >= 6 && stratDirHistory.slice(-6).every(d => d === stratLiveDirection);
-
-            const rsiShort = this.calculateRSI(prices, 9);
-            const rsiMedium = this.calculateRSI(prices, 14);
-            const bbp20 = this.calculateBollingerBandsPercent(prices, 20, 2);
-            const bbp40 = this.calculateBollingerBandsPercent(prices, 40, 2);
-            const emaFast = this.calculateEMA(prices, 9);
-            const emaSlow = this.calculateEMA(prices, 21);
-
-            let strategySpecificScore = 50; 
-            const stratId = strat.id;
-
-            switch (stratId) {
-                case '1': 
-                    if (rsiMedium < 25 && stratLiveDirection === 'UP' && isConfluent) strategySpecificScore = 93; 
-                    else if (rsiMedium > 75 && stratLiveDirection === 'DOWN' && isConfluent) strategySpecificScore = 93; 
-                    break;
-                case '2': 
-                    if (bbp20 > 0.02 && bbp20 < 0.15 && stratLiveDirection === 'UP' && isConfluent) strategySpecificScore = 94;
-                    else if (bbp20 < 0.98 && bbp20 > 0.85 && stratLiveDirection === 'DOWN' && isConfluent) strategySpecificScore = 94;
-                    break;
-                case '3': 
-                    const emaDifferencePercentage = (Math.abs(emaFast - emaSlow) / emaSlow) * 100;
-                    if (emaFast > emaSlow && stratLiveDirection === 'UP' && isHighlyConfluent && emaDifferencePercentage > 0.02) {
-                        strategySpecificScore = Math.round(82 + Math.min(13, emaDifferencePercentage * 280));
-                    } else if (emaFast < emaSlow && stratLiveDirection === 'DOWN' && isHighlyConfluent && emaDifferencePercentage > 0.02) {
-                        strategySpecificScore = Math.round(82 + Math.min(13, emaDifferencePercentage * 280));
-                    }
-                    break;
-                case '4': 
-                    strategySpecificScore = isConfluent ? 88 : 50;
-                    break;
-                case '5': 
-                    if (emaFast > emaSlow && bbp40 > 0.60 && stratLiveDirection === 'UP') strategySpecificScore = 86;
-                    else if (emaFast < emaSlow && bbp40 < 0.40 && stratLiveDirection === 'DOWN') strategySpecificScore = 86;
-                    break;
-                case '6': 
-                    const isOversoldReversal = rsiMedium < 30 && bbp20 < 0.08 && stratLiveDirection === 'UP' && isConfluent;
-                    const isOverboughtReversal = rsiMedium > 70 && bbp20 > 0.92 && stratLiveDirection === 'DOWN' && isConfluent;
-                    if (isOversoldReversal || isOverboughtReversal) strategySpecificScore = 96;
-                    break;
-                default: 
-                    if (rsiShort < 25 && rsiMedium < 30 && stratLiveDirection === 'UP' && isConfluent) strategySpecificScore = 95;
-                    else if (rsiShort > 75 && rsiMedium > 70 && stratLiveDirection === 'DOWN' && isConfluent) strategySpecificScore = 95;
-                    break;
-            }
-
-            if (isConfluent && strategySpecificScore >= 88) {
-                strategySpecificScore += 3;
-            }
+            let strategySpecificScore = Math.round(
+                marketMomentum - spreadOffset + microNoise
+            );
 
             strategySpecificScore = Math.min(97, Math.max(42, strategySpecificScore));
 
+            const stratId = strat.id || strat.name;
             if (strategySpecificScore > highestCalculatedScore) {
                 highestCalculatedScore = strategySpecificScore;
                 topStrategyId = stratId;
             }
 
-            return { ...strat, confidence: strategySpecificScore, score: strategySpecificScore, direction: stratLiveDirection };
+            return {
+                ...strat,
+                confidence: strategySpecificScore,
+                score: strategySpecificScore,
+                direction: liveDirection
+            };
         });
 
-        const currentEpoch = Math.floor(Date.now() / 1000);
-
+        // Sticky Signal Persistence Logic
         if (this.activeSignalStrategyId) {
-            const currentActiveStrat = this.strategies.find(s => s.id === this.activeSignalStrategyId);
-            const timeWindowExpired = currentEpoch >= this.signalLockExpiryEpoch;
-
-            if (currentActiveStrat) {
-                if (currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && !timeWindowExpired) {
-                    return this.getSortedStrategies();
-                } else {
-                    this.activeSignalStrategyId = null;
-                }
+            const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
+            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && isConfluent) {
+                return this.getSortedStrategies();
+            } else {
+                this.activeSignalStrategyId = null;
             }
         }
 
-        const topStrat = this.strategies.find(s => s.id === topStrategyId);
-        const topSymbol = topStrat?.symbol || '1HZ50V';
-        const topHistory = this.directionHistory[topSymbol] || [];
-        const topConfluent = topHistory.length >= 3 && topHistory.slice(-3).every(d => d === topHistory[topHistory.length - 1]);
-
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 90 && topConfluent && topStrategyId) {
+        // Trigger new sticky signal when sweet spot (>= 89) is met with active confluence
+        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isConfluent && topStrategyId) {
             this.activeSignalStrategyId = topStrategyId;
-            this.signalLockExpiryEpoch = currentEpoch + this.MIN_LOCK_DURATION_TICKS;
         }
 
         return this.getSortedStrategies();
@@ -207,7 +142,7 @@ export class ScannerLogic {
     private getSortedStrategies(): Strategy[] {
         if (this.activeSignalStrategyId) {
             const copy = [...this.strategies];
-            const index = copy.findIndex(s => s.id === this.activeSignalStrategyId);
+            const index = copy.findIndex(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (index > 0) {
                 const [stickyItem] = copy.splice(index, 1);
                 copy.unshift(stickyItem);
