@@ -14,11 +14,11 @@ export interface DerivTickResponse {
 }
 
 export class ScannerLogic {
-    // Dedicated Single Asset Focus Registry targeting Volatility 10 Index exclusively
+    // Map individual symbols correctly out-of-the-box
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
-        symbol: 'R_10', 
-        market: 'Volatility 10 Index',
+        symbol: s.symbol, 
+        market: s.market,
         confidence: s.confidence || 50
     }));
 
@@ -31,17 +31,19 @@ export class ScannerLogic {
     private readonly DISENGAGE_THRESHOLD = 84; 
     private totalTicksReceived = 0;
 
-    public static readonly SCANNER_MARKETS: string[] = ['R_10'];
+    public static readonly SCANNER_MARKETS: string[] = [
+        '1HZ50V', '1HZ75V', '1HZ10V', '1HZ100V', 'R_25', 'R_75', 'R_10'
+    ];
 
     constructor() {
-        console.log("[AI Scanner]: High-performance SINGLE-ASSET engine active targeting R_10.");
+        console.log("[AI Scanner]: Engine initialized to monitor all 7 asset indices.");
     }
 
     private calculateEMA(prices: number[], period: number): number {
         if (prices.length === 0) return 0;
         if (prices.length < period) return prices[prices.length - 1];
         const k = 2 / (period + 1);
-        let ema = prices[0];
+        let ema = prices;
         for (let i = 1; i < prices.length; i++) {
             ema = prices[i] * k + ema * (1 - k);
         }
@@ -79,8 +81,10 @@ export class ScannerLogic {
         if (!dataParsed || dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
             return this.getSortedStrategies();
         }
-        // Strict boundary shield: Discard any external market assets to keep calculations clean
-        if (dataParsed.tick.symbol !== 'R_10') return this.getSortedStrategies();
+        // Verification: Ensure the incoming symbol is one of our 7 tracked scanner markets
+        if (!ScannerLogic.SCANNER_MARKETS.includes(dataParsed.tick.symbol)) {
+            return this.getSortedStrategies();
+        }
 
         return this.processLiveTick(dataParsed.tick.symbol, Number(dataParsed.tick.quote));
     }
@@ -90,107 +94,77 @@ export class ScannerLogic {
         this.priceBuffers[symbol].push(price);
         if (this.priceBuffers[symbol].length > 150) this.priceBuffers[symbol].shift();
 
-        const prices = this.priceBuffers[symbol];
-        const latestPrice = prices[prices.length - 1];
-        const prevPrice = prices.length > 1 ? prices[prices.length - 2] : latestPrice;
+        const currentPrices = this.priceBuffers[symbol];
+        const latestPrice = currentPrices[currentPrices.length - 1];
+        const prevPrice = currentPrices.length > 1 ? currentPrices[currentPrices.length - 2] : latestPrice;
         const liveDirection: 'UP' | 'DOWN' = (latestPrice - prevPrice) >= 0 ? 'UP' : 'DOWN';
 
         if (!this.directionHistory[symbol]) this.directionHistory[symbol] = [];
         this.directionHistory[symbol].push(liveDirection);
         if (this.directionHistory[symbol].length > 8) this.directionHistory[symbol].shift();
 
-        const dirHistory = this.directionHistory[symbol];
-        // Tightened micro-trend constraint: Requires 4 consecutive identical tick updates
-        const isConfluent = dirHistory.length >= 4 && dirHistory.slice(-4).every(d => d === liveDirection);
-        const isHighlyConfluent = dirHistory.length >= 6 && dirHistory.slice(-6).every(d => d === liveDirection);
-
-        // Indicator metrics computed entirely from your decoupled Volatility 10 buffer pool
-        const rsiShort = this.calculateRSI(prices, 9);
-        const rsiMedium = this.calculateRSI(prices, 14);
-        const bbp20 = this.calculateBollingerBandsPercent(prices, 20, 2);
-        const bbp40 = this.calculateBollingerBandsPercent(prices, 40, 2);
-        const emaFast = this.calculateEMA(prices, 9);
-        const emaSlow = this.calculateEMA(prices, 21);
-
         let highestCalculatedScore = 0;
         let topStrategyId = '';
 
         this.strategies = this.strategies.map((strat) => {
+            const targetSymbol = strat.symbol;
+
+            // FIXED PROTECTION SHIELD: Keep quiet or slow loading asset indices locked at neutral 50
+            if (!this.priceBuffers[targetSymbol] || this.priceBuffers[targetSymbol].length < 25) {
+                return { ...strat, confidence: 50, score: 50, direction: liveDirection };
+            }
+
+            const prices = this.priceBuffers[targetSymbol];
+            const stratDirHistory = this.directionHistory[targetSymbol] || [liveDirection];
+            const stratLiveDirection = stratDirHistory[stratDirHistory.length - 1];
+            const isConfluent = stratDirHistory.length >= 4 && stratDirHistory.slice(-4).every(d => d === stratLiveDirection);
+            const isHighlyConfluent = stratDirHistory.length >= 6 && stratDirHistory.slice(-6).every(d => d === stratLiveDirection);
+
+            const rsiShort = this.calculateRSI(prices, 9);
+            const rsiMedium = this.calculateRSI(prices, 14);
+            const bbp20 = this.calculateBollingerBandsPercent(prices, 20, 2);
+            const bbp40 = this.calculateBollingerBandsPercent(prices, 40, 2);
+            const emaFast = this.calculateEMA(prices, 9);
+            const emaSlow = this.calculateEMA(prices, 21);
+
             let strategySpecificScore = 50; 
             const stratId = strat.id;
 
-            // =====================================================================
-            // TRIPLE CONFLUENCE SIGNAL ENGINE OPTIMIZED SPECIFICALLY FOR R_10 TICKS
-            // =====================================================================
             switch (stratId) {
                 case '1': // RSI Momentum Spike Reversal 
-                    if (rsiMedium < 28 && liveDirection === 'UP' && isConfluent) {
-                        strategySpecificScore = 93; 
-                    } else if (rsiMedium > 72 && liveDirection === 'DOWN' && isConfluent) {
-                        strategySpecificScore = 93; 
-                    } else {
-                        strategySpecificScore = 50; 
-                    }
+                    if (rsiMedium < 25 && stratLiveDirection === 'UP' && isConfluent) strategySpecificScore = 93; 
+                    else if (rsiMedium > 75 && stratLiveDirection === 'DOWN' && isConfluent) strategySpecificScore = 93; 
                     break;
-
                 case '2': // Bollinger Band Squeeze Cross-Back
-                    if (bbp20 > 0.02 && bbp20 < 0.12 && liveDirection === 'UP' && isConfluent) {
-                        strategySpecificScore = 94;
-                    } else if (bbp20 < 0.98 && bbp20 > 0.85 && liveDirection === 'DOWN' && isConfluent) {
-                        strategySpecificScore = 94;
-                    } else {
-                        strategySpecificScore = 50;
-                    }
+                    if (bbp20 > 0.02 && bbp20 < 0.15 && stratLiveDirection === 'UP' && isConfluent) strategySpecificScore = 94;
+                    else if (bbp20 < 0.98 && bbp20 > 0.85 && stratLiveDirection === 'DOWN' && isConfluent) strategySpecificScore = 94;
                     break;
-
-                case '3': // EMA Breakout Distance Velocity Expansion
+                case '3': // EMA Crossover Breakout Gradient
                     const emaDifferencePercentage = (Math.abs(emaFast - emaSlow) / emaSlow) * 100;
-                    if (emaFast > emaSlow && liveDirection === 'UP' && isHighlyConfluent && emaDifferencePercentage > 0.03) {
+                    if (emaFast > emaSlow && stratLiveDirection === 'UP' && isHighlyConfluent && emaDifferencePercentage > 0.02) {
                         strategySpecificScore = Math.round(82 + Math.min(13, emaDifferencePercentage * 280));
-                    } else if (emaFast < emaSlow && liveDirection === 'DOWN' && isHighlyConfluent && emaDifferencePercentage > 0.03) {
+                    } else if (emaFast < emaSlow && stratLiveDirection === 'DOWN' && isHighlyConfluent && emaDifferencePercentage > 0.02) {
                         strategySpecificScore = Math.round(82 + Math.min(13, emaDifferencePercentage * 280));
-                    } else {
-                        strategySpecificScore = 50; 
                     }
                     break;
-
-                case '4': // Micro-Tick Momentum Exhaustion Pattern Tracker
+                case '4': // Micro-Tick Momentum Exhaustion
                     strategySpecificScore = isConfluent ? 88 : 50;
                     break;
-
-                case '5': // Bollinger Trend Rider (Uses 40-Period Wide Bands)
-                    if (emaFast > emaSlow && bbp40 > 0.60 && liveDirection === 'UP') {
-                        strategySpecificScore = 86;
-                    } else if (emaFast < emaSlow && bbp40 < 0.40 && liveDirection === 'DOWN') {
-                        strategySpecificScore = 86;
-                    } else {
-                        strategySpecificScore = 50;
-                    }
+                case '5': // Bollinger Trend Rider (40-Period)
+                    if (emaFast > emaSlow && bbp40 > 0.60 && stratLiveDirection === 'UP') strategySpecificScore = 86;
+                    else if (emaFast < emaSlow && bbp40 < 0.40 && stratLiveDirection === 'DOWN') strategySpecificScore = 86;
                     break;
-
-                case '6': // TRIPLE CONFLUENCE GOLDEN REVERSAL MASTER SIGNAL
-                    const isOversoldReversal = rsiMedium < 30 && bbp20 < 0.08 && liveDirection === 'UP' && isConfluent;
-                    const isOverboughtReversal = rsiMedium > 70 && bbp20 > 0.92 && liveDirection === 'DOWN' && isConfluent;
-
-                    if (isOversoldReversal || isOverboughtReversal) {
-                        strategySpecificScore = 96; 
-                    } else {
-                        strategySpecificScore = 50;
-                    }
+                case '6': // TRIPLE CONFLUENCE GOLDEN MASTER SIGNAL
+                    const isOversoldReversal = rsiMedium < 30 && bbp20 < 0.08 && stratLiveDirection === 'UP' && isConfluent;
+                    const isOverboughtReversal = rsiMedium > 70 && bbp20 > 0.92 && stratLiveDirection === 'DOWN' && isConfluent;
+                    if (isOversoldReversal || isOverboughtReversal) strategySpecificScore = 96;
                     break;
-
-                default: // Strategy 7: Dual-RSI Band Confluence Matrix
-                    if (rsiShort < 25 && rsiMedium < 30 && liveDirection === 'UP' && isConfluent) {
-                        strategySpecificScore = 95;
-                    } else if (rsiShort > 75 && rsiMedium > 70 && liveDirection === 'DOWN' && isConfluent) {
-                        strategySpecificScore = 95;
-                    } else {
-                        strategySpecificScore = 50;
-                    }
+                default: // Dual-RSI Band Confluence Matrix
+                    if (rsiShort < 25 && rsiMedium < 30 && stratLiveDirection === 'UP' && isConfluent) strategySpecificScore = 95;
+                    else if (rsiShort > 75 && rsiMedium > 70 && stratLiveDirection === 'DOWN' && isConfluent) strategySpecificScore = 95;
                     break;
             }
 
-            // High-Conviction Accelerator: Add booster only to cards that cleared entry thresholds
             if (isConfluent && strategySpecificScore >= 88) {
                 strategySpecificScore += 3;
             }
@@ -202,15 +176,9 @@ export class ScannerLogic {
                 topStrategyId = stratId;
             }
 
-            return {
-                ...strat,
-                confidence: strategySpecificScore,
-                score: strategySpecificScore,
-                direction: liveDirection
-            };
+            return { ...strat, confidence: strategySpecificScore, score: strategySpecificScore, direction: stratLiveDirection };
         });
 
-        // Time-Locked Layout Stabilization Routine
         const currentEpoch = Math.floor(Date.now() / 1000);
 
         if (this.activeSignalStrategyId) {
@@ -226,7 +194,12 @@ export class ScannerLogic {
             }
         }
 
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 90 && isConfluent && topStrategyId) {
+        const topStrat = this.strategies.find(s => s.id === topStrategyId);
+        const topSymbol = topStrat?.symbol || '1HZ50V';
+        const topHistory = this.directionHistory[topSymbol] || [];
+        const topConfluent = topHistory.length >= 3 && topHistory.slice(-3).every(d => d === topHistory[topHistory.length - 1]);
+
+        if (!this.activeSignalStrategyId && highestCalculatedScore >= 90 && topConfluent && topStrategyId) {
             this.activeSignalStrategyId = topStrategyId;
             this.signalLockExpiryEpoch = currentEpoch + this.MIN_LOCK_DURATION_TICKS;
         }
