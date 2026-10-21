@@ -7,7 +7,7 @@ import { api_base } from '@/external/bot-skeleton/services/api/api-base';
 import { ScannerBridge } from './scannerBridge';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
+ 
 export const useScannerFeed = () => {
     useEffect(() => {
         if (typeof window === 'undefined') return;
