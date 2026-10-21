@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/useScannerFeed.ts (FINAL DEFINITIVE MULTI-MARKET FEED)
+// FILE: src/Aiscanner/useScannerFeed.ts (MULTI-MARKET CONCURRENT FIX)
 // ==========================================
 import { useEffect } from 'react';
 import { ScannerLogic } from './scannerLogic';
@@ -18,13 +18,13 @@ export const useScannerFeed = () => {
         const initializeAllMarkets = async () => {
             if (isInitialized) return;
 
-            // 1. Wait patiently until the global WebSocket connection is fully OPEN (readyState === 1)
+            // 1. Wait until WebSocket connection is fully open (readyState === 1)
             while (!api_base?.api?.connection || api_base.api.connection.readyState !== WebSocket.OPEN) {
                 await delay(400);
             }
 
             isInitialized = true;
-            console.log("[AI Scanner]: WebSocket connection verified OPEN. Subscribing to all 7 volatility markets...");
+            console.log("[AI Scanner]: WebSocket open. Subscribing to all 7 volatility markets via SDK...");
 
             // 2. Sequentially subscribe to all 7 symbols using Deriv's official SDK method
             for (const symbolKey of ScannerLogic.SCANNER_MARKETS) {
@@ -36,7 +36,7 @@ export const useScannerFeed = () => {
                                 const price = Number(response.tick.quote);
 
                                 // Pipe directly into your ScannerBridge math & sorting engine
-                                ScannerBridge.pushTick(symbol, price);
+                                ScannerBridge.pushTech(symbol, price);
                             }
                         });
 
