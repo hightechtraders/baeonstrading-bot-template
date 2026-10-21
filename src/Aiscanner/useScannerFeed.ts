@@ -11,10 +11,12 @@ export const useScannerFeed = () => {
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        // 1. Direct event routing loop to push straight to UI
+        // 1. Ingest ticks directly from the native active layout hook
         const handleLiveTick = (event: CustomEvent) => {
             const { symbol, price } = event.detail || {};
-            if (symbol && typeof price === 'number') {
+            
+            // Only feed Volatility 10 Index ticks to the scanner logic
+            if (symbol === 'R_10' && typeof price === 'number') {
                 const updatedStrategies = scanner.handleIncomingMessage({
                     msg_type: 'tick',
                     tick: {
@@ -35,101 +37,46 @@ export const useScannerFeed = () => {
 
         window.addEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
 
-        // 2. Tap directly into the Master WebSocket Stream
+        // 2. Safe, native background subscription using the core connection instance
+        let unsubscribeFn: (() => void) | null = null;
         let pollingInterval: any = null;
-        let isInterceptActive = false;
-        let activeUnsubscribeFunctions: (() => void)[] = [];
 
-        const injectScannerToMasterStream = () => {
-            if (isInterceptActive) return;
+        const subscribeSingleAsset = () => {
+            if (unsubscribeFn) return;
 
             try {
-                const nativeSocket = api_base?.api?.connection;
-
-                if (nativeSocket && nativeSocket.readyState === WebSocket.OPEN) {
-                    console.log("[AI Scanner Intercept]: Master socket clear. Intercepting incoming packet feed...");
+                if (api_base?.api?.connection?.readyState === WebSocket.OPEN) {
+                    console.log("[AI Scanner]: Connected. Initializing Volatility 10 pipeline...");
                     
-                    if (pollingInterval) {
-                        clearInterval(pollingInterval);
-                        pollingInterval = null;
-                    }
-                    isInterceptActive = true;
+                    if (pollingInterval) clearInterval(pollingInterval);
 
-                    // A. Safe interception of all global payloads flowing through the socket
-                    const originalOnMessage = nativeSocket.onmessage;
-                    nativeSocket.onmessage = function (event: MessageEvent) {
-                        try {
-                            const data = JSON.parse(event.data);
-                            
-                            // Instantly dispatch any valid tick data passing through the socket
-                            if (data?.msg_type === 'tick' && data?.tick) {
-                                window.dispatchEvent(new CustomEvent('deriv_live_tick', {
-                                    detail: {
-                                        symbol: data.tick.symbol,
-                                        price: Number(data.tick.quote)
-                                    }
-                                }));
-                            }
-                        } catch (e) {
-                            // Fall through silently
-                        }
-
-                        // Maintain native functionality for your active Blockly workspace canvas
-                        if (originalOnMessage) {
-                            originalOnMessage.call(nativeSocket, event);
-                        }
-                    };
-
-                    // B. FIXED: Use the internal registry method to correctly request background feeds
-                    ScannerLogic.SCANNER_MARKETS.forEach((symbolKey, index) => {
-                        setTimeout(() => {
-                            try {
-                                if (api_base?.api?.connection?.readyState === WebSocket.OPEN) {
-                                    // Bypasses layout limits using the native template registration channel
-                                    const unsubFn = api_base.api.subscribeToTick(symbolKey, (tickData: any) => {
-                                        if (tickData?.tick) {
-                                            window.dispatchEvent(new CustomEvent('deriv_live_tick', {
-                                                detail: {
-                                                    symbol: tickData.tick.symbol,
-                                                    price: Number(tickData.tick.quote)
-                                        }
-                                            }));
-                                        }
-                                    });
-
-                                    if (typeof unsubFn === 'function') {
-                                        activeUnsubscribeFunctions.push(unsubFn);
-                                    }
-                                    console.log(` -> Master channel route verified for: ${symbolKey}`);
+                    // Subscribe natively via the template interface to prevent collision errors
+                    unsubscribeFn = api_base.api.subscribeToTick('R_10', (tickData: any) => {
+                        if (tickData?.tick && tickData.tick.symbol === 'R_10') {
+                            window.dispatchEvent(new CustomEvent('deriv_live_tick', {
+                                detail: {
+                                    symbol: tickData.tick.symbol,
+                                    price: Number(tickData.tick.quote)
                                 }
-                            } catch (subErr) {
-                                console.error(`Error forcing subscription for ${symbolKey}:`, subErr);
-                            }
-                        }, index * 200); // Strict 200ms stagger prevents socket frame overlapping
+                            }));
+                        }
                     });
-
-                    console.log("[AI Scanner Intercept]: All 7 structural market paths running synchronously.");
                 }
             } catch (err) {
-                console.warn("[AI Scanner Intercept]: Waiting for framework socket lines to connect...", err);
-                isInterceptActive = false;
+                console.warn("[AI Scanner]: Waiting for core socket readiness...", err);
             }
         };
 
-        // Initialize connection monitor loops
-        injectScannerToMasterStream();
-        pollingInterval = setInterval(injectScannerToMasterStream, 1500);
+        subscribeSingleAsset();
+        pollingInterval = setInterval(subscribeSingleAsset, 1000);
 
         return () => {
             window.removeEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
             if (pollingInterval) clearInterval(pollingInterval);
-            
-            // Clean up subscription instances on unmount to conserve browser performance
-            console.log("[AI Scanner Intercept]: Cleaning active scanner tracking feeds...");
-            activeUnsubscribeFunctions.forEach((unsubscribe) => {
-                try { unsubscribe(); } catch (e) { /* fall through quiet */ }
-            });
-            activeUnsubscribeFunctions = [];
+            if (unsubscribeFn) {
+                console.log("[AI Scanner]: Unsubscribing Volatility 10 stream.");
+                try { unsubscribeFn(); } catch (e) {}
+            }
         };
     }, []);
 };
