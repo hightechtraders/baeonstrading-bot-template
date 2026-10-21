@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/scannerBridge.ts
+// FILE: src/Aiscanner/scannerBridge.ts (PART 1)
 // ==========================================
 import { RiskManager } from './riskManager';
 import { ScannerLogic, DerivTickResponse } from './scannerLogic';
@@ -37,7 +37,7 @@ export class ScannerBridge {
   }
 
   private static translateSymbol(rawSymbol: string): string {
-    if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
+    if (!rawSymbol || typeof rawSymbol !== 'string') return 'R_10';
     
     const clean = rawSymbol
       .toUpperCase()
@@ -45,10 +45,10 @@ export class ScannerBridge {
       .replace(/[\s\(\)]+/g, '');
     
     const symbolMap: Record<string, string> = {
-      'VOLATILITY101S':  '1HZ10V',
-      'VOLATILITY501S': '1HZ50V',
-      'VOLATILITY751S': '1HZ75V',
-      'VOLATILITY1001S':'1HZ100V',
+      'VOLATILITY101S':   '1HZ10V',
+      'VOLATILITY501S':  '1HZ50V',
+      'VOLATILITY751S':  '1HZ75V',
+      'VOLATILITY1001S': '1HZ100V',
       'VOLATILITY10':     'R_10',
       'VOLATILITY25':     'R_25',
       'VOLATILITY50':     'R_50',
@@ -56,7 +56,7 @@ export class ScannerBridge {
       'VOLATILITY100':    'R_100',
     };
 
-    return symbolMap[clean] || '1HZ100V';
+    return symbolMap[clean] || 'R_10';
   }
 
   /**
@@ -85,27 +85,30 @@ export class ScannerBridge {
       }));
     }
   }
+// ==========================================
+// FILE: src/Aiscanner/scannerBridge.ts (PART 2)
+// ==========================================
 
-  public static loadStrategyToWorkspace(strategy: any, options: any) {
+  public static loadStrategyToWorkspace(strategy: any, options?: any) {
     ScannerBridge.isScannerActive = true;
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
     }
 
-    const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
+    const rawSymbol = options?.symbol || strategy?.symbol || strategy?.market || 'R_10'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
 
-    // ==========================================
-    // OPTIMIZED SESSION THRESHOLDS ($3 TP / $4.50 SL)
-    // ==========================================
+    // ==========================================================
+    // FIXED SINGLE ASSET STRATEGY THRESHOLDS ($3.00 TP / $4.50 SL)
+    // ==========================================================
     const payload: AIScannerPayload = {
       symbol: rawSymbol,
       stake: 0.35, 
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
-      stopLoss: 4.50,     // Safe buffer to allow Martingale recovery to complete
-      takeProfit: 3.00,   // Capped at $3.00 to lock in quick, frequent session gains
+      stopLoss: 4.50,     // Allows Martingale loops to complete smoothly without hitting limits
+      takeProfit: 3.00,   // Locks in quick, persistent session gains
       multiplier: options?.multiplier || strategy?.multiplier || 1.5
     };
 
@@ -183,6 +186,9 @@ export class ScannerBridge {
       } catch (e) {}
     };
 
+    // ==========================================================
+    // COMPLETE STRATEGY INJECTOR INTERFACE RESOLUTION
+    // ==========================================================
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
       try {
@@ -203,45 +209,19 @@ export class ScannerBridge {
             quickStrategy.setValue('profit', payload.takeProfit);
             quickStrategy.setValue('take_profit', payload.takeProfit);
           }
+          
+          // Fire structural workspace synchronization events after data mutations clear
+          setTimeout(() => {
+            applyBlockMutations();
+          }, 50);
         }
-        
-        const mockFormData = {
-          symbol: strictDerivSymbol, 
-          durationtype: payload.durationUnit || 't', 
-          duration: payload.duration,
-          stake: payload.stake,
-          amount: payload.stake,
-          tradetype: 'rise_fall',
-          contract_type: storeContractType,
-          type: storeType,
-          subtype: storeType,
-          size: martingaleMultiplier,
-          loss: payload.stopLoss,
-          stop_loss: payload.stopLoss,
-          profit: payload.takeProfit,
-          take_profit: payload.takeProfit
-        };
-
-        const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
-        if (typeof submitAction === 'function') {
-          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).then(() => {
-            setTimeout(applyBlockMutations, 100);
-            setTimeout(applyBlockMutations, 500);
-
-            if (rootStore?.client?.send) {
-              rootStore.client.send({ balance: 1, subscribe: 1 }).catch(() => {});
-            }
-          }).catch(() => {});
-        }
-      } catch (error) {}
+      } catch (err) {
+        console.error("[AI Scanner Bridge Error]: Failed injecting via quick_strategy store:", err);
+        applyBlockMutations();
+      }
+    } else {
+      // Direct block mutation fallback if the active state store is cold or unmounted
+      applyBlockMutations();
     }
-
-    applyBlockMutations();
-    setTimeout(applyBlockMutations, 150);
-    setTimeout(applyBlockMutations, 400);
-
-    return true;
   }
 }
-
-export const scannerBridge = ScannerBridge;
