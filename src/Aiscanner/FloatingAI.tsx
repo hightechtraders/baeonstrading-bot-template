@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/FloatingAI.tsx
+// FILE: src/Aiscanner/FloatingAI.tsx (PART 1)
 // ==========================================
 import React, { useState, useEffect, useRef } from 'react';
 import { ScannerBridge } from './scannerBridge';
@@ -17,6 +17,10 @@ export const FloatingAI: React.FC = () => {
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
   const [isSweetSpot, setIsSweetSpot] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
+
+  // Capital Preservation State Tracker: Limit to exactly 6 trades maximum per session
+  const [sessionRuns, setSessionRuns] = useState<number>(0);
+  const MAX_RUNS_PER_SESSION = 6;
 
   const isOpenRef = useRef<boolean>(false);
   const isScanningPhaseRef = useRef<boolean>(true);
@@ -94,23 +98,36 @@ export const FloatingAI: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+// ==========================================
+// FILE: src/Aiscanner/FloatingAI.tsx (PART 2)
+// ==========================================
 
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
 
-  // Instantly loads the strategy and triggers the workspace Run button simultaneously
+  // Instantly loads the strategy, checks constraints, and fires execution loops
   const handleRunBot = (strat: Strategy) => {
-    // 1. Load configuration into workspace
+    // ENFORCEMENT: Terminate loop immediately if your rule-of-6 cap has been breached
+    if (sessionRuns >= MAX_RUNS_PER_SESSION) {
+        console.warn("[AI Circuit Breaker]: Session cap active. Restricting further execution.");
+        setSignalBannerText("⚠️ CRITICAL DRAWDOWN SHIELD: Session limit of 6 runs reached!");
+        return;
+    }
+
+    // 1. Increment run state safely
+    setSessionRuns(prev => prev + 1);
+
+    // 2. Load parameters into Blockly workspace variables
     ScannerBridge.loadStrategyToWorkspace(strat);
     setIsOpen(false);
 
-    // 2. Programmatically fire the workspace [Run] execution sequence after a brief DOM tick
+    // 3. Programmatically click the template workspace "Run" button after DOM mount frame clear
     setTimeout(() => {
       const allButtons = Array.from(document.querySelectorAll('button'));
-      // Find the primary Run execution button in the workspace dashboard
       const targetRunBtn = allButtons.find(b => b.textContent?.trim() === 'Run');
       
       if (targetRunBtn instanceof HTMLElement) {
         targetRunBtn.click();
+        console.log(`[AI Run Sequence]: Fired execution #${sessionRuns + 1} for ${strat.name}`);
       }
     }, 100);
   };
@@ -131,6 +148,9 @@ export const FloatingAI: React.FC = () => {
           <div className="ai-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="ai-modal-header">
               <h2>AI Multi-Asset Scanner</h2>
+              <div className="session-tracker-pill" style={{ fontSize: '12px', background: '#2d3748', padding: '4px 8px', borderRadius: '12px' }}>
+                Runs: {sessionRuns} / {MAX_RUNS_PER_SESSION} Used
+              </div>
               <button className="close-btn" onClick={() => setIsOpen(false)}>×</button>
             </div>
             
@@ -155,6 +175,7 @@ export const FloatingAI: React.FC = () => {
                   {sortedStrategies.map((strat, idx) => {
                     const key = strat.id || `${strat.name}-${idx}`;
                     const isGlobalWinner = idx === 0;
+                    const isSessionCapBreached = sessionRuns >= MAX_RUNS_PER_SESSION;
 
                     return (
                       <div 
@@ -194,8 +215,10 @@ export const FloatingAI: React.FC = () => {
                         <button 
                           className="run-manual-btn" 
                           onClick={() => handleRunBot(strat)}
+                          disabled={isSessionCapBreached}
+                          style={isSessionCapBreached ? { background: '#4a5568', cursor: 'not-allowed' } : {}}
                         >
-                          Load Strategy & Run Instantly
+                          {isSessionCapBreached ? 'Session Limit Reached (6 Runs)' : 'Load Strategy & Run Instantly'}
                         </button>
                       </div>
                     );
