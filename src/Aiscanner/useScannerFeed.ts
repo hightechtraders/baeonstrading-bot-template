@@ -11,7 +11,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const useScannerFeed = () => {
     useEffect(() => {
         if (typeof window === 'undefined') return;
- 
+
         const handleLiveTick = (event: CustomEvent) => {
             const { symbol, price } = event.detail || {};
             if (symbol && typeof price === 'number') {
