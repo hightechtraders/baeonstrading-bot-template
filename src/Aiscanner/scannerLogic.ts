@@ -124,9 +124,9 @@ export class ScannerLogic {
             // =====================================================================
             switch (stratId) {
                 case '1': // RSI Momentum Spike Reversal 
-                    if (rsiMedium < 28 && stratLiveDirection === 'UP' && isConfluent) {
+                    if (rsiMedium < 28 && liveDirection === 'UP' && isConfluent) {
                         strategySpecificScore = 93; 
-                    } else if (rsiMedium > 72 && stratLiveDirection === 'DOWN' && isConfluent) {
+                    } else if (rsiMedium > 72 && liveDirection === 'DOWN' && isConfluent) {
                         strategySpecificScore = 93; 
                     } else {
                         strategySpecificScore = 50; 
@@ -134,9 +134,9 @@ export class ScannerLogic {
                     break;
 
                 case '2': // Bollinger Band Squeeze Cross-Back
-                    if (bbp20 > 0.02 && bbp20 < 0.12 && stratLiveDirection === 'UP' && isConfluent) {
+                    if (bbp20 > 0.02 && bbp20 < 0.12 && liveDirection === 'UP' && isConfluent) {
                         strategySpecificScore = 94;
-                    } else if (bbp20 < 0.98 && bbp20 > 0.88 && stratLiveDirection === 'DOWN' && isConfluent) {
+                    } else if (bbp20 < 0.98 && bbp20 > 0.85 && liveDirection === 'DOWN' && isConfluent) {
                         strategySpecificScore = 94;
                     } else {
                         strategySpecificScore = 50;
@@ -145,9 +145,9 @@ export class ScannerLogic {
 
                 case '3': // EMA Breakout Distance Velocity Expansion
                     const emaDifferencePercentage = (Math.abs(emaFast - emaSlow) / emaSlow) * 100;
-                    if (emaFast > emaSlow && stratLiveDirection === 'UP' && isHighlyConfluent && emaDifferencePercentage > 0.03) {
+                    if (emaFast > emaSlow && liveDirection === 'UP' && isHighlyConfluent && emaDifferencePercentage > 0.03) {
                         strategySpecificScore = Math.round(82 + Math.min(13, emaDifferencePercentage * 280));
-                    } else if (emaFast < emaSlow && stratLiveDirection === 'DOWN' && isHighlyConfluent && emaDifferencePercentage > 0.03) {
+                    } else if (emaFast < emaSlow && liveDirection === 'DOWN' && isHighlyConfluent && emaDifferencePercentage > 0.03) {
                         strategySpecificScore = Math.round(82 + Math.min(13, emaDifferencePercentage * 280));
                     } else {
                         strategySpecificScore = 50; 
@@ -159,9 +159,9 @@ export class ScannerLogic {
                     break;
 
                 case '5': // Bollinger Trend Rider (Uses 40-Period Wide Bands)
-                    if (emaFast > emaSlow && bbp40 > 0.60 && stratLiveDirection === 'UP') {
+                    if (emaFast > emaSlow && bbp40 > 0.60 && liveDirection === 'UP') {
                         strategySpecificScore = 86;
-                    } else if (emaFast < emaSlow && bbp40 < 0.40 && stratLiveDirection === 'DOWN') {
+                    } else if (emaFast < emaSlow && bbp40 < 0.40 && liveDirection === 'DOWN') {
                         strategySpecificScore = 86;
                     } else {
                         strategySpecificScore = 50;
@@ -169,8 +169,8 @@ export class ScannerLogic {
                     break;
 
                 case '6': // TRIPLE CONFLUENCE GOLDEN REVERSAL MASTER SIGNAL
-                    const isOversoldReversal = rsiMedium < 30 && bbp20 < 0.08 && stratLiveDirection === 'UP' && isConfluent;
-                    const isOverboughtReversal = rsiMedium > 70 && bbp20 > 0.92 && stratLiveDirection === 'DOWN' && isConfluent;
+                    const isOversoldReversal = rsiMedium < 30 && bbp20 < 0.08 && liveDirection === 'UP' && isConfluent;
+                    const isOverboughtReversal = rsiMedium > 70 && bbp20 > 0.92 && liveDirection === 'DOWN' && isConfluent;
 
                     if (isOversoldReversal || isOverboughtReversal) {
                         strategySpecificScore = 96; 
@@ -180,9 +180,9 @@ export class ScannerLogic {
                     break;
 
                 default: // Strategy 7: Dual-RSI Band Confluence Matrix
-                    if (rsiShort < 25 && rsiMedium < 30 && stratLiveDirection === 'UP' && isConfluent) {
+                    if (rsiShort < 25 && rsiMedium < 30 && liveDirection === 'UP' && isConfluent) {
                         strategySpecificScore = 95;
-                    } else if (rsiShort > 75 && rsiMedium > 70 && stratLiveDirection === 'DOWN' && isConfluent) {
+                    } else if (rsiShort > 75 && rsiMedium > 70 && liveDirection === 'DOWN' && isConfluent) {
                         strategySpecificScore = 95;
                     } else {
                         strategySpecificScore = 50;
