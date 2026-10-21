@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/useScannerFeed.ts (OFFICIAL MULTI-MARKET SDK HOOK)
+// FILE: src/Aiscanner/useScannerFeed.ts (FINAL DEFINITIVE MULTI-MARKET FEED)
 // ==========================================
 import { useEffect } from 'react';
 import { ScannerLogic } from './scannerLogic';
@@ -17,34 +17,26 @@ export const useScannerFeed = () => {
 
         const initializeAllMarkets = async () => {
             if (isInitialized) return;
-            isInitialized = true;
 
-            // 1. Wait until WebSocket connection is fully open
+            // 1. Wait patiently until the global WebSocket connection is fully OPEN (readyState === 1)
             while (!api_base?.api?.connection || api_base.api.connection.readyState !== WebSocket.OPEN) {
-                await delay(300);
+                await delay(400);
             }
 
-            console.log("[AI Scanner]: WebSocket open. Registering dedicated SDK tick streams for all 7 markets...");
+            isInitialized = true;
+            console.log("[AI Scanner]: WebSocket connection verified OPEN. Subscribing to all 7 volatility markets...");
 
-            // 2. Iterate through all scanner markets and bind via Deriv's native SDK
+            // 2. Sequentially subscribe to all 7 symbols using Deriv's official SDK method
             for (const symbolKey of ScannerLogic.SCANNER_MARKETS) {
                 try {
                     if (typeof api_base?.api?.subscribeToTick === 'function') {
-                        // Official SDK method assigns unique stream identifiers per symbol
                         const unsubscribeFn = api_base.api.subscribeToTick(symbolKey, (response: any) => {
                             if (response?.tick) {
                                 const symbol = response.tick.symbol;
                                 const price = Number(response.tick.quote);
 
-                                // Push directly to your ScannerBridge for calculation & sorting
+                                // Pipe directly into your ScannerBridge math & sorting engine
                                 ScannerBridge.pushTick(symbol, price);
-
-                                // Broadcast globally for any legacy components listening
-                                window.dispatchEvent(
-                                    new CustomEvent('deriv_live_tick', {
-                                        detail: { symbol, price },
-                                    })
-                                );
                             }
                         });
 
@@ -52,18 +44,19 @@ export const useScannerFeed = () => {
                             activeUnsubscribers.push(unsubscribeFn);
                         }
                     }
-                    await delay(350); // Stagger requests to prevent server-side rate limits
+                    // 350ms stagger gap prevents server-side rate limits and socket queue congestion
+                    await delay(350); 
                 } catch (subErr) {
                     console.error(`Sub error for ${symbolKey}:`, subErr);
                 }
             }
-            console.log("[AI Scanner]: All 7 multi-market SDK streams successfully established.");
+            console.log("[AI Scanner]: All 7 volatility market streams successfully established!");
         };
 
         initializeAllMarkets();
 
         return () => {
-            console.log("[AI Scanner]: Cleaning up multi-market SDK streams...");
+            console.log("[AI Scanner]: Cleaning up multi-market streams...");
             activeUnsubscribers.forEach(unsub => {
                 try { unsub(); } catch (e) {}
             });
