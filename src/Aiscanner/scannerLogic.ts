@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/scannerLogic.ts (WITH LIVE TICK LOGGING)
+// FILE: src/Aiscanner/scannerLogic.ts (FIXED ACTIVE MOMENTUM)
 // ==========================================
 import { Strategy, INITIAL_STRATEGIES } from './strategies';
 
@@ -82,34 +82,38 @@ export class ScannerLogic {
         const history = this.directionHistory[symbol];
         const isConfluent = history.length >= 3 && history.slice(-3).every(d => d === liveDirection);
 
-        let marketMomentum = 60; // Clean baseline
-        if (prices.length >= 5) {
-            const windowSize = Math.min(prices.length, 10);
+        // Dynamic starting baseline that reacts from the 2nd tick onwards
+        let marketMomentum = 62; 
+        
+        if (prices.length >= 2) {
+            const windowSize = Math.min(prices.length, 8);
             const oldestInWindow = prices[prices.length - windowSize];
             const priceDelta = latestPrice - oldestInWindow;
-            const percentageChange = (priceDelta / oldestInWindow) * 100;
+            const percentageChange = oldestInWindow !== 0 ? (priceDelta / oldestInWindow) * 100 : 0;
             
-            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 6000 : 4500;
+            // Scaled multipliers to ensure tick micro-movements trigger visible score changes
+            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 9000 : 7000;
             const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
-            const confluenceBonus = isConfluent ? 15 : 0;
+            const confluenceBonus = isConfluent ? 12 : 0;
             
-            // Allow market momentum to climb naturally up to 97% on strong trends
-            marketMomentum = Math.min(97, Math.max(45, 60 + rawMagnitude + confluenceBonus));
+            // Micro-jitter prevents scores from flatlining during tight consolidation ranges
+            const liveJitter = (prices.length % 2 === 0) ? 1.5 : -1.5;
+
+            marketMomentum = Math.min(97, Math.max(52, 65 + rawMagnitude + confluenceBonus + liveJitter));
         }
 
         let highestCalculatedScore = 0;
         let topStrategyId = '';
 
         this.strategies = this.strategies.map((strat, index) => {
-            // Keep top strategy untouched; minor natural spacing for others
             const spreadOffset = (index === 0) ? 0 : (index * 2);
-            const microNoise = (Math.sin(prices.length + index) * 2);
+            const microNoise = Math.sin(prices.length + index) * 1.5;
 
             let strategySpecificScore = Math.round(
                 marketMomentum - spreadOffset + microNoise
             );
 
-            strategySpecificScore = Math.min(97, Math.max(42, strategySpecificScore));
+            strategySpecificScore = Math.min(97, Math.max(45, strategySpecificScore));
 
             const stratId = strat.id || strat.name;
             if (strategySpecificScore > highestCalculatedScore) {
@@ -135,8 +139,8 @@ export class ScannerLogic {
             }
         }
 
-        // Trigger new sticky signal when sweet spot (>= 89) is met with active confluence
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isConfluent && topStrategyId) {
+        // Trigger new sticky signal when sweet spot (>= 88) is met with active confluence
+        if (!this.activeSignalStrategyId && highestCalculatedScore >= 88 && isConfluent && topStrategyId) {
             this.activeSignalStrategyId = topStrategyId;
         }
 
