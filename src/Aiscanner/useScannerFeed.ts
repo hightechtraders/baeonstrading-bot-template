@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/useScannerFeed.ts (FIXED SINGLE-RUN MULTI-MARKET)
+// FILE: src/Aiscanner/useScannerFeed.ts (PARALLEL JSON-RPC MULTI-MARKET)
 // ==========================================
 import { useEffect } from 'react';
 import { ScannerLogic } from './scannerLogic';
@@ -29,50 +29,68 @@ export const useScannerFeed = () => {
 
         window.addEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
 
-        let activeUnsubscribeFunctions: (() => void)[] = [];
         let isInitialized = false;
 
         const initializeAllMarkets = async () => {
             if (isInitialized) return;
             isInitialized = true;
 
-            // Wait until WebSocket is fully open
-            while (api_base?.api?.connection?.readyState !== WebSocket.OPEN) {
+            // Wait until WebSocket connection is fully open
+            while (!api_base?.api?.connection || api_base.api.connection.readyState !== WebSocket.OPEN) {
                 await delay(300);
             }
 
-            console.log("[AI Scanner]: WebSocket open. Sequentially subscribing to all 7 markets...");
+            console.log("[AI Scanner]: WebSocket open. Dispatching multi-market tick subscriptions...");
 
+            // Listen to global raw socket messages to catch incoming ticks for all 7 symbols
+            const rawConnection = api_base?.api?.connection;
+            const globalMessageListener = (event: MessageEvent) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data?.msg_type === 'tick' && data?.tick) {
+                        window.dispatchEvent(new CustomEvent('deriv_live_tick', {
+                            detail: { 
+                                symbol: data.tick.symbol, 
+                                price: Number(data.tick.quote) 
+                            }
+                        }));
+                    }
+                } catch (e) {}
+            };
+
+            if (rawConnection && typeof rawConnection.addEventListener === 'function') {
+                rawConnection.addEventListener('message', globalMessageListener);
+            }
+
+            // Send explicit subscription request for each market
             for (const symbolKey of ScannerLogic.SCANNER_MARKETS) {
                 try {
-                    const unsubFn = api_base.api.subscribeToTick(symbolKey, (tickData: any) => {
-                        if (tickData?.tick) {
-                            window.dispatchEvent(new CustomEvent('deriv_live_tick', {
-                                detail: { symbol: tickData.tick.symbol, price: Number(tickData.tick.quote) }
-                            }));
-                        }
-                    });
-
-                    if (typeof unsubFn === 'function') {
-                        activeUnsubscribeFunctions.push(unsubFn);
+                    if (typeof api_base?.api?.send === 'function') {
+                        await api_base.api.send({
+                            ticks: symbolKey,
+                            subscribe: 1
+                        });
                     }
-                    await delay(200); // Stable 200ms spacing to prevent socket congestion
+                    await delay(200); // Stagger requests slightly to prevent rate limits
                 } catch (subErr) {
                     console.error(`Sub error for ${symbolKey}:`, subErr);
                 }
             }
-            console.log("[AI Scanner]: All 7 multi-asset pipelines successfully established.");
+            console.log("[AI Scanner]: All 7 multi-asset pipelines dispatched successfully.");
         };
 
         initializeAllMarkets();
 
         return () => {
             window.removeEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
-            console.log("[AI Scanner]: Cleaning up multi-market subscriptions...");
-            activeUnsubscribeFunctions.forEach((unsubscribe) => {
-                try { unsubscribe(); } catch (e) {}
+            console.log("[AI Scanner]: Cleaning up multi-market feeds...");
+            
+            // Optional: Unsubscribe from markets on cleanup to keep socket clean
+            ScannerLogic.SCANNER_MARKETS.forEach(symbolKey => {
+                try {
+                    api_base?.api?.send({ forget_all: 'ticks' }).catch(() => {});
+                } catch (e) {}
             });
-            activeUnsubscribeFunctions = [];
         };
     }, []);
 };
