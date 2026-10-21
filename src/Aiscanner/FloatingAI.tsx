@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/FloatingAI.tsx (PART 1)
+// FILE: src/Aiscanner/FloatingAI.tsx
 // ==========================================
 import React, { useState, useEffect, useRef } from 'react';
 import { ScannerBridge } from './scannerBridge';
@@ -13,12 +13,11 @@ export const FloatingAI: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [strategies, setStrategies] = useState<Strategy[]>(INITIAL_STRATEGIES);
   
-  const [signalBannerText, setSignalBannerText] = useState<string>("🔍 Listening for Live Deriv Ticks...");
+  const [signalBannerText, setSignalBannerText] = useState<string>("🔍 Listening for Live Multi-Market Ticks...");
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
   const [isSweetSpot, setIsSweetSpot] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
 
-  // Capital Preservation State Tracker: Limit to exactly 6 trades maximum per session
   const [sessionRuns, setSessionRuns] = useState<number>(0);
   const MAX_RUNS_PER_SESSION = 6;
 
@@ -26,13 +25,8 @@ export const FloatingAI: React.FC = () => {
   const isScanningPhaseRef = useRef<boolean>(true);
   const sweetSpotStreakRef = useRef<number>(0);
 
-  useEffect(() => {
-    isOpenRef.current = isOpen;
-  }, [isOpen]);
-
-  useEffect(() => {
-    isScanningPhaseRef.current = isScanningPhase;
-  }, [isScanningPhase]);
+  useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+  useEffect(() => { isScanningPhaseRef.current = isScanningPhase; }, [isScanningPhase]);
 
   useEffect(() => {
     const handleStrategiesUpdated = (e: CustomEvent) => {
@@ -40,15 +34,12 @@ export const FloatingAI: React.FC = () => {
       if (Array.isArray(updated) && updated.length > 0) {
         setStrategies(updated);
 
-        if (
-          isOpenRef.current && 
-          !isScanningPhaseRef.current && 
-          !isSignalLocked
-        ) {
+        if (isOpenRef.current && !isScanningPhaseRef.current && !isSignalLocked) {
           const sorted = [...updated].sort((a, b) => b.confidence - a.confidence);
-          const topStrat = sorted[0];
+          const topStrat = sorted[0]; // CRITICAL FIX: Proper array element target wrapper extract
 
-          const isHighConviction = topStrat && topStrat.confidence >= 78 && topStrat.confidence <= 96;
+          // UNBOUNDED: Keep banners locked up all the way through 97% max ceilings
+          const isHighConviction = topStrat && topStrat.confidence >= 78;
 
           if (isHighConviction) {
             sweetSpotStreakRef.current += 1;
@@ -98,49 +89,32 @@ export const FloatingAI: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
-// ==========================================
-// FILE: src/Aiscanner/FloatingAI.tsx (PART 2)
-// ==========================================
 
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
 
-  // Instantly loads the strategy, checks constraints, and fires execution loops
   const handleRunBot = (strat: Strategy) => {
-    // ENFORCEMENT: Terminate loop immediately if your rule-of-6 cap has been breached
     if (sessionRuns >= MAX_RUNS_PER_SESSION) {
-        console.warn("[AI Circuit Breaker]: Session cap active. Restricting further execution.");
         setSignalBannerText("⚠️ CRITICAL DRAWDOWN SHIELD: Session limit of 6 runs reached!");
         return;
     }
 
-    // 1. Increment run state safely
     setSessionRuns(prev => prev + 1);
-
-    // 2. Load parameters into Blockly workspace variables
     ScannerBridge.loadStrategyToWorkspace(strat);
     setIsOpen(false);
 
-    // 3. Programmatically click the template workspace "Run" button after DOM mount frame clear
     setTimeout(() => {
       const allButtons = Array.from(document.querySelectorAll('button'));
       const targetRunBtn = allButtons.find(b => b.textContent?.trim() === 'Run');
-      
       if (targetRunBtn instanceof HTMLElement) {
         targetRunBtn.click();
-        console.log(`[AI Run Sequence]: Fired execution #${sessionRuns + 1} for ${strat.name}`);
       }
     }, 100);
   };
 
   return (
     <div className="floating-ai-container">
-      <button 
-        className="dancing-orb-wrapper"
-        onClick={() => setIsOpen(true)}
-      >
-        <div className="dancing-orb-inner">
-          🤖 AI
-        </div>
+      <button className="dancing-orb-wrapper" onClick={() => setIsOpen(true)}>
+        <div className="dancing-orb-inner">🤖 AI</div>
       </button>
 
       {isOpen && (
@@ -154,10 +128,7 @@ export const FloatingAI: React.FC = () => {
               <button className="close-btn" onClick={() => setIsOpen(false)}>×</button>
             </div>
             
-            <div 
-              id="ai-signal-banner"
-              className={`signal-banner ${isSignalLocked ? 'locked' : isSweetSpot ? 'sweet-spot' : ''}`}
-            >
+            <div id="ai-signal-banner" className={`signal-banner ${isSignalLocked ? 'locked' : isSweetSpot ? 'sweet-spot' : ''}`}>
               {signalBannerText}
             </div>
 
@@ -178,10 +149,7 @@ export const FloatingAI: React.FC = () => {
                     const isSessionCapBreached = sessionRuns >= MAX_RUNS_PER_SESSION;
 
                     return (
-                      <div 
-                        key={key} 
-                        className={`strategy-card ${isGlobalWinner ? 'top-card' : ''}`}
-                      >
+                      <div key={key} className={`strategy-card ${isGlobalWinner ? 'top-card' : ''}`}>
                         {isGlobalWinner && (
                           <div className="global-winner-meta">
                             <span>⭐ GLOBAL WINNER</span>
@@ -195,11 +163,7 @@ export const FloatingAI: React.FC = () => {
                             <strong>{strat.name}</strong>
                             <div className="card-tags-row">
                               <span className="market-tag">{strat.market}</span>
-                              {strat.direction && (
-                                <span className={`direction-tag ${strat.direction.toLowerCase()}`}>
-                                  {strat.direction}
-                                </span>
-                              )}
+                              {strat.direction && <span className={`direction-tag ${strat.direction.toLowerCase()}`}>{strat.direction}</span>}
                             </div>
                           </div>
                           <span className={isGlobalWinner ? "badge-high" : "badge-medium"}>
@@ -226,7 +190,6 @@ export const FloatingAI: React.FC = () => {
                 </div>
               </>
             )}
-
           </div>
         </div>
       )}
