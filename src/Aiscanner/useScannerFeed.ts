@@ -67,10 +67,16 @@ export const useScannerFeed = () => {
                 if (!isMounted) return;
                 try {
                     const data = JSON.parse(event.data);
+                    
+                    // 🔍 Debugging: Log full message type to see subscription acknowledgments or errors
+                    if (data?.msg_type) {
+                        console.log(`📥 [WS Message]: msg_type -> ${data.msg_type}`, data);
+                    }
+
                     const tickData = data?.tick || data?.subscription?.tick;
                     if (data?.msg_type === 'tick' && tickData) {
-                        // 🔍 This will now log ticks from ALL 7 markets concurrently in your console
-                        console.log(`📡 [Tick Stream]: ${tickData.symbol} -> ${tickData.quote}`);
+                        // 📡 Log incoming ticks from ALL markets concurrently
+                        console.log(`📡 [Tick Stream Ingest]: Symbol -> ${tickData.symbol} | Price -> ${tickData.quote}`);
                         
                         window.dispatchEvent(new CustomEvent('deriv_live_tick', {
                             detail: { 
@@ -79,7 +85,9 @@ export const useScannerFeed = () => {
                             }
                         }));
                     }
-                } catch (e) {}
+                } catch (e) {
+                    console.error("Failed to parse incoming socket message:", e);
+                }
             };
 
             scannerSocket.onerror = (error) => {
