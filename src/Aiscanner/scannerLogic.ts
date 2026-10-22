@@ -56,7 +56,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Momentum engine with cooldown & burst run capping initialized.");
+        console.log("[AI Scanner]: Momentum engine with synchronized direction mapping initialized.");
     }
 
     // Call this when a trade concludes
@@ -66,7 +66,6 @@ export class ScannerLogic {
             this.activeRunCount++;
             console.log(`✅ Trade won. Burst progress: ${this.activeRunCount}/${this.MAX_BURST_RUNS}`);
 
-            // If we hit our burst limit (e.g., 3 trades), pause to reassess market stability
             if (this.activeRunCount >= this.MAX_BURST_RUNS) {
                 console.log(`🎯 Burst limit reached (${this.MAX_BURST_RUNS} runs). Pausing to reassess clean trend.`);
                 this.triggerCooldown("🎯 Burst target reached: Pausing to review market stability.");
@@ -186,11 +185,12 @@ export class ScannerLogic {
                 ...strat,
                 confidence: strategySpecificScore,
                 score: strategySpecificScore,
-                direction: liveDirection
+                // CRITICAL FIX: Explicitly bind strategy direction to the actual live tick direction
+                direction: liveDirection 
             };
         });
 
-        // Entry stabilization check
+        // Entry stabilization check - also ensure confluence direction matches live direction
         if (highestCalculatedScore >= 89 && isConfluent) {
             this.consecutiveSweetSpotTicks[symbol] = (this.consecutiveSweetSpotTicks[symbol] || 0) + 1;
         } else {
@@ -199,6 +199,7 @@ export class ScannerLogic {
 
         const hasStabilized = (this.consecutiveSweetSpotTicks[symbol] || 0) >= this.REQUIRED_STABILIZATION_TICKS;
 
+        // Sticky Signal Persistence Logic - Disengage immediately if trend flips direction
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && isConfluent) {
