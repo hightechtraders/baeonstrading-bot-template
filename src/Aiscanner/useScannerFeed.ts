@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/useScannerFeed.ts (DEDICATED SCANNER SOCKET FEED)
+// FILE: src/Aiscanner/useScannerFeed.ts (ROBUST HEARTBEAT FEED)
 // ==========================================
 import { useEffect } from 'react';
 import { ScannerLogic } from './scannerLogic';
@@ -9,6 +9,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 let isFeedInitialized = false;
 let scannerSocket: WebSocket | null = null;
+let pingInterval: any = null;
 
 export const useScannerFeed = () => {
     useEffect(() => {
@@ -33,19 +34,22 @@ export const useScannerFeed = () => {
 
         window.addEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
 
-        const initializeDedicatedSocket = async () => {
+        const initializeSocket = async () => {
             if (isFeedInitialized) return;
             isFeedInitialized = true;
 
-            const APP_ID = '34t7y3xkywoxWNnZuZFaB'; // Your official Deriv App ID
+            const APP_ID = '34t7y3xkywoxWNnZuZFaB';
             const wsUrl = `wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`;
 
-            console.log("[AI Scanner]: Opening dedicated multi-asset WebSocket connection...");
+            console.log("[AI Scanner]: Establishing persistent connection...");
             scannerSocket = new WebSocket(wsUrl);
 
             scannerSocket.onopen = async () => {
                 if (!isMounted) return;
-                console.log("[AI Scanner]: Socket open. Subscribing to all 7 markets...");
+                console.log("[AI Scanner]: Connected. Initializing market subscriptions & heartbeat...");
+
+                // Send a clear-all request first to wipe any stale subscriptions on the socket channel
+                scannerSocket?.send(JSON.stringify({ forget_all: 'ticks' }));
 
                 let requestIdCounter = 7000;
                 for (const symbolKey of ScannerLogic.SCANNER_MARKETS) {
@@ -59,11 +63,19 @@ export const useScannerFeed = () => {
                                 req_id: requestIdCounter
                             }));
                         }
-                        await delay(250); // Pacing delay to prevent throttling
-                    } catch (subErr) {
-                        console.error(`Sub error for ${symbolKey}:`, subErr);
+                        await delay(300);
+                    } catch (err) {
+                        console.error(`Sub error for ${symbolKey}:`, err);
                     }
                 }
+
+                // Keep connection alive every 30 seconds to prevent server timeouts
+                if (pingInterval) clearInterval(pingInterval);
+                pingInterval = setInterval(() => {
+                    if (scannerSocket && scannerSocket.readyState === WebSocket.OPEN) {
+                        scannerSocket.send(JSON.stringify({ ping: 1 }));
+                    }
+                }, 30000);
             };
 
             scannerSocket.onmessage = (event: MessageEvent) => {
@@ -88,17 +100,19 @@ export const useScannerFeed = () => {
             };
 
             scannerSocket.onclose = () => {
-                console.warn("[AI Scanner]: Socket closed. Reconnecting...");
+                console.warn("[AI Scanner]: Connection lost. Reconnecting in 3s...");
+                if (pingInterval) clearInterval(pingInterval);
                 isFeedInitialized = false;
-                setTimeout(initializeDedicatedSocket, 3000);
+                setTimeout(initializeSocket, 3000);
             };
         };
 
-        initializeDedicatedSocket();
+        initializeSocket();
 
         return () => {
             isMounted = false;
             isFeedInitialized = false;
+            if (pingInterval) clearInterval(pingInterval);
             window.removeEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
             if (scannerSocket) {
                 scannerSocket.close();
