@@ -12,7 +12,7 @@ export interface DerivTickResponse {
         id: string;
     };
 }
-     
+    
 export class ScannerLogic {
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
@@ -24,8 +24,9 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
+    // Sticky persistence state
     private activeSignalStrategyId: string | null = null;
-    private readonly DISENGAGE_THRESHOLD = 82;
+    private readonly DISENGAGE_THRESHOLD = 82; 
 
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
@@ -38,7 +39,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Clean multi-tick momentum engine initialized.");
+        console.log("[AI Scanner]: Robust multi-tick momentum engine initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -56,7 +57,7 @@ export class ScannerLogic {
         }
         this.priceBuffers[symbol].push(price);
         
-        // Expand buffer window for more accurate momentum reading (last 60 ticks)
+        // Maintain a healthy 60-tick rolling buffer per asset
         if (this.priceBuffers[symbol].length > 60) {
             this.priceBuffers[symbol].shift();
         }
@@ -67,44 +68,47 @@ export class ScannerLogic {
         const netDiff = latestPrice - prevPrice;
         const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
 
+        // Track directional history for robust confluence checking
         if (!this.directionHistory[symbol]) {
             this.directionHistory[symbol] = [];
         }
         this.directionHistory[symbol].push(liveDirection);
-        if (this.directionHistory[symbol].length > 10) {
+        if (this.directionHistory[symbol].length > 8) {
             this.directionHistory[symbol].shift();
         }
 
-        // IMPROVED CONFLUENCE: Require at least 5 out of the last 6 ticks to be in agreement
+        // ROBUST CONFLUENCE: Require at least 4 out of the last 5 ticks to agree (filters micro-whipsaws)
         const history = this.directionHistory[symbol];
-        const recentSlice = history.slice(-6);
+        const recentSlice = history.slice(-5);
         const matchingDirectionCount = recentSlice.filter(d => d === liveDirection).length;
-        const isConfluent = recentSlice.length >= 6 && matchingDirectionCount >= 5;
+        const isConfluent = recentSlice.length >= 5 && matchingDirectionCount >= 4;
 
-        let marketMomentum = 50; 
-        if (prices.length >= 15) {
-            const windowSize = 15;
+        let marketMomentum = 55; // Stable baseline
+        if (prices.length >= 10) {
+            const windowSize = Math.min(prices.length, 12);
             const oldestInWindow = prices[prices.length - windowSize];
             const priceDelta = latestPrice - oldestInWindow;
             const percentageChange = (priceDelta / oldestInWindow) * 100;
             
-            // Clean magnitude scaling without artificial sine-wave noise
-            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 4000 : 3000;
+            // Clean magnitude scaling tailored to volatility index point values
+            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 7500 : 5000;
             const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
-            const confluenceBonus = isConfluent ? 20 : 0;
+            const confluenceBonus = isConfluent ? 22 : 0;
             
-            marketMomentum = Math.min(96, Math.max(40, 50 + rawMagnitude + confluenceBonus));
+            // Allow momentum to naturally scale up to 96% on genuine sustained trends
+            marketMomentum = Math.min(96, Math.max(50, 55 + rawMagnitude + confluenceBonus));
         }
 
         let highestCalculatedScore = 0;
         let topStrategyId = '';
 
-        this.strategies = this.strategies.map((strat, index) => {
-            // Give each strategy unique evaluation characteristics based on its index/market
-            const marketMultiplier = strat.market === symbol ? 1.0 : 0.85;
+        this.strategies = this.strategies.map((strat) => {
+            // Contextual evaluation: Boost strategy score if its assigned market matches the live ticking symbol
+            const isMatchingMarket = (strat.market || '').toUpperCase() === symbol.toUpperCase();
+            const marketMultiplier = isMatchingMarket ? 1.0 : 0.88;
+
             let strategySpecificScore = Math.round(marketMomentum * marketMultiplier);
-            
-            strategySpecificScore = Math.min(95, Math.max(40, strategySpecificScore));
+            strategySpecificScore = Math.min(96, Math.max(45, strategySpecificScore));
 
             const stratId = strat.id || strat.name;
             if (strategySpecificScore > highestCalculatedScore) {
@@ -120,7 +124,7 @@ export class ScannerLogic {
             };
         });
 
-        // Sticky Signal Logic
+        // Sticky Signal Persistence Logic
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && isConfluent) {
@@ -130,8 +134,8 @@ export class ScannerLogic {
             }
         }
 
-        // Stricter Sweet Spot Threshold (>= 90) combined with deep 5/6 tick confluence
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 90 && isConfluent && topStrategyId) {
+        // Trigger new sticky signal when sweet spot (>= 89) is met with active confluence
+        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isConfluent && topStrategyId) {
             this.activeSignalStrategyId = topStrategyId;
         }
 
