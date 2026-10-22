@@ -8,7 +8,6 @@ import { api_base } from '@/external/bot-skeleton/services/api/api-base';
 const scanner = new ScannerLogic();
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Global execution flags to prevent re-triggering or socket duplication across tab changes
 let isFeedInitialized = false;
 let globalListenerAttached = false;
 
@@ -42,21 +41,23 @@ export const useScannerFeed = () => {
                 await delay(300);
             }
 
-            console.log("[AI Scanner]: WebSocket open. Initializing persistent multi-market feeds...");
+            console.log("[AI Scanner]: WebSocket open. Initializing parallel multi-market feeds...");
 
             const rawConnection = api_base?.api?.connection;
             
-            // Attach global message listener only once globally
+            // Attach global message listener once to catch ticks from all active subscriptions
             if (rawConnection && typeof rawConnection.addEventListener === 'function' && !globalListenerAttached) {
                 globalListenerAttached = true;
                 rawConnection.addEventListener('message', (event: MessageEvent) => {
                     try {
                         const data = JSON.parse(event.data);
-                        if (data?.msg_type === 'tick' && data?.tick) {
+                        // Catch both direct tick messages and subscription-wrapped tick streams
+                        const tickData = data?.tick || data?.subscription?.tick;
+                        if (data?.msg_type === 'tick' && tickData) {
                             window.dispatchEvent(new CustomEvent('deriv_live_tick', {
                                 detail: { 
-                                    symbol: data.tick.symbol, 
-                                    price: Number(data.tick.quote) 
+                                    symbol: tickData.symbol, 
+                                    price: Number(tickData.quote) 
                                 }
                             }));
                         }
@@ -64,30 +65,30 @@ export const useScannerFeed = () => {
                 });
             }
 
-            // Send explicit subscription request for each market
-            let requestIdCounter = 5000;
+            // Send explicit subscription request for each market with unique sub parameters
+            let requestIdCounter = 6000;
             for (const symbolKey of ScannerLogic.SCANNER_MARKETS) {
                 try {
                     if (typeof api_base?.api?.send === 'function') {
                         requestIdCounter++;
+                        // Use individual subscription requests per symbol
                         await api_base.api.send({
                             ticks: symbolKey,
                             subscribe: 1,
                             req_id: requestIdCounter
                         });
+                        console.log(`[AI Scanner]: Subscribed successfully to ${symbolKey}`);
                     }
-                    await delay(250);
+                    await delay(300); // Small pacing buffer between requests to prevent socket throttling
                 } catch (subErr) {
                     console.error(`Sub error for ${symbolKey}:`, subErr);
                 }
             }
-            console.log("[AI Scanner]: Persistent multi-asset pipelines active.");
+            console.log("[AI Scanner]: All 7 multi-asset pipelines active.");
         };
 
         initializeAllMarkets();
 
-        // CLEANUP NOTE: We intentionally remove `forget_all` here. 
-        // This ensures switching to the Charts tab or other views NEVER kills your data pipeline.
         return () => {
             window.removeEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
         };
