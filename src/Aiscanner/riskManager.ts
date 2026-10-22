@@ -1,5 +1,8 @@
-// src/Aiscanner/riskManager.ts
+// ==========================================
+// FILE: src/Aiscanner/riskManager.ts
+// ==========================================
 import { AudioAlerts } from './audioAlerts';
+import { ScannerBridge } from './scannerBridge'; // 🔑 Import ScannerBridge here
 
 export class RiskManager {
   private static monitoredStopLoss: number = 0;
@@ -98,6 +101,11 @@ export class RiskManager {
 
     const profit = parseFloat(contractNode.profit) || 0;
     const isWin = profit > 0;
+
+    // ==========================================
+    // 🔑 FEED OUTCOME STRAIGHT INTO SCANNER LOGIC
+    // ==========================================
+    ScannerBridge.recordTradeOutcome(isWin);
 
     // Track consecutive losses for martingale capping
     if (isWin) {
