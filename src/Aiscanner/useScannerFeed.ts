@@ -1,15 +1,14 @@
 // ==========================================
-// FILE: src/Aiscanner/useScannerFeed.ts (PERSISTENT GLOBAL FEED)
+// FILE: src/Aiscanner/useScannerFeed.ts (DEDICATED SCANNER SOCKET FEED)
 // ==========================================
 import { useEffect } from 'react';
 import { ScannerLogic } from './scannerLogic';
-import { api_base } from '@/external/bot-skeleton/services/api/api-base';
 
 const scanner = new ScannerLogic();
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 let isFeedInitialized = false;
-let globalListenerAttached = false;
+let scannerSocket: WebSocket | null = null;
 
 export const useScannerFeed = () => {
     useEffect(() => {
@@ -32,65 +31,72 @@ export const useScannerFeed = () => {
 
         window.addEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
 
-        const initializeAllMarkets = async () => {
+        const initializeDedicatedSocket = async () => {
             if (isFeedInitialized) return;
             isFeedInitialized = true;
 
-            // Wait until WebSocket connection is fully open
-            while (!api_base?.api?.connection || api_base.api.connection.readyState !== WebSocket.OPEN) {
-                await delay(300);
-            }
+            const APP_ID = '34t7y3xkywoxWNnZuZFaB'; // Your official Deriv App ID
+            const wsUrl = `wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`;
 
-            console.log("[AI Scanner]: WebSocket open. Initializing parallel multi-market feeds...");
+            console.log("[AI Scanner]: Opening dedicated multi-asset WebSocket connection...");
+            scannerSocket = new WebSocket(wsUrl);
 
-            const rawConnection = api_base?.api?.connection;
-            
-            // Attach global message listener once to catch ticks from all active subscriptions
-            if (rawConnection && typeof rawConnection.addEventListener === 'function' && !globalListenerAttached) {
-                globalListenerAttached = true;
-                rawConnection.addEventListener('message', (event: MessageEvent) => {
+            scannerSocket.onopen = async () => {
+                console.log("[AI Scanner]: Dedicated socket open. Subscribing to all 7 markets in parallel...");
+
+                let requestIdCounter = 7000;
+                for (const symbolKey of ScannerLogic.SCANNER_MARKETS) {
                     try {
-                        const data = JSON.parse(event.data);
-                        // Catch both direct tick messages and subscription-wrapped tick streams
-                        const tickData = data?.tick || data?.subscription?.tick;
-                        if (data?.msg_type === 'tick' && tickData) {
-                            window.dispatchEvent(new CustomEvent('deriv_live_tick', {
-                                detail: { 
-                                    symbol: tickData.symbol, 
-                                    price: Number(tickData.quote) 
-                                }
+                        if (scannerSocket && scannerSocket.readyState === WebSocket.OPEN) {
+                            requestIdCounter++;
+                            scannerSocket.send(JSON.stringify({
+                                ticks: symbolKey,
+                                subscribe: 1,
+                                req_id: requestIdCounter
                             }));
+                            console.log(`[AI Scanner]: Subscribed successfully to ${symbolKey}`);
                         }
-                    } catch (e) {}
-                });
-            }
-
-            // Send explicit subscription request for each market with unique sub parameters
-            let requestIdCounter = 6000;
-            for (const symbolKey of ScannerLogic.SCANNER_MARKETS) {
-                try {
-                    if (typeof api_base?.api?.send === 'function') {
-                        requestIdCounter++;
-                        // Use individual subscription requests per symbol
-                        await api_base.api.send({
-                            ticks: symbolKey,
-                            subscribe: 1,
-                            req_id: requestIdCounter
-                        });
-                        console.log(`[AI Scanner]: Subscribed successfully to ${symbolKey}`);
+                        await delay(250); // Pacing buffer to prevent socket message saturation
+                    } catch (subErr) {
+                        console.error(`Sub error for ${symbolKey}:`, subErr);
                     }
-                    await delay(300); // Small pacing buffer between requests to prevent socket throttling
-                } catch (subErr) {
-                    console.error(`Sub error for ${symbolKey}:`, subErr);
                 }
-            }
-            console.log("[AI Scanner]: All 7 multi-asset pipelines active.");
+                console.log("[AI Scanner]: All 7 parallel market streams active.");
+            };
+
+            scannerSocket.onmessage = (event: MessageEvent) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    const tickData = data?.tick || data?.subscription?.tick;
+                    if (data?.msg_type === 'tick' && tickData) {
+                        window.dispatchEvent(new CustomEvent('deriv_live_tick', {
+                            detail: { 
+                                symbol: tickData.symbol, 
+                                price: Number(tickData.quote) 
+                            }
+                        }));
+                    }
+                } catch (e) {}
+            };
+
+            scannerSocket.onerror = (error) => {
+                console.error("[AI Scanner Socket Error]:", error);
+            };
+
+            scannerSocket.onclose = () => {
+                console.warn("[AI Scanner]: Dedicated socket closed. Reconnecting in 3 seconds...");
+                isFeedInitialized = false;
+                setTimeout(initializeDedicatedSocket, 3000);
+            };
         };
 
-        initializeAllMarkets();
+        initializeDedicatedSocket();
 
         return () => {
             window.removeEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
+            if (scannerSocket) {
+                scannerSocket.close();
+            }
         };
     }, []);
 };
