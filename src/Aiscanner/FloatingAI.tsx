@@ -5,6 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ScannerBridge } from './scannerBridge';
 import { Strategy, INITIAL_STRATEGIES } from './strategies';
 import { useScannerFeed } from './useScannerFeed'; 
+import { ScannerTickerBar } from './ScannerTickerBar'; // 🔑 Import the new mini ticker bar
 import './FloatingAI.css';
 
 export const FloatingAI: React.FC = () => {
@@ -134,6 +135,9 @@ export const FloatingAI: React.FC = () => {
               <button className="close-btn" onClick={() => setIsOpen(false)}>×</button>
             </div>
             
+            {/* 🔑 Live Mini Price Ticker Bar embedded right here for instant visual validation */}
+            <ScannerTickerBar />
+
             <div 
               id="ai-signal-banner"
               className={`signal-banner ${isSignalLocked ? 'locked' : isSweetSpot ? 'sweet-spot' : ''}`}
