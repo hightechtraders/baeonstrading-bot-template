@@ -7,12 +7,12 @@ import { ScannerLogic } from './scannerLogic';
 const scanner = new ScannerLogic();
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-let isFeedInitialized = false;
-let scannerSocket: WebSocket | null = null;
-
 export const useScannerFeed = () => {
     useEffect(() => {
         if (typeof window === 'undefined') return;
+
+        let isMounted = true;
+        let scannerSocket: WebSocket | null = null;
 
         const handleLiveTick = (event: CustomEvent) => {
             const { symbol, price } = event.detail || {};
@@ -32,9 +32,6 @@ export const useScannerFeed = () => {
         window.addEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
 
         const initializeDedicatedSocket = async () => {
-            if (isFeedInitialized) return;
-            isFeedInitialized = true;
-
             const APP_ID = '34t7y3xkywoxWNnZuZFaB'; // Your official Deriv App ID
             const wsUrl = `wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`;
 
@@ -42,10 +39,12 @@ export const useScannerFeed = () => {
             scannerSocket = new WebSocket(wsUrl);
 
             scannerSocket.onopen = async () => {
+                if (!isMounted) return;
                 console.log("[AI Scanner]: Dedicated socket open. Subscribing to all 7 markets in parallel...");
 
                 let requestIdCounter = 7000;
                 for (const symbolKey of ScannerLogic.SCANNER_MARKETS) {
+                    if (!isMounted) break;
                     try {
                         if (scannerSocket && scannerSocket.readyState === WebSocket.OPEN) {
                             requestIdCounter++;
@@ -56,7 +55,7 @@ export const useScannerFeed = () => {
                             }));
                             console.log(`[AI Scanner]: Subscribed successfully to ${symbolKey}`);
                         }
-                        await delay(250); // Pacing buffer to prevent socket message saturation
+                        await delay(300); // Clean pacing buffer
                     } catch (subErr) {
                         console.error(`Sub error for ${symbolKey}:`, subErr);
                     }
@@ -65,10 +64,14 @@ export const useScannerFeed = () => {
             };
 
             scannerSocket.onmessage = (event: MessageEvent) => {
+                if (!isMounted) return;
                 try {
                     const data = JSON.parse(event.data);
                     const tickData = data?.tick || data?.subscription?.tick;
                     if (data?.msg_type === 'tick' && tickData) {
+                        // 🔍 This will now log ticks from ALL 7 markets concurrently in your console
+                        console.log(`📡 [Tick Stream]: ${tickData.symbol} -> ${tickData.quote}`);
+                        
                         window.dispatchEvent(new CustomEvent('deriv_live_tick', {
                             detail: { 
                                 symbol: tickData.symbol, 
@@ -84,15 +87,14 @@ export const useScannerFeed = () => {
             };
 
             scannerSocket.onclose = () => {
-                console.warn("[AI Scanner]: Dedicated socket closed. Reconnecting in 3 seconds...");
-                isFeedInitialized = false;
-                setTimeout(initializeDedicatedSocket, 3000);
+                console.warn("[AI Scanner]: Dedicated socket closed.");
             };
         };
 
         initializeDedicatedSocket();
 
         return () => {
+            isMounted = false;
             window.removeEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
             if (scannerSocket) {
                 scannerSocket.close();
