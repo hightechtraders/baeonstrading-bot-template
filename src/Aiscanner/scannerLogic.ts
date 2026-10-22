@@ -24,6 +24,10 @@ export class ScannerLogic {
     private priceBuffers: { [symbol: string]: number[] } = {};
     private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
+    // Entry Stabilization Tracking to prevent chasing fast flashes
+    private consecutiveSweetSpotTicks: { [symbol: string]: number } = {};
+    private readonly REQUIRED_STABILIZATION_TICKS = 3; // Must hold high score for 3 ticks to confirm entry
+
     // Sticky persistence state
     private activeSignalStrategyId: string | null = null;
     private readonly DISENGAGE_THRESHOLD = 82; 
@@ -39,7 +43,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Robust multi-tick momentum engine initialized.");
+        console.log("[AI Scanner]: Robust multi-tick momentum engine with entry confirmation initialized.");
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -77,7 +81,7 @@ export class ScannerLogic {
             this.directionHistory[symbol].shift();
         }
 
-        // ROBUST CONFLUENCE: Require at least 4 out of the last 5 ticks to agree (filters micro-whipsaws)
+        // ROBUST CONFLUENCE: Require at least 4 out of the last 5 ticks to agree
         const history = this.directionHistory[symbol];
         const recentSlice = history.slice(-5);
         const matchingDirectionCount = recentSlice.filter(d => d === liveDirection).length;
@@ -95,7 +99,6 @@ export class ScannerLogic {
             const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
             const confluenceBonus = isConfluent ? 22 : 0;
             
-            // Allow momentum to naturally scale up to 96% on genuine sustained trends
             marketMomentum = Math.min(96, Math.max(50, 55 + rawMagnitude + confluenceBonus));
         }
 
@@ -103,7 +106,6 @@ export class ScannerLogic {
         let topStrategyId = '';
 
         this.strategies = this.strategies.map((strat) => {
-            // Contextual evaluation: Boost strategy score if its assigned market matches the live ticking symbol
             const isMatchingMarket = (strat.market || '').toUpperCase() === symbol.toUpperCase();
             const marketMultiplier = isMatchingMarket ? 1.0 : 0.88;
 
@@ -124,6 +126,19 @@ export class ScannerLogic {
             };
         });
 
+        // ==========================================
+        // ENTRY STABILIZATION & PULLBACK FILTER GATE
+        // ==========================================
+        if (highestCalculatedScore >= 89 && isConfluent) {
+            // Increment stabilization counter for this asset/signal
+            this.consecutiveSweetSpotTicks[symbol] = (this.consecutiveSweetSpotTicks[symbol] || 0) + 1;
+        } else {
+            // Reset if momentum drops or breaks confluence
+            this.consecutiveSweetSpotTicks[symbol] = 0;
+        }
+
+        const hasStabilized = (this.consecutiveSweetSpotTicks[symbol] || 0) >= this.REQUIRED_STABILIZATION_TICKS;
+
         // Sticky Signal Persistence Logic
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
@@ -134,8 +149,8 @@ export class ScannerLogic {
             }
         }
 
-        // Trigger new sticky signal when sweet spot (>= 89) is met with active confluence
-        if (!this.activeSignalStrategyId && highestCalculatedScore >= 89 && isConfluent && topStrategyId) {
+        // Only trigger the sticky signal when the sweet spot has genuinely stabilized (held for 3+ ticks)
+        if (!this.activeSignalStrategyId && hasStabilized && topStrategyId) {
             this.activeSignalStrategyId = topStrategyId;
         }
 
