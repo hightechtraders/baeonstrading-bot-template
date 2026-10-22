@@ -1,4 +1,6 @@
-// src/Aiscanner/scannerBridge.ts
+// ==========================================
+// FILE: src/Aiscanner/scannerBridge.ts
+// ==========================================
 import { RiskManager } from './riskManager';
 import { ScannerLogic, DerivTickResponse } from './scannerLogic';
 
@@ -55,6 +57,17 @@ export class ScannerBridge {
     };
 
     return symbolMap[clean] || '1HZ100V';
+  }
+
+  /**
+   * ==========================================
+   * BRIDGE METHOD: RECORD TRADE OUTCOME
+   * ==========================================
+   * Feeds trade wins/losses straight into ScannerLogic 
+   * to trigger circuit breakers, loss streaks, and cooldowns.
+   */
+  public static recordTradeOutcome(isWin: boolean) {
+    ScannerBridge.scannerLogicInstance.recordTradeOutcome(isWin);
   }
 
   /**
