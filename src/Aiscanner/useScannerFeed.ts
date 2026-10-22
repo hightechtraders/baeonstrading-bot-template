@@ -1,17 +1,20 @@
 // ==========================================
-// FILE: src/Aiscanner/useScannerFeed.ts (MULTI-SOCKET MULTI-ASSET FEED)
+// FILE: src/Aiscanner/useScannerFeed.ts (DEDICATED SCANNER SOCKET FEED)
 // ==========================================
 import { useEffect } from 'react';
 import { ScannerLogic } from './scannerLogic';
 
 const scanner = new ScannerLogic();
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+let isFeedInitialized = false;
+let scannerSocket: WebSocket | null = null;
 
 export const useScannerFeed = () => {
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
         let isMounted = true;
-        const activeSockets: WebSocket[] = [];
 
         const handleLiveTick = (event: CustomEvent) => {
             const { symbol, price } = event.detail || {};
@@ -30,32 +33,46 @@ export const useScannerFeed = () => {
 
         window.addEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
 
-        const APP_ID = '34t7y3xkywoxWNnZuZFaB'; // Your official Deriv App ID
+        const initializeDedicatedSocket = async () => {
+            if (isFeedInitialized) return;
+            isFeedInitialized = true;
 
-        // Open an independent isolated WebSocket connection for EACH market
-        ScannerLogic.SCANNER_MARKETS.forEach((symbolKey, index) => {
+            const APP_ID = '34t7y3xkywoxWNnZuZFaB'; // Your official Deriv App ID
             const wsUrl = `wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`;
-            const socket = new WebSocket(wsUrl);
-            activeSockets.push(socket);
 
-            socket.onopen = () => {
+            console.log("[AI Scanner]: Opening dedicated multi-asset WebSocket connection...");
+            scannerSocket = new WebSocket(wsUrl);
+
+            scannerSocket.onopen = async () => {
                 if (!isMounted) return;
-                console.log(`[AI Scanner Socket ${index + 1}]: Opened for ${symbolKey}`);
-                socket.send(JSON.stringify({
-                    ticks: symbolKey,
-                    subscribe: 1,
-                    req_id: 8000 + index
-                }));
+                console.log("[AI Scanner]: Socket open. Subscribing to all 7 markets...");
+
+                let requestIdCounter = 7000;
+                for (const symbolKey of ScannerLogic.SCANNER_MARKETS) {
+                    if (!isMounted) break;
+                    try {
+                        if (scannerSocket && scannerSocket.readyState === WebSocket.OPEN) {
+                            requestIdCounter++;
+                            scannerSocket.send(JSON.stringify({
+                                ticks: symbolKey,
+                                subscribe: 1,
+                                req_id: requestIdCounter
+                            }));
+                        }
+                        await delay(250); // Pacing delay to prevent throttling
+                    } catch (subErr) {
+                        console.error(`Sub error for ${symbolKey}:`, subErr);
+                    }
+                }
             };
 
-            socket.onmessage = (event: MessageEvent) => {
+            scannerSocket.onmessage = (event: MessageEvent) => {
                 if (!isMounted) return;
                 try {
                     const data = JSON.parse(event.data);
                     const tickData = data?.tick || data?.subscription?.tick;
+                    
                     if (data?.msg_type === 'tick' && tickData) {
-                        console.log(`📡 [Tick Stream Ingest]: Symbol -> ${tickData.symbol} | Price -> ${tickData.quote}`);
-                        
                         window.dispatchEvent(new CustomEvent('deriv_live_tick', {
                             detail: { 
                                 symbol: tickData.symbol, 
@@ -66,20 +83,26 @@ export const useScannerFeed = () => {
                 } catch (e) {}
             };
 
-            socket.onerror = (err) => {
-                console.error(`[AI Scanner Error for ${symbolKey}]:`, err);
+            scannerSocket.onerror = (error) => {
+                console.error("[AI Scanner Socket Error]:", error);
             };
-        });
+
+            scannerSocket.onclose = () => {
+                console.warn("[AI Scanner]: Socket closed. Reconnecting...");
+                isFeedInitialized = false;
+                setTimeout(initializeDedicatedSocket, 3000);
+            };
+        };
+
+        initializeDedicatedSocket();
 
         return () => {
             isMounted = false;
+            isFeedInitialized = false;
             window.removeEventListener('deriv_live_tick' as any, handleLiveTick as EventListener);
-            // Clean up and close all 7 background sockets on unmount
-            activeSockets.forEach(socket => {
-                if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-                    socket.close();
-                }
-            });
+            if (scannerSocket) {
+                scannerSocket.close();
+            }
         };
     }, []);
 };
