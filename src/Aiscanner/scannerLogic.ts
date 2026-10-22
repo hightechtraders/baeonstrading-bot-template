@@ -109,6 +109,9 @@ export class ScannerLogic {
     }
 
     public processLiveTick(symbol: string, price: number): Strategy[] {
+        // 🔑 Live multi-market tick inspection log
+        console.log(`📡 [Tick Ingested] Symbol: ${symbol} | Price: ${price}`);
+
         // Handle Cooldown Tick Countdown
         if (this.cooldownTicksRemaining > 0) {
             this.cooldownTicksRemaining--;
