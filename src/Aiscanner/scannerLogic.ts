@@ -32,6 +32,14 @@ export class ScannerLogic {
     private activeSignalStrategyId: string | null = null;
     private readonly DISENGAGE_THRESHOLD = 82; 
 
+    // ==========================================
+    // COOLDOWN & LOSS PROTECTION STATE
+    // ==========================================
+    private consecutiveLosses: number = 0;
+    private readonly MAX_CONSECUTIVE_LOSSES = 2; // Trip circuit breaker after 2 losses
+    private cooldownTicksRemaining: number = 0;
+    private readonly COOLDOWN_DURATION_TICKS = 15; // Wait out 15 ticks of market stabilization after a trigger
+
     public static readonly SCANNER_MARKETS: string[] = [
         '1HZ50V',  // Volatility 50 (1s) Index
         '1HZ75V',  // Volatility 75 (1s) Index
@@ -43,7 +51,40 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Robust multi-tick momentum engine with entry confirmation initialized.");
+        console.log("[AI Scanner]: Robust multi-tick momentum engine with cooldown & stabilization timer initialized.");
+    }
+
+    // Call this method from your workspace when a trade concludes to feed results back into the scanner
+    public recordTradeOutcome(isWin: boolean) {
+        if (isWin) {
+            this.consecutiveLosses = 0;
+            console.log("✅ Trade won. Resetting loss streak.");
+        } else {
+            this.consecutiveLosses += 1;
+            console.warn(`⚠️ Trade lost. Consecutive losses: ${this.consecutiveLosses}/${this.MAX_CONSECUTIVE_LOSSES}`);
+
+            if (this.consecutiveLosses >= this.MAX_CONSECUTIVE_LOSSES) {
+                console.error(`🛡️ Circuit Breaker Triggered: Enforcing a ${this.COOLDOWN_DURATION_TICKS}-tick market cooldown.`);
+                
+                // 1. Activate cooldown timer
+                this.cooldownTicksRemaining = this.COOLDOWN_DURATION_TICKS;
+                this.activeSignalStrategyId = null;
+
+                // 2. Automatically stop the bot workspace
+                const stopBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.trim() === 'Stop');
+                if (stopBtn instanceof HTMLElement) {
+                    stopBtn.click();
+                }
+
+                // 3. Dispatch alert to UI banner
+                window.dispatchEvent(new CustomEvent('ai-circuit-breaker-triggered', {
+                    detail: { message: `🛡️ Cooldown Active: Waiting out choppy market (${this.COOLDOWN_DURATION_TICKS} ticks remaining)...` }
+                }));
+
+                // Reset loss streak counter so it arms fresh after cooldown
+                this.consecutiveLosses = 0;
+            }
+        }
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -56,6 +97,21 @@ export class ScannerLogic {
     }
 
     public processLiveTick(symbol: string, price: number): Strategy[] {
+        // Handle Cooldown Tick Countdown
+        if (this.cooldownTicksRemaining > 0) {
+            this.cooldownTicksRemaining--;
+            console.log(`⏳ Cooldown ticking down: ${this.cooldownTicksRemaining} ticks left...`);
+            
+            if (this.cooldownTicksRemaining === 0) {
+                window.dispatchEvent(new CustomEvent('ai-circuit-breaker-triggered', {
+                    detail: { message: `✅ Market Stabilized: Cooldown complete. Ready for new signals.` }
+                }));
+            }
+
+            // Return normal ranked strategies without locking signals during cooldown
+            return this.getSortedStrategies();
+        }
+
         if (!this.priceBuffers[symbol]) {
             this.priceBuffers[symbol] = [];
         }
