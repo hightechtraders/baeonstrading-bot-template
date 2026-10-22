@@ -24,25 +24,49 @@ self.onmessage = (event) => {
         socket.onmessage = (msgEvent) => {
             try {
                 const data = JSON.parse(msgEvent.data);
+                
+                // Log subscription confirmations or errors for debugging
+                if (data.error) {
+                    console.error(`[Worker Error for ${symbol}]:`, data.error.message);
+                    return;
+                }
+
                 const tickData = data?.tick || data?.subscription?.tick;
                 
                 if (data?.msg_type === 'tick' && tickData) {
+                    const resolvedSymbol = tickData.symbol || symbol;
+                    const resolvedQuote = Number(tickData.quote || tickData.ask || tickData.bid);
+
+                    if (isNaN(resolvedQuote)) return;
+
                     const updatedStrategies = scanner?.handleIncomingMessage({
                         msg_type: 'tick',
                         tick: { 
-                            symbol: tickData.symbol, 
-                            quote: Number(tickData.quote), 
-                            epoch: Math.floor(Date.now() / 1000), 
-                            id: `${tickData.symbol}-${Date.now()}` 
+                            symbol: resolvedSymbol, 
+                            quote: resolvedQuote, 
+                            epoch: tickData.epoch || Math.floor(Date.now() / 1000), 
+                            id: `${resolvedSymbol}-${Date.now()}` 
                         }
                     });
 
                     if (updatedStrategies && updatedStrategies.length > 0) {
-                        // Send scored strategies back to the main UI thread
-                        self.postMessage({ symbol, strategies: updatedStrategies });
+                        self.postMessage({ symbol: resolvedSymbol, strategies: updatedStrategies });
                     }
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.error(`[Worker Parse Exception for ${symbol}]:`, e);
+            }
         };
+
+        socket.onerror = (error) => {
+            console.error(`[WebSocket Error for ${symbol}]:`, error);
+        };
+    }
+
+    if (type === 'STOP_TRACKING') {
+        if (socket) {
+            socket.close();
+            socket = null;
+        }
     }
 };
