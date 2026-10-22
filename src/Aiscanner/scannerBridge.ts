@@ -10,6 +10,7 @@ export interface AIScannerPayload {
   durationUnit?: string;   
   stopLoss?: number;
   takeProfit?: number;
+  recoveryStep?: number; // Added recoveryStep property
 }
 
 export class ScannerBridge {
@@ -101,7 +102,8 @@ export class ScannerBridge {
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
       stopLoss: options?.stopLoss || strategy?.stopLoss || 150,
-      takeProfit: options?.takeProfit || strategy?.takeProfit || 100
+      takeProfit: options?.takeProfit || strategy?.takeProfit || 100,
+      recoveryStep: options?.recoveryStep || strategy?.recoveryStep || 3 // Set recovery step to 3
     };
 
     RiskManager.configure(payload.stopLoss, payload.takeProfit);
@@ -114,7 +116,10 @@ export class ScannerBridge {
     
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
-    const martingaleMultiplier = 2.4;
+    
+    // Updated Martingale multiplier to 1.4 and recovery step to 3
+    const martingaleMultiplier = 1.4;
+    const recoveryStep = payload.recoveryStep;
 
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
@@ -126,6 +131,7 @@ export class ScannerBridge {
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
           quickStrategy.setValue('size', martingaleMultiplier);
+          quickStrategy.setValue('recovery_step', recoveryStep); // Pass recovery step to quick strategy if supported
           
           if (payload.stopLoss !== undefined) {
             quickStrategy.setValue('loss', payload.stopLoss);
@@ -147,6 +153,7 @@ export class ScannerBridge {
           contract_type: storeContractType,
           type: storeType,
           size: martingaleMultiplier,
+          recovery_step: recoveryStep,
           loss: payload.stopLoss,
           stop_loss: payload.stopLoss,
           profit: payload.takeProfit,
