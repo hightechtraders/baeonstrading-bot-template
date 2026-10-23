@@ -63,11 +63,15 @@ export class ScannerBridge {
     const updatedStrategies = ScannerBridge.scannerLogicInstance.handleIncomingMessage(tickPayload);
 
     if (typeof window !== 'undefined') {
+      // Broadcast across all component listeners to ensure full compatibility
       window.dispatchEvent(new CustomEvent('ai-tick-received', {
         detail: { assetName: 'R_10', quote, strategies: updatedStrategies }
       }));
       window.dispatchEvent(new CustomEvent('deriv_scanner_updated', {
         detail: { assetName: 'R_10', quote, strategies: updatedStrategies }
+      }));
+      window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
+        detail: { strategies: updatedStrategies }
       }));
     }
   }
