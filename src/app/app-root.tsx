@@ -89,25 +89,23 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Twin-button handler: triggers the template's original working login button smoothly
+    // Login handler: triggers direct OAuth redirect to Deriv
     const handleLogin = () => {
-        const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
-        
-        if (originalLoginBtn) {
-            originalLoginBtn.click();
-        } else {
-            // Fallback to direct OAuth redirect if DOM isn't ready
-            const appId = '1089'; 
-            const redirectUrl = encodeURIComponent(window.location.origin + '/');
-            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
-        }
+        const appId = '1089'; 
+        const redirectUrl = encodeURIComponent(window.location.origin + '/');
+        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
     };
 
-    // If not authenticated, render landing page in a fixed full-screen container to cover all top gaps/headers
+    // Signup handler: opens Deriv's account creation portal safely in a new tab
+    const handleSignup = () => {
+        window.open('https://track.deriv.com/', '_blank');
+    };
+
+    // If not authenticated, render landing page in a fixed full-screen container with both actions
     if (!isAuthenticated) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
-                <LandingPage onLogin={handleLogin} />
+                <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
             </div>
         );
     }
