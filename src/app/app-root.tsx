@@ -1,3 +1,6 @@
+// ==========================================
+// FILE: src/app/app-root.tsx
+// ==========================================
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import ErrorBoundary from '@/components/error-component/error-boundary';
@@ -5,7 +8,7 @@ import ErrorComponent from '@/components/error-component/error-component';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
 import { TradingPreloader } from '@/components/trading-preloader/TradingPreloader';
-import { LandingPage } from '@/components/LandingPage'; // Import your landing page
+import { LandingPage } from '@/components/LandingPage';
 import './app-root.scss';
 
 const AppContent = lazy(() => import('./app-content'));
@@ -53,7 +56,6 @@ const AppRoot = () => {
 
     // Initialize API
     useEffect(() => {
-        // Automatically grab any token passed back in the URL query string from Deriv
         const urlParams = new URLSearchParams(window.location.search);
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
@@ -87,22 +89,31 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Handle the login button click from your landing page
+    // Twin-button handler: triggers the template's original working login button smoothly
     const handleLogin = () => {
-        // Use your numeric App ID or your template's built-in login trigger method here
-        const appId = '1089'; // Replace with your numeric Deriv App ID if not using public test ID
-        const redirectUrl = encodeURIComponent(window.location.origin + '/');
-        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
+        const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
+        
+        if (originalLoginBtn) {
+            originalLoginBtn.click();
+        } else {
+            // Fallback to direct OAuth redirect if DOM isn't ready
+            const appId = '1089'; 
+            const redirectUrl = encodeURIComponent(window.location.origin + '/');
+            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
+        }
     };
 
-    // If the user is not authenticated, show your gorgeous TraderScore landing page covering the screen
+    // If not authenticated, render landing page in a fixed full-screen container to cover all top gaps/headers
     if (!isAuthenticated) {
-        return <LandingPage onLogin={handleLogin} />;
+        return (
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
+                <LandingPage onLogin={handleLogin} />
+            </div>
+        );
     }
 
     if (!store || !is_api_initialized) return <AppRootLoader />;
 
-    // Once authenticated, your full trading workspace renders seamlessly underneath!
     return (
         <Suspense fallback={<AppRootLoader />}>
             <ErrorBoundary root_store={store}>
