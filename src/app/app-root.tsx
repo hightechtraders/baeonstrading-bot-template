@@ -54,14 +54,34 @@ const AppRoot = () => {
         return hasToken || hasTokenInUrl;
     });
 
-    // Initialize API
+    // Initialize API & Capture OAuth Tokens safely
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
+        let primaryToken = '';
+
+        // Target the primary token parameter returned by Deriv OAuth
         for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem('authToken', value);
-                setIsAuthenticated(true);
+            if ((key === 'token1' || key === 'token') && value) {
+                primaryToken = value;
+                break;
             }
+        }
+
+        // Fallback search if token1 isn't explicitly named
+        if (!primaryToken) {
+            for (const [key, value] of urlParams.entries()) {
+                if (key.includes('token') && value && value.length > 10) {
+                    primaryToken = value;
+                    break;
+                }
+            }
+        }
+
+        if (primaryToken) {
+            localStorage.setItem('authToken', primaryToken);
+            setIsAuthenticated(true);
+            // Clean the token query params out of the browser address bar immediately
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
 
         const timeoutId = setTimeout(() => {
@@ -77,6 +97,9 @@ const AppRoot = () => {
                     api_base_initialized.current = true;
                 } catch (error) {
                     console.error('API initialization failed:', error);
+                    // Clear broken tokens so users don't get trapped in a persistent error loop
+                    localStorage.removeItem('authToken');
+                    setIsAuthenticated(false);
                     api_base_initialized.current = false;
                 } finally {
                     setIsApiInitialized(true);
@@ -89,7 +112,7 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Login handler: triggers direct OAuth redirect to Deriv
+    // Login handler: triggers direct secure OAuth redirect to Deriv
     const handleLogin = () => {
         const appId = '1089'; 
         const redirectUrl = encodeURIComponent(window.location.origin + '/');
