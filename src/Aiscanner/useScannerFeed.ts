@@ -8,25 +8,24 @@ export const useScannerFeed = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Listen to the native live tick events already firing in your platform
-    const handleWorkspaceTick = (event: CustomEvent) => {
+    // Listen to whatever custom event your platform uses to broadcast live ticks
+    const handleGlobalTick = (event: CustomEvent) => {
       const { symbol, quote, price } = event.detail || {};
       const activeSymbol = symbol || 'R_10';
       const activeQuote = quote !== undefined ? quote : price;
 
       if (activeSymbol && activeQuote !== undefined) {
-        // Pass the live tick straight into the bridge and calculation engine
+        // Directly push the tick into the bridge (which automatically calls ScannerLogic)
         ScannerBridge.pushTick(activeSymbol, Number(activeQuote));
       }
     };
 
-    // Bind to your platform's existing tick event dispatcher
-    window.addEventListener('deriv_live_tick' as any, handleWorkspaceTick as EventListener);
-    window.addEventListener('feed_tick' as any, handleWorkspaceTick as EventListener);
+    window.addEventListener('deriv_live_tick' as any, handleGlobalTick as EventListener);
+    window.addEventListener('feed_tick' as any, handleGlobalTick as EventListener);
 
     return () => {
-      window.removeEventListener('deriv_live_tick' as any, handleWorkspaceTick as EventListener);
-      window.removeEventListener('feed_tick' as any, handleWorkspaceTick as EventListener);
+      window.removeEventListener('deriv_live_tick' as any, handleGlobalTick as EventListener);
+      window.removeEventListener('feed_tick' as any, handleGlobalTick as EventListener);
     };
   }, []);
 };
