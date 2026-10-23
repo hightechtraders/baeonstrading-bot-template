@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/ScannerTickerBar.tsx
+// FILE: src/Aiscanner/ScannerTickerBar.tsx (Synced with AI Engine)
 // ==========================================
 import React, { useEffect, useState } from 'react';
 
@@ -8,28 +8,39 @@ export const ScannerTickerBar: React.FC = () => {
 
     useEffect(() => {
         const handleTick = (event: CustomEvent) => {
-            const { assetName, quote, symbol, price } = event.detail || {};
+            const { assetName, quote, symbol, price, strategies } = event.detail || {};
             const activeSymbol = assetName || symbol || 'R_10';
             const activePrice = quote !== undefined ? quote : price;
 
             if (activePrice !== undefined) {
+                // If the event includes evaluated strategies, grab the top strategy's direction
+                let aiDirection: string | null = null;
+                if (Array.isArray(strategies) && strategies.length > 0) {
+                    const sorted = [...strategies].sort((a, b) => b.confidence - a.confidence);
+                    if (sorted[0]?.direction) {
+                        aiDirection = sorted[0].direction; // 'UP' or 'DOWN'
+                    }
+                }
+
                 setLiveData((prev) => {
                     const prevPrice = prev?.price || activePrice;
-                    const direction = activePrice >= prevPrice ? 'UP' : 'DOWN';
+                    // Fallback to tick direction if AI direction isn't in payload yet
+                    const tickDirection = activePrice >= prevPrice ? 'UP' : 'DOWN';
+                    const direction = aiDirection || prev?.direction || tickDirection;
+
                     return { symbol: activeSymbol, price: activePrice, direction };
                 });
             }
         };
 
-        // Listen to all possible event names dispatched by your worker and bridge
         window.addEventListener('ai-tick-received' as any, handleTick as EventListener);
         window.addEventListener('deriv_scanner_updated' as any, handleTick as EventListener);
-        window.addEventListener('deriv_live_tick' as any, handleTick as EventListener);
+        window.addEventListener('ai-strategies-updated' as any, handleTick as EventListener);
 
         return () => {
             window.removeEventListener('ai-tick-received' as any, handleTick as EventListener);
             window.removeEventListener('deriv_scanner_updated' as any, handleTick as EventListener);
-            window.removeEventListener('deriv_live_tick' as any, handleTick as EventListener);
+            window.removeEventListener('ai-strategies-updated' as any, handleTick as EventListener);
         };
     }, []);
 
