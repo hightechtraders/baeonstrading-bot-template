@@ -6,9 +6,10 @@ import './LandingPage.scss';
 
 interface LandingPageProps {
     onLogin: () => void;
+    onSignup: () => void; // Added signup handler prop
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) => {
     return (
         <div className="landing-container">
             <div className="market-ticker-bar">
@@ -55,14 +56,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                         <span>Launch Workspace</span>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                     </button>
-                    <a 
-                        href="https://track.deriv.com/" 
-                        target="_blank" 
-                        rel="noreferrer" 
+                    
+                    {/* Wired to use the custom onSignup handler */}
+                    <button 
+                        onClick={onSignup}
                         className="btn-secondary"
+                        style={{ background: 'transparent', cursor: 'pointer' }}
                     >
                         Create Deriv Account
-                    </a>
+                    </button>
                 </div>
 
                 <div className="hero-footer-note">
