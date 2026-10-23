@@ -8,24 +8,35 @@ export const ScannerTickerBar: React.FC = () => {
 
     useEffect(() => {
         const handleTick = (event: CustomEvent) => {
-            const { symbol, price } = event.detail || {};
-            if (symbol && price) {
-                const prevPrice = liveData?.price || price;
-                const direction = price >= prevPrice ? 'UP' : 'DOWN';
-                setLiveData({ symbol, price, direction });
+            const { assetName, quote, symbol, price } = event.detail || {};
+            const activeSymbol = assetName || symbol || 'R_10';
+            const activePrice = quote !== undefined ? quote : price;
+
+            if (activePrice !== undefined) {
+                setLiveData((prev) => {
+                    const prevPrice = prev?.price || activePrice;
+                    const direction = activePrice >= prevPrice ? 'UP' : 'DOWN';
+                    return { symbol: activeSymbol, price: activePrice, direction };
+                });
             }
         };
 
+        // Listen to all possible event names dispatched by your worker and bridge
+        window.addEventListener('ai-tick-received' as any, handleTick as EventListener);
+        window.addEventListener('deriv_scanner_updated' as any, handleTick as EventListener);
         window.addEventListener('deriv_live_tick' as any, handleTick as EventListener);
+
         return () => {
+            window.removeEventListener('ai-tick-received' as any, handleTick as EventListener);
+            window.removeEventListener('deriv_scanner_updated' as any, handleTick as EventListener);
             window.removeEventListener('deriv_live_tick' as any, handleTick as EventListener);
         };
-    }, [liveData?.price]);
+    }, []);
 
     if (!liveData) {
         return (
             <div className="scanner-ticker-bar loading">
-                <span>Connecting to live feed...</span>
+                <span>🛰️ Connecting to R_10 live feed...</span>
             </div>
         );
     }
