@@ -1,4 +1,6 @@
-// src/Aiscanner/scanner.worker.ts
+// ==========================================
+// FILE: src/Aiscanner/scanner.worker.ts
+// ==========================================
 import { ScannerLogic } from './scannerLogic';
 
 let scanner: ScannerLogic | null = null;
@@ -56,7 +58,12 @@ self.onmessage = (event) => {
                     });
 
                     if (updatedStrategies && updatedStrategies.length > 0) {
-                        self.postMessage({ symbol: TARGET_SYMBOL, strategies: updatedStrategies });
+                        // ✨ FIXED: Include quote so useScannerFeed can broadcast live prices to the UI ticker
+                        self.postMessage({ 
+                            symbol: TARGET_SYMBOL, 
+                            quote: resolvedQuote, 
+                            strategies: updatedStrategies 
+                        });
                     }
                 }
             } catch (e) {
