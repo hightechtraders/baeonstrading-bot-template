@@ -15,16 +15,40 @@ export interface Strategy {
     contractType?: string;   
     barrier?: string;        
     status?: string;         
+    score?: number;          // Added to safely map calculation scores
 }
 
 export const INITIAL_STRATEGIES: Strategy[] = [
-    { id: '1', name: 'RSI Momentum Spike', market: '1HZ10V', symbol: '1HZ10V', volatility: '10s', confidence: 50, direction: 'UP', recommendedStake: 0.35, recommendedStopLoss: 4.50, recommendedTakeProfit: 3.00, status: 'high' },
-    { id: '2', name: 'Bollinger Band Squeeze', market: 'R_25', symbol: 'R_25', volatility: '25', confidence: 50, direction: 'DOWN', recommendedStake: 0.35, recommendedStopLoss: 4.50, recommendedTakeProfit: 3.00, status: 'high' },
-    { id: '3', name: 'EMA Crossover Breakout', market: '1HZ50V', symbol: '1HZ50V', volatility: '50s', confidence: 50, direction: 'UP', recommendedStake: 0.35, recommendedStopLoss: 4.50, recommendedTakeProfit: 3.00, status: 'high' },
-    { id: '4', name: 'Tick Reversal Pattern', market: 'R_75', symbol: 'R_75', volatility: '75', confidence: 50, direction: 'DOWN', recommendedStake: 0.35, recommendedStopLoss: 4.50, recommendedTakeProfit: 3.00, status: 'high' },
-    { id: '5', name: 'MACD Histogram Surge', market: '1HZ100V', symbol: '1HZ100V', volatility: '100s', confidence: 50, direction: 'UP', recommendedStake: 0.35, recommendedStopLoss: 4.50, recommendedTakeProfit: 3.00, status: 'high' },
-    { id: '6', name: 'Support/Resistance Bounce', market: 'R_10', symbol: 'R_10', volatility: '10', confidence: 50, direction: 'UP', recommendedStake: 0.35, recommendedStopLoss: 4.50, recommendedTakeProfit: 3.00, status: 'high' },
-    { id: '7', name: 'High-Frequency Digit Scalper', market: '1HZ75V', symbol: '1HZ75V', volatility: '75s', confidence: 50, direction: 'DIGITOVER', recommendedStake: 0.35, recommendedStopLoss: 4.50, recommendedTakeProfit: 3.00, contractType: 'DIGITOVER', barrier: '2', status: 'high' },
+    { 
+        id: 'R10_BULLISH_ALPHA', 
+        name: 'R-10 Bullish Alpha', 
+        market: 'R_10', 
+        symbol: 'R_10', 
+        volatility: '10', 
+        confidence: 50, 
+        score: 50,
+        direction: 'UP', 
+        recommendedStake: 0.35, 
+        recommendedStopLoss: 4.50, 
+        recommendedTakeProfit: 3.00, 
+        contractType: 'CALL',
+        status: 'high' 
+    },
+    { 
+        id: 'R10_BEARISH_ALPHA', 
+        name: 'R-10 Bearish Alpha', 
+        market: 'R_10', 
+        symbol: 'R_10', 
+        volatility: '10', 
+        confidence: 50, 
+        score: 50,
+        direction: 'DOWN', 
+        recommendedStake: 0.35, 
+        recommendedStopLoss: 4.50, 
+        recommendedTakeProfit: 3.00, 
+        contractType: 'PUT',
+        status: 'high' 
+    },
 ];
 
 export const CORE_7_STRATEGIES = INITIAL_STRATEGIES;
