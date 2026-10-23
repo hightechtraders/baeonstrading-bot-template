@@ -9,9 +9,6 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
-    // Standard Deriv OAuth Login URL using your registered App ID
-    const derivLoginUrl = 'https://oauth.deriv.com/oauth2/authorize?app_id=34t7y3xkywoxWNnZuZFaB&brand=deriv&l=EN';
-
     return (
         <div className="landing-container">
             <div className="market-ticker-bar">
@@ -33,9 +30,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                     <span className="status-indicator">
                         <span className="pulse-dot"></span> System Online
                     </span>
-                    <a href={derivLoginUrl} className="btn-login-top">
+                    <button className="btn-login-top" onClick={onLogin}>
                         Log in
-                    </a>
+                    </button>
                 </div>
             </header>
 
@@ -54,10 +51,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 </p>
 
                 <div className="hero-actions">
-                    <a href={derivLoginUrl} className="btn-primary">
+                    <button className="btn-primary" onClick={onLogin}>
                         <span>Launch Workspace</span>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                    </a>
+                    </button>
                     <a 
                         href="https://track.deriv.com/" 
                         target="_blank" 
