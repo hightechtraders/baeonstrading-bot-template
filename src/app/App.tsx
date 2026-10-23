@@ -96,9 +96,9 @@ export default function App() {
     }, [isProcessing, isValid, params.code, error, cleanupURL]);
 
     const handleLoginRedirect = () => {
-        const appId = 'YOUR_DERIV_APP_ID'; // Replace with your Deriv App ID
-        const redirectUrl = encodeURIComponent(window.location.origin);
-        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN`;
+        const appId = '34t7y3xkywoxWNnZuZFaB'; // Your registered Deriv App ID
+        const redirectUrl = encodeURIComponent(window.location.origin + '/');
+        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
     };
 
     // Show landing page if not authenticated
