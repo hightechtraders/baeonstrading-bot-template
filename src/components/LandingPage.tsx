@@ -2,16 +2,18 @@
 // FILE: src/components/LandingPage.tsx
 // ==========================================
 import React from 'react';
-import './LandingPage.scss'; // Style with your dark theme & SCSS
+import './LandingPage.scss';
 
 interface LandingPageProps {
     onLogin: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
+    // Standard Deriv OAuth Login URL using your registered App ID
+    const derivLoginUrl = 'https://oauth.deriv.com/oauth2/authorize?app_id=34t7y3xkywoxWNnZuZFaB&brand=deriv&l=EN';
+
     return (
         <div className="landing-container">
-            {/* Live Ticker Preview Bar */}
             <div className="market-ticker-bar">
                 <div className="ticker-track">
                     <span className="ticker-item"><span className="symbol">R_100</span> <span className="up">+1.42%</span></span>
@@ -31,9 +33,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                     <span className="status-indicator">
                         <span className="pulse-dot"></span> System Online
                     </span>
-                    <button className="btn-login-top" onClick={onLogin}>
+                    <a href={derivLoginUrl} className="btn-login-top">
                         Log in
-                    </button>
+                    </a>
                 </div>
             </header>
 
@@ -52,10 +54,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 </p>
 
                 <div className="hero-actions">
-                    <button className="btn-primary" onClick={onLogin}>
+                    <a href={derivLoginUrl} className="btn-primary">
                         <span>Launch Workspace</span>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                    </button>
+                    </a>
                     <a 
                         href="https://track.deriv.com/" 
                         target="_blank" 
