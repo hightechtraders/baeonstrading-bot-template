@@ -4,8 +4,10 @@ import { ScannerLogic } from './scannerLogic';
 let scanner: ScannerLogic | null = null;
 let socket: WebSocket | null = null;
 
+const TARGET_SYMBOL = "R_10"; // Hardcoded to Volatility 10 Index
+
 self.onmessage = (event) => {
-    const { type, symbol, appId } = event.data;
+    const { type, appId } = event.data;
 
     if (type === 'START_TRACKING') {
         scanner = new ScannerLogic();
@@ -15,7 +17,7 @@ self.onmessage = (event) => {
 
         socket.onopen = () => {
             socket?.send(JSON.stringify({
-                ticks: symbol,
+                ticks: TARGET_SYMBOL,
                 subscribe: 1,
                 req_id: Math.floor(Math.random() * 10000)
             }));
@@ -25,41 +27,45 @@ self.onmessage = (event) => {
             try {
                 const data = JSON.parse(msgEvent.data);
                 
-                // Log subscription confirmations or errors for debugging
                 if (data.error) {
-                    console.error(`[Worker Error for ${symbol}]:`, data.error.message);
+                    console.error(`[Worker Error for ${TARGET_SYMBOL}]:`, data.error.message);
                     return;
                 }
 
                 const tickData = data?.tick || data?.subscription?.tick;
                 
                 if (data?.msg_type === 'tick' && tickData) {
-                    const resolvedSymbol = tickData.symbol || symbol;
-                    const resolvedQuote = Number(tickData.quote || tickData.ask || tickData.bid);
+                    const resolvedSymbol = tickData.symbol || TARGET_SYMBOL;
 
+                    // Strict guard: Drop any tick data that isn't R_10
+                    if (resolvedSymbol !== TARGET_SYMBOL) {
+                        return;
+                    }
+
+                    const resolvedQuote = Number(tickData.quote || tickData.ask || tickData.bid);
                     if (isNaN(resolvedQuote)) return;
 
                     const updatedStrategies = scanner?.handleIncomingMessage({
                         msg_type: 'tick',
                         tick: { 
-                            symbol: resolvedSymbol, 
+                            symbol: TARGET_SYMBOL, 
                             quote: resolvedQuote, 
                             epoch: tickData.epoch || Math.floor(Date.now() / 1000), 
-                            id: `${resolvedSymbol}-${Date.now()}` 
+                            id: `${TARGET_SYMBOL}-${Date.now()}` 
                         }
                     });
 
                     if (updatedStrategies && updatedStrategies.length > 0) {
-                        self.postMessage({ symbol: resolvedSymbol, strategies: updatedStrategies });
+                        self.postMessage({ symbol: TARGET_SYMBOL, strategies: updatedStrategies });
                     }
                 }
             } catch (e) {
-                console.error(`[Worker Parse Exception for ${symbol}]:`, e);
+                console.error(`[Worker Parse Exception]:`, e);
             }
         };
 
         socket.onerror = (error) => {
-            console.error(`[WebSocket Error for ${symbol}]:`, error);
+            console.error(`[WebSocket Error for ${TARGET_SYMBOL}]:`, error);
         };
     }
 
