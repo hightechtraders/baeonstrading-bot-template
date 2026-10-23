@@ -1,3 +1,6 @@
+// ==========================================
+// FILE: src/app/App.tsx
+// ==========================================
 import { lazy, Suspense, useState, useEffect } from 'react';
 import React from 'react';
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } from 'react-router-dom';
@@ -12,7 +15,7 @@ import { initializeI18n, localize, TranslationProvider } from '@deriv-com/transl
 import { FloatingAI } from '@/Aiscanner/FloatingAI';
 import { useScannerFeed } from '@/Aiscanner/useScannerFeed';
 import { TradingPreloader } from '@/components/trading-preloader/TradingPreloader';
-import { LandingPage } from '@/components/LandingPage'; // Import your new landing page
+import { LandingPage } from '@/components/LandingPage';
 import CoreStoreProvider from './CoreStoreProvider';
 import './app-root.scss';
 
@@ -69,7 +72,7 @@ export default function App() {
     const { isProcessing, isValid, params, error, cleanupURL } = useOAuthCallback();
     useAccountSwitching();
 
-    // Check if token exists in localStorage or URL query parameters
+    // Check if user has an active token stored
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
         return !!localStorage.getItem('authToken') || window.location.search.includes('token');
     });
@@ -93,13 +96,12 @@ export default function App() {
     }, [isProcessing, isValid, params.code, error, cleanupURL]);
 
     const handleLoginRedirect = () => {
-        // Replace with your actual Deriv App ID
-        const appId = 'YOUR_APP_ID'; 
+        const appId = 'YOUR_DERIV_APP_ID'; // Replace with your Deriv App ID
         const redirectUrl = encodeURIComponent(window.location.origin);
         window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN`;
     };
 
-    // If user is not authenticated, show your professional landing page first!
+    // Show landing page if not authenticated
     if (!isAuthenticated) {
         return <LandingPage onLogin={handleLoginRedirect} />;
     }
