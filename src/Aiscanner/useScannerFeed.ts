@@ -1,75 +1,72 @@
 // ==========================================
-// FILE: src/Aiscanner/useScannerFeed.ts
+// FILE: src/Aiscanner/useScannerFeed.ts (RELIABLE STREAM METHOD)
 // ==========================================
 import { useEffect } from 'react';
 import { ScannerBridge } from './scannerBridge';
 import { api_base } from '@/external/bot-skeleton/services/api/api-base';
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const TARGET_SYMBOL = 'R_10';
 
 export const useScannerFeed = () => {
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        let isInitialized = false;
+        let subscriptionId: string | null = null;
+        let isMounted = true;
 
-        const initializeFeed = async () => {
-            if (isInitialized) return;
-            isInitialized = true;
-
-            // Wait until Deriv's API WebSocket connection is fully open
-            while (!api_base?.api?.connection || api_base.api.connection.readyState !== WebSocket.OPEN) {
-                await delay(300);
-            }
-
-            console.log("[AI Scanner]: Connected. Subscribing to R_10 live ticks...");
-
-            const rawConnection = api_base.api.connection;
-
-            // Intercept incoming raw ticks from the socket and push them straight to the bridge
-            const handleMessage = (event: MessageEvent) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data?.msg_type === 'tick' && data?.tick) {
-                        const symbol = data.tick.symbol;
-                        const quote = Number(data.tick.quote);
-
-                        if (symbol === TARGET_SYMBOL && !isNaN(quote)) {
-                            // 🔑 THIS IS THE CRITICAL LINK: Feeds quote straight into ScannerBridge & ScannerLogic
-                            ScannerBridge.pushTick(symbol, quote);
-                        }
-                    }
-                } catch (e) {
-                    // Ignore parse errors on non-tick messages
-                }
-            };
-
-            if (rawConnection && typeof rawConnection.addEventListener === 'function') {
-                rawConnection.addEventListener('message', handleMessage);
-            }
-
-            // Send subscription request for R_10
+        const startFeed = async () => {
             try {
-                if (typeof api_base?.api?.send === 'function') {
-                    await api_base.api.send({
-                        ticks: TARGET_SYMBOL,
-                        subscribe: 1,
-                        req_id: 5001
-                    });
+                // Ensure api_base is ready
+                while (!api_base?.api) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    if (!isMounted) return;
                 }
+
+                console.log("[AI Scanner]: Subscribing to R_10 via API base...");
+
+                // Use Deriv API's explicit subscription call if available
+                const response = await api_base.api.send({
+                    ticks: TARGET_SYMBOL,
+                    subscribe: 1
+                });
+
+                if (response && response.subscription) {
+                    subscriptionId = response.subscription.id;
+                }
+
+                // Also listen to general incoming API responses for ticks
+                const handleApiMessage = (event: MessageEvent) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data?.msg_type === 'tick' && data?.tick?.symbol === TARGET_SYMBOL) {
+                            const quote = Number(data.tick.quote);
+                            if (!isNaN(quote)) {
+                                ScannerBridge.pushTick(TARGET_SYMBOL, quote);
+                            }
+                        }
+                    } catch (e) {}
+                };
+
+                if (api_base.api.connection) {
+                    api_base.api.connection.addEventListener('message', handleApiMessage);
+                }
+
             } catch (err) {
-                console.error("R_10 Subscription error:", err);
+                console.error("[AI Scanner]: Failed to subscribe to R_10 feed", err);
             }
         };
 
-        initializeFeed();
+        startFeed();
 
         return () => {
-            console.log("[AI Scanner]: Cleaning up R_10 feed...");
+            isMounted = false;
             try {
-                if (typeof api_base?.api?.send === 'function') {
-                    api_base.api.send({ forget_all: 'ticks' }).catch(() => {});
+                if (api_base?.api) {
+                    if (subscriptionId) {
+                        api_base.api.send({ forget: subscriptionId }).catch(() => {});
+                    } else {
+                        api_base.api.send({ forget_all: 'ticks' }).catch(() => {});
+                    }
                 }
             } catch (e) {}
         };
