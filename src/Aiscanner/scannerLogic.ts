@@ -16,9 +16,9 @@ export interface DerivTickResponse {
 export class ScannerLogic {
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
-        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'Volatility 10 AI Scalper',
+        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'R-10 Alpha Engine',
         market: 'R_10',
-        confidence: s.confidence || 78
+        confidence: s.confidence || 50
     }));
     
     private priceBuffers: { [symbol: string]: number[] } = {};
@@ -51,7 +51,7 @@ export class ScannerLogic {
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Single-asset momentum engine locked to Volatility 10 Index (R_10).");
+        console.log("[AI Scanner]: Single-asset institutional alpha engine locked to Volatility 10 Index (R_10).");
     }
 
     // Call this when a trade concludes
@@ -171,9 +171,19 @@ export class ScannerLogic {
         let highestCalculatedScore = 0;
         let topStrategyId = '';
 
+        // ✨ Independent Scoring for Bullish vs Bearish Alpha Engines
         this.strategies = this.strategies.map((strat) => {
-            let strategySpecificScore = Math.round(marketMomentum);
-            strategySpecificScore = Math.min(96, Math.max(45, strategySpecificScore));
+            let strategySpecificScore = 50;
+
+            // If the strategy's fixed direction matches live momentum, it takes the momentum score
+            if (strat.direction === liveDirection) {
+                strategySpecificScore = Math.round(marketMomentum);
+            } else {
+                // Opposing strategy inversely scales down
+                strategySpecificScore = Math.max(40, 100 - Math.round(marketMomentum));
+            }
+
+            strategySpecificScore = Math.min(96, Math.max(40, strategySpecificScore));
 
             const stratId = strat.id || strat.name;
             if (strategySpecificScore > highestCalculatedScore) {
@@ -184,8 +194,8 @@ export class ScannerLogic {
             return {
                 ...strat,
                 confidence: strategySpecificScore,
-                score: strategySpecificScore,
-                direction: liveDirection 
+                score: strategySpecificScore
+                // Intentionally keeping strat.direction intact (UP vs DOWN)
             };
         });
 
