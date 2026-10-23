@@ -95,7 +95,10 @@ export class ScannerLogic {
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
-        if (dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
+        console.log("[AI Scanner Debug] handleIncomingMessage received:", dataParsed);
+
+        if (!dataParsed || dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
+            console.warn("[AI Scanner Debug] Ignored message (not a tick or missing data):", dataParsed?.msg_type);
             return this.getSortedStrategies();
         }
 
@@ -104,8 +107,11 @@ export class ScannerLogic {
     }
 
     public processLiveTick(symbol: string, price: number): Strategy[] {
+        console.log(`[AI Scanner Debug] processLiveTick called for Symbol: ${symbol}, Price: ${price}`);
+
         // Enforce single-asset security filter
         if (symbol !== 'R_10') {
+            console.warn(`[AI Scanner Debug] Blocked symbol mismatch! Expected 'R_10', got '${symbol}'`);
             return this.getSortedStrategies();
         }
 
@@ -114,6 +120,7 @@ export class ScannerLogic {
         // Handle Cooldown Tick Countdown
         if (this.cooldownTicksRemaining > 0) {
             this.cooldownTicksRemaining--;
+            console.log(`[AI Scanner Debug] In cooldown. Ticks remaining: ${this.cooldownTicksRemaining}`);
             
             if (this.cooldownTicksRemaining === 0) {
                 this.isBurstActive = true;
@@ -135,6 +142,8 @@ export class ScannerLogic {
         }
 
         const prices = this.priceBuffers[symbol];
+        console.log(`[AI Scanner Debug] Current price buffer length for ${symbol}: ${prices.length}/10 required`);
+
         const latestPrice = prices[prices.length - 1];
         const prevPrice = prices.length > 1 ? prices[prices.length - 2] : latestPrice;
         const netDiff = latestPrice - prevPrice;
@@ -166,6 +175,9 @@ export class ScannerLogic {
             const confluenceBonus = isConfluent ? 22 : 0;
             
             marketMomentum = Math.min(96, Math.max(50, 55 + rawMagnitude + confluenceBonus));
+            console.log(`[AI Scanner Debug] Momentum calculated - %Change: ${percentageChange.toFixed(5)}%, Momentum: ${marketMomentum}`);
+        } else {
+            console.log(`[AI Scanner Debug] Buffer too small (${prices.length} < 10). Momentum defaulted to 55.`);
         }
 
         let highestCalculatedScore = 0;
@@ -195,9 +207,10 @@ export class ScannerLogic {
                 ...strat,
                 confidence: strategySpecificScore,
                 score: strategySpecificScore
-                // Intentionally keeping strat.direction intact (UP vs DOWN)
             };
         });
+
+        console.log(`[AI Scanner Debug] Updated Strategy Confidence Scores:`, this.strategies.map(s => `${s.name}: ${s.confidence}%`));
 
         // Entry stabilization check
         if (highestCalculatedScore >= 89 && isConfluent) {
