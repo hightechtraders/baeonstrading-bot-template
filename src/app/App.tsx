@@ -1,7 +1,7 @@
 // ==========================================
 // FILE: src/app/App.tsx
 // ==========================================
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import React from 'react';
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } from 'react-router-dom';
 import LocalStorageSyncWrapper from '@/components/localStorage-sync-wrapper';
@@ -11,18 +11,16 @@ import { useLanguageFromURL } from '@/hooks/useLanguageFromURL';
 import { useOAuthCallback } from '@/hooks/useOAuthCallback';
 import { StoreProvider } from '@/hooks/useStore';
 import { OAuthTokenExchangeService } from '@/services/oauth-token-exchange.service';
-import { initializeI18n, localize, TranslationProvider } from '@deriv-com/translations';
+import { initializeI18n, TranslationProvider } from '@deriv-com/translations';
 import { FloatingAI } from '@/Aiscanner/FloatingAI';
 import { useScannerFeed } from '@/Aiscanner/useScannerFeed';
 import { TradingPreloader } from '@/components/trading-preloader/TradingPreloader';
-import { LandingPage } from '@/components/LandingPage';
 import CoreStoreProvider from './CoreStoreProvider';
 import './app-root.scss';
 
 const Layout = lazy(() => import('../components/layout'));
 const AppRoot = lazy(() => import('./app-root'));
 
-// Translations CDN configuration
 const i18nInstance = initializeI18n({ cdnUrl: '' });
 
 const LanguageHandler = ({ children }: { children: React.ReactNode }) => {
@@ -51,7 +49,6 @@ const router = createBrowserRouter(
                                     <RoutePromptDialog />
                                     <CoreStoreProvider>
                                         <Layout />
-                                        {/* Floating AI Scanner Component */}
                                         <FloatingAI />
                                     </CoreStoreProvider>
                                 </LocalStorageSyncWrapper>
@@ -72,19 +69,22 @@ export default function App() {
     const { isProcessing, isValid, params, error, cleanupURL } = useOAuthCallback();
     useAccountSwitching();
 
-    // Check if user has an active token stored
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-        return !!localStorage.getItem('authToken') || window.location.search.includes('token');
-    });
+    // Automatically capture and store tokens when Deriv redirects back
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        for (const [key, value] of urlParams.entries()) {
+            if (key.includes('token') || key.startsWith('acct')) {
+                localStorage.setItem('authToken', value);
+            }
+        }
 
-    React.useEffect(() => {
         if (!isProcessing && isValid && params.code) {
             OAuthTokenExchangeService.exchangeCodeForToken(params.code)
                 .then(response => {
                     if (response.access_token) {
                         localStorage.setItem('authToken', response.access_token);
-                        setIsAuthenticated(true);
                         cleanupURL();
+                        window.location.href = '/'; // Refresh clean state
                     } else if (response.error) {
                         cleanupURL();
                     }
@@ -95,16 +95,6 @@ export default function App() {
         }
     }, [isProcessing, isValid, params.code, error, cleanupURL]);
 
-    const handleLoginRedirect = () => {
-        const appId = '34t7y3xkywoxWNnZuZFaB'; // Your registered Deriv App ID
-        const redirectUrl = encodeURIComponent(window.location.origin + '/');
-        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
-    };
-
-    // Show landing page if not authenticated
-    if (!isAuthenticated) {
-        return <LandingPage onLogin={handleLoginRedirect} />;
-    }
-
+    // Router handles everything cleanly now
     return <RouterProvider router={router} />;
 }
