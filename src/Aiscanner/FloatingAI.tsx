@@ -33,7 +33,8 @@ export const FloatingAI: React.FC = () => {
 
   useEffect(() => {
     const handleStrategiesUpdated = (e: CustomEvent) => {
-      const updated = e.detail?.strategies;
+      // Support all event payload variants dispatched across the bridge
+      const updated = e.detail?.strategies || e.detail?.updatedStrategies;
       if (Array.isArray(updated) && updated.length > 0) {
         setStrategies(updated);
 
@@ -70,10 +71,15 @@ export const FloatingAI: React.FC = () => {
       }
     };
 
+    // Listen to all possible event names to guarantee event synchronization
+    window.addEventListener('ai-tick-received' as any, handleStrategiesUpdated as EventListener);
+    window.addEventListener('deriv_scanner_updated' as any, handleStrategiesUpdated as EventListener);
     window.addEventListener('ai-strategies-updated' as any, handleStrategiesUpdated as EventListener);
     window.addEventListener('ai-signal-locked', handleSignalLock as EventListener);
 
     return () => {
+      window.removeEventListener('ai-tick-received' as any, handleStrategiesUpdated as EventListener);
+      window.removeEventListener('deriv_scanner_updated' as any, handleStrategiesUpdated as EventListener);
       window.removeEventListener('ai-strategies-updated' as any, handleStrategiesUpdated as EventListener);
       window.removeEventListener('ai-signal-locked', handleSignalLock as EventListener);
     };
