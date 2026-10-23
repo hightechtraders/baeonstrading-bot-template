@@ -16,8 +16,8 @@ export interface DerivTickResponse {
 export class ScannerLogic {
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
-        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'Volatility 50 AI Scalper',
-        market: s.market || '1HZ50V',
+        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'Volatility 10 AI Scalper',
+        market: 'R_10',
         confidence: s.confidence || 78
     }));
     
@@ -45,18 +45,13 @@ export class ScannerLogic {
     private readonly MAX_BURST_RUNS = 3; // Stop workspace after 3 successful/completed trades to reassess
     private isBurstActive: boolean = false;
 
+    // Restricted strictly to Volatility 10 Index
     public static readonly SCANNER_MARKETS: string[] = [
-        '1HZ50V',  // Volatility 50 (1s) Index
-        '1HZ75V',  // Volatility 75 (1s) Index
-        '1HZ10V',  // Volatility 10 (1s) Index
-        '1HZ100V', // Volatility 100 (1s) Index
-        'R_25',    // Volatility 25 Index
-        'R_75',    // Volatility 75 Index
         'R_10'     // Volatility 10 Index
     ];
 
     constructor() {
-        console.log("[AI Scanner]: Momentum engine with synchronized direction mapping initialized.");
+        console.log("[AI Scanner]: Single-asset momentum engine locked to Volatility 10 Index (R_10).");
     }
 
     // Call this when a trade concludes
@@ -109,7 +104,11 @@ export class ScannerLogic {
     }
 
     public processLiveTick(symbol: string, price: number): Strategy[] {
-        // 🔑 Live multi-market tick inspection log
+        // Enforce single-asset security filter
+        if (symbol !== 'R_10') {
+            return this.getSortedStrategies();
+        }
+
         console.log(`📡 [Tick Ingested] Symbol: ${symbol} | Price: ${price}`);
 
         // Handle Cooldown Tick Countdown
@@ -161,7 +160,8 @@ export class ScannerLogic {
             const priceDelta = latestPrice - oldestInWindow;
             const percentageChange = (priceDelta / oldestInWindow) * 100;
             
-            const scaleFactor = (symbol.includes('10') || symbol.includes('R_10')) ? 7500 : 5000;
+            // Volatility 10 specific scaling factor
+            const scaleFactor = 7500;
             const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
             const confluenceBonus = isConfluent ? 22 : 0;
             
@@ -172,10 +172,7 @@ export class ScannerLogic {
         let topStrategyId = '';
 
         this.strategies = this.strategies.map((strat) => {
-            const isMatchingMarket = (strat.market || '').toUpperCase() === symbol.toUpperCase();
-            const marketMultiplier = isMatchingMarket ? 1.0 : 0.88;
-
-            let strategySpecificScore = Math.round(marketMomentum * marketMultiplier);
+            let strategySpecificScore = Math.round(marketMomentum);
             strategySpecificScore = Math.min(96, Math.max(45, strategySpecificScore));
 
             const stratId = strat.id || strat.name;
@@ -188,12 +185,11 @@ export class ScannerLogic {
                 ...strat,
                 confidence: strategySpecificScore,
                 score: strategySpecificScore,
-                // CRITICAL FIX: Explicitly bind strategy direction to the actual live tick direction
                 direction: liveDirection 
             };
         });
 
-        // Entry stabilization check - also ensure confluence direction matches live direction
+        // Entry stabilization check
         if (highestCalculatedScore >= 89 && isConfluent) {
             this.consecutiveSweetSpotTicks[symbol] = (this.consecutiveSweetSpotTicks[symbol] || 0) + 1;
         } else {
@@ -202,7 +198,7 @@ export class ScannerLogic {
 
         const hasStabilized = (this.consecutiveSweetSpotTicks[symbol] || 0) >= this.REQUIRED_STABILIZATION_TICKS;
 
-        // Sticky Signal Persistence Logic - Disengage immediately if trend flips direction
+        // Sticky Signal Persistence Logic
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
             if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && isConfluent) {
