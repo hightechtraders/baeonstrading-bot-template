@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/useScannerFeed.ts (RELIABLE STREAM METHOD)
+// FILE: src/Aiscanner/useScannerFeed.ts (Resilient Navigation Stream)
 // ==========================================
 import { useEffect } from 'react';
 import { ScannerBridge } from './scannerBridge';
@@ -13,18 +13,18 @@ export const useScannerFeed = () => {
 
         let subscriptionId: string | null = null;
         let isMounted = true;
+        let isSubscribedActive = false;
 
         const startFeed = async () => {
             try {
-                // Ensure api_base is ready
                 while (!api_base?.api) {
                     await new Promise(resolve => setTimeout(resolve, 200));
                     if (!isMounted) return;
                 }
 
-                console.log("[AI Scanner]: Subscribing to R_10 via API base...");
+                if (isSubscribedActive) return; // Prevent duplicate subscriptions
 
-                // Use Deriv API's explicit subscription call if available
+                console.log("[AI Scanner]: Subscribing to R_10 via API base...");
                 const response = await api_base.api.send({
                     ticks: TARGET_SYMBOL,
                     subscribe: 1
@@ -32,9 +32,9 @@ export const useScannerFeed = () => {
 
                 if (response && response.subscription) {
                     subscriptionId = response.subscription.id;
+                    isSubscribedActive = true;
                 }
 
-                // Also listen to general incoming API responses for ticks
                 const handleApiMessage = (event: MessageEvent) => {
                     try {
                         const data = JSON.parse(event.data);
@@ -58,8 +58,20 @@ export const useScannerFeed = () => {
 
         startFeed();
 
+        // Re-establish feed automatically if user navigates back and window regains focus
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && !isSubscribedActive) {
+                startFeed();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         return () => {
             isMounted = false;
+            isSubscribedActive = false;
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            
             try {
                 if (api_base?.api) {
                     if (subscriptionId) {
