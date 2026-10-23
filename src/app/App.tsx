@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import React from 'react';
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } from 'react-router-dom';
 import LocalStorageSyncWrapper from '@/components/localStorage-sync-wrapper';
@@ -12,6 +12,7 @@ import { initializeI18n, localize, TranslationProvider } from '@deriv-com/transl
 import { FloatingAI } from '@/Aiscanner/FloatingAI';
 import { useScannerFeed } from '@/Aiscanner/useScannerFeed';
 import { TradingPreloader } from '@/components/trading-preloader/TradingPreloader';
+import { LandingPage } from '@/components/LandingPage'; // Import your new landing page
 import CoreStoreProvider from './CoreStoreProvider';
 import './app-root.scss';
 
@@ -63,17 +64,25 @@ const router = createBrowserRouter(
 );
 
 export default function App() {
-    // Keep the live market tick feed active globally across all tabs
     useScannerFeed();
 
     const { isProcessing, isValid, params, error, cleanupURL } = useOAuthCallback();
     useAccountSwitching();
 
+    // Check if token exists in localStorage or URL query parameters
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+        return !!localStorage.getItem('authToken') || window.location.search.includes('token');
+    });
+
     React.useEffect(() => {
         if (!isProcessing && isValid && params.code) {
             OAuthTokenExchangeService.exchangeCodeForToken(params.code)
                 .then(response => {
-                    if (response.access_token || response.error) {
+                    if (response.access_token) {
+                        localStorage.setItem('authToken', response.access_token);
+                        setIsAuthenticated(true);
+                        cleanupURL();
+                    } else if (response.error) {
                         cleanupURL();
                     }
                 })
@@ -82,6 +91,18 @@ export default function App() {
             console.error('OAuth callback error:', error);
         }
     }, [isProcessing, isValid, params.code, error, cleanupURL]);
+
+    const handleLoginRedirect = () => {
+        // Replace with your actual Deriv App ID
+        const appId = 'YOUR_APP_ID'; 
+        const redirectUrl = encodeURIComponent(window.location.origin);
+        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN`;
+    };
+
+    // If user is not authenticated, show your professional landing page first!
+    if (!isAuthenticated) {
+        return <LandingPage onLogin={handleLoginRedirect} />;
+    }
 
     return <RouterProvider router={router} />;
 }
