@@ -103,15 +103,15 @@ const AppRoot = () => {
         }
     };
 
-    // Twin-button handler for Signup (Mirrors login behavior: checks DOM first, falls back to tracking link)
+    // Twin-button handler for Signup (Updated to avoid the track.deriv.com legacy JSON error)
     const handleSignup = () => {
         const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
         
         if (originalSignupBtn) {
             originalSignupBtn.click();
         } else {
-            // Fallback to official Deriv tracking/signup link
-            window.open('https://track.deriv.com/', '_blank');
+            // Fallback to Deriv's clean official OAuth signup URL directly
+            window.open('https://oauth.deriv.com/oauth2/signup', '_blank');
         }
     };
 
