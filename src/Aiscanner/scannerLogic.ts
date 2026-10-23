@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/scannerLogic.ts
+// FILE: src/Aiscanner/scannerLogic.ts (Indicator-Driven Alpha Engine)
 // ==========================================
 import { Strategy, INITIAL_STRATEGIES } from './strategies';
 
@@ -22,7 +22,6 @@ export class ScannerLogic {
     }));
     
     private priceBuffers: { [symbol: string]: number[] } = {};
-    private directionHistory: { [symbol: string]: ('UP' | 'DOWN')[] } = {};
     
     // Entry Stabilization Tracking
     private consecutiveSweetSpotTicks: { [symbol: string]: number } = {};
@@ -38,23 +37,18 @@ export class ScannerLogic {
     private consecutiveLosses: number = 0;
     private readonly MAX_CONSECUTIVE_LOSSES = 2; 
     private cooldownTicksRemaining: number = 0;
-    private readonly COOLDOWN_DURATION_TICKS = 15; // Wait out 15 ticks of chop
+    private readonly COOLDOWN_DURATION_TICKS = 15; 
 
-    // Burst run tracking (Limit runs to 2-3 per stabilization window)
     private activeRunCount: number = 0;
-    private readonly MAX_BURST_RUNS = 3; // Stop workspace after 3 successful/completed trades to reassess
+    private readonly MAX_BURST_RUNS = 3; 
     private isBurstActive: boolean = false;
 
-    // Restricted strictly to Volatility 10 Index
-    public static readonly SCANNER_MARKETS: string[] = [
-        'R_10'     // Volatility 10 Index
-    ];
+    public static readonly SCANNER_MARKETS: string[] = ['R_10'];
 
     constructor() {
-        console.log("[AI Scanner]: Single-asset institutional alpha engine locked to Volatility 10 Index (R_10).");
+        console.log("[AI Scanner]: Technical Indicator Engine (RSI, EMA, Bollinger %B) locked to Volatility 10 Index (R_10).");
     }
 
-    // Call this when a trade concludes
     public recordTradeOutcome(isWin: boolean) {
         if (isWin) {
             this.consecutiveLosses = 0;
@@ -82,53 +76,81 @@ export class ScannerLogic {
         this.activeRunCount = 0;
         this.isBurstActive = false;
 
-        // Stop the bot workspace
         const stopBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.trim() === 'Stop');
         if (stopBtn instanceof HTMLElement) {
             stopBtn.click();
         }
 
-        // Alert UI banner
         window.dispatchEvent(new CustomEvent('ai-circuit-breaker-triggered', {
             detail: { message }
         }));
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
-        console.log("[AI Scanner Debug] handleIncomingMessage received:", dataParsed);
-
         if (!dataParsed || dataParsed.msg_type !== 'tick' || !dataParsed.tick) {
-            console.warn("[AI Scanner Debug] Ignored message (not a tick or missing data):", dataParsed?.msg_type);
             return this.getSortedStrategies();
         }
-
         const { symbol, quote } = dataParsed.tick;
         return this.processLiveTick(symbol, Number(quote));
     }
 
-    public processLiveTick(symbol: string, price: number): Strategy[] {
-        console.log(`[AI Scanner Debug] processLiveTick called for Symbol: ${symbol}, Price: ${price}`);
+    // ==========================================
+    // TECHNICAL INDICATOR CALCULATIONS
+    // ==========================================
+    private calculateEMA(prices: number[], period: number): number {
+        if (prices.length === 0) return 0;
+        const k = 2 / (period + 1);
+        let ema = prices[0];
+        for (let i = 1; i < prices.length; i++) {
+            ema = (prices[i] * k) + (ema * (1 - k));
+        }
+        return ema;
+    }
 
-        // Enforce single-asset security filter
-        if (symbol !== 'R_10') {
-            console.warn(`[AI Scanner Debug] Blocked symbol mismatch! Expected 'R_10', got '${symbol}'`);
-            return this.getSortedStrategies();
+    private calculateRSI(prices: number[], period: number = 14): number {
+        if (prices.length < period + 1) return 50;
+        let gains = 0;
+        let losses = 0;
+
+        for (let i = prices.length - period; i < prices.length; i++) {
+            const diff = prices[i] - prices[i - 1];
+            if (diff >= 0) gains += diff;
+            else losses -= diff;
         }
 
-        console.log(`📡 [Tick Ingested] Symbol: ${symbol} | Price: ${price}`);
+        const avgGain = gains / period;
+        const avgLoss = losses / period;
+        if (avgLoss === 0) return 100;
+        const rs = avgGain / avgLoss;
+        return 100 - (100 / (1 + rs));
+    }
 
-        // Handle Cooldown Tick Countdown
+    private calculateBollingerBandsPercentB(prices: number[], period: number = 20, multiplier: number = 2): number {
+        if (prices.length < period) return 0.5;
+
+        const slice = prices.slice(-period);
+        const sma = slice.reduce((a, b) => a + b, 0) / period;
+        const variance = slice.reduce((sum, p) => sum + Math.pow(p - sma, 2), 0) / period;
+        const stDev = Math.sqrt(variance);
+
+        const upperBand = sma + (multiplier * stDev);
+        const lowerBand = sma - (multiplier * stDev);
+        const currentPrice = prices[prices.length - 1];
+
+        const range = upperBand - lowerBand;
+        return range === 0 ? 0.5 : (currentPrice - lowerBand) / range;
+    }
+
+    public processLiveTick(symbol: string, price: number): Strategy[] {
+        if (symbol !== 'R_10') {
+            return this.getSoldStrategiesFallback();
+        }
+
         if (this.cooldownTicksRemaining > 0) {
             this.cooldownTicksRemaining--;
-            console.log(`[AI Scanner Debug] In cooldown. Ticks remaining: ${this.cooldownTicksRemaining}`);
-            
             if (this.cooldownTicksRemaining === 0) {
                 this.isBurstActive = true;
-                window.dispatchEvent(new CustomEvent('ai-circuit-breaker-triggered', {
-                    detail: { message: `✅ Market Stabilized: Cooldown complete. Ready for a ${this.MAX_BURST_RUNS}-run burst.` }
-                }));
             }
-
             return this.getSortedStrategies();
         }
 
@@ -137,83 +159,59 @@ export class ScannerLogic {
         }
         this.priceBuffers[symbol].push(price);
         
-        if (this.priceBuffers[symbol].length > 60) {
+        if (this.priceBuffers[symbol].length > 50) {
             this.priceBuffers[symbol].shift();
         }
 
         const prices = this.priceBuffers[symbol];
-        console.log(`[AI Scanner Debug] Current price buffer length for ${symbol}: ${prices.length}/10 required`);
 
-        const latestPrice = prices[prices.length - 1];
-        const prevPrice = prices.length > 1 ? prices[prices.length - 2] : latestPrice;
-        const netDiff = latestPrice - prevPrice;
-        const liveDirection: 'UP' | 'DOWN' = netDiff >= 0 ? 'UP' : 'DOWN';
+        // Default neutral scores if buffer is filling up
+        let bullishScore = 50;
+        let bearishScore = 50;
 
-        if (!this.directionHistory[symbol]) {
-            this.directionHistory[symbol] = [];
-        }
-        this.directionHistory[symbol].push(liveDirection);
-        if (this.directionHistory[symbol].length > 8) {
-            this.directionHistory[symbol].shift();
-        }
-
-        const history = this.directionHistory[symbol];
-        const recentSlice = history.slice(-5);
-        const matchingDirectionCount = recentSlice.filter(d => d === liveDirection).length;
-        const isConfluent = recentSlice.length >= 5 && matchingDirectionCount >= 4;
-
-        let marketMomentum = 55;
         if (prices.length >= 10) {
-            const windowSize = Math.min(prices.length, 12);
-            const oldestInWindow = prices[prices.length - windowSize];
-            const priceDelta = latestPrice - oldestInWindow;
-            const percentageChange = (priceDelta / oldestInWindow) * 100;
+            const currentEMA = this.calculateEMA(prices, 10);
+            const currentRSI = this.calculateRSI(prices, 14);
+            const percentB = this.calculateBollingerBandsPercentB(prices, 20);
+
+            const latestPrice = prices[prices.length - 1];
+            const isAboveEMA = latestPrice >= currentEMA;
+
+            // Indicator weight blending
+            const rsiFactor = (currentRSI - 50) * 0.5;       // RSI deviation from 50
+            const bBandsFactor = (percentB - 0.5) * 35;      // Bollinger %B position
+            const emaBonus = isAboveEMA ? 8 : -8;            // Trend filter bonus
+
+            const compositeScore = 50 + rsiFactor + bBandsFactor + emaBonus;
             
-            // Volatility 10 specific scaling factor
-            const scaleFactor = 7500;
-            const rawMagnitude = Math.abs(percentageChange) * scaleFactor;
-            const confluenceBonus = isConfluent ? 22 : 0;
-            
-            marketMomentum = Math.min(96, Math.max(50, 55 + rawMagnitude + confluenceBonus));
-            console.log(`[AI Scanner Debug] Momentum calculated - %Change: ${percentageChange.toFixed(5)}%, Momentum: ${marketMomentum}`);
-        } else {
-            console.log(`[AI Scanner Debug] Buffer too small (${prices.length} < 10). Momentum defaulted to 55.`);
+            bullishScore = Math.min(94, Math.max(40, Math.round(compositeScore)));
+            bearishScore = Math.min(94, Math.max(40, Math.round(100 - compositeScore)));
+
+            console.log(`[Indicator Engine] RSI: ${currentRSI.toFixed(1)} | %B: ${percentB.toFixed(2)} | Bullish: ${bullishScore}% | Bearish: ${bearishScore}%`);
         }
 
         let highestCalculatedScore = 0;
         let topStrategyId = '';
 
-        // ✨ Independent Scoring for Bullish vs Bearish Alpha Engines
         this.strategies = this.strategies.map((strat) => {
-            let strategySpecificScore = 50;
-
-            // If the strategy's fixed direction matches live momentum, it takes the momentum score
-            if (strat.direction === liveDirection) {
-                strategySpecificScore = Math.round(marketMomentum);
-            } else {
-                // Opposing strategy inversely scales down
-                strategySpecificScore = Math.max(40, 100 - Math.round(marketMomentum));
-            }
-
-            strategySpecificScore = Math.min(96, Math.max(40, strategySpecificScore));
-
+            const score = strat.direction === 'UP' ? bullishScore : bearishScore;
             const stratId = strat.id || strat.name;
-            if (strategySpecificScore > highestCalculatedScore) {
-                highestCalculatedScore = strategySpecificScore;
+
+            if (score > highestCalculatedScore) {
+                highestCalculatedScore = score;
                 topStrategyId = stratId;
             }
 
             return {
                 ...strat,
-                confidence: strategySpecificScore,
-                score: strategySpecificScore
+                confidence: score,
+                score: score
             };
         });
 
-        console.log(`[AI Scanner Debug] Updated Strategy Confidence Scores:`, this.strategies.map(s => `${s.name}: ${s.confidence}%`));
-
-        // Entry stabilization check
-        if (highestCalculatedScore >= 89 && isConfluent) {
+        // Stabilization & persistence logic
+        const isStrongTrend = Math.abs(bullishScore - 50) > 20;
+        if (highestCalculatedScore >= 82 && isStrongTrend) {
             this.consecutiveSweetSpotTicks[symbol] = (this.consecutiveSweetSpotTicks[symbol] || 0) + 1;
         } else {
             this.consecutiveSweetSpotTicks[symbol] = 0;
@@ -221,10 +219,9 @@ export class ScannerLogic {
 
         const hasStabilized = (this.consecutiveSweetSpotTicks[symbol] || 0) >= this.REQUIRED_STABILIZATION_TICKS;
 
-        // Sticky Signal Persistence Logic
         if (this.activeSignalStrategyId) {
             const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
-            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD && isConfluent) {
+            if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD) {
                 return this.getSortedStrategies();
             } else {
                 this.activeSignalStrategyId = null;
@@ -249,5 +246,9 @@ export class ScannerLogic {
             }
         }
         return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
+    }
+
+    private getSoldStrategiesFallback(): Strategy[] {
+        return this.getSortedStrategies();
     }
 }
