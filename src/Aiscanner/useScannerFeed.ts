@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/useScannerFeed.ts (Global Singleton Stream)
+// FILE: src/Aiscanner/useScannerFeed.ts (Reconnecting Singleton Stream)
 // ==========================================
 import { useEffect } from 'react';
 import { ScannerBridge } from './scannerBridge';
@@ -7,9 +7,8 @@ import { api_base } from '@/external/bot-skeleton/services/api/api-base';
 
 const TARGET_SYMBOL = 'R_10';
 
-// Global singletons to persist across route changes and unmounts
-let isGloballyInitialized = false;
 let globalSubscriptionId: string | null = null;
+let lastConnectedSocket: any = null;
 
 export const useScannerFeed = () => {
     useEffect(() => {
@@ -24,13 +23,15 @@ export const useScannerFeed = () => {
                     if (!isMounted) return;
                 }
 
-                // If already initialized globally, just ensure listener is active and return
-                if (isGloballyInitialized && api_base.api) {
-                    console.log("[AI Scanner]: Feed already active globally across navigation.");
+                const currentSocket = api_base.api.connection;
+
+                // If the socket connection changed (e.g. navigation remounted socket), re-bind listener
+                if (lastConnectedSocket === currentSocket && globalSubscriptionId) {
+                    console.log("[AI Scanner]: Feed stream already active on current socket.");
                     return;
                 }
 
-                console.log("[AI Scanner]: Establishing global R_10 persistent feed...");
+                console.log("[AI Scanner]: Establishing active R_10 stream for current view...");
                 
                 const response = await api_base.api.send({
                     ticks: TARGET_SYMBOL,
@@ -39,8 +40,9 @@ export const useScannerFeed = () => {
 
                 if (response && response.subscription) {
                     globalSubscriptionId = response.subscription.id;
-                    isGloballyInitialized = true;
                 }
+
+                lastConnectedSocket = currentSocket;
 
                 // Global message handler attached directly to connection
                 const handleGlobalMessage = (event: MessageEvent) => {
@@ -55,20 +57,19 @@ export const useScannerFeed = () => {
                     } catch (e) {}
                 };
 
-                if (api_base.api.connection) {
-                    api_base.api.connection.addEventListener('message', handleGlobalMessage);
+                if (currentSocket) {
+                    // Prevent duplicate event listeners if socket instance is the same
+                    currentSocket.removeEventListener('message', handleGlobalMessage);
+                    currentSocket.addEventListener('message', handleGlobalMessage);
                 }
 
             } catch (err) {
                 console.error("[AI Scanner]: Failed to initialize persistent feed", err);
-                isGloballyInitialized = false;
             }
         };
 
         initializePersistentFeed();
 
-        // Intentionally DO NOT call forget or teardown on component unmount 
-        // so switching to the Charts tab never kills the background data stream.
         return () => {
             isMounted = false;
         };
