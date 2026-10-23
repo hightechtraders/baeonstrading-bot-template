@@ -54,7 +54,7 @@ const AppRoot = () => {
         return hasToken || hasTokenInUrl;
     });
 
-    // Initialize API
+    // Initialize API (100% untouched working logic)
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         for (const [key, value] of urlParams.entries()) {
@@ -89,7 +89,7 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Twin-button handler: triggers the template's original working login button smoothly
+    // Twin-button handler for Login (100% untouched)
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
@@ -103,11 +103,23 @@ const AppRoot = () => {
         }
     };
 
-    // If not authenticated, render landing page in a fixed full-screen container to cover all top gaps/headers
+    // Twin-button handler for Signup (Mirrors login behavior: checks DOM first, falls back to tracking link)
+    const handleSignup = () => {
+        const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
+        
+        if (originalSignupBtn) {
+            originalSignupBtn.click();
+        } else {
+            // Fallback to official Deriv tracking/signup link
+            window.open('https://track.deriv.com/', '_blank');
+        }
+    };
+
+    // If not authenticated, render landing page with both handlers passed cleanly
     if (!isAuthenticated) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
-                <LandingPage onLogin={handleLogin} />
+                <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
             </div>
         );
     }
