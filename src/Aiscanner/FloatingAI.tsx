@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ScannerBridge } from './scannerBridge';
 import { Strategy, INITIAL_STRATEGIES } from './strategies';
 import { useScannerFeed } from './useScannerFeed'; 
-import { ScannerTickerBar } from './ScannerTickerBar'; // 🔑 Import the new mini ticker bar
+import { ScannerTickerBar } from './ScannerTickerBar'; 
 import './FloatingAI.css';
 
 export const FloatingAI: React.FC = () => {
@@ -14,7 +14,7 @@ export const FloatingAI: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [strategies, setStrategies] = useState<Strategy[]>(INITIAL_STRATEGIES);
   
-  const [signalBannerText, setSignalBannerText] = useState<string>("🔍 Listening for Live Deriv Ticks...");
+  const [signalBannerText, setSignalBannerText] = useState<string>("🔍 Listening for Live R_10 Ticks...");
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
   const [isSweetSpot, setIsSweetSpot] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
@@ -50,12 +50,12 @@ export const FloatingAI: React.FC = () => {
           if (isHighConviction) {
             sweetSpotStreakRef.current += 1;
             if (sweetSpotStreakRef.current >= 2) {
-              setSignalBannerText(`🎯 HIGH MOMENTUM SWEET SPOT: ${topStrat.name} (${topStrat.market}) at ${topStrat.confidence}%! Ready to Load & Run.`);
+              setSignalBannerText(`🎯 HIGH MOMENTUM: ${topStrat.name} at ${topStrat.confidence}%! Ready to Load & Run.`);
               setIsSweetSpot(true);
             }
           } else {
             sweetSpotStreakRef.current = 0;
-            setSignalBannerText("✅ Market Scan Complete: Strategies Ranked");
+            setSignalBannerText("✅ R_10 Momentum Scan Active");
             setIsSweetSpot(false);
           }
         }
@@ -64,7 +64,7 @@ export const FloatingAI: React.FC = () => {
 
     const handleSignalLock = (e: CustomEvent) => {
       if (isOpenRef.current && !isScanningPhaseRef.current) {
-        setSignalBannerText(e.detail?.message || "🎯 HIGH CONFIDENCE LOCKED: Ready to Load Strategy");
+        setSignalBannerText(e.detail?.message || "🎯 HIGH CONFIDENCE LOCKED: Ready to Execute");
         setIsSignalLocked(true);
         setIsSweetSpot(false);
       }
@@ -85,12 +85,12 @@ export const FloatingAI: React.FC = () => {
       setIsSweetSpot(false);
       setIsScanningPhase(true);
       sweetSpotStreakRef.current = 0;
-      setSignalBannerText("🔍 Scanning Live Ticks Across Markets...");
+      setSignalBannerText("🔍 Calibrating R_10 Alpha Ticks...");
 
       const timer = setTimeout(() => {
         setIsScanningPhase(false);
-        setSignalBannerText("✅ Market Scan Complete: Strategies Ranked");
-      }, 2500);
+        setSignalBannerText("✅ R_10 Momentum Scan Active");
+      }, 1500);
 
       return () => clearTimeout(timer);
     }
@@ -100,14 +100,11 @@ export const FloatingAI: React.FC = () => {
 
   // Instantly loads the strategy and triggers the workspace Run button simultaneously
   const handleRunBot = (strat: Strategy) => {
-    // 1. Load configuration into workspace
     ScannerBridge.loadStrategyToWorkspace(strat);
     setIsOpen(false);
 
-    // 2. Programmatically fire the workspace [Run] execution sequence after a brief DOM tick
     setTimeout(() => {
       const allButtons = Array.from(document.querySelectorAll('button'));
-      // Find the primary Run execution button in the workspace dashboard
       const targetRunBtn = allButtons.find(b => b.textContent?.trim() === 'Run');
       
       if (targetRunBtn instanceof HTMLElement) {
@@ -131,11 +128,11 @@ export const FloatingAI: React.FC = () => {
         <div className="ai-modal-backdrop" onClick={() => setIsOpen(false)}>
           <div className="ai-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="ai-modal-header">
-              <h2>AI Multi-Asset Scanner</h2>
+              <h2>R-10 Institutional Alpha Engine</h2>
               <button className="close-btn" onClick={() => setIsOpen(false)}>×</button>
             </div>
             
-            {/* 🔑 Live Mini Price Ticker Bar embedded right here for instant visual validation */}
+            {/* Live Mini Price Ticker Bar */}
             <ScannerTickerBar />
 
             <div 
@@ -148,26 +145,26 @@ export const FloatingAI: React.FC = () => {
             {isScanningPhase ? (
               <div className="scanner-loading-state">
                 <div className="spinner-animation">🛰️</div>
-                <p className="loading-title">Analyzing tick streams across Volatility indices...</p>
-                <p className="loading-sub">Evaluating momentum, spreads, and historical confidence layers.</p>
+                <p className="loading-title">Syncing with Volatility 10 Index feed...</p>
+                <p className="loading-sub">Calculating live Bullish/Bearish quant alpha metrics.</p>
               </div>
             ) : (
               <>
-                <p className="scanner-instruction">Top balanced strategies ranked below. Click to load and execute instantly.</p>
+                <p className="scanner-instruction">Core directional alpha strategies tracking R_10. Click to load and execute.</p>
 
                 <div className="strategy-list">
                   {sortedStrategies.map((strat, idx) => {
                     const key = strat.id || `${strat.name}-${idx}`;
-                    const isGlobalWinner = idx === 0;
+                    const isDominant = idx === 0;
 
                     return (
                       <div 
                         key={key} 
-                        className={`strategy-card ${isGlobalWinner ? 'top-card' : ''}`}
+                        className={`strategy-card ${isDominant ? 'top-card' : ''}`}
                       >
-                        {isGlobalWinner && (
+                        {isDominant && (
                           <div className="global-winner-meta">
-                            <span>⭐ GLOBAL WINNER</span>
+                            <span>⭐ DOMINANT ALPHA</span>
                             <span>CONFIDENCE {strat.confidence}%</span>
                           </div>
                         )}
@@ -185,13 +182,13 @@ export const FloatingAI: React.FC = () => {
                               )}
                             </div>
                           </div>
-                          <span className={isGlobalWinner ? "badge-high" : "badge-medium"}>
-                            {isGlobalWinner ? "HIGH" : "MEDIUM"}
+                          <span className={isDominant ? "badge-high" : "badge-medium"}>
+                            {isDominant ? "ACTIVE" : "STANDBY"}
                           </span>
                         </div>
 
                         <div className="card-sub-row">
-                          <span>Score: {strat.score || strat.confidence}%</span>
+                          <span>Alpha Score: {strat.score || strat.confidence}%</span>
                           <span>Confidence: {strat.confidence}%</span>
                         </div>
 
@@ -199,7 +196,7 @@ export const FloatingAI: React.FC = () => {
                           className="run-manual-btn" 
                           onClick={() => handleRunBot(strat)}
                         >
-                          Load Strategy & Run Instantly
+                          Load {strat.name} & Run Instantly
                         </button>
                       </div>
                     );
