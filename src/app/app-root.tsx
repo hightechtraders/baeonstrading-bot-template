@@ -54,34 +54,14 @@ const AppRoot = () => {
         return hasToken || hasTokenInUrl;
     });
 
-    // Initialize API & Capture OAuth Tokens safely
+    // Initialize API
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
-        let primaryToken = '';
-
-        // Target the primary token parameter returned by Deriv OAuth
         for (const [key, value] of urlParams.entries()) {
-            if ((key === 'token1' || key === 'token') && value) {
-                primaryToken = value;
-                break;
+            if (key.includes('token') || key.startsWith('acct')) {
+                localStorage.setItem('authToken', value);
+                setIsAuthenticated(true);
             }
-        }
-
-        // Fallback search if token1 isn't explicitly named
-        if (!primaryToken) {
-            for (const [key, value] of urlParams.entries()) {
-                if (key.includes('token') && value && value.length > 10) {
-                    primaryToken = value;
-                    break;
-                }
-            }
-        }
-
-        if (primaryToken) {
-            localStorage.setItem('authToken', primaryToken);
-            setIsAuthenticated(true);
-            // Clean the token query params out of the browser address bar immediately
-            window.history.replaceState({}, document.title, window.location.pathname);
         }
 
         const timeoutId = setTimeout(() => {
@@ -97,9 +77,6 @@ const AppRoot = () => {
                     api_base_initialized.current = true;
                 } catch (error) {
                     console.error('API initialization failed:', error);
-                    // Clear broken tokens so users don't get trapped in a persistent error loop
-                    localStorage.removeItem('authToken');
-                    setIsAuthenticated(false);
                     api_base_initialized.current = false;
                 } finally {
                     setIsApiInitialized(true);
@@ -112,23 +89,25 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Login handler: triggers direct secure OAuth redirect to Deriv
+    // Twin-button handler: triggers the template's original working login button smoothly
     const handleLogin = () => {
-        const appId = '1089'; 
-        const redirectUrl = encodeURIComponent(window.location.origin + '/');
-        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
+        const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
+        
+        if (originalLoginBtn) {
+            originalLoginBtn.click();
+        } else {
+            // Fallback to direct OAuth redirect if DOM isn't ready
+            const appId = '1089'; 
+            const redirectUrl = encodeURIComponent(window.location.origin + '/');
+            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
+        }
     };
 
-    // Signup handler: opens Deriv's account creation portal safely in a new tab
-    const handleSignup = () => {
-        window.open('https://track.deriv.com/', '_blank');
-    };
-
-    // If not authenticated, render landing page in a fixed full-screen container with both actions
+    // If not authenticated, render landing page in a fixed full-screen container to cover all top gaps/headers
     if (!isAuthenticated) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
-                <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
+                <LandingPage onLogin={handleLogin} />
             </div>
         );
     }
