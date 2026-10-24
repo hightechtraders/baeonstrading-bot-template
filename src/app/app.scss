@@ -19,8 +19,10 @@ body, html, #root {
     --zindex-snackbar: 8;
 
     &-dashboard {
-        // 2. Replace the light variable with your custom dark glassmorphism gradient
-        background: linear-gradient(145deg, rgba(15, 23, 42, 0.8) 0%, rgba(3, 7, 18, 0.9) 100%) !important;
+        // 2. Use a transparent/clean background and strip borders to eliminate lines
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
         color: #f1f5f9;
     }
 }
