@@ -47,8 +47,14 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // 1. Force immediate true if ANY token or acct parameter exists in the URL string
-    const [isAuthenticated] = useState<boolean>(() => {
+    // Track whether we are actively processing an incoming OAuth return
+    const [isProcessingAuth, setIsProcessingAuth] = useState<boolean>(() => {
+        const search = window.location.search;
+        return search.includes('token') || search.includes('acct');
+    });
+
+    // Check standard authentication state
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const hasUrlAuth = search.includes('token') || search.includes('acct');
 
@@ -69,12 +75,10 @@ const AppRoot = () => {
         const activeLoginId = localStorage.getItem('active_loginid');
         const authToken = localStorage.getItem('authToken');
         
-        const authed = !!(clientAccounts || activeLoginId || authToken || hasUrlAuth);
-        console.log('🔍 [DEBUG] Synchronous isAuthenticated:', authed, { hasUrlAuth });
-        return authed;
+        return !!(clientAccounts || activeLoginId || authToken || hasUrlAuth);
     });
 
-    // 2. Initialize API and clean URL parameters once on mount
+    // Initialize API and clean URL parameters once on mount
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
@@ -93,6 +97,7 @@ const AppRoot = () => {
         const timeoutId = setTimeout(() => {
             if (!api_base_initialized.current) {
                 setIsApiInitialized(true);
+                setIsProcessingAuth(false);
             }
         }, 1500);
 
@@ -105,6 +110,7 @@ const AppRoot = () => {
                     console.error('API initialization failed:', error);
                 } finally {
                     setIsApiInitialized(true);
+                    setIsProcessingAuth(false);
                     clearTimeout(timeoutId);
                 }
             }
@@ -114,6 +120,7 @@ const AppRoot = () => {
             initializeApi();
         } else {
             setIsApiInitialized(true);
+            setIsProcessingAuth(false);
         }
 
         return () => clearTimeout(timeoutId);
@@ -143,7 +150,12 @@ const AppRoot = () => {
         }
     };
 
-    // Render checks
+    // RULE 1: If we are actively processing incoming auth tokens from the URL, ALWAYS show the Preloader instead of flashing the landing page
+    if (isProcessingAuth || (!is_api_initialized && isAuthenticated)) {
+        return <AppRootLoader />;
+    }
+
+    // RULE 2: If genuinely not authenticated and not processing tokens, show Landing Page
     if (!isAuthenticated) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
@@ -152,10 +164,12 @@ const AppRoot = () => {
         );
     }
 
-    if (!is_api_initialized || !store) {
+    // RULE 3: Waiting for store initialization
+    if (!store) {
         return <AppRootLoader />;
     }
 
+    // RULE 4: Fully loaded workspace
     return (
         <Suspense fallback={<AppRootLoader />}>
             <ErrorBoundary root_store={store}>
