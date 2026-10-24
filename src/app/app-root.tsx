@@ -47,15 +47,15 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // 1. Synchronously capture URL tokens and lock authentication state immediately on mount
+    // 1. Force immediate true if ANY token or acct parameter exists in the URL string
     const [isAuthenticated] = useState<boolean>(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        let hasTokenInUrl = false;
+        const search = window.location.search;
+        const hasUrlAuth = search.includes('token') || search.includes('acct');
 
+        const urlParams = new URLSearchParams(search);
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
-                hasTokenInUrl = true;
                 if (key.includes('token1') || key === 'token') {
                     localStorage.setItem('authToken', value);
                 }
@@ -69,14 +69,13 @@ const AppRoot = () => {
         const activeLoginId = localStorage.getItem('active_loginid');
         const authToken = localStorage.getItem('authToken');
         
-        const authed = !!(clientAccounts || activeLoginId || authToken || hasTokenInUrl);
-        console.log('🔍 [DEBUG] Initial isAuthenticated evaluated as:', authed, { clientAccounts, activeLoginId, authToken, hasTokenInUrl });
+        const authed = !!(clientAccounts || activeLoginId || authToken || hasUrlAuth);
+        console.log('🔍 [DEBUG] Synchronous isAuthenticated:', authed, { hasUrlAuth });
         return authed;
     });
 
     // 2. Initialize API and clean URL parameters once on mount
     useEffect(() => {
-        console.log('🚀 [DEBUG] useEffect mounted. isAuthenticated is:', isAuthenticated);
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
 
@@ -93,7 +92,6 @@ const AppRoot = () => {
 
         const timeoutId = setTimeout(() => {
             if (!api_base_initialized.current) {
-                console.warn('⚠️ [DEBUG] API init hit fallback timeout (1500ms)');
                 setIsApiInitialized(true);
             }
         }, 1500);
@@ -101,12 +99,10 @@ const AppRoot = () => {
         const initializeApi = async () => {
             if (!api_base_initialized.current) {
                 try {
-                    console.log('⏳ [DEBUG] Calling api_base.init()...');
                     await api_base.init();
                     api_base_initialized.current = true;
-                    console.log('✅ [DEBUG] api_base.init() completed successfully.');
                 } catch (error) {
-                    console.error('❌ [DEBUG] API initialization failed:', error);
+                    console.error('API initialization failed:', error);
                 } finally {
                     setIsApiInitialized(true);
                     clearTimeout(timeoutId);
@@ -117,14 +113,13 @@ const AppRoot = () => {
         if (isAuthenticated) {
             initializeApi();
         } else {
-            console.log('👤 [DEBUG] User not authenticated, skipping API init.');
             setIsApiInitialized(true);
         }
 
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Twin-button handler for Login (100% untouched)
+    // Twin-button handler for Login
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
@@ -137,7 +132,7 @@ const AppRoot = () => {
         }
     };
 
-    // Twin-button handler for Signup (100% untouched)
+    // Twin-button handler for Signup
     const handleSignup = () => {
         const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
         
@@ -148,9 +143,8 @@ const AppRoot = () => {
         }
     };
 
-    // Render checks with logging
+    // Render checks
     if (!isAuthenticated) {
-        console.log('🛑 [DEBUG] Rendering: LandingPage');
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
                 <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
@@ -159,11 +153,9 @@ const AppRoot = () => {
     }
 
     if (!is_api_initialized || !store) {
-        console.log('⏳ [DEBUG] Rendering: AppRootLoader (Preloader)', { is_api_initialized, hasStore: !!store });
         return <AppRootLoader />;
     }
 
-    console.log('🎉 [DEBUG] Rendering: Workspace (AppContent)');
     return (
         <Suspense fallback={<AppRootLoader />}>
             <ErrorBoundary root_store={store}>
