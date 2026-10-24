@@ -75,7 +75,7 @@ const AppRoot = () => {
         };
     }, []);
 
-    // Initialize API & immediately sanitize URL parameters to prevent re-trigger flashes
+    // Initialize API & sanitize URL parameters immediately
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
@@ -88,16 +88,16 @@ const AppRoot = () => {
             }
         }
 
-        // Instantly strip tokens from the URL bar so re-renders don't loop back to landing page
         if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
+        // Reduced fallback timeout from 5000ms to 1000ms for instant loading
         const timeoutId = setTimeout(() => {
             if (!is_api_initialized) {
                 setIsApiInitialized(true);
             }
-        }, 5000);
+        }, 1000);
 
         const initializeApi = async () => {
             if (!api_base_initialized.current) {
