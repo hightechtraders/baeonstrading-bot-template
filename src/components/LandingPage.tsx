@@ -14,6 +14,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
         <div className="landing-container">
             <div className="market-ticker-bar">
                 <div className="ticker-track">
+                    {/* Primary Ticker Items */}
+                    <span className="ticker-item"><span className="symbol">R_100</span> <span className="up">+1.42%</span></span>
+                    <span className="ticker-item"><span className="symbol">Volatility 75 (1s)</span> <span className="up">+0.89%</span></span>
+                    <span className="ticker-item"><span className="symbol">Boom 1000</span> <span className="down">-0.34%</span></span>
+                    <span className="ticker-item"><span className="symbol">Crash 500</span> <span className="up">+1.12%</span></span>
+                    <span className="ticker-item"><span className="symbol">Step Index</span> <span className="up">+0.55%</span></span>
+                    
+                    {/* Duplicated Items for Seamless Infinite Loop */}
                     <span className="ticker-item"><span className="symbol">R_100</span> <span className="up">+1.42%</span></span>
                     <span className="ticker-item"><span className="symbol">Volatility 75 (1s)</span> <span className="up">+0.89%</span></span>
                     <span className="ticker-item"><span className="symbol">Boom 1000</span> <span className="down">-0.34%</span></span>
