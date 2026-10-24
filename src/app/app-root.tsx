@@ -18,7 +18,7 @@ const AppRootLoader = () => {
         <TradingPreloader 
             appName="TraderScore" 
             subtitle="TraderScore Trading Workspace" 
-            minLoadingTime={2000} 
+            minLoadingTime={800} // Optimized from 2000ms to 800ms for speed
         />
     );
 };
@@ -92,12 +92,12 @@ const AppRoot = () => {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        // Reduced fallback timeout from 5000ms to 1000ms for instant loading
+        // Snappy fallback timeout reduced to 200ms
         const timeoutId = setTimeout(() => {
             if (!is_api_initialized) {
                 setIsApiInitialized(true);
             }
-        }, 1000);
+        }, 200);
 
         const initializeApi = async () => {
             if (!api_base_initialized.current) {
