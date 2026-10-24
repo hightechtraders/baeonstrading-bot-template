@@ -52,20 +52,22 @@ html, body, #root {
   }
 }
 
-// High-Contrast Solid Panels & Cards (Ensures crystal-clear text visibility)
+// High-Contrast Solid Panels, Cards & Free Bots Strategy Containers
 .dc-card, 
 .dashboard__container,
 .bot-builder-content,
 [class*="dashboard"],
-[class*="tab__content"] {
+[class*="tab__content"],
+[class*="strategy"],
+[class*="card"] {
   background: #0f172a !important; // Solid slate background for sharp contrast
   border-radius: 12px !important;
-  border: 1px solid #334155 !important; // Clean, subtle separation border
+  border: 1px solid #334155 !important; // Clean, visible separation border
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
   color: #f8fafc !important;
 
   // Force all inner text, headers, and labels to render brightly and clearly
-  h1, h2, h3, h4, h5, h6, span, p, label, th, td {
+  h1, h2, h3, h4, h5, h6, span, p, label, th, td, div {
     color: #f8fafc !important;
   }
 }
