@@ -54,21 +54,31 @@ const AppRoot = () => {
         return hasToken || hasTokenInUrl;
     });
 
-    // Listen for storage clear events (Logout triggers) to instantly update UI state
+    // Robust session & logout synchronization watchdog
     useEffect(() => {
-        const handleStorageChange = () => {
+        const checkAuthStatus = () => {
             const hasToken = !!localStorage.getItem('authToken');
-            setIsAuthenticated(hasToken);
+            const hasTokenInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
+            const currentlyAuth = hasToken || hasTokenInUrl;
+            
+            setIsAuthenticated(currentlyAuth);
         };
 
-        window.addEventListener('storage', handleStorageChange);
+        // Listen for storage events (cross-tab logouts or programmatic wipes)
+        window.addEventListener('storage', checkAuthStatus);
+        window.addEventListener('traderscore_logout', checkAuthStatus);
         
-        // Custom event dispatcher check if logout happens inside the same tab session
-        window.addEventListener('traderscore_logout', handleStorageChange);
+        // Check when user navigates back to the tab after an expired session
+        window.addEventListener('focus', checkAuthStatus);
+
+        // Periodic background poll to catch automatic session expiry immediately
+        const pollInterval = setInterval(checkAuthStatus, 2000);
 
         return () => {
-            window.removeEventListener('storage', handleStorageChange);
-            window.removeEventListener('traderscore_logout', handleStorageChange);
+            window.removeEventListener('storage', checkAuthStatus);
+            window.removeEventListener('traderscore_logout', checkAuthStatus);
+            window.removeEventListener('focus', checkAuthStatus);
+            clearInterval(pollInterval);
         };
     }, []);
 
