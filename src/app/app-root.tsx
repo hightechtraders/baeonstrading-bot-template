@@ -47,22 +47,32 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // Synchronously inspect URL tokens FIRST so it never flashes the landing page on return from consent
+    // Synchronously capture and store tokens from URL on initial mount
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let hasTokenInUrl = false;
 
+        // Properly parse and store all incoming Deriv token/account parameters
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem('active_loginid', value);
+                localStorage.setItem(key, value);
                 hasTokenInUrl = true;
+                
+                // If it's the primary token or account, set active markers
+                if (key.includes('token1') || key === 'token') {
+                    localStorage.setItem('authToken', value);
+                }
+                if (key.startsWith('acct1') || key === 'acct') {
+                    localStorage.setItem('active_loginid', value);
+                }
             }
         }
 
         const clientAccounts = localStorage.getItem('client.accounts');
         const activeLoginId = localStorage.getItem('active_loginid');
+        const authToken = localStorage.getItem('authToken');
         
-        return !!(clientAccounts || activeLoginId || hasTokenInUrl);
+        return !!(clientAccounts || activeLoginId || authToken || hasTokenInUrl);
     });
 
     // Watch for storage or login state updates dynamically
@@ -70,9 +80,10 @@ const AppRoot = () => {
         const checkAuth = () => {
             const clientAccounts = localStorage.getItem('client.accounts');
             const activeLoginId = localStorage.getItem('active_loginid');
+            const authToken = localStorage.getItem('authToken');
             const hasTokenInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
             
-            setIsAuthenticated(!!(clientAccounts || activeLoginId || hasTokenInUrl));
+            setIsAuthenticated(!!(clientAccounts || activeLoginId || authToken || hasTokenInUrl));
         };
 
         window.addEventListener('storage', checkAuth);
@@ -86,7 +97,18 @@ const AppRoot = () => {
 
     // Initialize API & clean up URL parameters immediately
     useEffect(() => {
-        if (window.location.search.includes('token') || window.location.search.includes('acct')) {
+        const urlParams = new URLSearchParams(window.location.search);
+        let tokenFound = false;
+
+        for (const [key, value] of urlParams.entries()) {
+            if (key.includes('token') || key.startsWith('acct')) {
+                localStorage.setItem(key, value);
+                tokenFound = true;
+                setIsAuthenticated(true);
+            }
+        }
+
+        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -95,7 +117,7 @@ const AppRoot = () => {
             if (!is_api_initialized) {
                 setIsApiInitialized(true);
             }
-        }, 200);
+        }, 300);
 
         const initializeApi = async () => {
             if (!api_base_initialized.current) {
