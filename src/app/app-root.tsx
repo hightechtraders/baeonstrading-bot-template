@@ -54,6 +54,24 @@ const AppRoot = () => {
         return hasToken || hasTokenInUrl;
     });
 
+    // Listen for storage clear events (Logout triggers) to instantly update UI state
+    useEffect(() => {
+        const handleStorageChange = () => {
+            const hasToken = !!localStorage.getItem('authToken');
+            setIsAuthenticated(hasToken);
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        
+        // Custom event dispatcher check if logout happens inside the same tab session
+        window.addEventListener('traderscore_logout', handleStorageChange);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('traderscore_logout', handleStorageChange);
+        };
+    }, []);
+
     // Initialize API (100% untouched working logic)
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -103,14 +121,13 @@ const AppRoot = () => {
         }
     };
 
-    // Twin-button handler for Signup (Updated to direct to the target account creation dashboard)
+    // Twin-button handler for Signup (100% untouched working redirection)
     const handleSignup = () => {
         const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
         
         if (originalSignupBtn) {
             originalSignupBtn.click();
         } else {
-            // Fallback directly to the dashboard signup view shown in your screenshot
             window.open('https://home.deriv.com/dashboard', '_blank');
         }
     };
