@@ -47,33 +47,44 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // Track authentication state using sessionStorage so local code edits don't trap you in logged-in states
+    // Check authentic state against actual client storage keys used by the app framework
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-        const hasSessionToken = !!sessionStorage.getItem('authToken');
+        const clientAccounts = localStorage.getItem('client.accounts');
+        const activeLoginId = localStorage.getItem('active_loginid');
         const hasTokenInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
-        return hasSessionToken || hasTokenInUrl;
+        
+        return !!(clientAccounts || activeLoginId || hasTokenInUrl);
     });
 
-    // Handle OAuth tokens arriving in URL, persist to sessionStorage, and clean URL
+    // Watch for storage or login state updates dynamically
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        let foundNewToken = false;
+        const checkAuth = () => {
+            const clientAccounts = localStorage.getItem('client.accounts');
+            const activeLoginId = localStorage.getItem('active_loginid');
+            const hasTokenInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
+            
+            setIsAuthenticated(!!(clientAccounts || activeLoginId || hasTokenInUrl));
+        };
 
-        for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
-                sessionStorage.setItem('authToken', value);
-                foundNewToken = true;
-            }
-        }
+        window.addEventListener('storage', checkAuth);
+        const interval = setInterval(checkAuth, 1000);
 
-        if (foundNewToken) {
-            setIsAuthenticated(true);
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
+        return () => {
+            window.removeEventListener('storage', checkAuth);
+            clearInterval(interval);
+        };
     }, []);
 
     // Initialize API (100% untouched working logic)
     useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        for (const [key, value] of urlParams.entries()) {
+            if (key.includes('token') || key.startsWith('acct')) {
+                localStorage.setItem('active_loginid', value);
+                setIsAuthenticated(true);
+            }
+        }
+
         const timeoutId = setTimeout(() => {
             if (!is_api_initialized) {
                 setIsApiInitialized(true);
@@ -99,7 +110,7 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Twin-button handler for Login (100% untouched)
+    // Twin-button handler for Login (100% untouched working flow)
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
@@ -123,7 +134,7 @@ const AppRoot = () => {
         }
     };
 
-    // If not authenticated, always render the landing page overlay cleanly
+    // If not authenticated, always display your custom landing page cleanly
     if (!isAuthenticated) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
