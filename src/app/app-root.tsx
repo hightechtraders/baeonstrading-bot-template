@@ -47,51 +47,33 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // Track authentication state directly inside AppRoot
+    // Track authentication state using sessionStorage so local code edits don't trap you in logged-in states
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-        const hasToken = !!localStorage.getItem('authToken');
+        const hasSessionToken = !!sessionStorage.getItem('authToken');
         const hasTokenInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
-        return hasToken || hasTokenInUrl;
+        return hasSessionToken || hasTokenInUrl;
     });
 
-    // Robust session & logout synchronization watchdog
+    // Handle OAuth tokens arriving in URL, persist to sessionStorage, and clean URL
     useEffect(() => {
-        const checkAuthStatus = () => {
-            const hasToken = !!localStorage.getItem('authToken');
-            const hasTokenInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
-            const currentlyAuth = hasToken || hasTokenInUrl;
-            
-            setIsAuthenticated(currentlyAuth);
-        };
+        const urlParams = new URLSearchParams(window.location.search);
+        let foundNewToken = false;
 
-        // Listen for storage events (cross-tab logouts or programmatic wipes)
-        window.addEventListener('storage', checkAuthStatus);
-        window.addEventListener('traderscore_logout', checkAuthStatus);
-        
-        // Check when user navigates back to the tab after an expired session
-        window.addEventListener('focus', checkAuthStatus);
+        for (const [key, value] of urlParams.entries()) {
+            if (key.includes('token') || key.startsWith('acct')) {
+                sessionStorage.setItem('authToken', value);
+                foundNewToken = true;
+            }
+        }
 
-        // Periodic background poll to catch automatic session expiry immediately
-        const pollInterval = setInterval(checkAuthStatus, 2000);
-
-        return () => {
-            window.removeEventListener('storage', checkAuthStatus);
-            window.removeEventListener('traderscore_logout', checkAuthStatus);
-            window.removeEventListener('focus', checkAuthStatus);
-            clearInterval(pollInterval);
-        };
+        if (foundNewToken) {
+            setIsAuthenticated(true);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
     }, []);
 
     // Initialize API (100% untouched working logic)
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem('authToken', value);
-                setIsAuthenticated(true);
-            }
-        }
-
         const timeoutId = setTimeout(() => {
             if (!is_api_initialized) {
                 setIsApiInitialized(true);
@@ -124,7 +106,6 @@ const AppRoot = () => {
         if (originalLoginBtn) {
             originalLoginBtn.click();
         } else {
-            // Fallback to direct OAuth redirect if DOM isn't ready
             const appId = '1089'; 
             const redirectUrl = encodeURIComponent(window.location.origin + '/');
             window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
@@ -142,7 +123,7 @@ const AppRoot = () => {
         }
     };
 
-    // If not authenticated, render landing page with both handlers passed cleanly
+    // If not authenticated, always render the landing page overlay cleanly
     if (!isAuthenticated) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
