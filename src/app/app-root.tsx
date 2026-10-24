@@ -47,7 +47,7 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // Synchronously capture URL tokens and lock authentication state immediately on mount
+    // 1. Synchronously capture URL tokens and lock authentication state immediately on mount
     const [isAuthenticated] = useState<boolean>(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let hasTokenInUrl = false;
@@ -69,11 +69,14 @@ const AppRoot = () => {
         const activeLoginId = localStorage.getItem('active_loginid');
         const authToken = localStorage.getItem('authToken');
         
-        return !!(clientAccounts || activeLoginId || authToken || hasTokenInUrl);
+        const authed = !!(clientAccounts || activeLoginId || authToken || hasTokenInUrl);
+        console.log('🔍 [DEBUG] Initial isAuthenticated evaluated as:', authed, { clientAccounts, activeLoginId, authToken, hasTokenInUrl });
+        return authed;
     });
 
-    // Initialize API and clean URL parameters once on mount
+    // 2. Initialize API and clean URL parameters once on mount
     useEffect(() => {
+        console.log('🚀 [DEBUG] useEffect mounted. isAuthenticated is:', isAuthenticated);
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
 
@@ -90,6 +93,7 @@ const AppRoot = () => {
 
         const timeoutId = setTimeout(() => {
             if (!api_base_initialized.current) {
+                console.warn('⚠️ [DEBUG] API init hit fallback timeout (1500ms)');
                 setIsApiInitialized(true);
             }
         }, 1500);
@@ -97,10 +101,12 @@ const AppRoot = () => {
         const initializeApi = async () => {
             if (!api_base_initialized.current) {
                 try {
+                    console.log('⏳ [DEBUG] Calling api_base.init()...');
                     await api_base.init();
                     api_base_initialized.current = true;
+                    console.log('✅ [DEBUG] api_base.init() completed successfully.');
                 } catch (error) {
-                    console.error('API initialization failed:', error);
+                    console.error('❌ [DEBUG] API initialization failed:', error);
                 } finally {
                     setIsApiInitialized(true);
                     clearTimeout(timeoutId);
@@ -111,6 +117,7 @@ const AppRoot = () => {
         if (isAuthenticated) {
             initializeApi();
         } else {
+            console.log('👤 [DEBUG] User not authenticated, skipping API init.');
             setIsApiInitialized(true);
         }
 
@@ -141,8 +148,9 @@ const AppRoot = () => {
         }
     };
 
-    // If NOT authenticated, show Landing Page immediately without triggering any preloader
+    // Render checks with logging
     if (!isAuthenticated) {
+        console.log('🛑 [DEBUG] Rendering: LandingPage');
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
                 <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
@@ -150,12 +158,12 @@ const AppRoot = () => {
         );
     }
 
-    // If authenticated, show the single unified preloader while API initializes
     if (!is_api_initialized || !store) {
+        console.log('⏳ [DEBUG] Rendering: AppRootLoader (Preloader)', { is_api_initialized, hasStore: !!store });
         return <AppRootLoader />;
     }
 
-    // Fully loaded workspace
+    console.log('🎉 [DEBUG] Rendering: Workspace (AppContent)');
     return (
         <Suspense fallback={<AppRootLoader />}>
             <ErrorBoundary root_store={store}>
