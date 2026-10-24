@@ -103,15 +103,15 @@ const AppRoot = () => {
         }
     };
 
-    // Twin-button handler for Signup (Updated to avoid the track.deriv.com legacy JSON error)
+    // Twin-button handler for Signup (Updated to direct to the target account creation dashboard)
     const handleSignup = () => {
         const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
         
         if (originalSignupBtn) {
             originalSignupBtn.click();
         } else {
-            // Fallback to Deriv's clean official OAuth signup URL directly
-            window.open('https://oauth.deriv.com/oauth2/signup', '_blank');
+            // Fallback directly to the dashboard signup view shown in your screenshot
+            window.open('https://home.deriv.com/dashboard', '_blank');
         }
     };
 
