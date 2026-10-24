@@ -47,8 +47,8 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // Synchronously check and persist authentication on mount
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    // Synchronously capture URL tokens and lock authentication state immediately on mount
+    const [isAuthenticated] = useState<boolean>(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let hasTokenInUrl = false;
 
@@ -72,22 +72,7 @@ const AppRoot = () => {
         return !!(clientAccounts || activeLoginId || authToken || hasTokenInUrl);
     });
 
-    // Dynamic storage listener
-    useEffect(() => {
-        const checkAuth = () => {
-            const clientAccounts = localStorage.getItem('client.accounts');
-            const activeLoginId = localStorage.getItem('active_loginid');
-            const authToken = localStorage.getItem('authToken');
-            const hasTokenInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
-            
-            setIsAuthenticated(!!(clientAccounts || activeLoginId || authToken || hasTokenInUrl));
-        };
-
-        window.addEventListener('storage', checkAuth);
-        return () => window.removeEventListener('storage', checkAuth);
-    }, []);
-
-    // Initialize API & Clean URL immediately
+    // Initialize API and clean URL parameters once on mount
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
@@ -103,7 +88,6 @@ const AppRoot = () => {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        // Fast fallback timeout to prevent hanging
         const timeoutId = setTimeout(() => {
             if (!api_base_initialized.current) {
                 setIsApiInitialized(true);
@@ -131,7 +115,7 @@ const AppRoot = () => {
         }
 
         return () => clearTimeout(timeoutId);
-    }, [isAuthenticated]);
+    }, []);
 
     // Twin-button handler for Login (100% untouched)
     const handleLogin = () => {
@@ -157,7 +141,7 @@ const AppRoot = () => {
         }
     };
 
-    // 1. If NOT authenticated, show Landing Page immediately (No preloader delay on fresh visits)
+    // If NOT authenticated, show Landing Page immediately without triggering any preloader
     if (!isAuthenticated) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
@@ -166,12 +150,12 @@ const AppRoot = () => {
         );
     }
 
-    // 2. If authenticated, but API or store is still loading, show the single unified preloader
+    // If authenticated, show the single unified preloader while API initializes
     if (!is_api_initialized || !store) {
         return <AppRootLoader />;
     }
 
-    // 3. Fully loaded workspace
+    // Fully loaded workspace
     return (
         <Suspense fallback={<AppRootLoader />}>
             <ErrorBoundary root_store={store}>
