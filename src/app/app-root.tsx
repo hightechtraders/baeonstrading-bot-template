@@ -18,7 +18,7 @@ const AppRootLoader = () => {
         <TradingPreloader 
             appName="TraderScore" 
             subtitle="TraderScore Trading Workspace" 
-            minLoadingTime={800} // Optimized from 2000ms to 800ms for speed
+            minLoadingTime={800} 
         />
     );
 };
@@ -47,11 +47,20 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // Check authentic state against actual client storage keys used by the app framework
+    // Synchronously inspect URL tokens FIRST so it never flashes the landing page on return from consent
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        let hasTokenInUrl = false;
+
+        for (const [key, value] of urlParams.entries()) {
+            if (key.includes('token') || key.startsWith('acct')) {
+                localStorage.setItem('active_loginid', value);
+                hasTokenInUrl = true;
+            }
+        }
+
         const clientAccounts = localStorage.getItem('client.accounts');
         const activeLoginId = localStorage.getItem('active_loginid');
-        const hasTokenInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
         
         return !!(clientAccounts || activeLoginId || hasTokenInUrl);
     });
@@ -75,24 +84,13 @@ const AppRoot = () => {
         };
     }, []);
 
-    // Initialize API & sanitize URL parameters immediately
+    // Initialize API & clean up URL parameters immediately
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        let tokenFound = false;
-
-        for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem('active_loginid', value);
-                tokenFound = true;
-                setIsAuthenticated(true);
-            }
-        }
-
-        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
+        if (window.location.search.includes('token') || window.location.search.includes('acct')) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        // Snappy fallback timeout reduced to 200ms
+        // Snappy fallback timeout
         const timeoutId = setTimeout(() => {
             if (!is_api_initialized) {
                 setIsApiInitialized(true);
