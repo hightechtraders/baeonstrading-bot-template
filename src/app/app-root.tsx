@@ -47,17 +47,15 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // 1. Check if we have active tokens or if the user has already initiated login before
+    // 1. Check strict authentication based on real session keys or incoming URL tokens
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const hasUrlAuth = search.includes('token') || search.includes('acct');
-        const hasLoggedInBefore = localStorage.getItem('has_logged_in') === 'true';
 
         const urlParams = new URLSearchParams(search);
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
-                localStorage.setItem('has_logged_in', 'true'); // Lock out landing page forever once tokens appear
                 if (key.includes('token1') || key === 'token') {
                     localStorage.setItem('authToken', value);
                 }
@@ -71,7 +69,7 @@ const AppRoot = () => {
         const activeLoginId = localStorage.getItem('active_loginid');
         const authToken = localStorage.getItem('authToken');
         
-        return !!(clientAccounts || activeLoginId || authToken || hasUrlAuth || hasLoggedInBefore);
+        return !!(clientAccounts || activeLoginId || authToken || hasUrlAuth);
     });
 
     // 2. Initialize API and clean URL parameters once on mount
@@ -82,7 +80,6 @@ const AppRoot = () => {
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
-                localStorage.setItem('has_logged_in', 'true');
                 tokenFound = true;
             }
         }
@@ -120,9 +117,8 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Twin-button handler for Login - Sets lock flag immediately before redirecting
+    // Twin-button handler for Login
     const handleLogin = () => {
-        localStorage.setItem('has_logged_in', 'true');
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
         if (originalLoginBtn) {
@@ -147,16 +143,16 @@ const AppRoot = () => {
 
     // RENDER GUARDS
     const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
-    const hasLoggedInBefore = localStorage.getItem('has_logged_in') === 'true';
 
-    if (hasTokensInUrl || hasLoggedInBefore) {
+    // Intercept incoming OAuth return flows to prevent landing page flash
+    if (hasTokensInUrl) {
         if (!store || !is_api_initialized) {
             return <AppRootLoader />;
         }
     }
 
-    // Only show Landing Page if the user has never clicked login and has no session tokens
-    if (!isAuthenticated && !hasLoggedInBefore) {
+    // If the user is genuinely not authenticated (no session accounts or tokens), show the Landing Page
+    if (!isAuthenticated) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
                 <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
@@ -164,6 +160,7 @@ const AppRoot = () => {
         );
     }
 
+    // If authenticated but still initializing workspace store/API
     if (!store || !is_api_initialized) {
         return <AppRootLoader />;
     }
