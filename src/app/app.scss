@@ -1,3 +1,9 @@
+// 1. Force the global dark radial gradient across the entire document shell
+body, html, #root {
+    background: radial-gradient(circle at 50% 10%, #0f172a 0%, #090d16 60%, #030712 100%) !important;
+    color: #f1f5f9;
+}
+
 .bot {
     --bot-content-height: calc(100vh - 140px);
     --bot-content-width: calc(100vw - 366px);
@@ -13,7 +19,9 @@
     --zindex-snackbar: 8;
 
     &-dashboard {
-        background: var(--general-section-1);
+        // 2. Replace the light variable with your custom dark glassmorphism gradient
+        background: linear-gradient(145deg, rgba(15, 23, 42, 0.8) 0%, rgba(3, 7, 18, 0.9) 100%) !important;
+        color: #f1f5f9;
     }
 }
 
