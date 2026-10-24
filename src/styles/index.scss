@@ -52,16 +52,31 @@ html, body, #root {
   }
 }
 
-// Elevate Content Panels with Clean Glassmorphism (No Harsh Borders)
+// High-Contrast Solid Panels & Cards (Ensures crystal-clear text visibility)
 .dc-card, 
 .dashboard__container,
 .bot-builder-content,
 [class*="dashboard"],
 [class*="tab__content"] {
-  background: linear-gradient(145deg, rgba(15, 23, 42, 0.7) 0%, rgba(3, 7, 18, 0.8) 100%) !important;
-  border-radius: 14px !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37) !important;
-  backdrop-filter: blur(12px);
-  color: #f1f5f9 !important;
+  background: #0f172a !important; // Solid slate background for sharp contrast
+  border-radius: 12px !important;
+  border: 1px solid #334155 !important; // Clean, subtle separation border
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+  color: #f8fafc !important;
+
+  // Force all inner text, headers, and labels to render brightly and clearly
+  h1, h2, h3, h4, h5, h6, span, p, label, th, td {
+    color: #f8fafc !important;
+  }
+}
+
+// Clean table rows and lists styling
+.datatable__row, .bot-list-item, tr {
+  background: #1e293b !important;
+  border-bottom: 1px solid #334155 !important;
+  color: #f8fafc !important;
+
+  &:hover {
+    background: #334155 !important;
+  }
 }
