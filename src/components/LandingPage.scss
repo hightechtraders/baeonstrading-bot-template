@@ -33,6 +33,18 @@
         z-index: 1;
     }
 
+    // Ambient Mouse-Follow Glow Effect
+    .mouse-glow {
+        position: absolute;
+        width: 450px;
+        height: 450px;
+        background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(6, 182, 212, 0.04) 50%, transparent 70%);
+        pointer-events: none;
+        transition: transform 0.05s ease-out;
+        transform: translate(-50%, -50%);
+        z-index: 0;
+    }
+
     // Live Ticker Bar
     .market-ticker-bar {
         background: rgba(15, 23, 42, 0.8);
@@ -216,7 +228,7 @@
             flex-direction: column;
             gap: 14px;
             align-items: center;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
 
             @media (min-width: 640px) {
                 flex-direction: row;
@@ -266,6 +278,25 @@
                     border-color: rgba(255, 255, 255, 0.25);
                     color: #ffffff;
                 }
+            }
+        }
+
+        // Glassmorphism Tech-Trust Strip styling
+        .tech-trust-strip {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 24px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #94a3b8;
+
+            span {
+                background: rgba(15, 23, 42, 0.5);
+                border: 1px solid rgba(255, 255, 255, 0.06);
+                padding: 6px 12px;
+                border-radius: 6px;
             }
         }
 
