@@ -1,14 +1,17 @@
 @use 'components/shared/styles/themes' as *;
 
 // --- Global App Base ---
-body {
-  font-family: var(--brand-font-primary);
-  background: var(--general-main-1);
-  color: var(--text-general);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+html, body, #root {
   margin: 0;
   padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  // Your signature landing page dark radial gradient
+  background: radial-gradient(circle at 50% 10%, #0f172a 0%, #090d16 60%, #030712 100%) !important;
+  color: #f1f5f9;
+  font-family: var(--brand-font-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 // ==========================================
@@ -49,13 +52,16 @@ body {
   }
 }
 
-// Elevate Content Panels
+// Elevate Content Panels with Clean Glassmorphism (No Harsh Borders)
 .dc-card, 
 .dashboard__container,
 .bot-builder-content,
 [class*="dashboard"],
 [class*="tab__content"] {
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.7) 0%, rgba(3, 7, 18, 0.8) 100%) !important;
   border-radius: 14px !important;
-  border: 1px solid var(--border-normal) !important;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37) !important;
+  backdrop-filter: blur(12px);
+  color: #f1f5f9 !important;
 }
