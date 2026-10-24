@@ -18,7 +18,7 @@ const AppRootLoader = () => {
         <TradingPreloader 
             appName="TraderScore" 
             subtitle="TraderScore Trading Workspace" 
-            minLoadingTime={800} 
+            minLoadingTime={1200} 
         />
     );
 };
@@ -47,18 +47,15 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // Synchronously capture and store tokens from URL on initial mount
+    // Synchronously check and persist authentication on mount
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let hasTokenInUrl = false;
 
-        // Properly parse and store all incoming Deriv token/account parameters
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
                 hasTokenInUrl = true;
-                
-                // If it's the primary token or account, set active markers
                 if (key.includes('token1') || key === 'token') {
                     localStorage.setItem('authToken', value);
                 }
@@ -75,7 +72,7 @@ const AppRoot = () => {
         return !!(clientAccounts || activeLoginId || authToken || hasTokenInUrl);
     });
 
-    // Watch for storage or login state updates dynamically
+    // Dynamic storage listener
     useEffect(() => {
         const checkAuth = () => {
             const clientAccounts = localStorage.getItem('client.accounts');
@@ -87,15 +84,10 @@ const AppRoot = () => {
         };
 
         window.addEventListener('storage', checkAuth);
-        const interval = setInterval(checkAuth, 1000);
-
-        return () => {
-            window.removeEventListener('storage', checkAuth);
-            clearInterval(interval);
-        };
+        return () => window.removeEventListener('storage', checkAuth);
     }, []);
 
-    // Initialize API & clean up URL parameters immediately
+    // Initialize API & Clean URL immediately
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
@@ -104,7 +96,6 @@ const AppRoot = () => {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
                 tokenFound = true;
-                setIsAuthenticated(true);
             }
         }
 
@@ -112,12 +103,12 @@ const AppRoot = () => {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        // Snappy fallback timeout
+        // Fast fallback timeout to prevent hanging
         const timeoutId = setTimeout(() => {
-            if (!is_api_initialized) {
+            if (!api_base_initialized.current) {
                 setIsApiInitialized(true);
             }
-        }, 300);
+        }, 1500);
 
         const initializeApi = async () => {
             if (!api_base_initialized.current) {
@@ -126,7 +117,6 @@ const AppRoot = () => {
                     api_base_initialized.current = true;
                 } catch (error) {
                     console.error('API initialization failed:', error);
-                    api_base_initialized.current = false;
                 } finally {
                     setIsApiInitialized(true);
                     clearTimeout(timeoutId);
@@ -134,11 +124,16 @@ const AppRoot = () => {
             }
         };
 
-        initializeApi();
-        return () => clearTimeout(timeoutId);
-    }, []);
+        if (isAuthenticated) {
+            initializeApi();
+        } else {
+            setIsApiInitialized(true);
+        }
 
-    // Twin-button handler for Login (100% untouched working flow)
+        return () => clearTimeout(timeoutId);
+    }, [isAuthenticated]);
+
+    // Twin-button handler for Login (100% untouched)
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
@@ -151,7 +146,7 @@ const AppRoot = () => {
         }
     };
 
-    // Twin-button handler for Signup (100% untouched working redirection)
+    // Twin-button handler for Signup (100% untouched)
     const handleSignup = () => {
         const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
         
@@ -162,7 +157,7 @@ const AppRoot = () => {
         }
     };
 
-    // If not authenticated, always display your custom landing page cleanly
+    // 1. If NOT authenticated, show Landing Page immediately (No preloader delay on fresh visits)
     if (!isAuthenticated) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
@@ -171,8 +166,12 @@ const AppRoot = () => {
         );
     }
 
-    if (!store || !is_api_initialized) return <AppRootLoader />;
+    // 2. If authenticated, but API or store is still loading, show the single unified preloader
+    if (!is_api_initialized || !store) {
+        return <AppRootLoader />;
+    }
 
+    // 3. Fully loaded workspace
     return (
         <Suspense fallback={<AppRootLoader />}>
             <ErrorBoundary root_store={store}>
