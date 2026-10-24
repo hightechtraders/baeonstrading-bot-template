@@ -1,11 +1,11 @@
 {
-    "brand_name": "Barons Trading",
-    "brand_domain": "baeonstrading-bot-template.vercel.app",
+    "brand_name": "Traderscore",
+    "brand_domain": "traderscore.pro",
     "brand_hostname": {
-        "staging": "baeonstrading-bot-template.vercel.app",
-        "production": "baeonstrading-bot-template.vercel.app"
+        "staging": "traderscore.pro",
+        "production": "traderscore.pro"
     },
-    "domain_name": "baeonstrading-bot-template.vercel.app",
+    "domain_name": "traderscore.pro",
     "colors": {
         "primary": "#00f0ff",
         "secondary": "#64748b",
@@ -15,19 +15,19 @@
         "warning": "#ffb800",
         "info": "#00b8ff",
         "neutral": "#94a3b8",
-        "black": "#070a12",
+        "black": "#030712",
         "white": "#ffffff",
         "grey": {
-            "50": "#f8fafc",
-            "100": "#f1f5f9",
-            "200": "#e2e8f0",
-            "300": "#cbd5e1",
-            "400": "#94a3b8",
-            "500": "#64748b",
-            "600": "#475569",
-            "700": "#334155",
-            "800": "#131b2e",
-            "900": "#0b0f19"
+            "50": "#0b0f19",
+            "100": "#131b2e",
+            "200": "#334155",
+            "300": "#475569",
+            "400": "#64748b",
+            "500": "#94a3b8",
+            "600": "#cbd5e1",
+            "700": "#e2e8f0",
+            "800": "#f1f5f9",
+            "900": "#f8fafc"
         }
     },
     "typography": {
@@ -58,14 +58,14 @@
         "css_variable_prefix": "--brand"
     },
     "platform": {
-        "name": "Barons Quantum Terminal",
+        "name": "Traderscore Quantum Terminal",
         "logo": {
             "type": "image",
             "src": "/barons-logo.jfif",
-            "alt_text": "Barons Quantum Terminal Logo",
+            "alt_text": "Traderscore Logo",
             "link_url": "/",
             "show_text": true,
-            "text": "BARONS QUANTUM"
+            "text": "TRADERSCORE"
         },
         "footer": {
             "enable_language_settings": false,
@@ -73,12 +73,12 @@
         },
         "hostname": {
             "production": {
-                "com": "baeonstrading-bot-template.vercel.app",
-                "app": "baeonstrading-bot-template.vercel.app"
+                "com": "traderscore.pro",
+                "app": "traderscore.pro"
             },
             "staging": {
-                "com": "baeonstrading-bot-template.vercel.app",
-                "app": "baeonstrading-bot-template.vercel.app"
+                "com": "traderscore.pro",
+                "app": "traderscore.pro"
             }
         },
         "auth2_url": {
