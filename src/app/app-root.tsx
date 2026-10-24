@@ -47,21 +47,17 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // Track whether we are actively processing an incoming OAuth return
-    const [isProcessingAuth, setIsProcessingAuth] = useState<boolean>(() => {
-        const search = window.location.search;
-        return search.includes('token') || search.includes('acct');
-    });
-
-    // Check standard authentication state
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    // 1. Check if we have active tokens or if the user has already initiated login before
+    const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const hasUrlAuth = search.includes('token') || search.includes('acct');
+        const hasLoggedInBefore = localStorage.getItem('has_logged_in') === 'true';
 
         const urlParams = new URLSearchParams(search);
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
+                localStorage.setItem('has_logged_in', 'true'); // Lock out landing page forever once tokens appear
                 if (key.includes('token1') || key === 'token') {
                     localStorage.setItem('authToken', value);
                 }
@@ -75,10 +71,10 @@ const AppRoot = () => {
         const activeLoginId = localStorage.getItem('active_loginid');
         const authToken = localStorage.getItem('authToken');
         
-        return !!(clientAccounts || activeLoginId || authToken || hasUrlAuth);
+        return !!(clientAccounts || activeLoginId || authToken || hasUrlAuth || hasLoggedInBefore);
     });
 
-    // Initialize API and clean URL parameters once on mount
+    // 2. Initialize API and clean URL parameters once on mount
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
@@ -86,6 +82,7 @@ const AppRoot = () => {
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
+                localStorage.setItem('has_logged_in', 'true');
                 tokenFound = true;
             }
         }
@@ -97,7 +94,6 @@ const AppRoot = () => {
         const timeoutId = setTimeout(() => {
             if (!api_base_initialized.current) {
                 setIsApiInitialized(true);
-                setIsProcessingAuth(false);
             }
         }, 1500);
 
@@ -105,79 +101,4 @@ const AppRoot = () => {
             if (!api_base_initialized.current) {
                 try {
                     await api_base.init();
-                    api_base_initialized.current = true;
-                } catch (error) {
-                    console.error('API initialization failed:', error);
-                } finally {
-                    setIsApiInitialized(true);
-                    setIsProcessingAuth(false);
-                    clearTimeout(timeoutId);
-                }
-            }
-        };
-
-        if (isAuthenticated) {
-            initializeApi();
-        } else {
-            setIsApiInitialized(true);
-            setIsProcessingAuth(false);
-        }
-
-        return () => clearTimeout(timeoutId);
-    }, []);
-
-    // Twin-button handler for Login
-    const handleLogin = () => {
-        const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
-        
-        if (originalLoginBtn) {
-            originalLoginBtn.click();
-        } else {
-            const appId = '1089'; 
-            const redirectUrl = encodeURIComponent(window.location.origin + '/');
-            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
-        }
-    };
-
-    // Twin-button handler for Signup
-    const handleSignup = () => {
-        const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
-        
-        if (originalSignupBtn) {
-            originalSignupBtn.click();
-        } else {
-            window.open('https://home.deriv.com/dashboard', '_blank');
-        }
-    };
-
-    // RULE 1: If we are actively processing incoming auth tokens from the URL, ALWAYS show the Preloader instead of flashing the landing page
-    if (isProcessingAuth || (!is_api_initialized && isAuthenticated)) {
-        return <AppRootLoader />;
-    }
-
-    // RULE 2: If genuinely not authenticated and not processing tokens, show Landing Page
-    if (!isAuthenticated) {
-        return (
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
-                <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
-            </div>
-        );
-    }
-
-    // RULE 3: Waiting for store initialization
-    if (!store) {
-        return <AppRootLoader />;
-    }
-
-    // RULE 4: Fully loaded workspace
-    return (
-        <Suspense fallback={<AppRootLoader />}>
-            <ErrorBoundary root_store={store}>
-                <ErrorComponentWrapper />
-                <AppContent />
-            </ErrorBoundary>
-        </Suspense>
-    );
-};
-
-export default AppRoot;
+                    api_base
