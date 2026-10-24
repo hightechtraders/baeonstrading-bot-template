@@ -75,14 +75,22 @@ const AppRoot = () => {
         };
     }, []);
 
-    // Initialize API (100% untouched working logic)
+    // Initialize API & immediately sanitize URL parameters to prevent re-trigger flashes
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
+        let tokenFound = false;
+
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem('active_loginid', value);
+                tokenFound = true;
                 setIsAuthenticated(true);
             }
+        }
+
+        // Instantly strip tokens from the URL bar so re-renders don't loop back to landing page
+        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
 
         const timeoutId = setTimeout(() => {
