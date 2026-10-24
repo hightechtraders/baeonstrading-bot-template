@@ -101,4 +101,81 @@ const AppRoot = () => {
             if (!api_base_initialized.current) {
                 try {
                     await api_base.init();
-                    api_base
+                    api_base_initialized.current = true;
+                } catch (error) {
+                    console.error('API initialization failed:', error);
+                } finally {
+                    setIsApiInitialized(true);
+                    clearTimeout(timeoutId);
+                }
+            }
+        };
+
+        if (isAuthenticated) {
+            initializeApi();
+        } else {
+            setIsApiInitialized(true);
+        }
+
+        return () => clearTimeout(timeoutId);
+    }, []);
+
+    // Twin-button handler for Login - Sets lock flag immediately before redirecting
+    const handleLogin = () => {
+        localStorage.setItem('has_logged_in', 'true');
+        const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
+        
+        if (originalLoginBtn) {
+            originalLoginBtn.click();
+        } else {
+            const appId = '1089'; 
+            const redirectUrl = encodeURIComponent(window.location.origin + '/');
+            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
+        }
+    };
+
+    // Twin-button handler for Signup
+    const handleSignup = () => {
+        const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
+        
+        if (originalSignupBtn) {
+            originalSignupBtn.click();
+        } else {
+            window.open('https://home.deriv.com/dashboard', '_blank');
+        }
+    };
+
+    // RENDER GUARDS
+    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
+    const hasLoggedInBefore = localStorage.getItem('has_logged_in') === 'true';
+
+    if (hasTokensInUrl || hasLoggedInBefore) {
+        if (!store || !is_api_initialized) {
+            return <AppRootLoader />;
+        }
+    }
+
+    // Only show Landing Page if the user has never clicked login and has no session tokens
+    if (!isAuthenticated && !hasLoggedInBefore) {
+        return (
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
+                <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
+            </div>
+        );
+    }
+
+    if (!store || !is_api_initialized) {
+        return <AppRootLoader />;
+    }
+
+    return (
+        <Suspense fallback={<AppRootLoader />}>
+            <ErrorBoundary root_store={store}>
+                <ErrorComponentWrapper />
+                <AppContent />
+            </ErrorBoundary>
+        </Suspense>
+    );
+};
+
+export default AppRoot;
