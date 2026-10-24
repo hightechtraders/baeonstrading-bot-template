@@ -1,3 +1,6 @@
+// ==========================================
+// FILE: src/components/trading-preloader/TradingPreloader.tsx
+// ==========================================
 import React, { useEffect, useRef, useState } from 'react';
 import './TradingPreloader.css';
 
@@ -12,7 +15,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
   appName = 'TraderScore',
   subtitle = 'TraderScore Neural Trading Workspace',
   onComplete,
-  minLoadingTime = 8000
+  minLoadingTime = 1500
 }) => {
   const [progress, setProgress] = useState(1);
   const [statusText, setStatusText] = useState('Initializing synaptic kernel...');
@@ -39,21 +42,15 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
     window.addEventListener('resize', handleResize);
 
     const nodes: Array<{ x: number; y: number; vx: number; vy: number; radius: number; color: string; connectionLimit: number }> = [];
-    const particleCount = 200; // Increased for dense neural density
-    const coreCount = 120; // High clustering for brain core
-    const shellCount = 80; // Outward shell
+    const particleCount = 180;
 
-    // Helper: Clustered Position Function (to form brain shape)
     const getClusteredPos = () => {
-      // Clustering around central silhouette area (not random scatter)
       const isCore = Math.random() > 0.4;
       if (isCore) {
-        // Brain Core (dense cluster)
         const centerX = width * 0.5 + (Math.random() - 0.5) * 120;
         const centerY = height * 0.45 + (Math.random() - 0.5) * 120;
         return { x: centerX, y: centerY, limit: 12, color: `hsla(${Math.random() * 30 + 190}, 100%, 80%, 0.9)` };
       } else {
-        // Outward Synapse Shell
         const angle = Math.random() * Math.PI * 2;
         const dist = 180 + Math.random() * 100;
         const centerX = width * 0.5 + Math.cos(angle) * dist + (Math.random() - 0.5) * 80;
@@ -67,7 +64,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
       nodes.push({
         x: pos.x,
         y: pos.y,
-        vx: (Math.random() - 0.5) * 0.35, // Slow, intentional movement
+        vx: (Math.random() - 0.5) * 0.35,
         vy: (Math.random() - 0.5) * 0.35,
         radius: Math.random() * 1.5 + 0.8,
         color: pos.color,
@@ -78,7 +75,6 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
     const render = () => {
       ctx.clearRect(0, 0, width, height);
 
-      // --- Draw Synaptic Pathways (Connected Arcs) ---
       for (let i = 0; i < nodes.length; i++) {
         let currentConnections = 0;
         for (let j = i + 1; j < nodes.length; j++) {
@@ -86,19 +82,16 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
           const dy = nodes[i].y - nodes[j].y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
-          // Connection rules optimized for neural density
           const activeRange = distance < 180;
           const limitReached = currentConnections >= nodes[i].connectionLimit;
 
           if (activeRange && !limitReached) {
             ctx.beginPath();
             ctx.moveTo(nodes[i].x, nodes[i].y);
-            // Dynamic curvature for organic feel
             const cpX = (nodes[i].x + nodes[j].x) / 2 + (Math.random() - 0.5) * 15;
             const cpY = (nodes[i].y + nodes[j].y) / 2 + (Math.random() - 0.5) * 15;
             ctx.quadraticCurveTo(cpX, cpY, nodes[j].x, nodes[j].y);
 
-            // Shimmering path color
             const alpha = (1 - distance / 180) * (Math.random() * 0.25 + 0.15);
             ctx.strokeStyle = `rgba(0, 242, 254, ${alpha})`;
             ctx.lineWidth = 0.9;
@@ -108,12 +101,10 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
         }
       }
 
-      // --- Draw Pulsing Nodes ---
       nodes.forEach(p => {
         p.x += p.vx;
         p.y += p.vy;
 
-        // Soft internal bounce (avoid edge hit flicker)
         if (p.x < width * 0.05 || p.x > width * 0.95) p.vx *= -1;
         if (p.y < height * 0.05 || p.y > height * 0.9) p.vy *= -1;
 
@@ -121,7 +112,6 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fillStyle = p.color;
 
-        // Add soft blur and nebula glow
         ctx.shadowBlur = Math.random() * 10 + 10;
         ctx.shadowColor = `rgba(0, 242, 254, ${Math.random() * 0.5 + 0.4})`;
         ctx.fill();
@@ -139,15 +129,14 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
     };
   }, []);
 
-  // Updated Diagnostic Terminal Sequence (for high-end AI feel)
+  // Diagnostic Terminal Sequence
   useEffect(() => {
     const startTime = Date.now();
     const milestones = [
-      { at: 10, text: 'Synchronizing neural workspaces & Blockly nodes...', log: '[SYS] Handshaking Deriv neural synapse layer...' },
-      { at: 30, text: 'Authenticating synaptic quantum key pairing...', log: '[NET] Websocket tunnel secured (Deriv V2.1)...' },
-      { at: 55, text: 'Calibrating Volatility Index momentum buffers...', log: '[AI] Syncing predictive Blockly nodes...' },
-      { at: 75, text: 'Validating real-time AI risk guardrails...', log: '[AI] Validating live tick feed (R_100)...' },
-      { at: 92, text: 'Finalizing neural core interface...', log: '[SEC] Encryption layer active...' },
+      { at: 15, text: 'Synchronizing neural workspaces & Blockly nodes...', log: '[SYS] Handshaking Deriv neural synapse layer...' },
+      { at: 40, text: 'Authenticating synaptic quantum key pairing...', log: '[NET] Websocket tunnel secured (Deriv V2.1)...' },
+      { at: 65, text: 'Calibrating Volatility Index momentum buffers...', log: '[AI] Syncing predictive Blockly nodes...' },
+      { at: 85, text: 'Validating real-time AI risk guardrails...', log: '[AI] Validating live tick feed (R_100)...' },
       { at: 100, text: 'Workspace ready. Launching synapse interface...', log: '[SYS] Terminal boot sequence complete.' }
     ];
 
@@ -176,9 +165,9 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
         setIsFadingOut(true);
         setTimeout(() => {
           if (onComplete) onComplete();
-        }, 1200);
+        }, 800);
       }
-    }, 60);
+    }, 40);
 
     return () => clearInterval(timer);
   }, [minLoadingTime, onComplete]);
@@ -193,20 +182,17 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
 
       <div className="preloader-card">
         <div className="brand-header">
-          <div className="system-badge">SECURE NEURAL TERMINAL V2.4</div>
+          <div className="system-badge">
+            <span className="badge-pulse"></span>
+            SECURE NEURAL TERMINAL V2.4
+          </div>
           <h1 className="brand-title">{appName}</h1>
           <p className="brand-subtitle">{subtitle}</p>
         </div>
 
-        <div className="pulse-dots">
-          <span className="dot"></span>
-          <span className="dot"></span>
-          <span className="dot"></span>
-        </div>
-
         <div className="status-message">{statusText}</div>
 
-        <div className="terminal-console" style={{ minHeight: '52px', overflow: 'hidden' }}>
+        <div className="terminal-console">
           {terminalLogs.map((log, index) => (
             <div key={index} className="terminal-line">{log}</div>
           ))}
