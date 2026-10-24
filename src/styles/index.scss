@@ -1,16 +1,14 @@
 @use 'components/shared/styles/themes' as *;
 
 // --- Global App Base ---
-html, body, #root {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  min-height: 100vh;
-  background: radial-gradient(circle at 50% 10%, #0f172a 0%, #090d16 60%, #030712 100%) !important;
-  color: #f1f5f9;
+body {
   font-family: var(--brand-font-primary);
+  background: var(--general-main-1);
+  color: var(--text-general);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
 }
 
 // ==========================================
@@ -30,6 +28,7 @@ html, body, #root {
   }
 }
 
+// Forces the active tab to show the accent color and underline permanently
 .dc-tabs__item--active,
 [role="tab"][aria-selected="true"],
 .tab__item--active,
@@ -50,47 +49,13 @@ html, body, #root {
   }
 }
 
-// 1. Clean Dashboard & General Container Cards
+// Elevate Content Panels
 .dc-card, 
 .dashboard__container,
 .bot-builder-content,
 [class*="dashboard"],
 [class*="tab__content"] {
-  background: #0f172a !important;
-  border-radius: 12px !important;
-  border: 1px solid #334155 !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
-  color: #f8fafc !important;
-
-  h1, h2, h3, h4, h5, h6, span, p, label, th, td {
-    color: #f8fafc !important;
-  }
-}
-
-// 2. Dedicated Free Bots Strategy Cards Styling (Clean & Legible)
-.quick-strategy, 
-[class*="quick-strategy"],
-[class*="strategy-card"] {
-  background: #1e293b !important;
-  border: 1px solid #334155 !important;
-  border-radius: 12px !important;
-  padding: 16px !important;
-  margin-bottom: 16px !important;
-  color: #f8fafc !important;
-
-  // Specific text visibility inside strategy cards
-  h3, h4, span, p {
-    color: #f8fafc !important;
-  }
-}
-
-// Clean table rows and lists styling
-.datatable__row, .bot-list-item, tr {
-  background: #1e293b !important;
-  border-bottom: 1px solid #334155 !important;
-  color: #f8fafc !important;
-
-  &:hover {
-    background: #334155 !important;
-  }
+  border-radius: 14px !important;
+  border: 1px solid var(--border-normal) !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.04) !important;
 }
