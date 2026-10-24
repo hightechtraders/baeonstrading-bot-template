@@ -1,7 +1,7 @@
 // ==========================================
 // FILE: src/components/LandingPage.tsx
 // ==========================================
-import React from 'react';
+import React, { useState } from 'react';
 import './LandingPage.scss';
 
 interface LandingPageProps {
@@ -10,8 +10,24 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) => {
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setMousePos({
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
+        });
+    };
+
     return (
-        <div className="landing-container">
+        <div className="landing-container" onMouseMove={handleMouseMove}>
+            {/* Ambient Mouse-Follow Glow Effect */}
+            <div 
+                className="mouse-glow" 
+                style={{ left: `${mousePos.x}px`, top: `${mousePos.y}px` }}
+            ></div>
+
             <div className="market-ticker-bar">
                 <div className="ticker-track">
                     {/* Primary Ticker Items */}
@@ -37,7 +53,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                 </div>
                 <div className="header-actions">
                     <span className="status-indicator">
-                        <span className="pulse-dot"></span> System Online
+                        <span className="pulse-dot"></span> 
+                        <span>API: 12ms | Uptime: 99.99%</span>
                     </span>
                     <button className="btn-login-top" onClick={onLogin}>
                         Log in
@@ -75,8 +92,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                     </button>
                 </div>
 
+                {/* Glassmorphism Tech-Trust Strip */}
+                <div className="tech-trust-strip">
+                    <span>🔒 OAuth 2.0 Secure</span>
+                    <span>⚡ WebSocket v2</span>
+                    <span>🛡️ Zero Hidden Fees</span>
+                </div>
+
                 <div className="hero-footer-note">
-                    <span>⚡ Secure OAuth 2.0 Authorization · Zero Hidden Fees · Instant Setup</span>
+                    <span>⚡ Secure OAuth 2.0 Authorization · Instant Setup</span>
                 </div>
             </main>
 
