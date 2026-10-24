@@ -6,7 +6,6 @@ html, body, #root {
   padding: 0;
   width: 100%;
   min-height: 100vh;
-  // Your signature landing page dark radial gradient
   background: radial-gradient(circle at 50% 10%, #0f172a 0%, #090d16 60%, #030712 100%) !important;
   color: #f1f5f9;
   font-family: var(--brand-font-primary);
@@ -31,7 +30,6 @@ html, body, #root {
   }
 }
 
-// Forces the active tab to show the accent color and underline permanently
 .dc-tabs__item--active,
 [role="tab"][aria-selected="true"],
 .tab__item--active,
@@ -52,22 +50,36 @@ html, body, #root {
   }
 }
 
-// High-Contrast Solid Panels, Cards & Free Bots Strategy Containers
+// 1. Clean Dashboard & General Container Cards
 .dc-card, 
 .dashboard__container,
 .bot-builder-content,
 [class*="dashboard"],
-[class*="tab__content"],
-[class*="strategy"],
-[class*="card"] {
-  background: #0f172a !important; // Solid slate background for sharp contrast
+[class*="tab__content"] {
+  background: #0f172a !important;
   border-radius: 12px !important;
-  border: 1px solid #334155 !important; // Clean, visible separation border
+  border: 1px solid #334155 !important;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
   color: #f8fafc !important;
 
-  // Force all inner text, headers, and labels to render brightly and clearly
-  h1, h2, h3, h4, h5, h6, span, p, label, th, td, div {
+  h1, h2, h3, h4, h5, h6, span, p, label, th, td {
+    color: #f8fafc !important;
+  }
+}
+
+// 2. Dedicated Free Bots Strategy Cards Styling (Clean & Legible)
+.quick-strategy, 
+[class*="quick-strategy"],
+[class*="strategy-card"] {
+  background: #1e293b !important;
+  border: 1px solid #334155 !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  margin-bottom: 16px !important;
+  color: #f8fafc !important;
+
+  // Specific text visibility inside strategy cards
+  h3, h4, span, p {
     color: #f8fafc !important;
   }
 }
