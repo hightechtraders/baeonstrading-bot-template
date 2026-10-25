@@ -119,11 +119,20 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, [isAuthenticated]);
 
-    // Direct Login handler pointing to the exact OAuth authorize gateway with redirect URI
+    // Restored native DOM login trigger for the exact click behavior you need
     const handleLogin = () => {
-        const appId = '1089'; 
-        const redirectUrl = encodeURIComponent(window.location.origin + '/');
-        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
+        const originalLoginBtn = document.querySelector(
+            '.auth-actions button, .btn-login, [class*="login"], button[type="button"]'
+        ) as HTMLButtonElement;
+        
+        if (originalLoginBtn) {
+            originalLoginBtn.click();
+        } else {
+            // Fallback safety net if DOM element isn't mounted yet
+            const appId = '1089'; 
+            const redirectUrl = encodeURIComponent(window.location.origin + '/');
+            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
+        }
     };
 
     // Twin-button handler for Signup
