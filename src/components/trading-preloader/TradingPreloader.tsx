@@ -21,7 +21,7 @@ const LOADING_STEPS = [
 export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
     appName = "TraderScore",
     subtitle = "TraderScore Neural Trading Workspace",
-    minLoadingTime = 2500,
+    minLoadingTime = 5000, // Doubled loading time (5 seconds)
     onLoadingComplete
 }) => {
     const [progress, setProgress] = useState(0);
@@ -30,7 +30,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
     
     const rainCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-    // Stutter-free, pre-distributed high-speed canvas engine
+    // Stutter-free canvas engine with 1/4 reduced fall speed
     useEffect(() => {
         const canvas = rainCanvasRef.current;
         if (!canvas) return;
@@ -52,12 +52,11 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
         const drops: Array<{ x: number; y: number; speed: number; char: string; opacity: number }> = [];
         const dropCount = 140;
 
-        // Pre-distribute drops across the entire screen height so it looks full instantly without waiting
         for (let i = 0; i < dropCount; i++) {
             drops.push({
                 x: Math.random() * canvas.width,
                 y: Math.random() * canvas.height,
-                speed: Math.random() * 3.5 + 5.0,
+                speed: (Math.random() * 3.5 + 5.0) * 0.25, // Reduced speed by 3/4 (leaving 1/4 speed)
                 char: symbols[Math.floor(Math.random() * symbols.length)],
                 opacity: Math.random() * 0.5 + 0.2
             });
@@ -95,7 +94,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
         };
     }, []);
 
-    // Progress counter loop
+    // Progress counter loop adjusted for 5000ms duration
     useEffect(() => {
         const startTime = Date.now();
         const intervalTime = 30; 
