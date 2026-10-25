@@ -66,13 +66,13 @@
 
         .dc-tabs {
             &__active-line {
-                background-color: #7000ff !important; // Harmonized neon accent color
+                background-color: #7000ff !important; 
                 transition: none;
             }
 
             &__active {
                 background: var(--general-main-1);
-                color: #7000ff !important; // Harmonized text active color
+                color: #7000ff !important; 
             }
 
             &__list {
@@ -757,7 +757,7 @@
 }
 
 /* ==========================================
-   FREE BOTS TAB - PROFESSIONAL GRID STYLES
+   FREE BOTS TAB - PROFESSIONAL UNIFORM GRID STYLES
    ========================================== */
 
 .free-bots-container {
@@ -788,21 +788,22 @@
 }
 
 .free-bots-card {
-    background: var(--general-section-1);
-    border: 1px solid var(--border-normal);
+    background: #0b0f19; // Deep obsidian card background matching landing page theme
+    border: 1px solid rgba(0, 240, 255, 0.15); // Subtle cyber-cyan border tint
     border-radius: 1.2rem;
     padding: 2rem;
-    box-shadow: 0 0.8rem 1.6rem rgba(0, 0, 0, 0.24);
+    box-shadow: 0 0.8rem 1.6rem rgba(0, 0, 0, 0.4);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     gap: 1.6rem;
     box-sizing: border-box;
-    transition: transform 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 
     &:hover {
         transform: translateY(-3px);
-        border-color: var(--brand-red-coral);
+        border-color: #00f0ff; // Cyber-cyan hover highlight
+        box-shadow: 0 0 2rem rgba(0, 240, 255, 0.15);
     }
 
     .free-bots-header {
@@ -820,10 +821,11 @@
         .confidence-badge {
             font-size: 1.1rem;
             font-weight: 700;
-            color: #4caf50;
-            background: rgba(76, 175, 80, 0.12);
+            color: #00ff9d; // Success neon green badge
+            background: rgba(0, 255, 157, 0.1);
             padding: 0.3rem 0.8rem;
             border-radius: 0.6rem;
+            border: 1px solid rgba(0, 255, 157, 0.2);
         }
     }
 
@@ -835,7 +837,7 @@
         .strategy-title {
             font-size: 1.6rem;
             font-weight: 600;
-            color: var(--text-prominent);
+            color: #ffffff; // High-contrast clean white header text
             margin: 0;
             line-height: 1.4;
         }
@@ -855,10 +857,10 @@
                 font-weight: 700;
 
                 &.up {
-                    color: #4caf50;
+                    color: #00ff9d;
                 }
                 &.down {
-                    color: var(--brand-red-coral);
+                    color: #ff3366;
                 }
             }
         }
@@ -867,20 +869,22 @@
     .free-bots-btn {
         width: 100%;
         height: 4.4rem;
-        background: var(--brand-red-coral);
-        color: #fff;
+        background: #00f0ff; // Cyber-cyan primary action button matching landing page buttons
+        color: #030712; // Deep obsidian text for sharp contrast
         border: none;
         border-radius: 0.8rem;
         font-size: 1.4rem;
-        font-weight: bold;
+        font-weight: 800;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: opacity 0.2s ease, transform 0.1s ease;
+        transition: opacity 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+        box-shadow: 0 0 1.5rem rgba(0, 240, 255, 0.25);
 
         &:hover {
-            opacity: 0.9;
+            opacity: 0.95;
+            box-shadow: 0 0 2rem rgba(0, 240, 255, 0.4);
         }
 
         &:active {
