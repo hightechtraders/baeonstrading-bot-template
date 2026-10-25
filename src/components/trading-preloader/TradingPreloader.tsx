@@ -30,7 +30,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
     
     const rainCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-    // 2x Accelerated Market Rain / Currency Particle Effect
+    // Completely decoupled, high-performance canvas loop that never pauses for React state updates
     useEffect(() => {
         const canvas = rainCanvasRef.current;
         if (!canvas) return;
@@ -50,16 +50,16 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
 
         const symbols = ['$', 'EUR', 'USD', 'BTC', 'GBP', 'JPY', '+1.25%', '-0.40%', '📈', '⚡', 'R_100', '1HZ75V', 'Volatility'];
         const drops: Array<{ x: number; y: number; speed: number; char: string; opacity: number; size: number }> = [];
-        const dropCount = 120; // Doubled density for full screen saturation
+        const dropCount = 130;
 
         for (let i = 0; i < dropCount; i++) {
             drops.push({
                 x: Math.random() * width,
                 y: Math.random() * height - height,
-                speed: Math.random() * 3.5 + 5.5, // 2x faster falling speed range (5.5 to 9.0)
+                speed: Math.random() * 4.0 + 6.0, // High-speed continuous cascade
                 char: symbols[Math.floor(Math.random() * symbols.length)],
-                opacity: Math.random() * 0.45 + 0.2,
-                size: Math.floor(Math.random() * 4) + 12
+                opacity: Math.random() * 0.5 + 0.2,
+                size: 12
             });
         }
 
@@ -67,17 +67,22 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
             ctx.clearRect(0, 0, width, height);
             ctx.font = '12px "JetBrains Mono", monospace';
 
-            drops.forEach(drop => {
+            for (let i = 0; i < drops.length; i++) {
+                const drop = drops[i];
                 drop.y += drop.speed;
+                
                 if (drop.y > height + 20) {
                     drop.y = -20;
                     drop.x = Math.random() * width;
                     drop.char = symbols[Math.floor(Math.random() * symbols.length)];
                 }
 
-                ctx.fillStyle = drop.char.includes('$') || drop.char.includes('+') ? `rgba(0, 255, 153, ${drop.opacity})` : `rgba(0, 242, 254, ${drop.opacity})`;
+                ctx.fillStyle = drop.char.includes('$') || drop.char.includes('+') 
+                    ? `rgba(0, 255, 153, ${drop.opacity})` 
+                    : `rgba(0, 242, 254, ${drop.opacity})`;
+                
                 ctx.fillText(drop.char, drop.x, drop.y);
-            });
+            }
 
             animationFrameId = requestAnimationFrame(render);
         };
@@ -90,7 +95,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
         };
     }, []);
 
-    // Progress timer loop
+    // Separate isolated progress counter loop
     useEffect(() => {
         const startTime = Date.now();
         const intervalTime = 30; 
