@@ -9,7 +9,7 @@
     "colors": {
         "primary": "#00f0ff",
         "secondary": "#64748b",
-        "tertiary": "#7000ff",
+        "tertiary": "#00f0ff",
         "success": "#00ff9d",
         "danger": "#ff3366",
         "warning": "#ffb800",
