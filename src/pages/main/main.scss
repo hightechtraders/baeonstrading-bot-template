@@ -66,12 +66,13 @@
 
         .dc-tabs {
             &__active-line {
-                background-color: var(--general-main-1);
+                background-color: #00f0ff !important;
                 transition: none;
             }
 
             &__active {
                 background: var(--general-main-1);
+                color: #00f0ff !important;
             }
 
             &__list {
