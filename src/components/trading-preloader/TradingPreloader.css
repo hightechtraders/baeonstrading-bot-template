@@ -1,261 +1,206 @@
-/* ==========================================
-   FILE: src/components/trading-preloader/TradingPreloader.css
-   ========================================== */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+/* ========================================== */
+/* FILE: src/components/trading-preloader/TradingPreloader.css */
+/* ========================================== */
 
 .trading-preloader-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 99999;
-  background-color: #030712;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Inter', sans-serif;
-  overflow: hidden;
-  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #030712;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    transition: opacity 0.6s ease-in-out;
+    opacity: 1;
 }
 
 .trading-preloader-overlay.fade-out {
-  opacity: 0;
-  transform: scale(1.02);
-  pointer-events: none;
-}
-
-/* Neural Canvas & Ambient Glow */
-.neural-bg-fx {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 50% 50%, #0c2340 0%, #030712 90%);
-  z-index: 1;
-  overflow: hidden;
-}
-
-.neural-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  pointer-events: none;
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* Landing Page Unified Cyber Grid Pattern */
-.neural-bg-fx::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: 
-    linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
-  background-size: 50px 50px;
-  opacity: 0.6;
-  z-index: 2;
+.preloader-grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image: 
+        linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+    opacity: 0.6;
+    z-index: 1;
+    pointer-events: none;
 }
 
-.glow-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(100px);
-  opacity: 0.45;
-  animation: floatOrb 10s ease-in-out infinite alternate;
-  z-index: 1;
+/* Landing Page Ambient Glow Orbs */
+.preloader-glow-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.35;
+    z-index: 1;
+    pointer-events: none;
+    animation: floatOrb 10s ease-in-out infinite alternate;
 }
 
-.orb-1 {
-  width: 380px;
-  height: 380px;
-  background: #00f2fe;
-  top: 20%;
-  left: 25%;
+.preloader-glow-orb.orb-1 {
+    width: 380px;
+    height: 380px;
+    background: #00f2fe;
+    top: 20%;
+    left: 25%;
 }
 
-.orb-2 {
-  width: 420px;
-  height: 420px;
-  background: #7000ff;
-  bottom: 15%;
-  right: 25%;
-  animation-delay: -5s;
+.preloader-glow-orb.orb-2 {
+    width: 420px;
+    height: 420px;
+    background: #7000ff;
+    bottom: 15%;
+    right: 25%;
+    animation-delay: -5s;
 }
 
 @keyframes floatOrb {
-  0% { transform: translate(0px, 0px) scale(1); opacity: 0.35; }
-  100% { transform: translate(-30px, -30px) scale(1.12); opacity: 0.55; }
+    0% { transform: translate(0px, 0px) scale(1); opacity: 0.3; }
+    100% { transform: translate(-30px, -30px) scale(1.12); opacity: 0.5; }
 }
 
-/* Professional Glassmorphic Terminal Card */
-.preloader-card {
-  position: relative;
-  z-index: 10;
-  width: 90%;
-  max-width: 460px;
-  background: rgba(11, 14, 20, 0.8);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(0, 242, 254, 0.2);
-  border-radius: 18px;
-  padding: 38px 34px;
-  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.9), 
-              inset 0 1px 0 rgba(255, 255, 255, 0.12), 
-              0 0 30px rgba(0, 242, 254, 0.08);
-  text-align: center;
-  animation: cardSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  transform: translateZ(0);
+/* Glassmorphic Card */
+.trading-preloader-overlay .preloader-card {
+    position: relative;
+    z-index: 10;
+    width: 400px;
+    padding: 38px 34px;
+    background: rgba(11, 14, 20, 0.85);
+    border: 1px solid rgba(0, 242, 254, 0.2);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-radius: 20px;
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.9), 
+                inset 0 1px 0 rgba(255, 255, 255, 0.12), 
+                0 0 30px rgba(0, 242, 254, 0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
 
-@keyframes cardSlideUp {
-  0% { opacity: 0; transform: translateY(24px) scale(0.97); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+.trading-preloader-overlay .brand-emblem {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
 }
 
-.system-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  font-weight: 500;
-  color: #00f2fe;
-  background: rgba(0, 242, 254, 0.08);
-  border: 1px solid rgba(0, 242, 254, 0.25);
-  padding: 4px 12px;
-  border-radius: 20px;
-  margin-bottom: 16px;
-  letter-spacing: 1.2px;
+.trading-preloader-overlay .brand-emblem .pulse-ring {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid rgba(0, 242, 254, 0.4);
+    animation: ringPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-.brand-title {
-  color: #ffffff;
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  margin: 0 0 6px 0;
-  background: linear-gradient(135deg, #ffffff 30%, #00f2fe 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.trading-preloader-overlay .brand-emblem .inner-core {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, rgba(112, 0, 255, 0.2), rgba(0, 242, 254, 0.2));
+    border: 1px solid rgba(0, 242, 254, 0.4);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #00f2fe;
+    box-shadow: 0 0 20px rgba(0, 242, 254, 0.25);
 }
 
-.brand-subtitle {
-  color: #94a3b8;
-  font-size: 12px;
-  font-weight: 400;
-  margin: 0 0 20px 0;
+.trading-preloader-overlay .brand-emblem .inner-core .terminal-icon {
+    width: 24px;
+    height: 24px;
 }
 
-.pulse-dots {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin: 16px 0 12px 0;
+.trading-preloader-overlay .preloader-titles {
+    margin-bottom: 28px;
 }
 
-.dot {
-  width: 6px;
-  height: 6px;
-  background-color: #00f2fe;
-  border-radius: 50%;
-  box-shadow: 0 0 10px #00f2fe;
-  animation: pulseDot 1.4s infinite ease-in-out both;
+.trading-preloader-overlay .preloader-titles h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 6px 0;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #ffffff 30%, #00f2fe 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
-.dot:nth-child(1) { animation-delay: -0.32s; }
-.dot:nth-child(2) { animation-delay: -0.16s; }
-.dot:nth-child(3) { animation-delay: 0s; }
-
-@keyframes pulseDot {
-  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-  40% { transform: scale(1.3); opacity: 1; }
+.trading-preloader-overlay .preloader-titles p {
+    font-size: 13px;
+    color: #94a3b8;
+    margin: 0;
 }
 
-.status-message {
-  color: #e2e8f0;
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 14px;
-  height: 20px;
-  letter-spacing: 0.2px;
+.trading-preloader-overlay .progress-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-/* Professional Terminal Log Box */
-.terminal-console {
-  background: rgba(3, 7, 18, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin-bottom: 24px;
-  text-align: left;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  height: 52px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
+.trading-preloader-overlay .progress-container .progress-track {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.terminal-line {
-  color: #38bdf8;
-  opacity: 0.85;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.trading-preloader-overlay .progress-container .progress-track .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #7000ff 0%, #00c6ff 50%, #00f2fe 100%);
+    border-radius: 12px;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
 }
 
-.progress-container {
-  width: 100%;
+.trading-preloader-overlay .progress-container .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
 }
 
-.progress-track {
-  width: 100%;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  overflow: hidden;
-  position: relative;
+.trading-preloader-overlay .progress-container .progress-meta .status-text {
+    color: #64748b;
+    font-family: 'JetBrains Mono', monospace;
 }
 
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #7000ff 0%, #00c6ff 50%, #00f2fe 100%);
-  border-radius: 12px;
-  position: relative;
-  transition: width 0.15s linear;
+.trading-preloader-overlay .progress-container .progress-meta .percentage-text {
+    color: #00f2fe;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
 }
 
-.progress-glow-head {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 14px;
-  background: #ffffff;
-  box-shadow: 0 0 12px #00f2fe, 0 0 24px #00f2fe;
-  border-radius: 50%;
-}
-
-.progress-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 10px;
-  font-size: 11px;
-}
-
-.boot-label {
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  font-weight: 600;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-}
-
-.progress-percentage {
-  color: #00f2fe;
-  font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
+@keyframes ringPulse {
+    0% {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.15);
+        opacity: 0.2;
+    }
+    100% {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
 }
