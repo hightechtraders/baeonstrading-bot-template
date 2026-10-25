@@ -30,7 +30,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
     
     const rainCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-    // Accelerated Market Rain / Currency Particle Effect
+    // 2x Accelerated Market Rain / Currency Particle Effect
     useEffect(() => {
         const canvas = rainCanvasRef.current;
         if (!canvas) return;
@@ -48,18 +48,18 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
         };
         window.addEventListener('resize', handleResize);
 
-        const symbols = ['$', 'EUR', 'USD', 'BTC', 'GBP', 'JPY', '+1.25%', '-0.40%', '📈', '⚡', 'R_100', '1HZ75V'];
+        const symbols = ['$', 'EUR', 'USD', 'BTC', 'GBP', 'JPY', '+1.25%', '-0.40%', '📈', '⚡', 'R_100', '1HZ75V', 'Volatility'];
         const drops: Array<{ x: number; y: number; speed: number; char: string; opacity: number; size: number }> = [];
-        const dropCount = 75; // Increased density to cover the screen instantly
+        const dropCount = 120; // Doubled density for full screen saturation
 
         for (let i = 0; i < dropCount; i++) {
             drops.push({
                 x: Math.random() * width,
                 y: Math.random() * height - height,
-                speed: Math.random() * 3.5 + 2.0, // Increased fall speed
+                speed: Math.random() * 3.5 + 5.5, // 2x faster falling speed range (5.5 to 9.0)
                 char: symbols[Math.floor(Math.random() * symbols.length)],
-                opacity: Math.random() * 0.4 + 0.15,
-                size: Math.floor(Math.random() * 4) + 11
+                opacity: Math.random() * 0.45 + 0.2,
+                size: Math.floor(Math.random() * 4) + 12
             });
         }
 
