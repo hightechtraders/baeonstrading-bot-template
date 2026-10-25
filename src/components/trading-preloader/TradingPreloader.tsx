@@ -30,50 +30,50 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
     
     const rainCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-    // Completely decoupled, high-performance canvas loop that never pauses for React state updates
+    // Stutter-free, pre-distributed high-speed canvas engine
     useEffect(() => {
         const canvas = rainCanvasRef.current;
         if (!canvas) return;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { alpha: true });
         if (!ctx) return;
 
         let animationFrameId: number;
-        let width = (canvas.width = window.innerWidth);
-        let height = (canvas.height = window.innerHeight);
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
         const handleResize = () => {
             if (!canvas) return;
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         };
         window.addEventListener('resize', handleResize);
 
         const symbols = ['$', 'EUR', 'USD', 'BTC', 'GBP', 'JPY', '+1.25%', '-0.40%', '📈', '⚡', 'R_100', '1HZ75V', 'Volatility'];
-        const drops: Array<{ x: number; y: number; speed: number; char: string; opacity: number; size: number }> = [];
-        const dropCount = 130;
+        const drops: Array<{ x: number; y: number; speed: number; char: string; opacity: number }> = [];
+        const dropCount = 140;
 
+        // Pre-distribute drops across the entire screen height so it looks full instantly without waiting
         for (let i = 0; i < dropCount; i++) {
             drops.push({
-                x: Math.random() * width,
-                y: Math.random() * height - height,
-                speed: Math.random() * 4.0 + 6.0, // High-speed continuous cascade
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                speed: Math.random() * 3.5 + 5.0,
                 char: symbols[Math.floor(Math.random() * symbols.length)],
-                opacity: Math.random() * 0.5 + 0.2,
-                size: 12
+                opacity: Math.random() * 0.5 + 0.2
             });
         }
 
         const render = () => {
-            ctx.clearRect(0, 0, width, height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.font = '12px "JetBrains Mono", monospace';
 
             for (let i = 0; i < drops.length; i++) {
                 const drop = drops[i];
                 drop.y += drop.speed;
                 
-                if (drop.y > height + 20) {
+                if (drop.y > canvas.height + 20) {
                     drop.y = -20;
-                    drop.x = Math.random() * width;
+                    drop.x = Math.random() * canvas.width;
                     drop.char = symbols[Math.floor(Math.random() * symbols.length)];
                 }
 
@@ -95,7 +95,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
         };
     }, []);
 
-    // Separate isolated progress counter loop
+    // Progress counter loop
     useEffect(() => {
         const startTime = Date.now();
         const intervalTime = 30; 
