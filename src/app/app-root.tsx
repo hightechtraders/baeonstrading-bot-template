@@ -47,16 +47,19 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // 1. Synchronously compute authentication status on initial mount to prevent landing page flashes
+    // 1. Synchronously compute authentication status and persist tokens immediately on mount
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const hasUrlAuth = search.includes('token') || search.includes('acct');
 
         const urlParams = new URLSearchParams(search);
+        let foundValidAuth = false;
+
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
                 sessionStorage.setItem('active_session_active', 'true');
+                foundValidAuth = true;
                 if (key.includes('token1') || key === 'token') {
                     localStorage.setItem('authToken', value);
                 }
@@ -69,7 +72,7 @@ const AppRoot = () => {
         const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
         const hasLocalToken = !!(localStorage.getItem('authToken') || localStorage.getItem('token'));
         
-        return !!(hasUrlAuth || isSessionActive || hasLocalToken);
+        return !!(hasUrlAuth || foundValidAuth || isSessionActive || hasLocalToken);
     });
 
     // 2. Initialize API and clean URL parameters once on mount
@@ -83,7 +86,7 @@ const AppRoot = () => {
             }
         }
 
-        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
+        if (tokenFound) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -107,10 +110,7 @@ const AppRoot = () => {
             }
         };
 
-        const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
-        const hasLocalToken = !!(localStorage.getItem('authToken') || localStorage.getItem('token'));
-
-        if (isAuthenticated || isSessionActive || hasLocalToken) {
+        if (isAuthenticated) {
             initializeApi();
         } else {
             setIsApiInitialized(true);
@@ -119,7 +119,7 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, [isAuthenticated]);
 
-    // Direct Login handler (Instant redirect on the very first click, no DOM query lag)
+    // Direct Login handler (Points to the correct Deriv OAuth gateway on the first click)
     const handleLogin = () => {
         const appId = '1089'; 
         const redirectUrl = encodeURIComponent(window.location.origin + '/');
@@ -138,17 +138,10 @@ const AppRoot = () => {
     };
 
     // RENDER GUARDS
-    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
-    const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
+    // Once isAuthenticated is true on mount, we lock the session active so URL wiping never causes a flicker
+    const isSessionActive = isAuthenticated || sessionStorage.getItem('active_session_active') === 'true';
 
-    // Intercept incoming OAuth return flows to prevent landing page flash
-    if (hasTokensInUrl || isSessionActive || isAuthenticated) {
-        if (!store || !is_api_initialized) {
-            return <AppRootLoader />;
-        }
-    }
-
-    // If genuinely not authenticated and no active session in this tab, show the Landing Page
+    // If genuinely not authenticated and no active session, show the Landing Page
     if (!isAuthenticated && !isSessionActive) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
@@ -157,7 +150,7 @@ const AppRoot = () => {
         );
     }
 
-    // If authenticated but still initializing workspace store/API
+    // If authenticated or session is active, show preloader until API is fully initialized
     if (!store || !is_api_initialized) {
         return <AppRootLoader />;
     }
