@@ -2,7 +2,7 @@
 // FILE: src/components/trading-preloader/TradingPreloader.tsx
 // ==========================================
 import React, { useEffect, useState } from 'react';
-import './TradingPreloader.css'; // <-- Changed from .scss to .css
+import './TradingPreloader.css';
 
 interface TradingPreloaderProps {
     appName?: string;
@@ -21,15 +21,16 @@ const LOADING_STEPS = [
 export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
     appName = "TraderScore",
     subtitle = "TraderScore Trading Workspace",
-    minLoadingTime = 1200,
+    minLoadingTime = 1500,
     onLoadingComplete
 }) => {
     const [progress, setProgress] = useState(0);
     const [stepIndex, setStepIndex] = useState(0);
+    const [isFadingOut, setIsFadingOut] = useState(false);
 
     useEffect(() => {
         const startTime = Date.now();
-        const intervalTime = 30; // Smooth increment tick
+        const intervalTime = 30; 
         
         const timer = setInterval(() => {
             const elapsed = Date.now() - startTime;
@@ -37,7 +38,6 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
             
             setProgress(calculatedProgress);
 
-            // Dynamically update steps based on progress
             if (calculatedProgress < 30) {
                 setStepIndex(0);
             } else if (calculatedProgress < 60) {
@@ -50,9 +50,12 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
 
             if (elapsed >= minLoadingTime) {
                 clearInterval(timer);
-                if (onLoadingComplete) {
-                    onLoadingComplete();
-                }
+                setIsFadingOut(true); // Trigger smooth CSS fade-out before unmounting
+                setTimeout(() => {
+                    if (onLoadingComplete) {
+                        onLoadingComplete();
+                    }
+                }, 600); // Matches CSS transition duration
             }
         }, intervalTime);
 
@@ -60,7 +63,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
     }, [minLoadingTime, onLoadingComplete]);
 
     return (
-        <div className="trading-preloader-overlay">
+        <div className={`trading-preloader-overlay ${isFadingOut ? 'fade-out' : ''}`}>
             <div className="preloader-ambient-glow" />
             
             <div className="preloader-card">
