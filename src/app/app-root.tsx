@@ -116,12 +116,18 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Instant-action Login handler (Fires on the exact first click with zero delay)
+    // Clean single-click login handler leveraging native app buttons without hard redirects
     const handleLogin = () => {
-        sessionStorage.setItem('active_session_active', 'true');
-        const appId = '1089'; 
-        const redirectUrl = encodeURIComponent(window.location.origin + '/');
-        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
+        const originalLoginBtn = document.querySelector(
+            '.auth-actions button, .btn-login, [class*="login"], button[type="button"]'
+        ) as HTMLButtonElement;
+        
+        if (originalLoginBtn) {
+            originalLoginBtn.click();
+        } else {
+            // Absolute minimal fallback if element is missing: open dashboard directly
+            window.open('https://home.deriv.com/dashboard', '_blank');
+        }
     };
 
     // Twin-button handler for Signup
