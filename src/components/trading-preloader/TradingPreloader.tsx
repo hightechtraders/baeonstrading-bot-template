@@ -1,215 +1,101 @@
 // ==========================================
 // FILE: src/components/trading-preloader/TradingPreloader.tsx
 // ==========================================
-import React, { useEffect, useRef, useState } from 'react';
-import './TradingPreloader.css';
+import React, { useEffect, useState } from 'react';
+import './TradingPreloader.scss';
 
 interface TradingPreloaderProps {
-  appName?: string;
-  subtitle?: string;
-  onComplete?: () => void;
-  minLoadingTime?: number;
+    appName?: string;
+    subtitle?: string;
+    minLoadingTime?: number;
+    onLoadingComplete?: () => void;
 }
 
+const LOADING_STEPS = [
+    "Establishing secure WebSocket connection...",
+    "Calibrating synthetic volatility feed indices...",
+    "Initializing TraderScore neural engine...",
+    "Mounting workspace components..."
+];
+
 export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
-  appName = 'TraderScore',
-  subtitle = 'TraderScore Neural Trading Workspace',
-  onComplete,
-  minLoadingTime = 1500
+    appName = "TraderScore",
+    subtitle = "TraderScore Trading Workspace",
+    minLoadingTime = 1200,
+    onLoadingComplete
 }) => {
-  const [progress, setProgress] = useState(1);
-  const [statusText, setStatusText] = useState('Initializing synaptic kernel...');
-  const [terminalLogs, setTerminalLogs] = useState<string[]>(['[SYS] Handshaking Deriv neural synapse layer...']);
-  const [isFadingOut, setIsFadingOut] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const [progress, setProgress] = useState(0);
+    const [stepIndex, setStepIndex] = useState(0);
 
-  // Genuinely Neural Network Brain Canvas Animation
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    useEffect(() => {
+        const startTime = Date.now();
+        const intervalTime = 30; // Smooth increment tick
+        
+        const timer = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const calculatedProgress = Math.min(Math.floor((elapsed / minLoadingTime) * 100), 100);
+            
+            setProgress(calculatedProgress);
 
-    let animationFrameId: number;
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
+            // Dynamically update steps based on progress
+            if (calculatedProgress < 30) {
+                setStepIndex(0);
+            } else if (calculatedProgress < 60) {
+                setStepIndex(1);
+            } else if (calculatedProgress < 85) {
+                setStepIndex(2);
+            } else {
+                setStepIndex(3);
+            }
 
-    const handleResize = () => {
-      if (!canvas) return;
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    };
-    window.addEventListener('resize', handleResize);
+            if (elapsed >= minLoadingTime) {
+                clearInterval(timer);
+                if (onLoadingComplete) {
+                    onLoadingComplete();
+                }
+            }
+        }, intervalTime);
 
-    const nodes: Array<{ x: number; y: number; vx: number; vy: number; radius: number; color: string; connectionLimit: number }> = [];
-    const particleCount = 180;
+        return () => clearInterval(timer);
+    }, [minLoadingTime, onLoadingComplete]);
 
-    const getClusteredPos = () => {
-      const isCore = Math.random() > 0.4;
-      if (isCore) {
-        const centerX = width * 0.5 + (Math.random() - 0.5) * 120;
-        const centerY = height * 0.45 + (Math.random() - 0.5) * 120;
-        return { x: centerX, y: centerY, limit: 12, color: `hsla(${Math.random() * 30 + 190}, 100%, 80%, 0.9)` };
-      } else {
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 180 + Math.random() * 100;
-        const centerX = width * 0.5 + Math.cos(angle) * dist + (Math.random() - 0.5) * 80;
-        const centerY = height * 0.45 + Math.sin(angle) * dist + (Math.random() - 0.5) * 80;
-        return { x: centerX, y: centerY, limit: 6, color: `hsla(${Math.random() * 30 + 170}, 100%, 75%, 0.7)` };
-      }
-    };
+    return (
+        <div className="trading-preloader-overlay">
+            <div className="preloader-ambient-glow" />
+            
+            <div className="preloader-card">
+                {/* Brand Logo / Icon Box */}
+                <div className="brand-emblem">
+                    <div className="pulse-ring" />
+                    <div className="inner-core">
+                        <svg className="terminal-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                </div>
 
-    for (let i = 0; i < particleCount; i++) {
-      const pos = getClusteredPos();
-      nodes.push({
-        x: pos.x,
-        y: pos.y,
-        vx: (Math.random() - 0.5) * 0.35,
-        vy: (Math.random() - 0.5) * 0.35,
-        radius: Math.random() * 1.5 + 0.8,
-        color: pos.color,
-        connectionLimit: pos.limit,
-      });
-    }
+                {/* Titles */}
+                <div className="preloader-titles">
+                    <h1>{appName}</h1>
+                    <p>{subtitle}</p>
+                </div>
 
-    const render = () => {
-      ctx.clearRect(0, 0, width, height);
-
-      for (let i = 0; i < nodes.length; i++) {
-        let currentConnections = 0;
-        for (let j = i + 1; j < nodes.length; j++) {
-          const dx = nodes[i].x - nodes[j].x;
-          const dy = nodes[i].y - nodes[j].y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-
-          const activeRange = distance < 180;
-          const limitReached = currentConnections >= nodes[i].connectionLimit;
-
-          if (activeRange && !limitReached) {
-            ctx.beginPath();
-            ctx.moveTo(nodes[i].x, nodes[i].y);
-            const cpX = (nodes[i].x + nodes[j].x) / 2 + (Math.random() - 0.5) * 15;
-            const cpY = (nodes[i].y + nodes[j].y) / 2 + (Math.random() - 0.5) * 15;
-            ctx.quadraticCurveTo(cpX, cpY, nodes[j].x, nodes[j].y);
-
-            const alpha = (1 - distance / 180) * (Math.random() * 0.25 + 0.15);
-            ctx.strokeStyle = `rgba(0, 242, 254, ${alpha})`;
-            ctx.lineWidth = 0.9;
-            ctx.stroke();
-            currentConnections++;
-          }
-        }
-      }
-
-      nodes.forEach(p => {
-        p.x += p.vx;
-        p.y += p.vy;
-
-        if (p.x < width * 0.05 || p.x > width * 0.95) p.vx *= -1;
-        if (p.y < height * 0.05 || p.y > height * 0.9) p.vy *= -1;
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = p.color;
-
-        ctx.shadowBlur = Math.random() * 10 + 10;
-        ctx.shadowColor = `rgba(0, 242, 254, ${Math.random() * 0.5 + 0.4})`;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      });
-
-      animationFrameId = requestAnimationFrame(render);
-    };
-
-    render();
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      cancelAnimationFrame(animationFrameId);
-    };
-  }, []);
-
-  // Diagnostic Terminal Sequence
-  useEffect(() => {
-    const startTime = Date.now();
-    const milestones = [
-      { at: 15, text: 'Synchronizing neural workspaces & Blockly nodes...', log: '[SYS] Handshaking Deriv neural synapse layer...' },
-      { at: 40, text: 'Authenticating synaptic quantum key pairing...', log: '[NET] Websocket tunnel secured (Deriv V2.1)...' },
-      { at: 65, text: 'Calibrating Volatility Index momentum buffers...', log: '[AI] Syncing predictive Blockly nodes...' },
-      { at: 85, text: 'Validating real-time AI risk guardrails...', log: '[AI] Validating live tick feed (R_100)...' },
-      { at: 100, text: 'Workspace ready. Launching synapse interface...', log: '[SYS] Terminal boot sequence complete.' }
-    ];
-
-    const timer = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const calculatedProgress = Math.min(
-        Math.floor((elapsed / minLoadingTime) * 100),
-        100
-      );
-
-      setProgress(calculatedProgress);
-
-      const activeMilestone = [...milestones].reverse().find(m => calculatedProgress >= m.at);
-      if (activeMilestone) {
-        setStatusText(activeMilestone.text);
-        setTerminalLogs(prev => {
-          if (!prev.includes(activeMilestone.log)) {
-            return [...prev.slice(-3), activeMilestone.log];
-          }
-          return prev;
-        });
-      }
-
-      if (calculatedProgress >= 100) {
-        clearInterval(timer);
-        setIsFadingOut(true);
-        setTimeout(() => {
-          if (onComplete) onComplete();
-        }, 800);
-      }
-    }, 40);
-
-    return () => clearInterval(timer);
-  }, [minLoadingTime, onComplete]);
-
-  return (
-    <div className={`trading-preloader-overlay ${isFadingOut ? 'fade-out' : ''}`}>
-      <div className="neural-bg-fx">
-        <canvas ref={canvasRef} className="neural-canvas" />
-        <div className="glow-orb orb-1"></div>
-        <div className="glow-orb orb-2"></div>
-      </div>
-
-      <div className="preloader-card">
-        <div className="brand-header">
-          <div className="system-badge">
-            <span className="badge-pulse"></span>
-            SECURE NEURAL TERMINAL V2.4
-          </div>
-          <h1 className="brand-title">{appName}</h1>
-          <p className="brand-subtitle">{subtitle}</p>
-        </div>
-
-        <div className="status-message">{statusText}</div>
-
-        <div className="terminal-console">
-          {terminalLogs.map((log, index) => (
-            <div key={index} className="terminal-line">{log}</div>
-          ))}
-        </div>
-
-        <div className="progress-container">
-          <div className="progress-track">
-            <div className="progress-fill" style={{ width: `${progress}%` }}>
-              <div className="progress-glow-head"></div>
+                {/* Progress Bar Container */}
+                <div className="progress-container">
+                    <div className="progress-track">
+                        <div 
+                            className="progress-fill" 
+                            style={{ width: `${progress}%` }}
+                        />
+                    </div>
+                    <div className="progress-meta">
+                        <span className="status-text">{LOADING_STEPS[stepIndex]}</span>
+                        <span className="percentage-text">{progress}%</span>
+                    </div>
+                </div>
             </div>
-          </div>
-          <div className="progress-footer">
-            <span className="boot-label">Synaptic Initialization</span>
-            <span className="progress-percentage">{progress}%</span>
-          </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
