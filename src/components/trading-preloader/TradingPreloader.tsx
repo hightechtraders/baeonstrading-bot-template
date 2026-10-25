@@ -2,7 +2,7 @@
 // FILE: src/components/trading-preloader/TradingPreloader.tsx
 // ==========================================
 import React, { useEffect, useState } from 'react';
-import './TradingPreloader.scss';
+import './TradingPreloader.css'; // <-- Changed from .scss to .css
 
 interface TradingPreloaderProps {
     appName?: string;
