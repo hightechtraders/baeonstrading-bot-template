@@ -47,6 +47,16 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
+    // Track whether the initial 5-second preloader phase has finished for unauthenticated users
+    const [isPreloaded, setIsPreloaded] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsPreloaded(true);
+        }, 5000); // 5 seconds preloader duration
+        return () => clearTimeout(timer);
+    }, []);
+
     // 1. Check strict authentication using sessionStorage only (wipes out when tab/browser closes)
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
@@ -143,7 +153,7 @@ const AppRoot = () => {
 
     // RENDER GUARDS
     const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
-    const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
+    const isSessionActive = sessionStorage.getItem('active_session_active'] === 'true';
 
     // Intercept incoming OAuth return flows to prevent landing page flash
     if (hasTokensInUrl || isSessionActive) {
@@ -152,8 +162,18 @@ const AppRoot = () => {
         }
     }
 
-    // If genuinely not authenticated and no active session in this tab, show the Landing Page
+    // If genuinely not authenticated and no active session: play 5s preloader first, then show Landing Page
     if (!isAuthenticated && !isSessionActive) {
+        if (!isPreloaded) {
+            return (
+                <TradingPreloader 
+                    appName="TraderScore" 
+                    subtitle="TraderScore Trading Workspace" 
+                    minLoadingTime={5000} 
+                />
+            );
+        }
+
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
                 <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
