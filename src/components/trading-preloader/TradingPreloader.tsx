@@ -7,14 +7,14 @@ import './TradingPreloader.css';
 interface TradingPreloaderProps {
   appName?: string;
   subtitle?: string;
-  onLoadingComplete?: () => void;
+  onComplete?: () => void;
   minLoadingTime?: number;
 }
 
 export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
   appName = 'TraderScore',
   subtitle = 'TraderScore Neural Trading Workspace',
-  onLoadingComplete,
+  onComplete,
   minLoadingTime = 1500
 }) => {
   const [progress, setProgress] = useState(1);
@@ -129,7 +129,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
     };
   }, []);
 
-  // Diagnostic Terminal Sequence & Handoff
+  // Diagnostic Terminal Sequence
   useEffect(() => {
     const startTime = Date.now();
     const milestones = [
@@ -164,13 +164,13 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
         clearInterval(timer);
         setIsFadingOut(true);
         setTimeout(() => {
-          if (onLoadingComplete) onLoadingComplete();
+          if (onComplete) onComplete();
         }, 800);
       }
     }, 40);
 
     return () => clearInterval(timer);
-  }, [minLoadingTime, onLoadingComplete]);
+  }, [minLoadingTime, onComplete]);
 
   return (
     <div className={`trading-preloader-overlay ${isFadingOut ? 'fade-out' : ''}`}>
