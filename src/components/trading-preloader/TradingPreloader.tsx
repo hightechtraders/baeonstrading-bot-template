@@ -11,6 +11,13 @@ interface TradingPreloaderProps {
     onLoadingComplete?: () => void;
 }
 
+const LOADING_STEPS = [
+    "Establishing secure WebSocket connection...",
+    "Calibrating synthetic volatility feed indices...",
+    "Initializing TraderScore neural engine...",
+    "Mounting workspace components..."
+];
+
 export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
     appName = "TraderScore",
     subtitle = "TraderScore Neural Trading Workspace",
@@ -19,8 +26,11 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
 }) => {
     const rainCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const overlayRef = useRef<HTMLDivElement | null>(null);
+    const progressFillRef = useRef<HTMLDivElement | null>(null);
+    const percentageTextRef = useRef<HTMLSpanElement | null>(null);
+    const statusTextRef = useRef<HTMLSpanElement | null>(null);
 
-    // 1. Butter-smooth background ticker canvas (GPU Accelerated)
+    // 1. Butter-smooth background ticker canvas
     useEffect(() => {
         const canvas = rainCanvasRef.current;
         if (!canvas) return;
@@ -84,20 +94,49 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
         };
     }, []);
 
-    // 2. Clean handoff timer matching the CSS transition duration
+    // 2. High-performance counter animation loop using direct DOM refs (0% to 100% steady count)
     useEffect(() => {
-        const timer = setTimeout(() => {
-            if (overlayRef.current) {
-                overlayRef.current.classList.add('fade-out');
-            }
-            setTimeout(() => {
-                if (onLoadingComplete) {
-                    onLoadingComplete();
-                }
-            }, 600); // matches CSS fade-out duration
-        }, minLoadingTime);
+        const startTime = Date.now();
+        let animationFrameId: number;
 
-        return () => clearTimeout(timer);
+        const updateCounter = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(Math.floor((elapsed / minLoadingTime) * 100), 100);
+
+            // Directly update DOM elements without React re-renders
+            if (progressFillRef.current) {
+                progressFillRef.current.style.width = `${progress}%`;
+            }
+            if (percentageTextRef.current) {
+                percentageTextRef.current.textContent = `${progress}%`;
+            }
+            if (statusTextRef.current) {
+                if (progress < 30) statusTextRef.current.textContent = LOADING_STEPS[0];
+                else if (progress < 60) statusTextRef.current.textContent = LOADING_STEPS[1];
+                else if (progress < 85) statusTextRef.current.textContent = LOADING_STEPS[2];
+                else statusTextRef.current.textContent = LOADING_STEPS[3];
+            }
+
+            if (progress < 100) {
+                animationFrameId = requestAnimationFrame(updateCounter);
+            } else {
+                // Finished loading, trigger fade out
+                setTimeout(() => {
+                    if (overlayRef.current) {
+                        overlayRef.current.classList.add('fade-out');
+                    }
+                    setTimeout(() => {
+                        if (onLoadingComplete) {
+                            onLoadingComplete();
+                        }
+                    }, 600);
+                }, 200);
+            }
+        };
+
+        animationFrameId = requestAnimationFrame(updateCounter);
+
+        return () => cancelAnimationFrame(animationFrameId);
     }, [minLoadingTime, onLoadingComplete]);
 
     return (
@@ -127,17 +166,14 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
                     <p>{subtitle}</p>
                 </div>
 
-                {/* Progress Bar Container with GPU-accelerated CSS Animations */}
+                {/* Progress Bar Container */}
                 <div className="progress-container">
                     <div className="progress-track">
-                        <div 
-                            className="progress-fill" 
-                            style={{ animationDuration: `${minLoadingTime}ms` }} 
-                        />
+                        <div ref={progressFillRef} className="progress-fill" style={{ width: '0%' }} />
                     </div>
                     <div className="progress-meta">
-                        <span className="status-text dynamic-status">Establishing secure WebSocket connection...</span>
-                        <span className="percentage-text dynamic-percentage">0%</span>
+                        <span ref={statusTextRef} className="status-text">{LOADING_STEPS[0]}</span>
+                        <span ref={percentageTextRef} className="percentage-text">0%</span>
                     </div>
                 </div>
             </div>
