@@ -119,11 +119,11 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, [isAuthenticated]);
 
-    // Direct Login handler (Points to the correct Deriv OAuth gateway on the first click)
+    // Direct Login handler using the official OAuth sign-in gateway
     const handleLogin = () => {
         const appId = '1089'; 
         const redirectUrl = encodeURIComponent(window.location.origin + '/');
-        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
+        window.location.href = `https://oauth.deriv.com/oauth2/oauth.html?app_id=${appId}&l=EN&brand=deriv`;
     };
 
     // Twin-button handler for Signup
@@ -138,7 +138,6 @@ const AppRoot = () => {
     };
 
     // RENDER GUARDS
-    // Once isAuthenticated is true on mount, we lock the session active so URL wiping never causes a flicker
     const isSessionActive = isAuthenticated || sessionStorage.getItem('active_session_active') === 'true';
 
     // If genuinely not authenticated and no active session, show the Landing Page
