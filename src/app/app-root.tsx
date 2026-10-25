@@ -116,9 +116,8 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Twin-button handler for Login
+    // Twin-button handler for Login (Cleaned: no premature session flagging)
     const handleLogin = () => {
-        sessionStorage.setItem('active_session_active', 'true');
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
         if (originalLoginBtn) {
