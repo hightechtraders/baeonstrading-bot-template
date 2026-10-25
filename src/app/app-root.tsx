@@ -47,30 +47,7 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // 1. Check strict authentication using sessionStorage only (wipes out when tab/browser closes)
-    const [isAuthenticated] = useState<boolean>(() => {
-        const search = window.location.search;
-        const hasUrlAuth = search.includes('token') || search.includes('acct');
-
-        const urlParams = new URLSearchParams(search);
-        for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem(key, value);
-                sessionStorage.setItem('active_session_active', 'true');
-                if (key.includes('token1') || key === 'token') {
-                    localStorage.setItem('authToken', value);
-                }
-                if (key.startsWith('acct1') || key === 'acct') {
-                    localStorage.setItem('active_loginid', value);
-                }
-            }
-        }
-
-        const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
-        return !!(hasUrlAuth || isSessionActive);
-    });
-
-    // 2. Initialize API and clean URL parameters once on mount
+    // 1. Process incoming URL tokens on mount and persist them
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
@@ -80,6 +57,12 @@ const AppRoot = () => {
                 localStorage.setItem(key, value);
                 sessionStorage.setItem('active_session_active', 'true');
                 tokenFound = true;
+                if (key.includes('token1') || key === 'token') {
+                    localStorage.setItem('authToken', value);
+                }
+                if (key.startsWith('acct1') || key === 'acct') {
+                    localStorage.setItem('active_loginid', value);
+                }
             }
         }
 
@@ -107,7 +90,10 @@ const AppRoot = () => {
             }
         };
 
-        if (isAuthenticated) {
+        const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
+        const hasLocalToken = !!(localStorage.getItem('authToken') || localStorage.getItem('token'));
+
+        if (isSessionActive || hasLocalToken) {
             initializeApi();
         } else {
             setIsApiInitialized(true);
@@ -116,7 +102,7 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Twin-button handler for Login (Cleaned: no premature session flagging)
+    // Twin-button handler for Login
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
@@ -140,9 +126,11 @@ const AppRoot = () => {
         }
     };
 
-    // RENDER GUARDS
+    // RENDER GUARDS (Dynamic Checks)
     const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
     const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
+    const hasLocalToken = !!(localStorage.getItem('authToken') || localStorage.getItem('token'));
+    const isAuthenticated = hasTokensInUrl || isSessionActive || hasLocalToken;
 
     // Intercept incoming OAuth return flows to prevent landing page flash
     if (hasTokensInUrl || isSessionActive) {
@@ -152,7 +140,7 @@ const AppRoot = () => {
     }
 
     // If genuinely not authenticated and no active session in this tab, show the Landing Page
-    if (!isAuthenticated && !isSessionActive) {
+    if (!isAuthenticated) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
                 <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
