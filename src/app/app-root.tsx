@@ -47,19 +47,16 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // 1. Synchronously compute authentication status and persist tokens immediately on mount
+    // 1. Check strict authentication using sessionStorage only (wipes out when tab/browser closes)
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const hasUrlAuth = search.includes('token') || search.includes('acct');
 
         const urlParams = new URLSearchParams(search);
-        let foundValidAuth = false;
-
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
                 sessionStorage.setItem('active_session_active', 'true');
-                foundValidAuth = true;
                 if (key.includes('token1') || key === 'token') {
                     localStorage.setItem('authToken', value);
                 }
@@ -70,9 +67,7 @@ const AppRoot = () => {
         }
 
         const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
-        const hasLocalToken = !!(localStorage.getItem('authToken') || localStorage.getItem('token'));
-        
-        return !!(hasUrlAuth || foundValidAuth || isSessionActive || hasLocalToken);
+        return !!(hasUrlAuth || isSessionActive);
     });
 
     // 2. Initialize API and clean URL parameters once on mount
@@ -82,11 +77,13 @@ const AppRoot = () => {
 
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
+                localStorage.setItem(key, value);
+                sessionStorage.setItem('active_session_active', 'true');
                 tokenFound = true;
             }
         }
 
-        if (tokenFound) {
+        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -117,18 +114,16 @@ const AppRoot = () => {
         }
 
         return () => clearTimeout(timeoutId);
-    }, [isAuthenticated]);
+    }, []);
 
-    // Restored native DOM login trigger for the exact click behavior you need
+    // Twin-button handler for Login
     const handleLogin = () => {
-        const originalLoginBtn = document.querySelector(
-            '.auth-actions button, .btn-login, [class*="login"], button[type="button"]'
-        ) as HTMLButtonElement;
+        sessionStorage.setItem('active_session_active', 'true');
+        const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
         if (originalLoginBtn) {
             originalLoginBtn.click();
         } else {
-            // Fallback safety net if DOM element isn't mounted yet
             const appId = '1089'; 
             const redirectUrl = encodeURIComponent(window.location.origin + '/');
             window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
@@ -147,9 +142,17 @@ const AppRoot = () => {
     };
 
     // RENDER GUARDS
-    const isSessionActive = isAuthenticated || sessionStorage.getItem('active_session_active') === 'true';
+    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
+    const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
 
-    // If genuinely not authenticated and no active session, show the Landing Page
+    // Intercept incoming OAuth return flows to prevent landing page flash
+    if (hasTokensInUrl || isSessionActive) {
+        if (!store || !is_api_initialized) {
+            return <AppRootLoader />;
+        }
+    }
+
+    // If genuinely not authenticated and no active session in this tab, show the Landing Page
     if (!isAuthenticated && !isSessionActive) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
@@ -158,7 +161,7 @@ const AppRoot = () => {
         );
     }
 
-    // If authenticated or session is active, show preloader until API is fully initialized
+    // If authenticated but still initializing workspace store/API
     if (!store || !is_api_initialized) {
         return <AppRootLoader />;
     }
