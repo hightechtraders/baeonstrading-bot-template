@@ -47,22 +47,39 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // 1. Process incoming URL tokens on mount and persist them
-    useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        let tokenFound = false;
+    // 1. Synchronously compute authentication status on initial mount to prevent landing page flashes
+    const [isAuthenticated] = useState<boolean>(() => {
+        const search = window.location.search;
+        const hasUrlAuth = search.includes('token') || search.includes('acct');
 
+        const urlParams = new URLSearchParams(search);
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
                 sessionStorage.setItem('active_session_active', 'true');
-                tokenFound = true;
                 if (key.includes('token1') || key === 'token') {
                     localStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
                     localStorage.setItem('active_loginid', value);
                 }
+            }
+        }
+
+        const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
+        const hasLocalToken = !!(localStorage.getItem('authToken') || localStorage.getItem('token'));
+        
+        return !!(hasUrlAuth || isSessionActive || hasLocalToken);
+    });
+
+    // 2. Initialize API and clean URL parameters once on mount
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        let tokenFound = false;
+
+        for (const [key, value] of urlParams.entries()) {
+            if (key.includes('token') || key.startsWith('acct')) {
+                tokenFound = true;
             }
         }
 
@@ -93,26 +110,20 @@ const AppRoot = () => {
         const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
         const hasLocalToken = !!(localStorage.getItem('authToken') || localStorage.getItem('token'));
 
-        if (isSessionActive || hasLocalToken) {
+        if (isAuthenticated || isSessionActive || hasLocalToken) {
             initializeApi();
         } else {
             setIsApiInitialized(true);
         }
 
         return () => clearTimeout(timeoutId);
-    }, []);
+    }, [isAuthenticated]);
 
-    // Twin-button handler for Login
+    // Direct Login handler (Instant redirect on the very first click, no DOM query lag)
     const handleLogin = () => {
-        const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
-        
-        if (originalLoginBtn) {
-            originalLoginBtn.click();
-        } else {
-            const appId = '1089'; 
-            const redirectUrl = encodeURIComponent(window.location.origin + '/');
-            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
-        }
+        const appId = '1089'; 
+        const redirectUrl = encodeURIComponent(window.location.origin + '/');
+        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
     };
 
     // Twin-button handler for Signup
@@ -126,21 +137,19 @@ const AppRoot = () => {
         }
     };
 
-    // RENDER GUARDS (Dynamic Checks)
+    // RENDER GUARDS
     const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
     const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
-    const hasLocalToken = !!(localStorage.getItem('authToken') || localStorage.getItem('token'));
-    const isAuthenticated = hasTokensInUrl || isSessionActive || hasLocalToken;
 
     // Intercept incoming OAuth return flows to prevent landing page flash
-    if (hasTokensInUrl || isSessionActive) {
+    if (hasTokensInUrl || isSessionActive || isAuthenticated) {
         if (!store || !is_api_initialized) {
             return <AppRootLoader />;
         }
     }
 
     // If genuinely not authenticated and no active session in this tab, show the Landing Page
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !isSessionActive) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
                 <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
