@@ -116,17 +116,17 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Clean single-click login handler leveraging native app buttons without hard redirects
+    // Twin-button handler for Login
     const handleLogin = () => {
-        const originalLoginBtn = document.querySelector(
-            '.auth-actions button, .btn-login, [class*="login"], button[type="button"]'
-        ) as HTMLButtonElement;
+        sessionStorage.setItem('active_session_active', 'true');
+        const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
         if (originalLoginBtn) {
             originalLoginBtn.click();
         } else {
-            // Absolute minimal fallback if element is missing: open dashboard directly
-            window.open('https://home.deriv.com/dashboard', '_blank');
+            const appId = '1089'; 
+            const redirectUrl = encodeURIComponent(window.location.origin + '/');
+            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
         }
     };
 
