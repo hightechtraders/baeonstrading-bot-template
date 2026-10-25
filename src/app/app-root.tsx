@@ -47,7 +47,7 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // 1. Check strict authentication using sessionStorage only (wipes out when tab/browser closes)
+    // 1. Unified authentication check verifying URL tokens, sessionStorage, and localStorage
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const hasUrlAuth = search.includes('token') || search.includes('acct');
@@ -67,7 +67,9 @@ const AppRoot = () => {
         }
 
         const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
-        return !!(hasUrlAuth || isSessionActive);
+        const hasLocalToken = !!(localStorage.getItem('authToken') || localStorage.getItem('token'));
+
+        return !!(hasUrlAuth || isSessionActive || hasLocalToken);
     });
 
     // 2. Initialize API and clean URL parameters once on mount
@@ -114,7 +116,7 @@ const AppRoot = () => {
         }
 
         return () => clearTimeout(timeoutId);
-    }, []);
+    }, [isAuthenticated]);
 
     // Twin-button handler for Login
     const handleLogin = () => {
@@ -143,16 +145,15 @@ const AppRoot = () => {
     // RENDER GUARDS
     const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
     const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
+    const hasLocalToken = !!(localStorage.getItem('authToken') || localStorage.getItem('token'));
 
-    // Intercept incoming OAuth return flows to prevent landing page flash
-    if (hasTokensInUrl || isSessionActive) {
+    // If authenticated via any valid vector, display the preloader while store/API initializes
+    if (isAuthenticated || hasTokensInUrl || isSessionActive || hasLocalToken) {
         if (!store || !is_api_initialized) {
             return <AppRootLoader />;
         }
-    }
-
-    // If genuinely not authenticated and no active session in this tab, show the Landing Page
-    if (!isAuthenticated && !isSessionActive) {
+    } else {
+        // Only render the Landing Page if genuinely unauthenticated
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
                 <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
@@ -160,7 +161,7 @@ const AppRoot = () => {
         );
     }
 
-    // If authenticated but still initializing workspace store/API
+    // Final safety fallback for workspace initialization
     if (!store || !is_api_initialized) {
         return <AppRootLoader />;
     }
