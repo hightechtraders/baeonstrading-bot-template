@@ -119,11 +119,11 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, [isAuthenticated]);
 
-    // Direct Login handler using the official OAuth sign-in gateway
+    // Direct Login handler pointing to the exact OAuth authorize gateway with redirect URI
     const handleLogin = () => {
         const appId = '1089'; 
         const redirectUrl = encodeURIComponent(window.location.origin + '/');
-        window.location.href = `https://oauth.deriv.com/oauth2/oauth.html?app_id=${appId}&l=EN&brand=deriv`;
+        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
     };
 
     // Twin-button handler for Signup
