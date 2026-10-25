@@ -153,7 +153,7 @@ const AppRoot = () => {
 
     // RENDER GUARDS
     const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
-    const isSessionActive = sessionStorage.getItem('active_session_active'] === 'true';
+    const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
 
     // Intercept incoming OAuth return flows to prevent landing page flash
     if (hasTokensInUrl || isSessionActive) {
