@@ -116,18 +116,12 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Twin-button handler for Login
+    // Instant-action Login handler (Fires on the exact first click with zero delay)
     const handleLogin = () => {
         sessionStorage.setItem('active_session_active', 'true');
-        const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
-        
-        if (originalLoginBtn) {
-            originalLoginBtn.click();
-        } else {
-            const appId = '1089'; 
-            const redirectUrl = encodeURIComponent(window.location.origin + '/');
-            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
-        }
+        const appId = '1089'; 
+        const redirectUrl = encodeURIComponent(window.location.origin + '/');
+        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
     };
 
     // Twin-button handler for Signup
