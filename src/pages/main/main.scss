@@ -66,13 +66,13 @@
 
         .dc-tabs {
             &__active-line {
-                background-color: #00f0ff !important;
+                background-color: #7000ff !important; // Harmonized neon accent color
                 transition: none;
             }
 
             &__active {
                 background: var(--general-main-1);
-                color: #00f0ff !important;
+                color: #7000ff !important; // Harmonized text active color
             }
 
             &__list {
