@@ -37,6 +37,16 @@
     pointer-events: none;
 }
 
+/* Falling Market Rain / Currency Canvas Layer */
+.market-rain-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+}
+
 /* Landing Page Ambient Glow Orbs */
 .preloader-glow-orb {
     position: absolute;
