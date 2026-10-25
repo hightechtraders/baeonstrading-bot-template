@@ -1,7 +1,7 @@
 // ==========================================
 // FILE: src/components/trading-preloader/TradingPreloader.tsx
 // ==========================================
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import './TradingPreloader.css';
 
 interface TradingPreloaderProps {
@@ -21,16 +21,16 @@ const LOADING_STEPS = [
 export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
     appName = "TraderScore",
     subtitle = "TraderScore Neural Trading Workspace",
-    minLoadingTime = 5000, // Doubled loading time (5 seconds)
+    minLoadingTime = 5000,
     onLoadingComplete
 }) => {
-    const [progress, setProgress] = useState(0);
-    const [stepIndex, setStepIndex] = useState(0);
-    const [isFadingOut, setIsFadingOut] = useState(false);
-    
     const rainCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const progressFillRef = useRef<HTMLDivElement | null>(null);
+    const progressTextRef = useRef<HTMLSpanElement | null>(null);
+    const statusTextRef = useRef<HTMLSpanElement | null>(null);
+    const overlayRef = useRef<HTMLDivElement | null>(null);
 
-    // Stutter-free canvas engine with 1/4 reduced fall speed
+    // 1. Butter-smooth background ticker canvas (zero React state dependencies)
     useEffect(() => {
         const canvas = rainCanvasRef.current;
         if (!canvas) return;
@@ -56,7 +56,7 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
             drops.push({
                 x: Math.random() * canvas.width,
                 y: Math.random() * canvas.height,
-                speed: (Math.random() * 3.5 + 5.0) * 0.25, // Reduced speed by 3/4 (leaving 1/4 speed)
+                speed: (Math.random() * 3.5 + 5.0) * 0.25,
                 char: symbols[Math.floor(Math.random() * symbols.length)],
                 opacity: Math.random() * 0.5 + 0.2
             });
@@ -94,43 +94,54 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
         };
     }, []);
 
-    // Progress counter loop adjusted for 5000ms duration
+    // 2. Direct DOM Animation Loop (Bypasses React Re-renders Completely)
     useEffect(() => {
         const startTime = Date.now();
-        const intervalTime = 30; 
         
-        const timer = setInterval(() => {
+        const updateProgress = () => {
             const elapsed = Date.now() - startTime;
-            const calculatedProgress = Math.min(Math.floor((elapsed / minLoadingTime) * 100), 100);
-            
-            setProgress(calculatedProgress);
+            const currentProgress = Math.min(Math.floor((elapsed / minLoadingTime) * 100), 100);
 
-            if (calculatedProgress < 30) {
-                setStepIndex(0);
-            } else if (calculatedProgress < 60) {
-                setStepIndex(1);
-            } else if (calculatedProgress < 85) {
-                setStepIndex(2);
-            } else {
-                setStepIndex(3);
+            // Directly manipulate DOM elements instead of triggering React state updates
+            if (progressFillRef.current) {
+                progressFillRef.current.style.width = `${currentProgress}%`;
+            }
+            if (progressTextRef.current) {
+                progressTextRef.current.textContent = `${currentProgress}%`;
             }
 
-            if (elapsed >= minLoadingTime) {
-                clearInterval(timer);
-                setIsFadingOut(true);
+            if (statusTextRef.current) {
+                if (currentProgress < 30) {
+                    statusTextRef.current.textContent = LOADING_STEPS[0];
+                } else if (currentProgress < 60) {
+                    statusTextRef.current.textContent = LOADING_STEPS[1];
+                } else if (currentProgress < 85) {
+                    statusTextRef.current.textContent = LOADING_STEPS[2];
+                } else {
+                    statusTextRef.current.textContent = LOADING_STEPS[3];
+                }
+            }
+
+            if (elapsed < minLoadingTime) {
+                requestAnimationFrame(updateProgress);
+            } else {
+                if (overlayRef.current) {
+                    overlayRef.current.classList.add('fade-out');
+                }
                 setTimeout(() => {
                     if (onLoadingComplete) {
                         onLoadingComplete();
                     }
                 }, 600);
             }
-        }, intervalTime);
+        };
 
-        return () => clearInterval(timer);
+        const animId = requestAnimationFrame(updateProgress);
+        return () => cancelAnimationFrame(animId);
     }, [minLoadingTime, onLoadingComplete]);
 
     return (
-        <div className={`trading-preloader-overlay ${isFadingOut ? 'fade-out' : ''}`}>
+        <div ref={overlayRef} className="trading-preloader-overlay">
             {/* Background Effects */}
             <div className="preloader-grid-bg" />
             <canvas ref={rainCanvasRef} className="market-rain-canvas" />
@@ -159,14 +170,11 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
                 {/* Progress Bar Container */}
                 <div className="progress-container">
                     <div className="progress-track">
-                        <div 
-                            className="progress-fill" 
-                            style={{ width: `${progress}%` }}
-                        />
+                        <div ref={progressFillRef} className="progress-fill" style={{ width: '0%' }} />
                     </div>
                     <div className="progress-meta">
-                        <span className="status-text">{LOADING_STEPS[stepIndex]}</span>
-                        <span className="percentage-text">{progress}%</span>
+                        <span ref={statusTextRef} className="status-text">{LOADING_STEPS[0]}</span>
+                        <span ref={progressTextRef} className="percentage-text">0%</span>
                     </div>
                 </div>
             </div>
