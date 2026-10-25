@@ -1,7 +1,7 @@
 // ==========================================
 // FILE: src/components/trading-preloader/TradingPreloader.tsx
 // ==========================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './TradingPreloader.css';
 
 interface TradingPreloaderProps {
@@ -21,13 +21,76 @@ const LOADING_STEPS = [
 export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
     appName = "TraderScore",
     subtitle = "TraderScore Neural Trading Workspace",
-    minLoadingTime = 2500, // Extended by 1000ms for a premium boot feel
+    minLoadingTime = 2500,
     onLoadingComplete
 }) => {
     const [progress, setProgress] = useState(0);
     const [stepIndex, setStepIndex] = useState(0);
     const [isFadingOut, setIsFadingOut] = useState(false);
+    
+    const rainCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
+    // Smooth Market Rain / Currency Particle Effect
+    useEffect(() => {
+        const canvas = rainCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        let animationFrameId: number;
+        let width = (canvas.width = window.innerWidth);
+        let height = (canvas.height = window.innerHeight);
+
+        const handleResize = () => {
+            if (!canvas) return;
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        };
+        window.addEventListener('resize', handleResize);
+
+        const symbols = ['$', 'EUR', 'USD', 'BTC', 'GBP', 'JPY', '+1.25%', '-0.40%', '📈', '⚡'];
+        const drops: Array<{ x: number; y: number; speed: number; char: string; opacity: number; size: number }> = [];
+        const dropCount = 45;
+
+        for (let i = 0; i < dropCount; i++) {
+            drops.push({
+                x: Math.random() * width,
+                y: Math.random() * height - height,
+                speed: Math.random() * 1.5 + 0.8,
+                char: symbols[Math.floor(Math.random() * symbols.length)],
+                opacity: Math.random() * 0.3 + 0.1,
+                size: Math.floor(Math.random() * 4) + 11
+            });
+        }
+
+        const render = () => {
+            ctx.clearRect(0, 0, width, height);
+            ctx.font = '12px "JetBrains Mono", monospace';
+
+            drops.forEach(drop => {
+                drop.y += drop.speed;
+                if (drop.y > height + 20) {
+                    drop.y = -20;
+                    drop.x = Math.random() * width;
+                    drop.char = symbols[Math.floor(Math.random() * symbols.length)];
+                }
+
+                ctx.fillStyle = drop.char.includes('$') || drop.char.includes('+') ? `rgba(0, 255, 153, ${drop.opacity})` : `rgba(0, 242, 254, ${drop.opacity})`;
+                ctx.fillText(drop.char, drop.x, drop.y);
+            });
+
+            animationFrameId = requestAnimationFrame(render);
+        };
+
+        render();
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            cancelAnimationFrame(animationFrameId);
+        };
+    }, []);
+
+    // Progress timer loop
     useEffect(() => {
         const startTime = Date.now();
         const intervalTime = 30; 
@@ -64,8 +127,9 @@ export const TradingPreloader: React.FC<TradingPreloaderProps> = ({
 
     return (
         <div className={`trading-preloader-overlay ${isFadingOut ? 'fade-out' : ''}`}>
-            {/* Landing Page Ambient Cyber Grid & Glow Orbs */}
+            {/* Background Effects */}
             <div className="preloader-grid-bg" />
+            <canvas ref={rainCanvasRef} className="market-rain-canvas" />
             <div className="preloader-glow-orb orb-1" />
             <div className="preloader-glow-orb orb-2" />
             
