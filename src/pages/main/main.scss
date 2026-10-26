@@ -186,24 +186,25 @@
 
                 @include flex-center;
 
-                // Non-active tabs own background color and text styling
+                // Non-active tabs background & soft emerald-tinted text
                 &:not(.dc-tabs__active) {
-                    background: rgba(100, 116, 139, 0.08);
-                    color: var(--text-general);
+                    background: rgba(0, 168, 107, 0.03);
+                    color: rgba(255, 255, 127, 0.85); // Soft visible contrast shade
                     margin-right: 0.4rem;
-                    border-top-left-radius: 1rem;
-                    border-top-right-radius: 1rem;
+                    border: 1px solid rgba(0, 168, 107, 0.08);
 
                     svg {
-                        fill: var(--text-general);
+                        fill: #00a86b !important;
+                        opacity: 0.7;
                     }
 
                     &:hover {
                         background: rgba(0, 168, 107, 0.08);
                         color: #00a86b;
+                        border-color: rgba(0, 168, 107, 0.2);
 
                         svg {
-                            fill: #00a86b;
+                            opacity: 1;
                         }
                     }
                 }
