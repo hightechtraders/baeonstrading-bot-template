@@ -35,7 +35,7 @@
     padding: 1.6rem;
 
     @include mobile-or-tablet-screen {
-        height: auto !important; // Allow dynamic height on mobile so content can expand
+        height: auto !important;
         min-height: calc(100vh - 6rem);
         padding: 0;
         overflow-y: auto !important;
@@ -788,12 +788,12 @@
     background: var(--general-main-1);
     box-sizing: border-box;
     overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch; // Enables momentum-based scrolling on iOS/Safari and Android
+    -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
 
     @include mobile-or-tablet-screen {
         padding: 1.2rem;
-        padding-bottom: 9rem; // Leaves enough clearance so the bottom mobile run panel never blocks cards
+        padding-bottom: 9rem;
     }
 }
 
