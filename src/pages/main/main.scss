@@ -74,26 +74,33 @@
         }
 
         .dc-tabs {
+            // Active tab indicator underline color
             &__active-line {
-                background-color: #00f0ff !important; 
+                background-color: #00805a !important; 
                 transition: none;
                 height: 0.3rem !important;
+                border-radius: 0.2rem;
             }
 
+            // Active tab container highlight & text color
             &__active {
-                background: rgba(0, 240, 255, 0.05);
-                color: #00f0ff !important; 
+                background: rgba(0, 168, 107, 0.08) !important;
+                color: #00a86b !important; 
                 font-weight: 700;
+                border-top-left-radius: 1rem;
+                border-top-right-radius: 1rem;
 
                 svg {
-                    fill: #00f0ff !important;
+                    fill: #00a86b !important;
                 }
             }
 
+            // Tab bar container blending background
             &__list {
                 background: var(--general-section-1);
                 justify-content: start;
-                border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+                border-bottom: 1px solid rgba(0, 168, 107, 0.2);
+                padding: 0.4rem 0.8rem 0;
 
                 @include mobile-or-tablet-screen {
                     overflow-x: auto;
@@ -176,11 +183,13 @@
                 padding: 0 2rem;
                 width: auto;
                 color: var(--text-general);
+                transition: all 0.2s ease;
 
                 @include flex-center;
 
                 &:hover {
-                    color: #00f0ff;
+                    color: #00a86b;
+                    background: rgba(0, 168, 107, 0.04);
                 }
 
                 svg {
@@ -213,8 +222,8 @@
         .animation {
             &__button#db-animation {
                 &__run-button {
-                    background-color: #00f0ff !important;
-                    color: #030712 !important;
+                    background-color: #00a86b !important;
+                    color: #ffffff !important;
                     font-weight: 800;
                 }
 
@@ -250,10 +259,10 @@
     .animation {
         &__button#db-animation {
             &__run-button {
-                background-color: #00f0ff !important;
-                color: #030712 !important;
+                background-color: #00a86b !important;
+                color: #ffffff !important;
                 font-weight: 800 !important;
-                box-shadow: 0 0 1.5rem rgba(0, 240, 255, 0.3) !important;
+                box-shadow: 0 0 1.5rem rgba(0, 168, 107, 0.3) !important;
             }
 
             &__stop-button {
@@ -404,8 +413,8 @@
 
         .animation {
             &__button {
-                background-color: #00f0ff !important;
-                color: #030712 !important;
+                background-color: #00a86b !important;
+                color: #ffffff !important;
             }
 
             &__container {
@@ -829,7 +838,7 @@
 
 .free-bots-card {
     background: var(--general-section-1); 
-    border: 1.5px solid rgba(0, 240, 255, 0.35); 
+    border: 1.5px solid rgba(0, 168, 107, 0.35); 
     border-radius: 1.2rem;
     padding: 2rem;
     box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.06);
@@ -843,8 +852,8 @@
 
     &:hover {
         transform: translateY(-2px);
-        border-color: #00f0ff; 
-        box-shadow: 0 0.6rem 1.6rem rgba(0, 240, 255, 0.15);
+        border-color: #00a86b; 
+        box-shadow: 0 0.6rem 1.6rem rgba(0, 168, 107, 0.15);
     }
 
     .free-bots-header {
@@ -855,15 +864,15 @@
         .strategy-tag {
             font-size: 1.1rem;
             font-weight: 700;
-            color: #00f0ff;
+            color: #00a86b;
             letter-spacing: 0.5px;
         }
 
         .confidence-badge {
             font-size: 1.1rem;
             font-weight: 700;
-            color: #00f0ff; 
-            background: rgba(0, 240, 255, 0.1); 
+            color: #00a86b; 
+            background: rgba(0, 168, 107, 0.1); 
             padding: 0.3rem 0.8rem;
             border-radius: 0.6rem;
         }
@@ -904,10 +913,10 @@
                 font-weight: 700;
 
                 &.up {
-                    color: #00ff9d;
+                    color: #00a86b;
                 }
                 &.down {
-                    color: #ff3366;
+                    color: #e11d48;
                 }
             }
         }
@@ -916,21 +925,21 @@
     .free-bots-btn {
         width: 100%;
         height: 4.2rem;
-        background: #00f0ff; 
-        color: #030712; 
-        border: none;
+        background: #e6f4ea; 
+        color: #00a86b; 
+        border: 1px solid rgba(0, 168, 107, 0.3);
         border-radius: 0.8rem;
         font-size: 1.4rem;
-        font-weight: 800;
+        font-weight: 700;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         transition: all 0.2s ease;
-        box-shadow: 0 0 1.2rem rgba(0, 240, 255, 0.25);
 
         &:hover {
-            opacity: 0.9;
+            background: #d4edda;
+            border-color: #00a86b;
         }
 
         &:active {
