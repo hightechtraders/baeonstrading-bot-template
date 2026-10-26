@@ -183,10 +183,10 @@
                 padding: 0 2rem;
                 width: auto;
                 transition: all 0.2s ease;
-                
+
                 @include flex-center;
 
-                // Non-active tabs styled with a visible background tint and high-contrast text
+                // Non-active tabs styled with solid card look and high-contrast visible text
                 &:not(.dc-tabs__active) {
                     background: rgba(0, 168, 107, 0.06);
                     color: var(--text-prominent) !important;
