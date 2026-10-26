@@ -19,6 +19,16 @@ export const FloatingAI: React.FC = () => {
   const [isSweetSpot, setIsSweetSpot] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
 
+  // Position & dragging state initialized near bottom-right
+  const [position, setPosition] = useState({ 
+    x: typeof window !== 'undefined' ? window.innerWidth - 90 : 100, 
+    y: typeof window !== 'undefined' ? window.innerHeight - 130 : 100 
+  });
+  
+  const isDragging = useRef<boolean>(false);
+  const hasMoved = useRef<boolean>(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
+
   const isOpenRef = useRef<boolean>(false);
   const isScanningPhaseRef = useRef<boolean>(true);
   const sweetSpotStreakRef = useRef<number>(0);
@@ -30,6 +40,57 @@ export const FloatingAI: React.FC = () => {
   useEffect(() => {
     isScanningPhaseRef.current = isScanningPhase;
   }, [isScanningPhase]);
+
+  // Pointer event handlers for smooth dragging within viewport borders
+  const handlePointerDown = (e: React.PointerEvent) => {
+    isDragging.current = true;
+    hasMoved.current = false;
+    dragOffset.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+
+    hasMoved.current = true;
+
+    let newX = e.clientX - dragOffset.current.x;
+    let newY = e.clientY - dragOffset.current.y;
+
+    // Orb width & height footprint (approx 64px)
+    const elementSize = 64;
+    const padding = 12;
+
+    const minX = padding;
+    const minY = padding;
+    const maxX = window.innerWidth - elementSize - padding;
+    const maxY = window.innerHeight - elementSize - padding;
+
+    // Constrain strictly within visible screen borders
+    newX = Math.max(minX, Math.min(newX, maxX));
+    newY = Math.max(minY, Math.min(newY, maxY));
+
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    isDragging.current = false;
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch (err) {
+      // Ignore capture errors
+    }
+  };
+
+  const handleOrbClick = () => {
+    // Only open the modal if it was a clean click rather than a drag release
+    if (!hasMoved.current) {
+      setIsOpen(true);
+    }
+  };
 
   useEffect(() => {
     const handleStrategiesUpdated = (e: CustomEvent) => {
@@ -120,10 +181,23 @@ export const FloatingAI: React.FC = () => {
   };
 
   return (
-    <div className="floating-ai-container">
+    <div 
+      className="floating-ai-container"
+      style={{
+        position: 'fixed',
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        zIndex: 9999,
+        touchAction: 'none'
+      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+    >
       <button 
         className="dancing-orb-wrapper"
-        onClick={() => setIsOpen(true)}
+        onClick={handleOrbClick}
+        style={{ cursor: 'grab' }}
       >
         <div className="dancing-orb-inner">
           🤖 AI
