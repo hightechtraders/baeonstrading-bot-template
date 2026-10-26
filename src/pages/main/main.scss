@@ -776,7 +776,7 @@
 }
 
 /* ==========================================
-   FREE BOTS TAB - MOBILE SMOOTH SCROLL STYLES
+   FREE BOTS TAB - CYAN BORDER & SMOOTH SCROLL
    ========================================== */
 
 .free-bots-container {
@@ -809,11 +809,10 @@
 }
 
 .free-bots-card {
-    background: #ffffff; 
-    border: 1px solid rgba(0, 200, 150, 0.2); 
+    border: 1.5px solid rgba(0, 240, 255, 0.35); // Sleek cyber-cyan border line only, original background preserved
     border-radius: 1.2rem;
     padding: 2rem;
-    box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.06);
+    box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -824,8 +823,8 @@
 
     &:hover {
         transform: translateY(-2px);
-        border-color: #00c896; 
-        box-shadow: 0 0.6rem 1.6rem rgba(0, 200, 150, 0.15);
+        border-color: #00f0ff; // Full cyber-cyan highlight on hover
+        box-shadow: 0 0 1.5rem rgba(0, 240, 255, 0.25);
     }
 
     .free-bots-header {
@@ -836,17 +835,18 @@
         .strategy-tag {
             font-size: 1.1rem;
             font-weight: 700;
-            color: #64748b;
+            color: var(--text-less-prominent);
             letter-spacing: 0.5px;
         }
 
         .confidence-badge {
             font-size: 1.1rem;
             font-weight: 700;
-            color: #00a86b; 
-            background: rgba(0, 200, 150, 0.1); 
+            color: #00ff9d; 
+            background: rgba(0, 255, 157, 0.1); 
             padding: 0.3rem 0.8rem;
             border-radius: 0.6rem;
+            border: 1px solid rgba(0, 255, 157, 0.2);
         }
     }
 
@@ -858,14 +858,14 @@
         .strategy-title {
             font-size: 1.6rem;
             font-weight: 700;
-            color: #0f172a; 
+            color: var(--text-prominent); 
             margin: 0;
             line-height: 1.4;
         }
 
         .strategy-description {
             font-size: 1.3rem;
-            color: #334155;
+            color: var(--text-general); 
             line-height: 1.5;
             margin: 0.4rem 0;
         }
@@ -874,7 +874,7 @@
             display: flex;
             align-items: center;
             font-size: 1.3rem;
-            color: #475569;
+            color: var(--text-general);
 
             .dot-separator {
                 opacity: 0.4;
@@ -885,10 +885,10 @@
                 font-weight: 700;
 
                 &.up {
-                    color: #00a86b;
+                    color: #00ff9d;
                 }
                 &.down {
-                    color: #e11d48;
+                    color: #ff3366;
                 }
             }
         }
@@ -897,21 +897,22 @@
     .free-bots-btn {
         width: 100%;
         height: 4.2rem;
-        background: #e6f4ea; 
-        color: #00a86b; 
-        border: 1px solid rgba(0, 200, 150, 0.3);
+        background: #00f0ff; 
+        color: #030712; 
+        border: none;
         border-radius: 0.8rem;
         font-size: 1.4rem;
-        font-weight: 700;
+        font-weight: 800;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         transition: all 0.2s ease;
+        box-shadow: 0 0 1.5rem rgba(0, 240, 255, 0.25);
 
         &:hover {
-            background: #d4edda;
-            border-color: #00a86b;
+            opacity: 0.95;
+            box-shadow: 0 0 2rem rgba(0, 240, 255, 0.4);
         }
 
         &:active {
