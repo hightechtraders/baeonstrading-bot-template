@@ -38,6 +38,7 @@ import {
     LabelPairedObjectsColumnCaptionRegularIcon,
     LabelPairedPuzzlePieceTwoCaptionBoldIcon,
     LabelPairedBookmarkCaptionRegularIcon,
+    LabelPairedUsersCaptionRegularIcon,
 } from '@deriv/quill-icons/LabelPaired';
 import { Localize, localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
@@ -80,7 +81,8 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial'];
+    // Updated hash array to match tab order: dashboard, bot_builder, free_bots, copy_trading, chart, tutorial
+    const hash = ['dashboard', 'bot_builder', 'free_bots', 'copy_trading', 'chart', 'tutorial'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -431,29 +433,6 @@ const AppWrapper = observer(() => {
                             <div
                                 label={
                                     <>
-                                        <LabelPairedChartLineCaptionRegularIcon
-                                            height='24px'
-                                            width='24px'
-                                            fill='var(--text-general)'
-                                        />
-                                        <Localize i18n_default_text='Charts' />
-                                    </>
-                                }
-                                id={
-                                    is_chart_modal_visible || is_trading_view_modal_visible
-                                        ? 'id-charts--disabled'
-                                        : 'id-charts'
-                                }
-                            >
-                                <Suspense
-                                    fallback={<ChunkLoader message={localize('Please wait, loading chart...')} />}
-                                >
-                                    <ChartWrapper show_digits_stats={false} />
-                                </Suspense>
-                            </div>
-                            <div
-                                label={
-                                    <>
                                         <LabelPairedBookmarkCaptionRegularIcon
                                             height='24px'
                                             width='24px'
@@ -520,6 +499,52 @@ const AppWrapper = observer(() => {
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                            {/* Copy Trading Tab inserted between Free Bots and Charts */}
+                            <div
+                                label={
+                                    <>
+                                        <LabelPairedUsersCaptionRegularIcon
+                                            height='24px'
+                                            width='24px'
+                                            fill='var(--text-general)'
+                                        />
+                                        <Localize i18n_default_text='Copy Trading' />
+                                    </>
+                                }
+                                id='id-copy-trading'
+                            >
+                                <div className='free-bots-container'>
+                                    <div className='free-bots-closed-state'>
+                                        <h3 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '0.8rem', color: 'var(--text-prominent)' }}>
+                                            Copy Trading Hub
+                                        </h3>
+                                        <p>Connect with master traders and mirror profitable automated strategies in real-time.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div
+                                label={
+                                    <>
+                                        <LabelPairedChartLineCaptionRegularIcon
+                                            height='24px'
+                                            width='24px'
+                                            fill='var(--text-general)'
+                                        />
+                                        <Localize i18n_default_text='Charts' />
+                                    </>
+                                }
+                                id={
+                                    is_chart_modal_visible || is_trading_view_modal_visible
+                                        ? 'id-charts--disabled'
+                                        : 'id-charts'
+                                }
+                            >
+                                <Suspense
+                                    fallback={<ChunkLoader message={localize('Please wait, loading chart...')} />}
+                                >
+                                    <ChartWrapper show_digits_stats={false} />
+                                </Suspense>
                             </div>
                         </Tabs>
                         {!isDesktop && right_tab_shadow && <span className='tabs-shadow tabs-shadow--right' />}
