@@ -74,7 +74,7 @@
         }
 
         .dc-tabs {
-            // Active tab indicator underline color (Distinct Accent)
+            // Active tab indicator underline color
             &__active-line {
                 background-color: #00805a !important; 
                 transition: none;
@@ -84,7 +84,7 @@
 
             // Active tab container highlight & text color
             &__active {
-                background: rgba(0, 168, 107, 0.12) !important;
+                background: rgba(0, 168, 107, 0.15) !important;
                 color: #00a86b !important; 
                 font-weight: 700;
                 border-top-left-radius: 1rem;
@@ -186,25 +186,25 @@
 
                 @include flex-center;
 
-                // Non-active tabs background & soft emerald-tinted text
+                // Non-active tabs styled with crisp, high-visibility text and solid background cards
                 &:not(.dc-tabs__active) {
-                    background: rgba(0, 168, 107, 0.03);
-                    color: rgba(255, 255, 127, 0.85); // Soft visible contrast shade
+                    background: var(--general-section-1);
+                    color: var(--text-prominent) !important;
                     margin-right: 0.4rem;
-                    border: 1px solid rgba(0, 168, 107, 0.08);
+                    border: 1px solid rgba(0, 168, 107, 0.15);
 
                     svg {
-                        fill: #00a86b !important;
-                        opacity: 0.7;
+                        fill: var(--text-prominent) !important;
+                        opacity: 1 !important;
                     }
 
                     &:hover {
-                        background: rgba(0, 168, 107, 0.08);
-                        color: #00a86b;
-                        border-color: rgba(0, 168, 107, 0.2);
+                        background: rgba(0, 168, 107, 0.1);
+                        color: #00a86b !important;
+                        border-color: rgba(0, 168, 107, 0.4);
 
                         svg {
-                            opacity: 1;
+                            fill: #00a86b !important;
                         }
                     }
                 }
