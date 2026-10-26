@@ -183,25 +183,25 @@
                 padding: 0 2rem;
                 width: auto;
                 transition: all 0.2s ease;
-                background: var(--general-section-1); 
-                color: var(--text-general) !important; 
-
+                
                 @include flex-center;
 
-                svg {
-                    fill: var(--text-general) !important;
-                    opacity: 0.85;
-                }
-
-                // Non-active tab styles matching the page layout and hover states
+                // Non-active tabs styled with a visible background tint and high-contrast text
                 &:not(.dc-tabs__active) {
+                    background: rgba(0, 168, 107, 0.06);
+                    color: var(--text-prominent) !important;
                     margin-right: 0.4rem;
                     border: 1px solid rgba(0, 168, 107, 0.15);
 
+                    svg {
+                        fill: var(--text-prominent) !important;
+                        opacity: 0.9;
+                    }
+
                     &:hover {
-                        background: rgba(0, 168, 107, 0.08);
+                        background: rgba(0, 168, 107, 0.12);
                         color: #00a86b !important;
-                        border-color: rgba(0, 168, 107, 0.3);
+                        border-color: rgba(0, 168, 107, 0.35);
 
                         svg {
                             fill: #00a86b !important;
