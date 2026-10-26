@@ -87,12 +87,13 @@ const AppWrapper = observer(() => {
     const [left_tab_shadow, setLeftTabShadow] = useState<boolean>(false);
     const [right_tab_shadow, setRightTabShadow] = useState<boolean>(false);
 
-    // Free bots card visibility state & 7 integrated working strategies with accurate contract mappings
+    // Free bots card visibility state & 7 integrated working strategies with descriptions and accurate contract mappings
     const [is_card_visible, setIsCardVisible] = useState<boolean>(true);
     const [working_strategies] = useState([
         {
             id: 'strat_1',
             strategyName: 'EMA Crossover Breakpoint',
+            description: 'Identifies trend momentum shifts by tracking fast and slow exponential moving average intersections.',
             marketName: 'Volatility 50 (1s) Index',
             symbol: '1HZ50V',
             contractType: 'PUT',
@@ -103,6 +104,7 @@ const AppWrapper = observer(() => {
         {
             id: 'strat_2',
             strategyName: 'Bollinger Band Squeeze',
+            description: 'Capitalizes on low-volatility consolidation periods anticipating strong breakout directional moves.',
             marketName: 'Volatility 100 (1s) Index',
             symbol: '1HZ100V',
             contractType: 'CALL',
@@ -113,6 +115,7 @@ const AppWrapper = observer(() => {
         {
             id: 'strat_3',
             strategyName: 'Only Ups / Only Downs Momentum',
+            description: 'Rides continuous multi-tick unidirectional trends with automated safety filters.',
             marketName: 'Volatility 100 Index',
             symbol: '1HZ100V',
             contractType: 'CALL',
@@ -123,6 +126,7 @@ const AppWrapper = observer(() => {
         {
             id: 'strat_4',
             strategyName: 'Over 2, Recovery Over 7',
+            description: 'Digit-based probabilistic trading targeting high-probability boundary exits with recovery scaling.',
             marketName: 'Volatility 75 Index',
             symbol: '1HZ75V',
             contractType: 'DIGITOVER',
@@ -134,6 +138,7 @@ const AppWrapper = observer(() => {
         {
             id: 'strat_5',
             strategyName: 'Even Botter Strategy',
+            description: 'Analyzes statistical parity of last digits to execute high-frequency even/odd contracts.',
             marketName: 'Volatility 10 Index',
             symbol: 'R_10',
             contractType: 'EVEN',
@@ -144,6 +149,7 @@ const AppWrapper = observer(() => {
         {
             id: 'strat_6',
             strategyName: 'Over 1, Recovery Under 7',
+            description: 'Digit prediction strategy designed to capture frequent tick fluctuations safely.',
             marketName: 'Volatility 25 Index',
             symbol: 'R_25',
             contractType: 'DIGITOVER',
@@ -155,6 +161,7 @@ const AppWrapper = observer(() => {
         {
             id: 'strat_7',
             strategyName: 'Rise and Fall Copier',
+            description: 'Mirrors high-frequency price action swings across synthetic volatility streams.',
             marketName: 'Volatility 50 Index',
             symbol: 'R_50',
             contractType: 'CALL',
@@ -468,9 +475,10 @@ const AppWrapper = observer(() => {
                                                         <span className='confidence-badge'>CONFIDENCE {bot.confidence}</span>
                                                     </div>
 
-                                                    {/* Strategy Body */}
+                                                    {/* Strategy Body with Definition / Description */}
                                                     <div className='free-bots-body'>
                                                         <h4 className='strategy-title'>{bot.strategyName}</h4>
+                                                        <p className='strategy-description'>{bot.description}</p>
                                                         <div className='strategy-details'>
                                                             <span className='market-name'>{bot.marketName}</span>
                                                             <span className='dot-separator'>•</span>
