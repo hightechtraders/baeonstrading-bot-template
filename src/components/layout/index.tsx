@@ -151,10 +151,10 @@ const Layout = observer(() => {
             </Body>
             {!isCallbackPage && isDesktop && <Footer />}
             
-            {/* Single Unified Floating AI Orb */}
-            <FloatingAI />
+            {/* Single Unified Floating AI Orb with stable key to prevent re-mounting duplicates */}
+            <FloatingAI key="floating-ai-engine" />
 
-            {/* Risk Disclaimer Modal (Can still be invoked programmatically via window.openRiskDisclaimer()) */}
+            {/* Risk Disclaimer Modal */}
             <RiskDisclaimer
                 isOpen={isRiskModalOpen}
                 onClose={() => setIsRiskModalOpen(false)}
