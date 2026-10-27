@@ -6,7 +6,7 @@
   display: contents;
 }
 
-/* 🌟 Premium Floating Orb */
+/* 🌟 Premium Floating Orb (Emerald Green Theme & Live Dancing Animation) */
 .dancing-orb-wrapper {
   position: fixed;
   bottom: 28px;
@@ -19,19 +19,21 @@
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  filter: drop-shadow(0 8px 24px rgba(99, 102, 241, 0.4));
+  filter: drop-shadow(0 8px 24px rgba(0, 168, 107, 0.45));
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: float-and-dance 3.5s ease-in-out infinite;
 }
 
 .dancing-orb-wrapper:hover {
-  transform: scale(1.06);
+  transform: scale(1.08);
+  animation-play-state: paused; /* Pause floating while hovering/interacting */
 }
 
 .dancing-orb-inner {
   width: 62px;
   height: 62px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #00a86b 0%, #059669 100%);
   color: #ffffff;
   font-weight: 800;
   font-size: 16px;
@@ -39,20 +41,29 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.25), 0 0 25px rgba(124, 58, 237, 0.6);
-  animation: pulse-dance 3s infinite ease-in-out;
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3), 0 0 25px rgba(0, 168, 107, 0.65);
   cursor: grab;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .dancing-orb-wrapper:active .dancing-orb-inner {
   cursor: grabbing;
 }
 
-@keyframes pulse-dance {
-  0% { transform: scale(1); box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.25), 0 0 0 0 rgba(124, 58, 237, 0.7); }
-  50% { transform: scale(1.05); box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3), 0 0 0 16px rgba(124, 58, 237, 0); }
-  100% { transform: scale(1); box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.25), 0 0 0 0 rgba(124, 58, 237, 0); }
+/* Steady Live Up-and-Down Floating & Pulse Animation */
+@keyframes float-and-dance {
+  0% {
+    transform: translateY(0px) scale(1);
+    filter: drop-shadow(0 8px 24px rgba(0, 168, 107, 0.45));
+  }
+  50% {
+    transform: translateY(-10px) scale(1.03); /* Smoothly bobs up by 10px */
+    filter: drop-shadow(0 14px 30px rgba(0, 168, 107, 0.65));
+  }
+  100% {
+    transform: translateY(0px) scale(1);
+    filter: drop-shadow(0 8px 24px rgba(0, 168, 107, 0.45));
+  }
 }
 
 /* 🪟 Institutional Modal Backdrop */
@@ -247,9 +258,9 @@
 }
 
 .strategy-card.top-card {
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(124, 58, 237, 0.12));
-  border: 1px solid rgba(124, 58, 237, 0.4);
-  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.15);
+  background: linear-gradient(135deg, rgba(0, 168, 107, 0.12), rgba(5, 150, 105, 0.12));
+  border: 1px solid rgba(0, 168, 107, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 168, 107, 0.15);
 }
 
 .global-winner-meta {
@@ -257,7 +268,7 @@
   justify-content: space-between;
   font-size: 10px;
   font-weight: 800;
-  color: #c084fc;
+  color: #34d399;
   letter-spacing: 0.8px;
   margin-bottom: -2px;
 }
@@ -282,7 +293,7 @@
 }
 
 .top-card .badge-rank {
-  background: #6366f1;
+  background: #00a86b;
   color: white;
   border-color: transparent;
 }
@@ -340,9 +351,9 @@
 }
 
 .badge-high {
-  background: rgba(168, 85, 247, 0.15);
-  color: #c084fc;
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: rgba(0, 168, 107, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(0, 168, 107, 0.3);
   padding: 4px 10px;
   border-radius: 8px;
   font-size: 10px;
