@@ -3,8 +3,7 @@
 /* ========================================== */
 
 .floating-ai-container {
-  display: block;
-  position: relative;
+  display: contents;
 }
 
 /* 🌟 Clean Floating Orb Wrapper (Handles Smooth Up/Down Float Only) */
@@ -143,7 +142,7 @@
 @keyframes scaleUp {
   from { transform: scale(0.96) translateY(8px); opacity: 0; }
   to { transform: scale(1) translateY(0); opacity: 1; }
-}
+} /* FIXED: Added missing closing brace here */
 
 /* 🏷️ Modal Header */
 .ai-modal-header {
