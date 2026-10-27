@@ -439,6 +439,13 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+/* 🧭 Adds proper spacing between symbol and price digits */
+.scanner-ticker-bar .ticker-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .scanner-ticker-bar .ticker-symbol {
   font-weight: 700;
   font-size: 12px;
