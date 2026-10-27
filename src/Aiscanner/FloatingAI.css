@@ -6,7 +6,7 @@
   display: contents;
 }
 
-/* 🌟 Premium Floating Orb (Emerald Green Theme & Live Dancing Animation) */
+/* 🌟 Premium Floating Orb with Live Radar Beep Rings */
 .dancing-orb-wrapper {
   position: fixed;
   bottom: 28px;
@@ -19,17 +19,18 @@
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  outline: none;
   filter: drop-shadow(0 8px 24px rgba(0, 168, 107, 0.45));
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   animation: float-and-dance 3.5s ease-in-out infinite;
 }
 
 .dancing-orb-wrapper:hover {
-  transform: scale(1.08);
-  animation-play-state: paused; /* Pause floating while hovering/interacting */
+  animation-play-state: paused;
 }
 
+/* Single Unified Orb Core */
 .dancing-orb-inner {
+  position: relative;
   width: 62px;
   height: 62px;
   border-radius: 50%;
@@ -41,28 +42,64 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3), 0 0 25px rgba(0, 168, 107, 0.65);
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.35), 0 0 25px rgba(0, 168, 107, 0.65);
   cursor: grab;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2;
+}
+
+.dancing-orb-wrapper:hover .dancing-orb-inner {
+  transform: scale(1.08);
 }
 
 .dancing-orb-wrapper:active .dancing-orb-inner {
   cursor: grabbing;
+  transform: scale(0.96);
 }
 
-/* Steady Live Up-and-Down Floating & Pulse Animation */
+/* 📡 Beeping Radar Pulse Rings (Ping Effect) */
+.dancing-orb-inner::before,
+.dancing-orb-inner::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 168, 107, 0.8);
+  animation: radar-ping 2.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.dancing-orb-inner::after {
+  animation-delay: 1.25s; /* Staggered secondary ring for continuous radar feel */
+}
+
+/* Steady Live Up-and-Down Floating Animation */
 @keyframes float-and-dance {
   0% {
-    transform: translateY(0px) scale(1);
-    filter: drop-shadow(0 8px 24px rgba(0, 168, 107, 0.45));
+    transform: translateY(0px);
   }
   50% {
-    transform: translateY(-10px) scale(1.03); /* Smoothly bobs up by 10px */
-    filter: drop-shadow(0 14px 30px rgba(0, 168, 107, 0.65));
+    transform: translateY(-10px); /* Clean upward float */
   }
   100% {
-    transform: translateY(0px) scale(1);
-    filter: drop-shadow(0 8px 24px rgba(0, 168, 107, 0.45));
+    transform: translateY(0px);
+  }
+}
+
+/* Radar Ping Keyframes (Expands outward & fades out like a sonar beep) */
+@keyframes radar-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
   }
 }
 
