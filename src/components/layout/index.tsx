@@ -151,8 +151,17 @@ const Layout = observer(() => {
             </Body>
             {!isCallbackPage && isDesktop && <Footer />}
             
-            {/* Single Unified Floating AI Orb with stable key to prevent re-mounting duplicates */}
+            {/* Stable Single Instance Floating AI Orb */}
             <FloatingAI key="floating-ai-engine" />
+
+            {/* Risk Disclaimer Trigger Button (Restored cleanly without DOM mutation lag) */}
+            <button
+                type="button"
+                className="risk-disclaimer-trigger"
+                onClick={() => setIsRiskModalOpen(true)}
+            >
+                ⚠️ Risk Disclaimer
+            </button>
 
             {/* Risk Disclaimer Modal */}
             <RiskDisclaimer
