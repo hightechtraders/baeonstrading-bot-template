@@ -1,3 +1,7 @@
+/* ========================================== */
+/* FILE: src/components/risk-disclaimer/RiskDisclaimer.css */
+/* ========================================== */
+
 /* Overlay background */
 .risk-modal-overlay {
   position: fixed;
@@ -170,31 +174,34 @@
   background-color: #1d4ed8;
 }
 
-/* Floating Yellow Risk Disclaimer Trigger Button */
+/* 🛡️ Subdued & Scaled-Down Risk Disclaimer Trigger Button */
 .risk-disclaimer-trigger {
   position: fixed;
-  bottom: 64px; /* Raised above the bottom toolbar to avoid covering 'Run' */
-  left: 12px;   /* Positioned cleanly on the left side */
+  bottom: 64px; 
+  left: 12px;   
   z-index: 9999;
-  background-color: #f59e0b;
-  color: #0f172a;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 700;
+  background-color: rgba(30, 41, 59, 0.85); /* Dark slate background instead of loud yellow */
+  color: #cbd5e1;                            /* Soft muted text color */
+  border: 1px solid rgba(245, 158, 11, 0.3); /* Subtle amber border */
+  padding: 3px 6px;                          /* Reduced ~30% smaller padding */
+  border-radius: 8px;                        
+  font-size: 8.5px;                          /* Scaled-down font size */
+  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   transition: all 0.2s ease-in-out;
+  backdrop-filter: blur(4px);
 }
 
 .risk-disclaimer-trigger:hover {
-  background-color: #d97706;
+  background-color: rgba(30, 41, 59, 0.95);
+  color: #f8fafc;
+  border-color: rgba(245, 158, 11, 0.6);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.45);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
 }
 
 .risk-disclaimer-trigger:active {
