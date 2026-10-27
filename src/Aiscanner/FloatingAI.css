@@ -7,7 +7,7 @@
   position: relative;
 }
 
-/* 🌟 Premium Floating Orb with Live Radar Beep Rings */
+/* 🌟 Clean Floating Orb Wrapper (Handles Smooth Up/Down Float Only) */
 .dancing-orb-wrapper {
   position: fixed;
   bottom: 28px;
@@ -22,14 +22,14 @@
   -webkit-user-select: none;
   outline: none;
   filter: drop-shadow(0 8px 24px rgba(0, 168, 107, 0.45));
-  animation: float-and-dance 3.5s ease-in-out infinite;
+  animation: float-orb 3.5s ease-in-out infinite;
 }
 
 .dancing-orb-wrapper:hover {
   animation-play-state: paused;
 }
 
-/* Single Unified Orb Core */
+/* Single Unified Solid Orb Core */
 .dancing-orb-inner {
   position: relative;
   width: 62px;
@@ -59,7 +59,7 @@
   transform: scale(0.96);
 }
 
-/* 📡 Beeping Radar Pulse Rings (Ping Effect) */
+/* 📡 Vibrant Cyan/Teal Radar Pulse Rings (Distinct Contrast Ping) */
 .dancing-orb-inner::before,
 .dancing-orb-inner::after {
   content: '';
@@ -69,38 +69,41 @@
   right: 0;
   bottom: 0;
   border-radius: 50%;
-  border: 2px solid rgba(0, 168, 107, 0.8);
+  border: 2px solid rgba(0, 242, 254, 0.9);
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.6);
   animation: radar-ping 2.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
   z-index: 1;
   pointer-events: none;
 }
 
 .dancing-orb-inner::after {
-  animation-delay: 1.25s; /* Staggered secondary ring for continuous radar feel */
+  animation-delay: 1.25s; /* Staggered secondary ring */
 }
 
-/* Steady Live Up-and-Down Floating Animation */
-@keyframes float-and-dance {
+/* Stable Up-and-Down Float Keyframes */
+@keyframes float-orb {
   0% {
     transform: translateY(0px);
   }
   50% {
-    transform: translateY(-10px); /* Clean upward float */
+    transform: translateY(-10px);
   }
   100% {
     transform: translateY(0px);
   }
 }
 
-/* Radar Ping Keyframes (Expands outward & fades out like a sonar beep) */
+/* Radar Ping Keyframes (Expands outward with glowing cyan fade) */
 @keyframes radar-ping {
   0% {
     transform: scale(1);
-    opacity: 0.9;
+    opacity: 1;
+    border-color: rgba(0, 242, 254, 0.9);
   }
   100% {
-    transform: scale(2.2);
+    transform: scale(2.4);
     opacity: 0;
+    border-color: rgba(0, 198, 255, 0);
   }
 }
 
