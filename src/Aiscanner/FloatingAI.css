@@ -2,11 +2,6 @@
 /* FILE: src/Aiscanner/FloatingAI.css         */
 /* ========================================== */
 
-.floating-ai-container {
-  display: contents;
-}
-
-/* 🌟 Clean Floating Orb Wrapper (Handles Smooth Up/Down Float Only) */
 .dancing-orb-wrapper {
   position: fixed;
   bottom: 28px;
@@ -16,11 +11,10 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   outline: none;
-  filter: drop-shadow(0 8px 24px rgba(0, 168, 107, 0.45));
+  filter: drop-shadow(0 12px 30px rgba(0, 168, 107, 0.5));
   animation: float-orb 3.5s ease-in-out infinite;
 }
 
@@ -28,23 +22,27 @@
   animation-play-state: paused;
 }
 
-/* Single Unified Solid Orb Core */
+/* 🌐 True 3D Spherical Globe Core */
 .dancing-orb-inner {
   position: relative;
-  width: 62px;
-  height: 62px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #00a86b 0%, #059669 100%);
+  /* Radial gradient creates a curved 3D lighting highlight on top-left */
+  background: radial-gradient(circle at 35% 35%, #34d399 0%, #00a86b 45%, #022c22 100%);
   color: #ffffff;
   font-weight: 800;
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: 0.5px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.35), 0 0 25px rgba(0, 168, 107, 0.65);
-  cursor: grab;
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  /* Deep layered specular shadows for a tactile spherical depth */
+  box-shadow: 
+    inset 0 6px 12px rgba(255, 255, 255, 0.45),
+    inset 0 -8px 14px rgba(0, 0, 0, 0.6),
+    0 0 30px rgba(0, 168, 107, 0.7);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 2;
 }
@@ -54,13 +52,13 @@
 }
 
 .dancing-orb-wrapper:active .dancing-orb-inner {
-  cursor: grabbing;
-  transform: scale(0.96);
+  transform: scale(0.95);
 }
 
-/* 📡 Vibrant Cyan/Teal Radar Pulse Rings (Distinct Contrast Ping) */
+/* 📡 Multiple Expanding Cyan Pulse Rings (Multi-tier Radar Sonar) */
 .dancing-orb-inner::before,
-.dancing-orb-inner::after {
+.dancing-orb-inner::after,
+.dancing-orb-wrapper::before {
   content: '';
   position: absolute;
   top: 0;
@@ -68,39 +66,36 @@
   right: 0;
   bottom: 0;
   border-radius: 50%;
-  border: 2px solid rgba(0, 242, 254, 0.9);
-  box-shadow: 0 0 12px rgba(0, 242, 254, 0.6);
-  animation: radar-ping 2.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  border: 2px solid rgba(0, 242, 254, 0.85);
+  box-shadow: 0 0 14px rgba(0, 242, 254, 0.5);
+  animation: multi-radar-ping 3s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
   z-index: 1;
   pointer-events: none;
 }
 
+/* Staggered intervals for multiple consecutive rings */
 .dancing-orb-inner::after {
-  animation-delay: 1.25s; /* Staggered secondary ring */
+  animation-delay: 1s;
 }
 
-/* Stable Up-and-Down Float Keyframes */
+.dancing-orb-wrapper::before {
+  animation-delay: 2s;
+}
+
 @keyframes float-orb {
-  0% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-  100% {
-    transform: translateY(0px);
-  }
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
 }
 
-/* Radar Ping Keyframes (Expands outward with glowing cyan fade) */
-@keyframes radar-ping {
+@keyframes multi-radar-ping {
   0% {
     transform: scale(1);
     opacity: 1;
     border-color: rgba(0, 242, 254, 0.9);
   }
   100% {
-    transform: scale(2.4);
+    transform: scale(2.8);
     opacity: 0;
     border-color: rgba(0, 198, 255, 0);
   }
@@ -142,9 +137,8 @@
 @keyframes scaleUp {
   from { transform: scale(0.96) translateY(8px); opacity: 0; }
   to { transform: scale(1) translateY(0); opacity: 1; }
-} /* FIXED: Added missing closing brace here */
+}
 
-/* 🏷️ Modal Header */
 .ai-modal-header {
   display: flex;
   justify-content: space-between;
@@ -183,7 +177,6 @@
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* 📊 Signal Banner */
 .signal-banner {
   background: #131b2e;
   border: 1px solid rgba(59, 130, 246, 0.2);
@@ -195,7 +188,6 @@
   font-weight: 600;
   text-align: center;
   letter-spacing: 0.2px;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
@@ -220,7 +212,6 @@
   font-weight: 500;
 }
 
-/* 🛰️ Loading State */
 .scanner-loading-state {
   text-align: center;
   padding: 44px 20px;
@@ -251,7 +242,6 @@
   color: #64748b;
 }
 
-/* 📋 Strategy List & Cards */
 .strategy-list {
   display: flex;
   flex-direction: column;
@@ -265,18 +255,9 @@
   width: 6px;
 }
 
-.strategy-list::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 4px;
-}
-
 .strategy-list::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-}
-
-.strategy-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
 }
 
 .strategy-card {
@@ -421,7 +402,6 @@
   padding-left: 48px;
 }
 
-/* 🚀 Execution Action Button */
 .run-manual-btn {
   width: 100%;
   padding: 11px;
@@ -444,13 +424,6 @@
   transform: translateY(-1px);
 }
 
-.run-manual-btn:active {
-  transform: scale(0.99);
-}
-
-/* ========================================== */
-/* LIVE MINI TICKER BAR STYLES                  */
-/* ========================================== */
 .scanner-ticker-bar {
   display: flex;
   justify-content: space-between;
@@ -460,21 +433,8 @@
   border-radius: 10px;
   padding: 10px 14px;
   margin-bottom: 14px;
-  font-family: inherit;
   color: #f8fafc;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.scanner-ticker-bar.loading {
-  justify-content: center;
-  color: #94a3b8;
-  font-size: 13px;
-}
-
-.scanner-ticker-bar .ticker-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 
 .scanner-ticker-bar .ticker-symbol {
@@ -485,41 +445,13 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 3px 8px;
   border-radius: 6px;
-  letter-spacing: 0.3px;
 }
 
 .scanner-ticker-bar .ticker-price {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: monospace;
   font-size: 16px;
   font-weight: 800;
-  letter-spacing: 0.2px;
 }
 
-.scanner-ticker-bar .ticker-price.up {
-  color: #34d399;
-}
-
-.scanner-ticker-bar .ticker-price.down {
-  color: #f87171;
-}
-
-.scanner-ticker-bar .ticker-badge {
-  font-size: 10px;
-  font-weight: 800;
-  padding: 4px 8px;
-  border-radius: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-
-.scanner-ticker-bar .ticker-badge.up {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.scanner-ticker-bar .ticker-badge.down {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-}
+.scanner-ticker-bar .ticker-price.up { color: #34d399; }
+.scanner-ticker-bar .ticker-price.down { color: #f87171; }
