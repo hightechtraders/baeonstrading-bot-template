@@ -174,11 +174,11 @@
   background-color: #1d4ed8;
 }
 
-/* 🛡️ Solid Initial Yellow Background with Black Text at 72px */
+/* 🛡️ Solid Initial Yellow Background with Black Text at 56px */
 .risk-disclaimer-trigger {
   position: fixed;
   bottom: 64px; 
-  left: 66px;   
+  left: 56px;   
   z-index: 9999;
   background-color: #f59e0b; /* Solid initial yellow background */
   color: #0f172a;            /* Black text */
@@ -205,8 +205,11 @@
   transform: translateY(0);
 }
 
-/* Automatically hide the button whenever the AI Scanner modal is open */
+/* Automatically hide the button whenever the AI Scanner modal or Charts tab is open */
 body:has(.FloatingAI) .risk-disclaimer-trigger,
-body:has([class*="scanner"]) .risk-disclaimer-trigger {
+body:has([class*="scanner"]) .risk-disclaimer-trigger,
+body:has(.chart-container) .risk-disclaimer-trigger,
+body:has(.smartcharts) .risk-disclaimer-trigger,
+body:has([class*="chart"]) .risk-disclaimer-trigger {
   display: none !important;
 }
