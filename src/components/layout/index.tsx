@@ -1,3 +1,6 @@
+// ==========================================
+// FILE: src/components/layout/index.tsx
+// ==========================================
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { observer } from 'mobx-react-lite';
@@ -21,34 +24,6 @@ const Layout = observer(() => {
 
     // Risk Disclaimer Modal State
     const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
-
-    // Track scanner visibility by observing screen text
-    const [isScannerVisible, setIsScannerVisible] = useState(false);
-
-    useEffect(() => {
-        const checkForScannerText = () => {
-            // Check if any element on the page contains "AI Multi-Asset Scanner"
-            const bodyText = document.body.innerText || document.body.textContent || '';
-            const isVisible = bodyText.includes('AI Multi-Asset Scanner');
-            setIsScannerVisible(isVisible);
-        };
-
-        // Check initially
-        checkForScannerText();
-
-        // Listen for DOM changes when modal opens or closes
-        const observerInstance = new MutationObserver(() => {
-            checkForScannerText();
-        });
-
-        observerInstance.observe(document.body, {
-            childList: true,
-            subtree: true,
-            characterData: true,
-        });
-
-        return () => observerInstance.disconnect();
-    }, []);
 
     const checkClientAccount = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
     const getQueryParams = new URLSearchParams(window.location.search);
@@ -175,20 +150,11 @@ const Layout = observer(() => {
                 <Outlet />
             </Body>
             {!isCallbackPage && isDesktop && <Footer />}
+            
+            {/* Single Unified Floating AI Orb */}
             <FloatingAI />
 
-            {/* Render Risk Disclaimer Trigger Button ONLY when scanner modal text is NOT present */}
-            {!isScannerVisible && (
-                <button
-                    type="button"
-                    className="risk-disclaimer-trigger"
-                    onClick={() => setIsRiskModalOpen(true)}
-                >
-                    ⚠️ Risk Disclaimer
-                </button>
-            )}
-
-            {/* Risk Disclaimer Modal */}
+            {/* Risk Disclaimer Modal (Can still be invoked programmatically via window.openRiskDisclaimer()) */}
             <RiskDisclaimer
                 isOpen={isRiskModalOpen}
                 onClose={() => setIsRiskModalOpen(false)}
