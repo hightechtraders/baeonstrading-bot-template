@@ -174,33 +174,31 @@
   background-color: #1d4ed8;
 }
 
-/* 🛡️ Visible Yellow, Rectangular, Pushed to 86px Risk Disclaimer Trigger Button */
+/* 🛡️ Solid Initial Yellow Background with Black Text at 72px */
 .risk-disclaimer-trigger {
   position: fixed;
   bottom: 64px; 
-  left: 76px;   /* Adjusted to 86px position */
+  left: 72px;   
   z-index: 9999;
-  background-color: rgba(250, 204, 21, 0.22); /* Clear, visible yellow tone */
-  color: #fde047;                              /* Bright yellow-tinted text */
-  border: 1px solid rgba(250, 204, 21, 0.5);   /* Clean solid yellow border */
+  background-color: #f59e0b; /* Solid initial yellow background */
+  color: #0f172a;            /* Black text */
+  border: none;
   padding: 4px 8px;                            
-  border-radius: 4px;                          /* Sharp rectangular corners */
+  border-radius: 4px;        /* Sharp rectangular corners */
   font-size: 8.5px;                            
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
   display: inline-flex;
   align-items: center;
   gap: 3px;
   transition: all 0.2s ease-in-out;
-  backdrop-filter: blur(4px);
 }
 
 .risk-disclaimer-trigger:hover {
-  background-color: rgba(250, 204, 21, 0.35);
-  border-color: rgba(250, 204, 21, 0.8);
+  background-color: #d97706; 
   transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 3px 8px rgba(245, 158, 11, 0.45);
 }
 
 .risk-disclaimer-trigger:active {
