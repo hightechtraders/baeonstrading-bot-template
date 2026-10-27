@@ -455,5 +455,12 @@
   font-weight: 800;
 }
 
-.scanner-ticker-bar .ticker-price.up { color: #34d399; }
-.scanner-ticker-bar .ticker-price.down { color: #f87171; }
+.scanner-ticker-bar .ticker-price.up { 
+  color: #00ff66; /* Vibrant popping neon green */
+  text-shadow: 0 0 10px rgba(0, 255, 102, 0.4);
+}
+
+.scanner-ticker-bar .ticker-price.down { 
+  color: #ff3333; /* Bright, striking red */
+  text-shadow: 0 0 10px rgba(255, 51, 51, 0.4);
+}
