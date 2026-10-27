@@ -457,3 +457,14 @@
 
 .scanner-ticker-bar .ticker-price.up { color: #34d399; }
 .scanner-ticker-bar .ticker-price.down { color: #f87171; }
+
+/* 🔻 FIX: Falling Text Color & Rising Text Color Match */
+.scanner-ticker-bar .falling,
+.ticker-status.falling {
+  color: #f87171 !important;
+}
+
+.scanner-ticker-bar .rising,
+.ticker-status.rising {
+  color: #34d399 !important;
+}
