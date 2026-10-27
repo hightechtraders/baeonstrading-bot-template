@@ -141,6 +141,7 @@
   to { transform: scale(1) translateY(0); opacity: 1; }
 }
 
+/* 🏷️ Fixed & Clean Modal Header Styling */
 .ai-modal-header {
   display: flex;
   justify-content: space-between;
@@ -404,6 +405,7 @@
   padding-left: 48px;
 }
 
+/* 🟢 Manual Action Button */
 .run-manual-btn {
   width: 100%;
   padding: 11px;
@@ -439,7 +441,7 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-/* 🎯 Centers the ticker content and spaces it cleanly */
+/* 🎯 Centered ticker content and spacing */
 .scanner-ticker-bar .ticker-info {
   display: flex;
   align-items: center;
@@ -458,7 +460,7 @@
   border-radius: 6px;
 }
 
-/* 🔍 Enlarge the numbers slightly for clear visibility */
+/* 🔍 Enlarge numbers slightly for visibility */
 .scanner-ticker-bar .ticker-price {
   font-family: monospace;
   font-size: 19px;
