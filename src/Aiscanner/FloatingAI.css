@@ -3,7 +3,8 @@
 /* ========================================== */
 
 .floating-ai-container {
-  display: contents;
+  display: block;
+  position: relative;
 }
 
 /* 🌟 Premium Floating Orb with Live Radar Beep Rings */
