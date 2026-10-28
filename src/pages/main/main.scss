@@ -94,15 +94,15 @@
                 }
             }
 
-            // Unified pale green background container set to ~72% width to balance the header perfectly
+            // Unified pale green background container set to 83% width to reach the Run button cleanly
             &__list {
                 background: rgba(0, 168, 107, 0.06); 
                 border: 1.5px solid rgba(0, 168, 107, 0.25); 
                 display: flex;
-                justify-content: space-between; // Distributes tabs evenly across the 72% width
+                justify-content: space-between; 
                 align-items: center;
                 gap: 1rem; 
-                width: 72%; // Takes up roughly 70% of the header width, leaving safe room before the Run button
+                width: 83%; // Expanded to 83% to span across the header and sit right next to the Run button
                 max-width: 100%;
                 border-radius: 1.2rem;
                 padding: 0.6rem 1.6rem;
@@ -198,13 +198,13 @@
                 }
             }
 
-            // Individual tabs expand proportionally to fill the 72% container cleanly
+            // Individual tabs expand proportionally to fill the container cleanly
             &__item {
                 border-radius: 0.8rem;
                 height: 4.2rem;
                 padding: 0 1.2rem;
-                flex: 1; // Allows tabs to share the space evenly
-                max-width: 16rem; // Caps individual tab growth so they don't look oversized
+                flex: 1; 
+                max-width: 16rem; 
                 text-align: center;
                 white-space: nowrap;
                 background: transparent !important;
