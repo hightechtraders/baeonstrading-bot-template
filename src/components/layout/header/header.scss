@@ -348,8 +348,8 @@
         }
 
         &:last-child:not(.auth-actions--loading) {
-            background: var(--brand-primary, #00f0ff) !important;
-            color: var(--brand-dark-grey, #030712) !important;
+            background: #00f0ff !important;
+            color: #030712 !important;
             border: none !important;
             box-shadow: 0 4px 12px rgba(0, 240, 255, 0.25);
 
