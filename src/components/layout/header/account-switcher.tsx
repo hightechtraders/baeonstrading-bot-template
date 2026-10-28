@@ -93,40 +93,33 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                     }}
                 >
                     <span className='acc-info__id' aria-hidden='true'></span>
-                    <div className='acc-info__content'>
-                        <div className='acc-info__account-type-header'>
-                            <Text as='p' size='xs' className='acc-info__account-type'>
-                                {isVirtual ? (
-                                    <Localize i18n_default_text='Demo account' />
-                                ) : (
-                                    <Localize i18n_default_text='Real account' />
-                                )}
-                            </Text>
-                            {showChevron && (
-                                <span
-                                    className={classNames('acc-info__select-arrow', {
-                                        'acc-info__select-arrow--invert': isOpen,
-                                    })}
-                                >
-                                    <svg width='12' height='12' viewBox='0 0 12 12' fill='none'>
-                                        <path
-                                            d='M2 4L6 8L10 4'
-                                            stroke='currentColor'
-                                            strokeWidth='1.5'
-                                            strokeLinecap='round'
-                                            strokeLinejoin='round'
-                                        />
-                                    </svg>
-                                </span>
-                            )}
+                    <div className='acc-info__content' style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                        {/* USD Currency Badge Logo */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '24px',
+                            height: '24px',
+                            backgroundColor: isVirtual ? '#e0f2fe' : '#d1fae5',
+                            color: isVirtual ? '#0369a1' : '#047857',
+                            borderRadius: '50%',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            flexShrink: 0
+                        }}>
+                            $
                         </div>
+
+                        {/* Balance and Currency Display */}
                         {(typeof balance !== 'undefined' || !currency) && (
-                            <div className='acc-info__balance-section'>
+                            <div className='acc-info__balance-section' style={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
                                 <p
                                     data-testid='dt_balance'
                                     className={classNames('acc-info__balance', {
                                         'acc-info__balance--no-currency': !currency && !isVirtual,
                                     })}
+                                    style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}
                                 >
                                     {!currency ? (
                                         <Localize i18n_default_text='No currency assigned' />
@@ -136,9 +129,31 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                 </p>
                             </div>
                         )}
+
+                        {/* Chevron Arrow */}
+                        {showChevron && (
+                            <span
+                                className={classNames('acc-info__select-arrow', {
+                                    'acc-info__select-arrow--invert': isOpen,
+                                })}
+                                style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }}
+                            >
+                                <svg width='12' height='12' viewBox='0 0 12 12' fill='none'>
+                                    <path
+                                        d='M2 4L6 8L10 4'
+                                        stroke='currentColor'
+                                        strokeWidth='1.5'
+                                        strokeLinecap='round'
+                                        strokeLinejoin='round'
+                                    />
+                                </svg>
+                            </span>
+                        )}
                     </div>
                 </div>
             </AccountInfoWrapper>
+
+            {/* Dropdown Menu */}
             {isOpen && (
                 <div className='acc-dropdown' role='listbox'>
                     {formattedAccounts.map(account => (
@@ -158,19 +173,23 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                     handleAccountSelect(account.loginid);
                                 }
                             }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px' }}
                         >
-                            <Text
-                                size='xxxs'
-                                className={classNames('acc-dropdown__account-type', {
-                                    'acc-dropdown__account-type--virtual': account.isVirtual,
-                                })}
-                            >
-                                {account.isVirtual ? (
-                                    <Localize i18n_default_text='Demo account' />
-                                ) : (
-                                    <Localize i18n_default_text='Real account' />
-                                )}
-                            </Text>
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '20px',
+                                height: '20px',
+                                backgroundColor: account.isVirtual ? '#e0f2fe' : '#d1fae5',
+                                color: account.isVirtual ? '#0369a1' : '#047857',
+                                borderRadius: '50%',
+                                fontSize: '10px',
+                                fontWeight: 'bold',
+                                flexShrink: 0
+                            }}>
+                                $
+                            </div>
                             <Text size='xs' weight='bold' className='acc-dropdown__balance'>
                                 {account.currency ? (
                                     `${account.balance} ${getCurrencyDisplayCode(account.currency)}`
