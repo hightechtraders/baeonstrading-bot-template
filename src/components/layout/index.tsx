@@ -25,8 +25,8 @@ const Layout = observer(() => {
     // Risk Disclaimer Modal State
     const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
 
-    // 🔐 Strict authentication check: requires active auth token AND populated client accounts post-login
-    const isAuthenticated = (() => {
+    // 🌟 Reactive authentication state that tracks token and client account mounting instantly
+    const [isAuthenticated, setIsAuthenticated] = useState(() => {
         const hasToken = !!localStorage.getItem('authToken');
         try {
             const clientAccounts = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
@@ -35,7 +35,34 @@ const Layout = observer(() => {
         } catch {
             return hasToken;
         }
-    })();
+    });
+
+    // Continuously sync auth state post-redirect and upon storage changes
+    useEffect(() => {
+        const checkAuth = () => {
+            const hasToken = !!localStorage.getItem('authToken');
+            try {
+                const clientAccounts = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
+                const hasAccounts = Object.keys(clientAccounts).length > 0;
+                setIsAuthenticated(hasToken && hasAccounts);
+            } catch {
+                setIsAuthenticated(hasToken);
+            }
+        };
+
+        checkAuth();
+
+        // Listen for storage updates when OAuth tokens and client accounts are written
+        window.addEventListener('storage', checkAuth);
+        
+        // Polling check to catch the exact moment balance/accounts finish mounting from the API handshake
+        const interval = setInterval(checkAuth, 500);
+
+        return () => {
+            window.removeEventListener('storage', checkAuth);
+            clearInterval(interval);
+        };
+    }, []);
 
     const checkClientAccount = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
     const getQueryParams = new URLSearchParams(window.location.search);
