@@ -12,7 +12,6 @@ import { useOAuthCallback } from '@/hooks/useOAuthCallback';
 import { StoreProvider } from '@/hooks/useStore';
 import { OAuthTokenExchangeService } from '@/services/oauth-token-exchange.service';
 import { initializeI18n, TranslationProvider } from '@deriv-com/translations';
-import { FloatingAI } from '@/Aiscanner/FloatingAI';
 import { useScannerFeed } from '@/Aiscanner/useScannerFeed';
 import { TradingPreloader } from '@/components/trading-preloader/TradingPreloader';
 import CoreStoreProvider from './CoreStoreProvider';
@@ -49,7 +48,6 @@ const router = createBrowserRouter(
                                     <RoutePromptDialog />
                                     <CoreStoreProvider>
                                         <Layout />
-                                        <FloatingAI />
                                     </CoreStoreProvider>
                                 </LocalStorageSyncWrapper>
                             </StoreProvider>
