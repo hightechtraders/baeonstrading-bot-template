@@ -6,8 +6,8 @@
     align-items: center;
     justify-content: space-between;
     flex: 1;
-    max-width: 900px;
-    gap: 7rem; // Enforces a 7rem gap between each component
+    max-width: 1050px;
+    gap: 10rem; // Enforces a 10rem gap between each component
     margin: 0 auto;
     height: 100%;
     padding: 0 2rem;
@@ -16,10 +16,10 @@
         align-items: center;
         background: var(--general-main-1);
         border: 1px solid var(--general-section-1);
-        border-radius: 20px;
+        border-radius: 24px;
         display: flex;
-        gap: 0.8rem;
-        padding: 0.4rem 1.6rem;
+        gap: 1rem;
+        padding: 0.6rem 2rem; // Increased padding for 30% larger feel
         white-space: nowrap;
         transition: border-color 0.2s ease;
 
@@ -30,12 +30,12 @@
 
     &__dot {
         border-radius: 50%;
-        height: 0.8rem;
-        width: 0.8rem;
+        height: 1rem; // Scaled up by ~30%
+        width: 1rem;
 
         &--active {
             background-color: var(--status-success);
-            box-shadow: 0 0 8px var(--status-success);
+            box-shadow: 0 0 10px var(--status-success);
         }
 
         &--idle {
@@ -45,12 +45,12 @@
 
     &__label {
         color: var(--text-less-prominent);
-        font-size: 1rem;
+        font-size: 1.3rem; // Increased from 1rem (~30% larger)
         line-height: 1.2;
     }
 
     &__value {
-        font-size: 1.1rem;
+        font-size: 1.4rem; // Increased from 1.1rem (~30% larger)
         font-weight: 600;
         line-height: 1.2;
 
