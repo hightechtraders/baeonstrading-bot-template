@@ -12,7 +12,6 @@ export const HeaderMetrics = observer(() => {
 
     return (
         <div className="header-metrics">
-            {/* 1. Bot Status Indicator */}
             <div className="header-metrics__item">
                 <span className={`header-metrics__dot ${isRunning ? 'header-metrics__dot--active' : 'header-metrics__dot--idle'}`} />
                 <span className="header-metrics__value header-metrics__value--prominent">
@@ -20,7 +19,6 @@ export const HeaderMetrics = observer(() => {
                 </span>
             </div>
 
-            {/* 2. Live P&L Ticker */}
             <div className="header-metrics__item">
                 <span className="header-metrics__label">P&L:</span>
                 <span className={`header-metrics__value ${isProfitable ? 'header-metrics__value--success' : 'header-metrics__value--danger'}`}>
@@ -28,7 +26,6 @@ export const HeaderMetrics = observer(() => {
                 </span>
             </div>
 
-            {/* 3. API Connection Health Badge */}
             <div className="header-metrics__item">
                 <span className="header-metrics__dot header-metrics__dot--active" />
                 <span className="header-metrics__label">API Connected</span>
