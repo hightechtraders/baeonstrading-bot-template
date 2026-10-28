@@ -93,7 +93,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                     }}
                     style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingRight: '8px' }}
                 >
-                    {/* Enlarged Flag / Badge Element (25% bigger) with USD text */}
+                    {/* Real Account Badge with RED USD text */}
                     <div style={{
                         width: '28px',
                         height: '28px',
@@ -106,12 +106,12 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                         backgroundColor: '#f3f4f6',
                         fontSize: isVirtual ? '16px' : '10px',
                         fontWeight: 'bold',
-                        color: '#374151'
+                        color: isVirtual ? '#374151' : '#ef4444'
                     }}>
                         {isVirtual ? '🧪' : 'USD'}
                     </div>
 
-                    {/* Content Stack: "Real account" on top, balance on bottom */}
+                    {/* Content Stack */}
                     <div className='acc-info__content' style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                         <div className='acc-info__account-type-header'>
                             <Text as='p' size='xs' className='acc-info__account-type' style={{ fontSize: '10px', lineHeight: 1 }}>
@@ -141,7 +141,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                         )}
                     </div>
 
-                    {/* Dropdown Chevron Arrow (Unclamped) */}
+                    {/* Dropdown Chevron Arrow */}
                     {showChevron && (
                         <span
                             className={classNames('acc-info__select-arrow', {
@@ -187,7 +187,9 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                         >
                             <div style={{
                                 width: '24px', height: '24px', borderRadius: '50%', overflow: 'hidden',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: '0', fontSize: account.isVirtual ? '14px' : '9px', fontWeight: 'bold', backgroundColor: '#f3f4f6'
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: '0', 
+                                fontSize: account.isVirtual ? '14px' : '9px', fontWeight: 'bold', 
+                                backgroundColor: '#f3f4f6', color: account.isVirtual ? '#374151' : '#ef4444'
                             }}>
                                 {account.isVirtual ? '🧪' : 'USD'}
                             </div>
