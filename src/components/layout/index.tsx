@@ -25,10 +25,17 @@ const Layout = observer(() => {
     // Risk Disclaimer Modal State
     const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
 
-    // 🔐 Check if the user is fully logged in
-    const isAuthenticated = 
-        sessionStorage.getItem('active_session_active') === 'true' || 
-        !!localStorage.getItem('authToken');
+    // 🔐 Strict authentication check: requires active auth token AND populated client accounts post-login
+    const isAuthenticated = (() => {
+        const hasToken = !!localStorage.getItem('authToken');
+        try {
+            const clientAccounts = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
+            const hasAccounts = Object.keys(clientAccounts).length > 0;
+            return hasToken && hasAccounts;
+        } catch {
+            return hasToken;
+        }
+    })();
 
     const checkClientAccount = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
     const getQueryParams = new URLSearchParams(window.location.search);
