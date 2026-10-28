@@ -134,13 +134,14 @@
 
             &__content {
                 background: var(--general-main-1);
-                height: calc(100vh - 16rem); // Constrains height so container can scroll internally
-                overflow-y: auto !important; // Enables vertical scrolling inside the tab content area
+                height: calc(100vh - 16rem); 
+                overflow-y: auto !important; 
 
                 @include mobile-or-tablet-screen {
                     width: 100%;
-                    overflow-y: auto !important;
-                    height: auto !important;
+                    height: calc(100vh - 12rem) !important; 
+                    overflow-y: auto !important; 
+                    -webkit-overflow-scrolling: touch;
 
                     &--no-result {
                         @include flex-center;
