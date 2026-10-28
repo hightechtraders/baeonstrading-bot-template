@@ -1,13 +1,28 @@
 @use 'components/shared/styles/constants' as *;
 @use 'components/shared/styles/mixins' as *;
 
+@keyframes pulse-red {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 51, 102, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 8px rgba(255, 51, 102, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 51, 102, 0);
+    }
+}
+
 .header-metrics {
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex: 1;
     max-width: 1050px;
-    gap: 10rem; // Enforces a 10rem gap between each component
+    gap: 10px; // Spacing adjusted
     margin: 0 auto;
     height: 100%;
     padding: 0 2rem;
@@ -19,7 +34,7 @@
         border-radius: 24px;
         display: flex;
         gap: 1rem;
-        padding: 0.6rem 2rem; // Increased padding for 30% larger feel
+        padding: 0.6rem 2rem;
         white-space: nowrap;
         transition: border-color 0.2s ease;
 
@@ -30,27 +45,28 @@
 
     &__dot {
         border-radius: 50%;
-        height: 1rem; // Scaled up by ~30%
+        height: 1rem;
         width: 1rem;
 
-        &--active {
+        &--running {
             background-color: var(--status-success);
             box-shadow: 0 0 10px var(--status-success);
         }
 
         &--idle {
-            background-color: var(--text-less-prominent);
+            background-color: var(--status-danger);
+            animation: pulse-red 1.5s infinite;
         }
     }
 
     &__label {
         color: var(--text-less-prominent);
-        font-size: 1.3rem; // Increased from 1rem (~30% larger)
+        font-size: 1.3rem;
         line-height: 1.2;
     }
 
     &__value {
-        font-size: 1.4rem; // Increased from 1.1rem (~30% larger)
+        font-size: 1.4rem;
         font-weight: 600;
         line-height: 1.2;
 
