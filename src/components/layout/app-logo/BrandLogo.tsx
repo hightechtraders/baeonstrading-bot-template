@@ -6,8 +6,8 @@ type TBrandLogoProps = {
 };
 
 export const BrandLogo = ({
-    width = 120,
-    height = 32,
+    width = 240,
+    height = 64,
     className = ''
 }: TBrandLogoProps) => {
     return (
