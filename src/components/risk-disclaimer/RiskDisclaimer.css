@@ -178,7 +178,7 @@
 .risk-disclaimer-trigger {
   position: fixed;
   bottom: 61px; 
-  left: 32px;   
+  left: 30px;   
   z-index: 9999;
   background-color: #f59e0b; /* Solid initial yellow background */
   color: #0f172a;            /* Black text */
