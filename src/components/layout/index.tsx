@@ -25,6 +25,11 @@ const Layout = observer(() => {
     // Risk Disclaimer Modal State
     const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
 
+    // 🔐 Check if the user is fully logged in
+    const isAuthenticated = 
+        sessionStorage.getItem('active_session_active') === 'true' || 
+        !!localStorage.getItem('authToken');
+
     const checkClientAccount = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
     const getQueryParams = new URLSearchParams(window.location.search);
     const currency = getQueryParams.get('account') ?? '';
@@ -151,19 +156,24 @@ const Layout = observer(() => {
             </Body>
             {!isCallbackPage && isDesktop && <Footer />}
             
-            {/* Stable Single Instance Floating AI Orb */}
-            <FloatingAI key="floating-ai-engine" />
+            {/* 🌟 Authenticated-Only Global Workspace Widgets */}
+            {isAuthenticated && (
+                <>
+                    {/* Stable Single Instance Floating AI Orb */}
+                    <FloatingAI key="floating-ai-engine" />
 
-            {/* Risk Disclaimer Trigger Button (Restored cleanly without DOM mutation lag) */}
-            <button
-                type="button"
-                className="risk-disclaimer-trigger"
-                onClick={() => setIsRiskModalOpen(true)}
-            >
-                ⚠️ Risk Disclaimer
-            </button>
+                    {/* Risk Disclaimer Trigger Button */}
+                    <button
+                        type="button"
+                        className="risk-disclaimer-trigger"
+                        onClick={() => setIsRiskModalOpen(true)}
+                    >
+                        ⚠️ Risk Disclaimer
+                    </button>
+                </>
+            )}
 
-            {/* Risk Disclaimer Modal */}
+            {/* Risk Disclaimer Modal (Remains available to be triggered safely) */}
             <RiskDisclaimer
                 isOpen={isRiskModalOpen}
                 onClose={() => setIsRiskModalOpen(false)}
