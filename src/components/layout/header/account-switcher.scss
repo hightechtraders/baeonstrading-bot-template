@@ -115,8 +115,7 @@
         height: 100%;
         justify-content: center;
         position: relative;
-        /* Pushes the account switcher a noticeable distance to the left */
-        margin-right: 6rem;
+        margin-right: 0;
         user-select: none;
         -webkit-touch-callout: none;
         -webkit-tap-highlight-color: transparent;
@@ -221,7 +220,7 @@
 
     @include desktop-screen {
         &:hover:not(.show, &--is-disabled) {
-            background: var(--state-hover);
+            background: transparent !important;
 
             .symbols {
                 background: transparent;
@@ -250,7 +249,7 @@
         cursor: pointer !important;
 
         &:hover {
-            background: var(--state-hover) !important;
+            background: transparent !important;
         }
     }
 
