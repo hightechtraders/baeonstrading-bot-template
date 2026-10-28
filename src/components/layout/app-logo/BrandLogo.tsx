@@ -12,15 +12,12 @@ export const BrandLogo = ({
 }: TBrandLogoProps) => {
     return (
         <img
-            src="/traderscore.pro logo.jfif"
+            src="/baronslogos.jpg"
             alt="TraderScore.pro Logo"
             width={width}
             height={height}
             className={className}
-            style={{ 
-                objectFit: 'contain', 
-                mixBlendMode: 'multiply' 
-            }}
+            style={{ objectFit: 'contain' }}
         />
     );
 };
