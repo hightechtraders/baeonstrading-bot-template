@@ -16,7 +16,7 @@ import HeaderMetrics from './header-metrics';
 import MenuItems from './menu-items';
 import MobileMenu from './mobile-menu';
 import './header.scss';
-
+ 
 const AppHeader = observer(() => {
     const { isDesktop } = useDevice();
     const { isAuthorizing, activeLoginid, setIsAuthorizing, authData } = useApiBase();
