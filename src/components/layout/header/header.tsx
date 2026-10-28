@@ -144,9 +144,9 @@ const AppHeader = observer(() => {
                         </div>
                     );
                 } else if (position === 'right') {
-                    // For right section - cashier button (and account switcher on desktop)
+                    // For right section - account switcher (on desktop) and spaced Cashier button
                     return (
-                        <div className='auth-actions'>
+                        <div className='auth-actions' style={{ display: 'flex', alignItems: 'center' }}>
                             {isDesktop && (
                                 <div className='account-info'>
                                     <AccountSwitcher activeAccount={activeAccount} />
@@ -156,6 +156,7 @@ const AppHeader = observer(() => {
                                 primary
                                 disabled={client?.is_logging_out || !authData?.currency}
                                 onClick={handleTransfer}
+                                style={{ marginLeft: '2rem' }}
                             >
                                 <Localize i18n_default_text='Cashier' />
                             </Button>
