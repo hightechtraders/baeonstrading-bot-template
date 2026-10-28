@@ -71,7 +71,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
     const showChevron = !isSingleAccount && !is_bot_running;
 
     return (
-        <div className='acc-info__wrapper' ref={wrapperRef}>
+        <div className='acc-info__wrapper' ref={wrapperRef} style={{ marginRight: '16px' }}>
             <AccountInfoWrapper>
                 <div
                     data-testid='dt_acc_info'
@@ -91,12 +91,12 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                             toggleDropdown();
                         }
                     }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingRight: '8px' }}
                 >
-                    {/* Explicit Circular Flag / Badge Element */}
+                    {/* Enlarged Flag / Badge Element (25% bigger) with USD text */}
                     <div style={{
-                        width: '22px',
-                        height: '22px',
+                        width: '28px',
+                        height: '28px',
                         borderRadius: '50%',
                         overflow: 'hidden',
                         display: 'flex',
@@ -104,9 +104,11 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                         justifyContent: 'center',
                         flexShrink: 0,
                         backgroundColor: '#f3f4f6',
-                        fontSize: '14px'
+                        fontSize: isVirtual ? '16px' : '10px',
+                        fontWeight: 'bold',
+                        color: '#374151'
                     }}>
-                        {isVirtual ? '🧪' : (currency === 'USD' ? '🇺🇸' : '💱')}
+                        {isVirtual ? '🧪' : 'USD'}
                     </div>
 
                     {/* Content Stack: "Real account" on top, balance on bottom */}
@@ -127,7 +129,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                     className={classNames('acc-info__balance', {
                                         'acc-info__balance--no-currency': !currency && !isVirtual,
                                     })}
-                                    style={{ fontWeight: 700, fontSize: '12px', lineHeight: 1.2, margin: 0 }}
+                                    style={{ fontWeight: 700, fontSize: '12px', lineHeight: 1.2, margin: 0, whiteSpace: 'nowrap' }}
                                 >
                                     {!currency ? (
                                         <Localize i18n_default_text='No currency assigned' />
@@ -139,13 +141,13 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                         )}
                     </div>
 
-                    {/* Dropdown Chevron Arrow */}
+                    {/* Dropdown Chevron Arrow (Unclamped) */}
                     {showChevron && (
                         <span
                             className={classNames('acc-info__select-arrow', {
                                 'acc-info__select-arrow--invert': isOpen,
                             })}
-                            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}
+                            style={{ marginLeft: '8px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
                         >
                             <svg width='10' height='10' viewBox='0 0 12 12' fill='none'>
                                 <path
@@ -184,10 +186,10 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                             style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px' }}
                         >
                             <div style={{
-                                width: '20px', height: '20px', borderRadius: '50%', overflow: 'hidden',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: '0', fontSize: '12px'
+                                width: '24px', height: '24px', borderRadius: '50%', overflow: 'hidden',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: '0', fontSize: account.isVirtual ? '14px' : '9px', fontWeight: 'bold', backgroundColor: '#f3f4f6'
                             }}>
-                                {account.isVirtual ? '🧪' : (account.currency === 'USD' ? '🇺🇸' : '💱')}
+                                {account.isVirtual ? '🧪' : 'USD'}
                             </div>
                             <div className='acc-dropdown__account-type-and-balance'>
                                 <Text size='xxxs' className='acc-dropdown__account-type' style={{ fontSize: '9px' }}>
