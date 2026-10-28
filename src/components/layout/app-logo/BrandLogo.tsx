@@ -17,7 +17,10 @@ export const BrandLogo = ({
             width={width}
             height={height}
             className={className}
-            style={{ objectFit: 'contain' }}
+            style={{ 
+                objectFit: 'contain', 
+                mixBlendMode: 'multiply' 
+            }}
         />
     );
 };
