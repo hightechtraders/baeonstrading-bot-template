@@ -94,15 +94,15 @@
                 }
             }
 
-            // Unified pale green background container using CSS grid to perfectly balance space
+            // Unified pale green background container set to ~72% width to balance the header perfectly
             &__list {
                 background: rgba(0, 168, 107, 0.06); 
                 border: 1.5px solid rgba(0, 168, 107, 0.25); 
-                display: grid;
-                grid-template-columns: repeat(5, minmax(11rem, 1fr)); // Distributes all 5 tabs evenly across the available space
+                display: flex;
+                justify-content: space-between; // Distributes tabs evenly across the 72% width
                 align-items: center;
-                gap: 0.8rem; 
-                width: 100%;
+                gap: 1rem; 
+                width: 72%; // Takes up roughly 70% of the header width, leaving safe room before the Run button
                 max-width: 100%;
                 border-radius: 1.2rem;
                 padding: 0.6rem 1.6rem;
@@ -198,12 +198,13 @@
                 }
             }
 
-            // Individual tab items fitted cleanly into grid columns
+            // Individual tabs expand proportionally to fill the 72% container cleanly
             &__item {
                 border-radius: 0.8rem;
                 height: 4.2rem;
-                padding: 0 0.8rem;
-                width: 100%;
+                padding: 0 1.2rem;
+                flex: 1; // Allows tabs to share the space evenly
+                max-width: 16rem; // Caps individual tab growth so they don't look oversized
                 text-align: center;
                 white-space: nowrap;
                 background: transparent !important;
@@ -243,7 +244,7 @@
 
                 svg {
                     padding-inline-end: 0;
-                    margin-inline-end: 0.4rem;
+                    margin-inline-end: 0.6rem;
 
                     @include mobile-or-tablet-screen {
                         margin-inline-end: 0.4rem;
