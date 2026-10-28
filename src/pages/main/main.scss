@@ -101,21 +101,23 @@
                 display: flex;
                 justify-content: space-between; 
                 align-items: center;
-                gap: 4rem; 
+                gap: 4rem; // 4rem gap for desktop
                 border-bottom: 1px solid rgba(0, 168, 107, 0.2);
                 padding: 0.4rem 2.4rem 0;
                 overflow-x: auto;
 
                 @include mobile-or-tablet-screen {
-                    justify-content: start;
-                    gap: 1.6rem;
-                    overflow-x: auto;
+                    display: flex;
+                    justify-content: flex-start;
+                    gap: 1.2rem; // Tighter gap for mobile items
+                    overflow-x: auto !important;
                     overflow-y: hidden;
-                    -ms-overflow-style: none;
-                    scrollbar-width: none;
+                    white-space: nowrap;
+                    -webkit-overflow-scrolling: touch;
+                    padding: 0.4rem 1rem 0;
 
                     &::-webkit-scrollbar {
-                        display: none;
+                        display: none; // Hides scrollbar cleanly on mobile webkit
                     }
                 }
 
@@ -196,6 +198,11 @@
                 transition: all 0.2s ease;
 
                 @include flex-center;
+
+                @include mobile-or-tablet-screen {
+                    flex: 0 0 auto; // Prevents items from shrinking or clamping together on mobile
+                    padding: 0 1.2rem;
+                }
 
                 // Non-active tabs styled with solid card look and high-contrast visible text
                 &:not(.dc-tabs__active) {
@@ -842,27 +849,27 @@
     margin: 0 auto;
     min-height: 100%;
     background: var(--general-main-1);
-    box-sizing: border-box; // Ensures padding doesn't push width past 100%
+    box-sizing: border-box; 
     overflow-y: auto !important;
-    overflow-x: hidden !important; // Prevents horizontal page bleeding
+    overflow-x: hidden !important; 
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
 
     @include mobile-or-tablet-screen {
-        padding: 1rem; // Tighter padding on mobile to give cards more breathing room
+        padding: 1rem; 
         padding-bottom: 9rem;
     }
 }
 
 .free-bots-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); // Safely scales down for smaller mobile screens
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
     gap: 1.6rem;
     width: 100%;
     box-sizing: border-box;
 
     @include mobile-or-tablet-screen {
-        grid-template-columns: 1fr; // Single column on phones to prevent overflow
+        grid-template-columns: 1fr; 
     }
 }
 
@@ -876,10 +883,10 @@
     flex-direction: column;
     justify-content: space-between;
     gap: 1.6rem;
-    box-sizing: border-box; // Crucial: forces padding inside the box width
+    box-sizing: border-box; 
     width: 100%;
     max-width: 100%;
-    word-break: break-word; // Prevents long text strings from forcing the box open
+    word-break: break-word; 
     overflow: hidden;
     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     will-change: transform; 
