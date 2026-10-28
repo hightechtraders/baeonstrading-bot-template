@@ -12,6 +12,7 @@ import { Localize } from '@deriv-com/translations';
 import { Header, useDevice, Wrapper } from '@deriv-com/ui';
 import { AppLogo } from '../app-logo';
 import AccountSwitcher from './account-switcher';
+import HeaderMetrics from './header-metrics';
 import MenuItems from './menu-items';
 import MobileMenu from './mobile-menu';
 import './header.scss';
@@ -208,6 +209,10 @@ const AppHeader = observer(() => {
                     <AppLogo />
                     {isDesktop ? <MenuItems /> : renderAccountSection('left')}
                 </Wrapper>
+
+                {/* Integrated Metrics filling the middle space on Desktop */}
+                {isDesktop && <HeaderMetrics />}
+
                 <Wrapper variant='right'>{renderAccountSection('right')}</Wrapper>
             </Header>
         </>
