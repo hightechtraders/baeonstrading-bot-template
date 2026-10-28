@@ -9,11 +9,11 @@ export const BrandLogo = ({
     className = ''
 }: TBrandLogoProps) => {
     return (
-        <div className="flex items-center overflow-visible h-10">
+        <div className={`flex items-center overflow-hidden ${className}`}>
             <img
                 src="/logog-removebg-preview.png"
                 alt="TraderScore.pro Logo"
-                className={`h-10 w-auto object-contain ${className}`}
+                className="h-8 w-auto object-contain max-h-8"
             />
         </div>
     );
