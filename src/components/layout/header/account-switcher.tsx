@@ -93,18 +93,20 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                     }}
                 >
                     <span className='acc-info__id' aria-hidden='true'></span>
-                    <div className='acc-info__content' style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-                        {/* USD Currency Badge Logo */}
+                    
+                    {/* Single-line sleek layout matching reference */}
+                    <div className='acc-info__content' style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '2px 4px' }}>
+                        {/* Currency / Flag Icon Badge */}
                         <div style={{
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            width: '24px',
-                            height: '24px',
+                            width: '22px',
+                            height: '22px',
                             backgroundColor: isVirtual ? '#e0f2fe' : '#d1fae5',
                             color: isVirtual ? '#0369a1' : '#047857',
                             borderRadius: '50%',
-                            fontSize: '12px',
+                            fontSize: '11px',
                             fontWeight: 'bold',
                             flexShrink: 0
                         }}>
@@ -113,13 +115,13 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
 
                         {/* Balance and Currency Display */}
                         {(typeof balance !== 'undefined' || !currency) && (
-                            <div className='acc-info__balance-section' style={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+                            <div className='acc-info__balance-section' style={{ display: 'flex', alignItems: 'center' }}>
                                 <p
                                     data-testid='dt_balance'
                                     className={classNames('acc-info__balance', {
                                         'acc-info__balance--no-currency': !currency && !isVirtual,
                                     })}
-                                    style={{ margin: 0, fontWeight: 600, fontSize: '14px' }}
+                                    style={{ margin: 0, fontWeight: 700, fontSize: '13px', whiteSpace: 'nowrap' }}
                                 >
                                     {!currency ? (
                                         <Localize i18n_default_text='No currency assigned' />
@@ -130,7 +132,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                             </div>
                         )}
 
-                        {/* Chevron Arrow */}
+                        {/* Dropdown Chevron Arrow */}
                         {showChevron && (
                             <span
                                 className={classNames('acc-info__select-arrow', {
@@ -138,7 +140,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                 })}
                                 style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }}
                             >
-                                <svg width='12' height='12' viewBox='0 0 12 12' fill='none'>
+                                <svg width='10' height='10' viewBox='0 0 12 12' fill='none'>
                                     <path
                                         d='M2 4L6 8L10 4'
                                         stroke='currentColor'
