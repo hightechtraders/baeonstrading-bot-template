@@ -19,10 +19,10 @@
 .header-metrics {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center; // Centers them nicely as a unified block
     flex: 1;
     max-width: 1050px;
-    gap: 10px; // Spacing adjusted
+    gap: 12px; // Exact spacing between each component
     margin: 0 auto;
     height: 100%;
     padding: 0 2rem;
