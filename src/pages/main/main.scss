@@ -84,23 +84,24 @@
 
             // Active tab indicator highlight
             &__active {
-                background: transparent !important;
+                background: rgba(0, 168, 107, 0.15) !important;
                 color: #00a86b !important; 
                 font-weight: 700;
+                border-radius: 0.8rem;
 
                 svg {
                     fill: #00a86b !important;
                 }
             }
 
-            // Unified single background container for all tabs
+            // Unified pale green background container for all tabs
             &__list {
-                background: var(--general-section-1);
+                background: rgba(0, 168, 107, 0.06); // Pale green background tone matching individual cards
+                border: 1.5px solid rgba(0, 168, 107, 0.25); // Matching subtle border
                 display: flex;
                 justify-content: space-between; 
                 align-items: center;
-                gap: 4rem; 
-                border-bottom: 1px solid rgba(0, 168, 107, 0.2);
+                gap: 2rem; // 2rem gap so all tabs fit cleanly on desktop/laptop without hiding Charts
                 border-radius: 1.2rem;
                 padding: 0.6rem 2.4rem;
                 margin-bottom: 1.2rem;
@@ -120,6 +121,8 @@
                     box-sizing: border-box;
                     padding: 0.8rem 1.2rem;
                     border-radius: 0;
+                    border-left: none;
+                    border-right: none;
 
                     &::-webkit-scrollbar {
                         display: none; 
@@ -186,17 +189,17 @@
 
                         @include mobile-or-tablet-screen {
                             flex-direction: column;
-                            background-color: var(--general-main-1);
+                            background-color: var(--general-section-1);
                         }
                     }
                 }
             }
 
-            // Clean, unboxed individual tab items sitting on the unified background bar
+            // Individual tab items resting smoothly on the pale green unified bar
             &__item {
                 border-radius: 0.8rem;
                 height: 4.2rem;
-                padding: 0 1.6rem;
+                padding: 0 1.2rem;
                 flex: 1; 
                 text-align: center;
                 white-space: nowrap;
@@ -225,7 +228,8 @@
 
                     &:hover {
                         color: #00a86b !important;
-                        background: rgba(0, 168, 107, 0.08) !important;
+                        background: rgba(0, 168, 107, 0.12) !important;
+                        border-radius: 0.8rem;
 
                         svg {
                             fill: #00a86b !important;
@@ -236,7 +240,7 @@
 
                 svg {
                     padding-inline-end: 0;
-                    margin-inline-end: 0.8rem;
+                    margin-inline-end: 0.6rem;
 
                     @include mobile-or-tablet-screen {
                         margin-inline-end: 0.4rem;
