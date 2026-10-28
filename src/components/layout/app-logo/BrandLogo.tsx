@@ -13,7 +13,7 @@ export const BrandLogo = ({
             <img
                 src="/logog-removebg-preview.png"
                 alt="TraderScore.pro Logo"
-                className="h-8 w-auto object-contain max-h-8"
+                className="h-2 w-auto object-contain max-h-2"
             />
         </div>
     );
