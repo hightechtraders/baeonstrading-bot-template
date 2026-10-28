@@ -94,7 +94,7 @@
                 }
             }
 
-            // Unified pale green background container set to flat 78% width
+            // Unified pale green background container set to flat 76% width
             &__list {
                 background: rgba(0, 168, 107, 0.06); 
                 border: 1.5px solid rgba(0, 168, 107, 0.25); 
@@ -102,7 +102,7 @@
                 justify-content: space-between; 
                 align-items: center;
                 gap: 1rem; 
-                width: 78%; // Set to flat 78% to span the header cleanly right before the Run button
+                width: 76%; // Set to flat 76% for a polished, balanced layout right before the Run button
                 max-width: 100%;
                 border-radius: 1.2rem;
                 padding: 0.6rem 1.6rem;
@@ -198,7 +198,7 @@
                 }
             }
 
-            // Individual tabs expand proportionally to fill the 78% container cleanly
+            // Individual tabs expand proportionally to fill the 76% container cleanly
             &__item {
                 border-radius: 0.8rem;
                 height: 4.2rem;
