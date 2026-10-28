@@ -6,19 +6,14 @@ type TBrandLogoProps = {
 };
 
 export const BrandLogo = ({
-    width = 120,
-    height = 32,
     className = ''
 }: TBrandLogoProps) => {
     return (
-        <div className="flex items-center overflow-visible">
+        <div className="flex items-center overflow-visible h-10">
             <img
                 src="/logog-removebg-preview.png"
                 alt="TraderScore.pro Logo"
-                width={width}
-                height={height}
-                className={`${className} scale-150 origin-left`}
-                style={{ objectFit: 'contain' }}
+                className={`h-10 w-auto object-contain ${className}`}
             />
         </div>
     );
