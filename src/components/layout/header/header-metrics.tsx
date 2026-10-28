@@ -1,45 +1,40 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { observer } from 'mobx-react-lite';
 import { useStore } from '@/hooks/useStore';
+import './header-metrics.scss';
 
 export const HeaderMetrics = observer(() => {
-    const { client, ws } = useStore() ?? {};
-    const [ping, setPing] = useState<number | null>(45); // Simulated or fetched WebSocket latency
+    const { client } = useStore() ?? {};
 
-    // Simulated PnL tracker pulling from active trading store state
     const todayPnl = client?.status?.today_pnl || '+0.00 USD';
     const isProfitable = !todayPnl.startsWith('-');
     const isRunning = client?.is_running || false;
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', margin: '0 auto' }}>
+        <div className="header-metrics">
             {/* 1. Bot Status Indicator */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--general-main-1)', padding: '6px 12px', borderRadius: '20px', border: '1px solid var(--general-section-1)' }}>
-                <span style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: isRunning ? 'var(--status-success)' : 'var(--text-less-prominent)',
-                    boxShadow: isRunning ? '0 0 8px var(--status-success)' : 'none'
-                }} />
-                <span style={{ fontSize: '11px', color: 'var(--text-prominent)', fontWeight: 600 }}>
+            <div className="header-metrics__item">
+                <span className={`header-metrics__dot ${isRunning ? 'header-metrics__dot--active' : 'header-metrics__dot--idle'}`} />
+                <span className="header-metrics__value header-metrics__value--prominent">
                     {isRunning ? 'Scanner Active' : 'Bot Idle'}
                 </span>
             </div>
 
             {/* 2. Live P&L Ticker */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--general-main-1)', padding: '6px 12px', borderRadius: '20px', border: '1px solid var(--general-section-1)' }}>
-                <span style={{ fontSize: '10px', color: 'var(--text-less-prominent)' }}>P&L:</span>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: isProfitable ? 'var(--status-success)' : 'var(--status-danger)' }}>
+            <div className="header-metrics__item">
+                <span className="header-metrics__label">P&L:</span>
+                <span className={`header-metrics__value ${isProfitable ? 'header-metrics__value--success' : 'header-metrics__value--danger'}`}>
                     {todayPnl}
                 </span>
             </div>
 
             {/* 3. API Connection Health Badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--general-main-1)', padding: '6px 12px', borderRadius: '20px', border: '1px solid var(--general-section-1)' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--status-success)' }} />
-                <span style={{ fontSize: '10px', color: 'var(--text-less-prominent)' }}>API {ping ? `${ping}ms` : 'Connected'}</span>
+            <div className="header-metrics__item">
+                <span className="header-metrics__dot header-metrics__dot--active" />
+                <span className="header-metrics__label">API Connected</span>
             </div>
         </div>
     );
 });
+
+export default HeaderMetrics;
