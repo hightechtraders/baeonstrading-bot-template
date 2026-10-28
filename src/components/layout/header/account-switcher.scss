@@ -115,7 +115,8 @@
         height: 100%;
         justify-content: center;
         position: relative;
-        margin-right: 1.6rem;
+        /* Pushes the account switcher a noticeable distance to the left */
+        margin-right: 6rem;
         user-select: none;
         -webkit-touch-callout: none;
         -webkit-tap-highlight-color: transparent;
