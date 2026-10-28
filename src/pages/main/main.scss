@@ -94,15 +94,16 @@
                 }
             }
 
-            // Unified pale green background container for all tabs
+            // Unified pale green background container using CSS grid to perfectly balance space
             &__list {
                 background: rgba(0, 168, 107, 0.06); 
                 border: 1.5px solid rgba(0, 168, 107, 0.25); 
-                display: flex;
-                justify-content: flex-start; // Keeps tabs compact on the left
+                display: grid;
+                grid-template-columns: repeat(5, minmax(11rem, 1fr)); // Distributes all 5 tabs evenly across the available space
                 align-items: center;
-                gap: 0.8rem; // Tight, clean desktop spacing between tabs
-                max-width: fit-content; // Restricts the background wrapper to only as wide as the tabs need
+                gap: 0.8rem; 
+                width: 100%;
+                max-width: 100%;
                 border-radius: 1.2rem;
                 padding: 0.6rem 1.6rem;
                 margin-bottom: 1.2rem;
@@ -197,12 +198,12 @@
                 }
             }
 
-            // Individual tab items resting smoothly on the pale green unified bar
+            // Individual tab items fitted cleanly into grid columns
             &__item {
                 border-radius: 0.8rem;
                 height: 4.2rem;
-                padding: 0 1.4rem;
-                flex: 0 0 auto !important; // FIXED: Prevents tabs from expanding and over-spreading across the screen
+                padding: 0 0.8rem;
+                width: 100%;
                 text-align: center;
                 white-space: nowrap;
                 background: transparent !important;
@@ -242,7 +243,7 @@
 
                 svg {
                     padding-inline-end: 0;
-                    margin-inline-end: 0.6rem;
+                    margin-inline-end: 0.4rem;
 
                     @include mobile-or-tablet-screen {
                         margin-inline-end: 0.4rem;
