@@ -348,14 +348,15 @@
         }
 
         &:last-child:not(.auth-actions--loading) {
-            background: #00f0ff !important;
+            background: linear-gradient(135deg, #00f0ff 0%, #00b8ff 100%) !important;
             color: #030712 !important;
+            font-weight: 700 !important;
             border: none !important;
-            box-shadow: 0 4px 12px rgba(0, 240, 255, 0.25);
+            box-shadow: 0 4px 14px rgba(0, 240, 255, 0.4);
 
             &:hover {
                 transform: translateY(-1px);
-                box-shadow: 0 6px 16px rgba(0, 240, 255, 0.35);
+                box-shadow: 0 6px 18px rgba(0, 240, 255, 0.6);
             }
         }
     }
