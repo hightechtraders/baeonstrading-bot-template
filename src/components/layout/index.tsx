@@ -25,44 +25,11 @@ const Layout = observer(() => {
     // Risk Disclaimer Modal State
     const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
 
-    // 🌟 Reactive authentication state that tracks token and client account mounting instantly
-    const [isAuthenticated, setIsAuthenticated] = useState(() => {
-        const hasToken = !!localStorage.getItem('authToken');
-        try {
-            const clientAccounts = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
-            const hasAccounts = Object.keys(clientAccounts).length > 0;
-            return hasToken && hasAccounts;
-        } catch {
-            return hasToken;
-        }
-    });
-
-    // Continuously sync auth state post-redirect and upon storage changes
-    useEffect(() => {
-        const checkAuth = () => {
-            const hasToken = !!localStorage.getItem('authToken');
-            try {
-                const clientAccounts = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
-                const hasAccounts = Object.keys(clientAccounts).length > 0;
-                setIsAuthenticated(hasToken && hasAccounts);
-            } catch {
-                setIsAuthenticated(hasToken);
-            }
-        };
-
-        checkAuth();
-
-        // Listen for storage updates when OAuth tokens and client accounts are written
-        window.addEventListener('storage', checkAuth);
-        
-        // Polling check to catch the exact moment balance/accounts finish mounting from the API handshake
-        const interval = setInterval(checkAuth, 500);
-
-        return () => {
-            window.removeEventListener('storage', checkAuth);
-            clearInterval(interval);
-        };
-    }, []);
+    // 🛡️ BULLETPROOF CHECK: 
+    // True if an auth token exists OR if account query params are active in the URL (meaning user is logged into the workspace)
+    const hasAuthToken = !!localStorage.getItem('authToken');
+    const hasAccountParam = new URLSearchParams(window.location.search).has('account');
+    const isAuthenticated = hasAuthToken || hasAccountParam;
 
     const checkClientAccount = JSON.parse(localStorage.getItem('clientAccounts') ?? '{}');
     const getQueryParams = new URLSearchParams(window.location.search);
@@ -175,7 +142,7 @@ const Layout = observer(() => {
 
             return () => clearTimeout(timer);
         }
-    }, [isAuthenticating, isInitialAuthCheckComplete]);
+    }, [isAuthenticating, setIsInitialAuthCheckComplete]);
 
     return (
         <div
@@ -190,8 +157,8 @@ const Layout = observer(() => {
             </Body>
             {!isCallbackPage && isDesktop && <Footer />}
             
-            {/* 🌟 Authenticated-Only Global Workspace Widgets */}
-            {isAuthenticated && (
+            {/* 🌟 Bulletproof Authenticated Workspace Widgets */}
+            {isAuthenticated && !isCallbackPage && (
                 <>
                     {/* Stable Single Instance Floating AI Orb */}
                     <FloatingAI key="floating-ai-engine" />
@@ -207,7 +174,7 @@ const Layout = observer(() => {
                 </>
             )}
 
-            {/* Risk Disclaimer Modal (Remains available to be triggered safely) */}
+            {/* Risk Disclaimer Modal */}
             <RiskDisclaimer
                 isOpen={isRiskModalOpen}
                 onClose={() => setIsRiskModalOpen(false)}
