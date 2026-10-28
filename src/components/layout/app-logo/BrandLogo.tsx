@@ -12,7 +12,7 @@ export const BrandLogo = ({
 }: TBrandLogoProps) => {
     return (
         <img
-            src="/baronslogos.jpg"
+            src="/logog-removebg-preview.png"
             alt="TraderScore.pro Logo"
             width={width}
             height={height}
