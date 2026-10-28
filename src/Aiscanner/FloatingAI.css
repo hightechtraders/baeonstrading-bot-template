@@ -18,6 +18,7 @@
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent; /* Removes the mobile tap highlight/flash */
   outline: none;
   filter: drop-shadow(0 12px 30px rgba(0, 168, 107, 0.5));
   animation: float-orb 3.5s ease-in-out infinite;
@@ -25,6 +26,10 @@
 
 .dancing-orb-wrapper:hover {
   animation-play-state: paused;
+}
+
+.dancing-orb-wrapper:focus {
+  outline: none;
 }
 
 /* 🌐 True 3D Spherical Globe Core */
