@@ -348,14 +348,14 @@
         }
 
         &:last-child:not(.auth-actions--loading) {
-            background: var(--brand-primary, #ff444f) !important;
-            color: #ffffff !important;
+            background: var(--brand-primary, #00f0ff) !important;
+            color: var(--brand-dark-grey, #030712) !important;
             border: none !important;
-            box-shadow: 0 4px 12px rgba(255, 68, 79, 0.25);
+            box-shadow: 0 4px 12px rgba(0, 240, 255, 0.25);
 
             &:hover {
                 transform: translateY(-1px);
-                box-shadow: 0 6px 16px rgba(255, 68, 79, 0.35);
+                box-shadow: 0 6px 16px rgba(0, 240, 255, 0.35);
             }
         }
     }
