@@ -98,10 +98,10 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                         <span className={`ic ic-${isVirtual ? 'virtual' : currencyLower}`} />
                     </div>
 
-                    {/* Content Stack: Real/Demo Account text on top, Balance on bottom */}
-                    <div className='acc-info__content' style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <div className='acc-info__account-type-header' style={{ marginBottom: '1px' }}>
-                            <Text as='p' size='xs' className='acc-info__account-type' style={{ fontSize: '10px', lineHeight: 1 }}>
+                    {/* Content Stack: "Real account" on top, balance on bottom */}
+                    <div className='acc-info__content'>
+                        <div className='acc-info__account-type-header'>
+                            <Text as='p' size='xs' className='acc-info__account-type'>
                                 {isVirtual ? (
                                     <Localize i18n_default_text='Demo account' />
                                 ) : (
@@ -116,7 +116,6 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                     className={classNames('acc-info__balance', {
                                         'acc-info__balance--no-currency': !currency && !isVirtual,
                                     })}
-                                    style={{ fontWeight: 700, fontSize: '12px', lineHeight: 1.2 }}
                                 >
                                     {!currency ? (
                                         <Localize i18n_default_text='No currency assigned' />
@@ -134,9 +133,8 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                             className={classNames('acc-info__select-arrow', {
                                 'acc-info__select-arrow--invert': isOpen,
                             })}
-                            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}
                         >
-                            <svg width='10' height='10' viewBox='0 0 12 12' fill='none'>
+                            <svg width='12' height='12' viewBox='0 0 12 12' fill='none'>
                                 <path
                                     d='M2 4L6 8L10 4'
                                     stroke='currentColor'
@@ -172,11 +170,10 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                         handleAccountSelect(account.loginid);
                                     }
                                 }}
-                                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px' }}
                             >
                                 <span className={`ic ic-${account.isVirtual ? 'virtual' : accCurrLower}`} />
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <Text size='xxxs' className='acc-dropdown__account-type' style={{ fontSize: '9px' }}>
+                                <div className='acc-dropdown__account-type-and-balance'>
+                                    <Text size='xxxs' className='acc-dropdown__account-type'>
                                         {account.isVirtual ? (
                                             <Localize i18n_default_text='Demo account' />
                                         ) : (
