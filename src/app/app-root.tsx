@@ -57,16 +57,17 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // 1. Check strict authentication using sessionStorage only (wipes out when tab/browser closes)
+    // 1. Strict authentication check matching the bulletproof layout logic
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
-        const hasUrlAuth = search.includes('token') || search.includes('acct');
+        const hasAuthToken = !!localStorage.getItem('authToken');
+        const hasAccountParam = new URLSearchParams(search).has('account');
+        const hasUrlTokens = search.includes('token') || search.includes('acct');
 
         const urlParams = new URLSearchParams(search);
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
-                sessionStorage.setItem('active_session_active', 'true');
                 if (key.includes('token1') || key === 'token') {
                     localStorage.setItem('authToken', value);
                 }
@@ -76,8 +77,8 @@ const AppRoot = () => {
             }
         }
 
-        const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
-        return !!(hasUrlAuth || isSessionActive);
+        // True ONLY if a real auth token exists or active redirect params are present
+        return hasAuthToken || hasAccountParam || hasUrlTokens;
     });
 
     // 2. Initialize API and clean URL parameters once on mount
@@ -88,7 +89,6 @@ const AppRoot = () => {
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
-                sessionStorage.setItem('active_session_active', 'true');
                 tokenFound = true;
             }
         }
@@ -126,9 +126,8 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Twin-button handler for Login
+    // Twin-button handler for Login (Clean redirect without premature session flags)
     const handleLogin = () => {
-        sessionStorage.setItem('active_session_active', 'true');
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
         if (originalLoginBtn) {
@@ -153,17 +152,16 @@ const AppRoot = () => {
 
     // RENDER GUARDS
     const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
-    const isSessionActive = sessionStorage.getItem('active_session_active') === 'true';
 
     // Intercept incoming OAuth return flows to prevent landing page flash
-    if (hasTokensInUrl || isSessionActive) {
+    if (hasTokensInUrl) {
         if (!store || !is_api_initialized) {
             return <AppRootLoader />;
         }
     }
 
-    // If genuinely not authenticated and no active session: play 5s preloader first, then show Landing Page
-    if (!isAuthenticated && !isSessionActive) {
+    // If genuinely not authenticated: play 5s preloader first, then strictly show Landing Page
+    if (!isAuthenticated) {
         if (!isPreloaded) {
             return (
                 <TradingPreloader 
