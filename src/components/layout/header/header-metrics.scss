@@ -1,0 +1,64 @@
+@use 'components/shared/styles/constants' as *;
+@use 'components/shared/styles/mixins' as *;
+
+.header-metrics {
+    display: flex;
+    align-items: center;
+    gap: 1.6rem;
+    margin: 0 auto;
+    height: 100%;
+
+    &__item {
+        align-items: center;
+        background: var(--general-main-1);
+        border: 1px solid var(--general-section-1);
+        border-radius: 20px;
+        display: flex;
+        gap: 0.8rem;
+        padding: 0.4rem 1.2rem;
+        transition: border-color 0.2s ease;
+
+        &:hover {
+            border-color: var(--text-less-prominent);
+        }
+    }
+
+    &__dot {
+        border-radius: 50%;
+        height: 0.8rem;
+        width: 0.8rem;
+
+        &--active {
+            background-color: var(--status-success);
+            box-shadow: 0 0 8px var(--status-success);
+        }
+
+        &--idle {
+            background-color: var(--text-less-prominent);
+        }
+    }
+
+    &__label {
+        color: var(--text-less-prominent);
+        font-size: 1rem;
+        line-height: 1.2;
+    }
+
+    &__value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        line-height: 1.2;
+
+        &--success {
+            color: var(--status-success);
+        }
+
+        &--danger {
+            color: var(--status-danger);
+        }
+
+        &--prominent {
+            color: var(--text-prominent);
+        }
+    }
+}
