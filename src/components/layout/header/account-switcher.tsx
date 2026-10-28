@@ -98,8 +98,17 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                         <span className={`ic ic-${isVirtual ? 'virtual' : currencyLower}`} />
                     </div>
 
-                    {/* Balance Display Only (No Demo/Real Text) */}
-                    <div className='acc-info__content' style={{ display: 'flex', alignItems: 'center' }}>
+                    {/* Content Stack: Real/Demo Account text on top, Balance on bottom */}
+                    <div className='acc-info__content' style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div className='acc-info__account-type-header' style={{ marginBottom: '1px' }}>
+                            <Text as='p' size='xs' className='acc-info__account-type' style={{ fontSize: '10px', lineHeight: 1 }}>
+                                {isVirtual ? (
+                                    <Localize i18n_default_text='Demo account' />
+                                ) : (
+                                    <Localize i18n_default_text='Real account' />
+                                )}
+                            </Text>
+                        </div>
                         {(typeof balance !== 'undefined' || !currency) && (
                             <div className='acc-info__balance-section'>
                                 <p
@@ -107,7 +116,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                     className={classNames('acc-info__balance', {
                                         'acc-info__balance--no-currency': !currency && !isVirtual,
                                     })}
-                                    style={{ fontWeight: 700, fontSize: '13px' }}
+                                    style={{ fontWeight: 700, fontSize: '12px', lineHeight: 1.2 }}
                                 >
                                     {!currency ? (
                                         <Localize i18n_default_text='No currency assigned' />
@@ -125,8 +134,9 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                             className={classNames('acc-info__select-arrow', {
                                 'acc-info__select-arrow--invert': isOpen,
                             })}
+                            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}
                         >
-                            <svg width='12' height='12' viewBox='0 0 12 12' fill='none'>
+                            <svg width='10' height='10' viewBox='0 0 12 12' fill='none'>
                                 <path
                                     d='M2 4L6 8L10 4'
                                     stroke='currentColor'
@@ -162,16 +172,25 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                         handleAccountSelect(account.loginid);
                                     }
                                 }}
-                                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px' }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px' }}
                             >
                                 <span className={`ic ic-${account.isVirtual ? 'virtual' : accCurrLower}`} />
-                                <Text size='xs' weight='bold' className='acc-dropdown__balance'>
-                                    {account.currency ? (
-                                        `${account.balance} ${getCurrencyDisplayCode(account.currency)}`
-                                    ) : (
-                                        <Localize i18n_default_text='No currency assigned' />
-                                    )}
-                                </Text>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <Text size='xxxs' className='acc-dropdown__account-type' style={{ fontSize: '9px' }}>
+                                        {account.isVirtual ? (
+                                            <Localize i18n_default_text='Demo account' />
+                                        ) : (
+                                            <Localize i18n_default_text='Real account' />
+                                        )}
+                                    </Text>
+                                    <Text size='xs' weight='bold' className='acc-dropdown__balance'>
+                                        {account.currency ? (
+                                            `${account.balance} ${getCurrencyDisplayCode(account.currency)}`
+                                        ) : (
+                                            <Localize i18n_default_text='No currency assigned' />
+                                        )}
+                                    </Text>
+                                </div>
                             </div>
                         );
                     })}
