@@ -9,7 +9,7 @@
     flex-direction: row;
     height: 100%;
     justify-content: center;
-    padding: 8px 1.6rem;
+    padding: 6px 1.2rem;
     width: max-content;
 
     &:hover {
@@ -121,11 +121,14 @@
         -webkit-tap-highlight-color: transparent;
     }
 
+    /* Fixed: Changed to row layout so badge, text stack, and arrow sit side-by-side */
     &__content {
         display: flex;
-        flex-direction: column;
-        justify-content: center;
-        margin-inline-start: 1rem;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        margin-inline-start: 0;
     }
 
     &__account-type-header {
@@ -140,7 +143,8 @@
 
         line-height: 1;
         margin: 0;
-        font-size: var(--text-size-xxs);
+        font-size: 1rem;
+        color: var(--status-success);
     }
 
     &--is-virtual {
@@ -157,11 +161,11 @@
     &__balance {
         @include typeface(--paragraph-left-bold-black);
 
-        line-height: 1.4;
+        line-height: 1.2;
         pointer-events: none;
         margin: 0;
-        font-size: 1.4rem;
-        color: var(--status-success);
+        font-size: 1.2rem;
+        color: var(--text-prominent);
 
         &--no-currency {
             @include typeface(--small-left-normal-grey);
@@ -189,18 +193,20 @@
         margin-right: -0.1rem;
     }
 
+    /* Inner text container for stacking account type over balance */
     &__account-type-and-balance {
         display: flex;
         flex-direction: column;
         justify-content: center;
-        padding: 0 1rem 0.1rem 0;
+        padding: 0;
         pointer-events: none;
+        text-align: left;
     }
 
     &__select-arrow {
-        pointer-events: none;
         display: flex;
         align-items: center;
+        margin-left: auto;
         transform: rotate(0);
         transform-origin: 50% 50%;
         transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
@@ -229,16 +235,12 @@
         margin-right: -0.8rem;
 
         &__balance {
-            font-size: 1.4rem;
+            font-size: 1.2rem;
 
             &--no-currency {
                 white-space: nowrap;
             }
         }
-    }
-
-    .acc-info__balance {
-        @include typeface(--paragraph-left-bold-black);
     }
 
     &--is-disabled {
@@ -561,8 +563,6 @@
 
         &-icon {
             margin-left: 8px;
-
-            // @extend %inline-icon;
             cursor: pointer;
         }
     }
@@ -735,7 +735,9 @@
 
     &__account {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
         padding: .8rem 1.6rem;
         cursor: pointer;
         background: var(--general-main-2);
@@ -758,7 +760,7 @@
         color: var(--status-success);
         margin-bottom: 0.1rem;
         line-height: 1.2;
-        font-size: 1.4rem;
+        font-size: 1rem;
 
         &--virtual {
             color: $color-yellow;
@@ -767,8 +769,9 @@
 
     &__balance {
         color: var(--text-prominent);
-        line-height: 1.4;
+        line-height: 1.2;
         font-size: 1.2rem;
+        font-weight: 700;
     }
 }
 
