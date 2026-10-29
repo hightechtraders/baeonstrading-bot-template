@@ -1,0 +1,10 @@
+.live-chart-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none; // Ensures clicks pass straight through to buttons
+    z-index: 1;          // Sits behind landing page content
+    opacity: 0.8;
+}
