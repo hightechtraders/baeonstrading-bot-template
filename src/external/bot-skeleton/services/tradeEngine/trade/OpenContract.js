@@ -1,7 +1,7 @@
 import { getRoundedNumber } from '@/components/shared';
 import { api_base } from '../../api/api-base';
 import { contract as broadcastContract, contractStatus } from '../utils/broadcast';
-import { observer as globalObserver } from '../../utils/observer'; // 👈 Added globalObserver import
+import { observer as globalObserver } from '../utils/observer'; // 👈 Fixed relative path pointing correctly to tradeEngine/utils/observer
 import { openContractReceived, sell } from './state/actions';
 
 export default Engine =>
