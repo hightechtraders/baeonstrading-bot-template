@@ -93,7 +93,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                     }}
                     style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingRight: '8px' }}
                 >
-                    {/* Real Account Badge with RED USD text */}
+                    {/* Real Account Badge with GREEN USD text */}
                     <div style={{
                         width: '28px',
                         height: '28px',
@@ -106,7 +106,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                         backgroundColor: '#f3f4f6',
                         fontSize: isVirtual ? '16px' : '10px',
                         fontWeight: 'bold',
-                        color: isVirtual ? '#374151' : '#ef4444'
+                        color: isVirtual ? '#374151' : '#10b981'
                     }}>
                         {isVirtual ? '🧪' : 'USD'}
                     </div>
@@ -189,7 +189,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                 width: '24px', height: '24px', borderRadius: '50%', overflow: 'hidden',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: '0', 
                                 fontSize: account.isVirtual ? '14px' : '9px', fontWeight: 'bold', 
-                                backgroundColor: '#f3f4f6', color: account.isVirtual ? '#374151' : '#ef4444'
+                                backgroundColor: '#f3f4f6', color: account.isVirtual ? '#374151' : '#10b981'
                             }}>
                                 {account.isVirtual ? '🧪' : 'USD'}
                             </div>
