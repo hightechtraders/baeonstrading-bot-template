@@ -13,8 +13,8 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) => {
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-    // Typing effect state with a 5-second hold before looping
-    const fullSubtitleText = "An institutional-grade automated trading platform. Deploy custom Blockly strategies, run real-time multi-asset AI scanners, and manage live ticks with sub-millisecond execution.";
+    // Typing effect state with uppercase text and a 5-second hold before looping
+    const fullSubtitleText = "AN INSTITUTIONAL-GRADE AUTOMATED TRADING PLATFORM. DEPLOY CUSTOM BLOCKLY STRATEGIES, RUN REAL-TIME MULTI-ASSET AI SCANNERS, AND MANAGE LIVE TICKS WITH SUB-MILLISECOND EXECUTION.";
     const [typedSubtitle, setTypedSubtitle] = useState('');
 
     useEffect(() => {
@@ -119,7 +119,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                     <span className="highlight-text">Let TraderScore.pro do the heavy lifting.</span>
                 </h1>
 
-                {/* Subtitle with typing effect, 5s hold, and increased font size */}
+                {/* Subtitle with typing effect, uppercase text, and +35% enlarged font size */}
                 <p className="hero-subtitle hero-subtitle-larger">
                     {typedSubtitle}
                     <span className="typing-cursor">_</span>
