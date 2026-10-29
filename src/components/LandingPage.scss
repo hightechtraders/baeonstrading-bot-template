@@ -222,13 +222,15 @@
             font-size: 1.05rem;
             line-height: 1.5;
             margin-bottom: 24px;
-            max-width: 680px;
+            max-width: 720px;
             margin-left: auto;
             margin-right: auto;
             font-family: monospace;
 
             &.hero-subtitle-larger {
-                font-size: 1.2rem;
+                text-transform: uppercase; // Force capital letters
+                font-size: 1.62rem; // Enlarged by 35%
+                letter-spacing: 0.5px;
             }
 
             .typing-cursor {
@@ -377,7 +379,7 @@
         padding: 16px 0;
         border-top: 1px solid rgba(255, 255, 255, 0.08);
         color: #94a3b8;
-        font-size: 1.05rem; // Doubled size for high visibility
+        font-size: 1.05rem;
         font-family: monospace;
         letter-spacing: 0.5px;
     }
