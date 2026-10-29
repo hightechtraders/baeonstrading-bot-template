@@ -17,23 +17,24 @@ export const LiveChartBackground = () => {
         let animationFrameId: number;
         let simulationInterval: NodeJS.Timeout | null = null;
 
-        const resize = () => {
-            canvas.width = window.innerWidth || document.documentElement.clientWidth;
-            canvas.height = window.innerHeight || document.documentElement.clientHeight;
+        // Force explicit full-screen sizing on mount and resize
+        const updateSize = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         };
-        resize();
-        window.addEventListener('resize', resize);
+        updateSize();
+        window.addEventListener('resize', updateSize);
 
         let candles: { open: number; high: number; low: number; close: number }[] = [];
         let basePrice = 100.0;
 
         // Initialize smooth background ambient candles
-        for (let i = 0; i < 70; i++) {
-            const variance = (Math.random() - 0.49) * 2.2;
+        for (let i = 0; i < 75; i++) {
+            const variance = (Math.random() - 0.49) * 2.5;
             const open = basePrice;
             const close = open + variance;
-            const high = Math.max(open, close) + Math.random() * 1.2;
-            const low = Math.min(open, close) - Math.random() * 1.2;
+            const high = Math.max(open, close) + Math.random() * 1.5;
+            const low = Math.min(open, close) - Math.random() * 1.5;
             candles.push({ open, high, low, close });
             basePrice = close;
         }
@@ -41,27 +42,24 @@ export const LiveChartBackground = () => {
         const pushSimulatedTick = () => {
             const last = candles[candles.length - 1];
             const open = last ? last.close : 100.0;
-            // Introduce subtle trending movement with realistic market noise
-            const close = open + (Math.random() - 0.49) * 2.5;
-            const high = Math.max(open, close) + Math.random() * 1.2;
-            const low = Math.min(open, close) - Math.random() * 1.2;
+            const close = open + (Math.random() - 0.49) * 3.0;
+            const high = Math.max(open, close) + Math.random() * 1.5;
+            const low = Math.min(open, close) - Math.random() * 1.5;
 
             candles.push({ open, high, low, close });
-            if (candles.length > 90) candles.shift();
+            if (candles.length > 95) candles.shift();
         };
 
-        // Smooth simulation tick interval (updates every 900ms)
-        simulationInterval = setInterval(() => {
-            pushSimulatedTick();
-        }, 900);
+        // Smooth simulation tick interval
+        simulationInterval = setInterval(pushSimulatedTick, 800);
 
         let offset = 0;
         const render = () => {
             if (!canvas || !ctx) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const candleWidth = Math.max(canvas.width / 75, 12);
-            offset += 0.15; // Smooth horizontal drift speed
+            const candleWidth = Math.max(canvas.width / 80, 10);
+            offset += 0.18; // Smooth horizontal drift speed
 
             const prices = candles.flatMap(c => [c.high, c.low]);
             const minY = Math.min(...prices);
@@ -72,9 +70,9 @@ export const LiveChartBackground = () => {
                 const x = index * candleWidth - (offset % candleWidth);
                 const isGreen = c.close >= c.open;
                 
-                // Professional institutional dark-theme coloring with balanced opacity
-                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)';
-                ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)';
+                // Professional institutional styling with visible contrast
+                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)';
+                ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)';
                 ctx.lineWidth = 1.5;
 
                 const normalizeY = (val: number) => 
@@ -104,11 +102,17 @@ export const LiveChartBackground = () => {
         render();
 
         return () => {
-            window.removeEventListener('resize', resize);
+            window.removeEventListener('resize', updateSize);
             cancelAnimationFrame(animationFrameId);
             if (simulationInterval) clearInterval(simulationInterval);
         };
     }, []);
 
-    return <canvas ref={canvasRef} className="live-chart-background" />;
+    return (
+        <canvas 
+            ref={canvasRef} 
+            className="live-chart-background"
+            style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 1 }}
+        />
+    );
 };
