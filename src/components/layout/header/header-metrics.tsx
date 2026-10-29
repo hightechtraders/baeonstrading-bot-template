@@ -23,6 +23,9 @@ export const HeaderMetrics = observer(() => {
         return () => clearInterval(interval);
     }, []);
 
+    // Professional state logic
+    const connectionLabel = isR10Active ? 'API Live (R_10)' : 'API Connected (Standby)';
+
     return (
         <div className="header-metrics">
             <div className="header-metrics__item">
@@ -41,7 +44,7 @@ export const HeaderMetrics = observer(() => {
 
             <div className="header-metrics__item">
                 <span className={`header-metrics__dot ${isR10Active ? 'header-metrics__dot--connected' : 'header-metrics__dot--amber'}`} />
-                <span className="header-metrics__label">API Connected</span>
+                <span className="header-metrics__label">{connectionLabel}</span>
             </div>
         </div>
     );
