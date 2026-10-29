@@ -13,7 +13,6 @@
     position: relative;
     overflow-x: hidden;
 
-    // Subtle background grid pattern to match scanner workspace
     &::before {
         content: '';
         position: absolute;
@@ -33,7 +32,6 @@
         z-index: 1;
     }
 
-    // Ambient Mouse-Follow Glow Effect
     .mouse-glow {
         position: absolute;
         width: 450px;
@@ -45,7 +43,6 @@
         z-index: 0;
     }
 
-    // Live Ticker Bar - Sticky at Top
     .market-ticker-bar {
         position: sticky;
         top: 12px;
@@ -66,11 +63,9 @@
             display: inline-flex;
             gap: 28px;
             white-space: nowrap;
-            /* Seamless infinite scrolling across exact halves */
             animation: scrollTicker 25s linear infinite;
             will-change: transform;
 
-            /* Pause animation when user hovers or touches the items */
             &:hover {
                 animation-play-state: paused;
             }
@@ -211,9 +206,9 @@
             margin-bottom: 16px;
             letter-spacing: -0.02em;
 
-            // Smooth glowing pulse effect fading in and out
+            // Noticeable, prominent fade-in/out pulsing glow animation
             &.glowing-title {
-                animation: titleGlowPulse 4s ease-in-out infinite;
+                animation: titleGlowPulse 3s ease-in-out infinite;
             }
 
             .highlight-text {
@@ -231,12 +226,13 @@
             max-width: 680px;
             margin-left: auto;
             margin-right: auto;
-            font-family: monospace; // Gives the live typing effect a sleek terminal look
+            font-family: monospace;
 
             .typing-cursor {
                 color: #34d399;
                 font-weight: bold;
                 animation: blinkCursor 0.8s infinite;
+                margin-left: 2px;
             }
         }
 
@@ -394,14 +390,15 @@
     100% { transform: translateX(-50%); }
 }
 
+// Pronounced fade-in and fade-out text glow loop
 @keyframes titleGlowPulse {
     0%, 100% {
-        text-shadow: 0 0 15px rgba(34, 211, 238, 0.2), 0 0 30px rgba(16, 185, 129, 0.15);
-        filter: brightness(1);
+        text-shadow: 0 0 8px rgba(34, 211, 238, 0.1), 0 0 15px rgba(16, 185, 129, 0.1);
+        opacity: 0.85;
     }
     50% {
-        text-shadow: 0 0 25px rgba(34, 211, 238, 0.45), 0 0 50px rgba(16, 185, 129, 0.35);
-        filter: brightness(1.1);
+        text-shadow: 0 0 25px rgba(34, 211, 238, 0.6), 0 0 45px rgba(16, 185, 129, 0.5);
+        opacity: 1;
     }
 }
 
