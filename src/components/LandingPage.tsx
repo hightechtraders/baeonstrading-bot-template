@@ -107,8 +107,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                     <span className="highlight-text">Let TraderScore.pro do the heavy lifting.</span>
                 </h1>
 
-                {/* Subtitle with typing effect and 5s hold */}
-                <p className="hero-subtitle">
+                {/* Subtitle with typing effect, 5s hold, and increased font size */}
+                <p className="hero-subtitle hero-subtitle-larger">
                     {typedSubtitle}
                     <span className="typing-cursor">_</span>
                 </p>
@@ -160,7 +160,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
             </section>
 
             <footer className="landing-footer">
-                <p>&copy; {new Date().getFullYear()} TraderScore.pro. Built for professional traders on the Deriv API.</p>
+                <p>&copy; {new Date().getFullYear()} TraderScore.pro · Built by Baron Ouma for professional traders on the Deriv API.</p>
             </footer>
         </div>
     );
