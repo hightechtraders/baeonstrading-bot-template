@@ -9,7 +9,7 @@ import { handleBackendError, isBackendError } from '@/utils/error-handler';
 import { activeSymbolsProcessorService } from '../../../../services/active-symbols-processor.service';
 import { observer as globalObserver } from '../../utils/observer';
 import { doUntilDone, socket_state } from '../tradeEngine/utils/helpers';
-import { ScannerBridge } from '@/Aiscanner/scannerBridge'; // 👈 Fixed alias path pointing to project root
+import { ScannerBridge } from '@/Aiscanner/scannerBridge';
 import {
     CONNECTION_STATUS,
     setAccountList,
@@ -66,11 +66,13 @@ class APIBase {
     active_symbols_promise: Promise<any[] | undefined> | null = null;
     common_store: CommonStore | undefined;
     reconnection_attempts: number = 0;
+    
+    // Tracking timestamp for active R_10 live feed ticks
+    last_r10_tick_timestamp: number = 0;
 
-    // Constants for timeouts - extracted magic numbers for better maintainability
-    private readonly ACTIVE_SYMBOLS_TIMEOUT_MS = 10000; // 10 seconds
-    private readonly ENRICHMENT_TIMEOUT_MS = 10000; // 10 seconds
-    private readonly MAX_RECONNECTION_ATTEMPTS = 5; // Maximum number of reconnection attempts before session reset
+    private readonly ACTIVE_SYMBOLS_TIMEOUT_MS = 10000;
+    private readonly ENRICHMENT_TIMEOUT_MS = 10000;
+    private readonly MAX_RECONNECTION_ATTEMPTS = 5;
 
     unsubscribeAllSubscriptions = () => {
         this.current_auth_subscriptions?.forEach(subscription_promise => {
@@ -87,8 +89,6 @@ class APIBase {
 
     onsocketopen() {
         setConnectionStatus(CONNECTION_STATUS.OPENED);
-
-        // Reset reconnection attempts on successful connection
         this.reconnection_attempts = 0;
 
         const currentClientStore = globalObserver.getState('client.store');
@@ -106,31 +106,25 @@ class APIBase {
 
         if (account_id) {
             localStorage.setItem('active_loginid', account_id);
-            // Remove account_id from URL after storing
             removeUrlParameter('account_id');
         }
         if (accountType) {
             localStorage.setItem('account_type', accountType);
-            // Remove account_type from URL after storing
             removeUrlParameter('account_type');
         }
 
-        // Check if we have an account_id from URL or localStorage
         let activeAccountId: string | null = getAccountId();
 
-        // If no account_id in localStorage, check sessionStorage for accounts
         if (!activeAccountId) {
             try {
                 const storedAccounts = sessionStorage.getItem('deriv_accounts');
                 if (storedAccounts) {
                     const accounts = JSON.parse(storedAccounts);
                     if (accounts && accounts.length > 0 && accounts[0].account_id) {
-                        // Use the first account as default
                         const accountId = accounts[0].account_id as string;
                         activeAccountId = accountId;
                         localStorage.setItem('active_loginid', accountId);
 
-                        // Set account type based on account_id prefix
                         const isDemo = accountId.startsWith('VRT') || accountId.startsWith('VRTC');
                         localStorage.setItem('account_type', isDemo ? 'demo' : 'real');
                     }
@@ -140,7 +134,6 @@ class APIBase {
             }
         }
 
-        // Now proceed with normal authorization if we have an account_id
         if (activeAccountId) {
             setIsAuthorizing(true);
             await this.authorizeAndSubscribe();
@@ -159,7 +152,6 @@ class APIBase {
             this.unsubscribeAllSubscriptions();
         }
 
-        // Reset reconnection attempts counter on successful connection initialization
         if (!force_create_connection) {
             this.reconnection_attempts = 0;
         }
@@ -191,6 +183,11 @@ class APIBase {
                     try {
                         const data = JSON.parse(event.data);
                         if (data && data.msg_type === 'tick' && data.tick) {
+                            // Record timestamp if R_10 tick is received
+                            if (data.tick.symbol === 'R_10') {
+                                this.last_r10_tick_timestamp = Date.now();
+                            }
+
                             // Forward live ticks directly into ScannerBridge for score computation & UI sorting
                             ScannerBridge.pushTick(data.tick.symbol, Number(data.tick.quote));
 
@@ -210,8 +207,6 @@ class APIBase {
             }
             // [/AI]
 
-            // Store the current account ID used for this WebSocket connection
-            // This will be used to check if we need to regenerate the connection when the tab becomes active
             const currentClientStore = globalObserver.getState('client.store');
             if (currentClientStore) {
                 const active_login_id = getAccountId();
@@ -243,8 +238,12 @@ class APIBase {
         return 'Socket not initialized';
     }
 
+    // Helper method for HeaderMetrics to check if R_10 feed is actively streaming
+    isR10FeedLive(): boolean {
+        return Date.now() - this.last_r10_tick_timestamp < 3000;
+    }
+
     terminate() {
-        // eslint-disable-next-line no-console
         if (this.api) this.api.disconnect();
     }
 
@@ -266,15 +265,11 @@ class APIBase {
             this.reconnection_attempts += 1;
 
             if (this.reconnection_attempts >= this.MAX_RECONNECTION_ATTEMPTS) {
-                // Reset reconnection counter
                 this.reconnection_attempts = 0;
-
-                // Properly handle logout through the API
                 setIsAuthorized(false);
                 setAccountList([]);
                 setAuthData(null);
 
-                // Clear necessary storage items
                 localStorage.removeItem('active_loginid');
                 localStorage.removeItem('account_type');
                 localStorage.removeItem('accountsList');
@@ -299,9 +294,7 @@ class APIBase {
                     ? handleBackendError(error)
                     : error.message || 'Authorization failed';
 
-                // Authorization error
                 console.error('Authorization error:', errorMessage);
-
                 setIsAuthorizing(false);
                 return { ...error, localizedMessage: errorMessage };
             }
@@ -323,8 +316,6 @@ class APIBase {
                   }
                 : null;
 
-            // Build full account list from sessionStorage (populated during OAuth flow)
-            // Falls back to just the current account if sessionStorage has no data
             const storedAccounts = DerivWSAccountsService.getStoredAccounts();
             const accountList =
                 storedAccounts && storedAccounts.length > 0
@@ -340,7 +331,7 @@ class APIBase {
                       ? [currentAccount]
                       : [];
 
-            setAccountList(accountList); // Observable stream
+            setAccountList(accountList);
             setAuthData({
                 balance: balance?.balance,
                 currency: balance?.currency,
@@ -349,7 +340,6 @@ class APIBase {
                 account_list: accountList,
             });
 
-            // // Set account_type in localStorage based on loginid prefix using centralized utility
             const loginid = balance?.loginid || '';
             const isDemo = isDemoAccount(loginid);
 
@@ -369,7 +359,6 @@ class APIBase {
                 },
             });
 
-            // Update the WebSocket login ID in the client store
             const currentClientStore = globalObserver.getState('client.store');
             if (currentClientStore && balance?.loginid) {
                 currentClientStore.setWebSocketLoginId(balance.loginid);
@@ -430,7 +419,6 @@ class APIBase {
         }
 
         try {
-            // Add timeout to prevent hanging
             const timeout = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Active symbols fetch timeout')), this.ACTIVE_SYMBOLS_TIMEOUT_MS)
             );
@@ -451,7 +439,6 @@ class APIBase {
 
             this.has_active_symbols = true;
 
-            // Process active symbols using the dedicated service with fallback
             try {
                 const enrichmentTimeout = new Promise<never>((_, reject) =>
                     setTimeout(() => reject(new Error('Enrichment timeout')), this.ENRICHMENT_TIMEOUT_MS)
@@ -464,7 +451,6 @@ class APIBase {
                 this.pip_sizes = processedResult.pipSizes;
             } catch (enrichmentError) {
                 console.warn('Symbol enrichment failed, using raw symbols:', enrichmentError);
-                // Fallback to raw symbols if enrichment fails
                 this.active_symbols = active_symbols;
                 this.pip_sizes = {};
             }
@@ -495,7 +481,6 @@ class APIBase {
         this.subscriptions.forEach(s => s.unsubscribe());
         this.subscriptions = [];
 
-        // Resetting timeout resolvers
         const global_timeouts = globalObserver.getState('global_timeouts') ?? [];
 
         global_timeouts.forEach((_: unknown, i: number) => {
