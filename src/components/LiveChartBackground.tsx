@@ -16,6 +16,8 @@ export const LiveChartBackground = () => {
 
         let animationFrameId: number;
         let subscription: { unsubscribe: () => void } | null = null;
+        let simulationInterval: NodeJS.Timeout | null = null;
+        let isReceivingLiveTicks = false;
 
         const resize = () => {
             canvas.width = window.innerWidth;
@@ -38,27 +40,42 @@ export const LiveChartBackground = () => {
             basePrice = close;
         }
 
-        // Plug live tick feed specifically to R_10
+        // Helper to push a new candle tick onto the stream
+        const pushTick = (price: number) => {
+            const last = candles[candles.length - 1];
+            const open = last ? last.close : price;
+            const close = price;
+            const high = Math.max(open, close) + Math.random() * 0.8;
+            const low = Math.min(open, close) - Math.random() * 0.8;
+
+            candles.push({ open, high, low, close });
+            if (candles.length > 80) candles.shift();
+        };
+
+        // 1. Start simulation fallback immediately so the background is lively right away
+        simulationInterval = setInterval(() => {
+            if (!isReceivingLiveTicks) {
+                const lastClose = candles[candles.length - 1]?.close || 1000;
+                const nextPrice = lastClose + (Math.random() - 0.48) * 2.5; // Slight market drift
+                pushTick(nextPrice);
+            }
+        }, 1200);
+
+        // 2. Try plugging into live R_10 WebSocket feed
         const initLiveFeed = async () => {
             try {
                 if (api_base.api) {
                     await api_base.api.subscribe({ ticks: 'R_10' });
                     subscription = api_base.api.onMessage().subscribe(({ data }: any) => {
                         if (data.msg_type === 'tick') {
-                            const quote = data.tick.quote;
-                            const last = candles[candles.length - 1];
-                            const open = last ? last.close : quote;
-                            const close = quote;
-                            const high = Math.max(open, close) + 0.2;
-                            const low = Math.min(open, close) - 0.2;
-
-                            candles.push({ open, high, low, close });
-                            if (candles.length > 80) candles.shift();
+                            isReceivingLiveTicks = true;
+                            if (simulationInterval) clearInterval(simulationInterval);
+                            pushTick(data.tick.quote);
                         }
                     });
                 }
             } catch (e) {
-                // Graceful fallback if WebSocket is not initialized yet
+                // Stays safely on simulation fallback if WebSocket fails or is unauthenticated
             }
         };
 
@@ -110,6 +127,7 @@ export const LiveChartBackground = () => {
         return () => {
             window.removeEventListener('resize', resize);
             cancelAnimationFrame(animationFrameId);
+            if (simulationInterval) clearInterval(simulationInterval);
             if (subscription) subscription.unsubscribe();
         };
     }, []);
