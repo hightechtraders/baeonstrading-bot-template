@@ -93,10 +93,10 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                     }}
                     style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingRight: '8px' }}
                 >
-                    {/* Real Account Badge with #6022bd USD text */}
+                    {/* Real Account Badge with Increased Size (34px) & #6022bd USD text */}
                     <div style={{
-                        width: '28px',
-                        height: '28px',
+                        width: '34px',
+                        height: '34px',
                         borderRadius: '50%',
                         overflow: 'hidden',
                         display: 'flex',
@@ -104,7 +104,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                         justifyContent: 'center',
                         flexShrink: 0,
                         backgroundColor: '#f3f4f6',
-                        fontSize: isVirtual ? '16px' : '10px',
+                        fontSize: isVirtual ? '18px' : '11px',
                         fontWeight: 'bold',
                         color: '#6022bd'
                     }}>
@@ -185,10 +185,11 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                             }}
                             style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px' }}
                         >
+                            {/* Dropdown Badge with Increased Size (28px) */}
                             <div style={{
-                                width: '24px', height: '24px', borderRadius: '50%', overflow: 'hidden',
+                                width: '28px', height: '28px', borderRadius: '50%', overflow: 'hidden',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: '0', 
-                                fontSize: account.isVirtual ? '14px' : '9px', fontWeight: 'bold', 
+                                fontSize: account.isVirtual ? '16px' : '10px', fontWeight: 'bold', 
                                 backgroundColor: '#f3f4f6', color: '#6022bd'
                             }}>
                                 {account.isVirtual ? '🧪' : 'USD'}
