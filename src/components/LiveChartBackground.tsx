@@ -23,25 +23,26 @@ export const LiveChartBackground = () => {
         updateSize();
         window.addEventListener('resize', updateSize);
 
-        // Pre-generate a robust pool of persistent candles to scroll through seamlessly
+        // Pre-generate a robust pool of persistent candles
         let candles: { open: number; high: number; low: number; close: number }[] = [];
         let basePrice = 100.0;
         const totalPool = 120;
 
         for (let i = 0; i < totalPool; i++) {
-            const variance = (Math.random() - 0.48) * 3.0;
+            // Give candles a healthy, natural price swing so their wicks and bodies are large
+            const variance = (Math.random() - 0.48) * 8.0;
             const open = basePrice;
             const close = open + variance;
-            const high = Math.max(open, close) + Math.random() * 1.5;
-            const low = Math.min(open, close) - Math.random() * 1.5;
+            const high = Math.max(open, close) + Math.random() * 4.0;
+            const low = Math.min(open, close) - Math.random() * 4.0;
             candles.push({ open, high, low, close });
             basePrice = close;
         }
 
-        // Fixed price range ceiling/floor to completely prevent vertical stretching/jitter
+        // Tighter vertical bounds so the candles fill up the vertical viewport nicely
         const allPrices = candles.flatMap(c => [c.high, c.low]);
-        const fixedMinY = Math.min(...allPrices) - 10;
-        const fixedMaxY = Math.max(...allPrices) + 10;
+        const fixedMinY = Math.min(...allPrices) - 4;
+        const fixedMaxY = Math.max(...allPrices) + 4;
         const range = fixedMaxY - fixedMinY || 1;
 
         let totalOffset = 0;
@@ -49,34 +50,34 @@ export const LiveChartBackground = () => {
         const render = () => {
             if (!canvas || !ctx) return;
 
-            // Smooth continuous sub-pixel movement (no discrete snaps)
+            // Butter-smooth continuous horizontal sub-pixel slide
             totalOffset += 0.6;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const candleWidth = Math.round(canvas.width / 40);
+            // Substantial candle width for a bold, professional look
+            const candleWidth = Math.round(canvas.width / 35);
 
-            // When offset passes one full candle width, seamlessly wrap the pool index forward
             const startIndex = Math.floor(totalOffset / candleWidth);
-            const localOffset = totalOffset % candleWidth;
+            const localOffset = totalOffset % canvas.width; // Keeps coordinate math robust
 
-            for (let i = 0; i < 50; i++) {
+            for (let i = 0; i < 45; i++) {
                 const poolIndex = (startIndex + i) % candles.length;
                 const c = candles[poolIndex];
 
-                // Continuous floating-point X coordinate mapped cleanly
-                const x = (i * candleWidth) - localOffset;
+                const x = Math.round((i * candleWidth) - (totalOffset % candleWidth));
 
                 if (x < -candleWidth * 2 || x > canvas.width + candleWidth * 2) continue;
 
                 const isGreen = c.close >= c.open;
                 
-                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.45)' : 'rgba(239, 68, 68, 0.45)';
-                ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)';
+                ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)';
                 ctx.lineWidth = 2;
 
+                // Center the chart nicely across the vertical middle of the screen
                 const normalizeY = (val: number) => 
-                    canvas.height - ((val - fixedMinY) / range) * (canvas.height * 0.5) - (canvas.height * 0.25);
+                    canvas.height * 0.8 - ((val - fixedMinY) / range) * (canvas.height * 0.6);
 
                 const yHigh = Math.round(normalizeY(c.high));
                 const yLow = Math.round(normalizeY(c.low));
@@ -89,11 +90,11 @@ export const LiveChartBackground = () => {
                 ctx.lineTo(x + Math.floor(candleWidth / 2), yLow);
                 ctx.stroke();
 
-                // Draw Body
+                // Draw Bold Candle Body (guaranteed minimum height so they never look like thin lines)
                 const bodyY = Math.min(yOpen, yClose);
-                const bodyHeight = Math.max(Math.abs(yOpen - yClose), 4);
-                ctx.fillRect(x + 4, bodyY, candleWidth - 8, bodyHeight);
-                ctx.strokeRect(x + 4, bodyY, candleWidth - 8, bodyHeight);
+                const bodyHeight = Math.max(Math.abs(yOpen - yClose), 10);
+                ctx.fillRect(x + 5, bodyY, candleWidth - 10, bodyHeight);
+                ctx.strokeRect(x + 5, bodyY, candleWidth - 10, bodyHeight);
             }
 
             animationFrameId = requestAnimationFrame(render);
