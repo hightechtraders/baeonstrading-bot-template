@@ -567,7 +567,7 @@ const AppWrapper = observer(() => {
                                 </div>
                             </div>
 
-                            {/* Copy Trading Tab Complete Production Hub */}
+                            {/* Copy Trading Tab Complete Hub */}
                             <div
                                 label={
                                     <>
@@ -581,89 +581,102 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-copy-trading'
                             >
-                                <div className='free-bots-container' style={{ padding: '24px', boxSizing: 'border-box' }}>
+                                <div className='free-bots-container' style={{ padding: '2rem', boxSizing: 'border-box' }}>
                                     
-                                    {/* CONDITIONAL VIEW: MASTER STRATEGY DETAIL PAGE */}
+                                    {/* CONDITIONAL VIEW: MASTER STRATEGY DETAIL PAGE WITH VISIBLE BACK BUTTON */}
                                     {selected_master ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', maxWidth: '960px', margin: '0 auto', textAlign: 'left', paddingBottom: '40px' }}>
-                                            {/* Prominent Back Button */}
-                                            <button 
-                                                onClick={() => setSelectedMaster(null)}
-                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'var(--general-section-1)', border: '1.5px solid #00a86b', color: 'var(--text-prominent)', padding: '12px 20px', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, width: 'fit-content', fontSize: '1rem', transition: 'all 0.2s ease' }}
-                                            >
-                                                <span style={{ fontSize: '1.2rem', color: '#00a86b' }}>←</span> Back to Masters Hub
-                                            </button>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%', maxWidth: '1000px', margin: '0 auto', textAlign: 'left', paddingBottom: '4rem' }}>
+                                            
+                                            {/* Top Navigation Bar with Back Button */}
+                                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                                <button 
+                                                    onClick={() => setSelectedMaster(null)}
+                                                    style={{ 
+                                                        display: 'inline-flex', 
+                                                        alignItem: 'center', 
+                                                        gap: '8px', 
+                                                        background: 'var(--general-section-1)', 
+                                                        border: '1.5px solid #00a86b', 
+                                                        color: 'var(--text-prominent)', 
+                                                        padding: '10px 20px', 
+                                                        borderRadius: '8px', 
+                                                        cursor: 'pointer', 
+                                                        fontWeight: 500, 
+                                                        fontSize: '1rem' 
+                                                    }}
+                                                >
+                                                    <span style={{ fontSize: '1.2rem', color: '#00a86b', marginRight: '6px' }}>←</span> Back to Masters Hub
+                                                </button>
+                                            </div>
 
                                             {/* Master Header Profile Card */}
-                                            <div style={{ background: 'var(--general-section-1)', border: '2px solid rgba(0, 168, 107, 0.4)', borderRadius: '1.4rem', padding: '32px' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
+                                            <div style={{ background: 'var(--general-section-1)', border: '1px solid rgba(0, 168, 107, 0.4)', borderRadius: '1rem', padding: '2.4rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.2rem', marginBottom: '1.5rem' }}>
                                                     <div>
-                                                        <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#00a86b', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Verified Master Strategy</span>
-                                                        <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--text-prominent)', margin: '6px 0 10px 0', lineHeight: 1.2 }}>{selected_master.name}</h2>
-                                                        <p style={{ color: 'var(--text-prominent)', fontSize: '1.1rem', opacity: 0.9 }}>Created by <strong>{selected_master.creator}</strong> • <span style={{ color: '#00a86b', fontWeight: 700 }}>{selected_master.copiersCount} active copiers</span></p>
+                                                        <span style={{ fontSize: '0.95rem', fontWeight: 500, color: '#00a86b', textTransform: 'uppercase' }}>Verified Master Strategy</span>
+                                                        <h2 style={{ fontSize: '1.8rem', fontWeight: 500, color: 'var(--text-prominent)', margin: '0.4rem 0 0.8rem 0' }}>{selected_master.name}</h2>
+                                                        <p style={{ color: 'var(--text-prominent)', fontSize: '1.05rem', opacity: 0.9 }}>Created by <strong>{selected_master.creator}</strong> • <span style={{ color: '#00a86b' }}>{selected_master.copiersCount} active copiers</span></p>
                                                     </div>
-                                                    <span style={{ background: selected_master.risk === 'Low' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 152, 0, 0.2)', color: selected_master.risk === 'Low' ? '#4caf50' : '#ff9800', padding: '8px 16px', borderRadius: '10px', fontWeight: 800, fontSize: '1rem' }}>
+                                                    <span style={{ background: selected_master.risk === 'Low' ? 'rgba(76, 175, 80, 0.15)' : 'rgba(255, 152, 0, 0.15)', color: selected_master.risk === 'Low' ? '#4caf50' : '#ff9800', padding: '0.5rem 1.2rem', borderRadius: '0.8rem', fontWeight: 500, fontSize: '0.95rem' }}>
                                                         {selected_master.risk} Risk Profile
                                                     </span>
                                                 </div>
 
-                                                <p style={{ color: 'var(--text-prominent)', fontSize: '1.15rem', lineHeight: '1.7', marginBottom: '28px', opacity: 0.95 }}>
+                                                <p style={{ color: 'var(--text-prominent)', fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '2rem', opacity: 0.95 }}>
                                                     {selected_master.description}
                                                 </p>
 
                                                 {/* Metrics Grid */}
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '28px' }}>
-                                                    <div style={{ background: 'rgba(0,0,0,0.25)', padding: '16px 20px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                                        <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', opacity: 0.8, marginBottom: '4px' }}>Win Rate</span>
-                                                        <strong style={{ fontSize: '1.5rem', fontWeight: 800, color: '#00a86b' }}>{selected_master.winRate}</strong>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                                                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.2rem 1.6rem', borderRadius: '0.8rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                        <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', opacity: 0.7, marginBottom: '0.4rem' }}>Win Rate</span>
+                                                        <strong style={{ fontSize: '1.3rem', color: '#00a86b', fontWeight: 500 }}>{selected_master.winRate}</strong>
                                                     </div>
-                                                    <div style={{ background: 'rgba(0,0,0,0.25)', padding: '16px 20px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                                        <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', opacity: 0.8, marginBottom: '4px' }}>30D Net ROI</span>
-                                                        <strong style={{ fontSize: '1.5rem', fontWeight: 800, color: '#4caf50' }}>{selected_master.roi30d}</strong>
+                                                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.2rem 1.6rem', borderRadius: '0.8rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                        <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', opacity: 0.7, marginBottom: '0.4rem' }}>30D Net ROI</span>
+                                                        <strong style={{ fontSize: '1.3rem', color: '#4caf50', fontWeight: 500 }}>{selected_master.roi30d}</strong>
                                                     </div>
-                                                    <div style={{ background: 'rgba(0,0,0,0.25)', padding: '16px 20px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                                        <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', opacity: 0.8, marginBottom: '4px' }}>Max Drawdown</span>
-                                                        <strong style={{ fontSize: '1.5rem', fontWeight: 800, color: '#e11d48' }}>{selected_master.maxDrawdown}</strong>
+                                                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.2rem 1.6rem', borderRadius: '0.8rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                        <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', opacity: 0.7, marginBottom: '0.4rem' }}>Max Drawdown</span>
+                                                        <strong style={{ fontSize: '1.3rem', color: '#e11d48', fontWeight: 500 }}>{selected_master.maxDrawdown}</strong>
                                                     </div>
-                                                    <div style={{ background: 'rgba(0,0,0,0.25)', padding: '16px 20px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                                        <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', opacity: 0.8, marginBottom: '4px' }}>Total Volume Copied</span>
-                                                        <strong style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-prominent)' }}>{selected_master.totalVolume}</strong>
+                                                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.2rem 1.6rem', borderRadius: '0.8rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                        <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', opacity: 0.7, marginBottom: '0.4rem' }}>Total Volume Copied</span>
+                                                        <strong style={{ fontSize: '1.3rem', color: 'var(--text-prominent)', fontWeight: 500 }}>{selected_master.totalVolume}</strong>
                                                     </div>
                                                 </div>
 
                                                 {/* Action Bar */}
-                                                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                                                    <button 
-                                                        onClick={() => {
-                                                            setActivePortfolios(prev => [...prev, {
-                                                                id: `active_${Date.now()}`,
-                                                                name: selected_master.name,
-                                                                allocation: `$${(0.35 * multiplier).toFixed(2)} / trade`,
-                                                                pnl: '+0.00 USD',
-                                                                status: 'Active',
-                                                            }]);
-                                                            setCopySubTab('portfolio');
-                                                            setSelectedMaster(null);
-                                                        }}
-                                                        className='free-bots-btn'
-                                                        style={{ flex: '1', minWidth: '220px', height: '4.8rem', fontSize: '1.5rem', fontWeight: 800 }}
-                                                    >
-                                                        Confirm & Copy Strategy Now
-                                                    </button>
-                                                </div>
+                                                <button 
+                                                    onClick={() => {
+                                                        setActivePortfolios(prev => [...prev, {
+                                                            id: `active_${Date.now()}`,
+                                                            name: selected_master.name,
+                                                            allocation: `$${(0.35 * multiplier).toFixed(2)} / trade`,
+                                                            pnl: '+0.00 USD',
+                                                            status: 'Active',
+                                                        }]);
+                                                        setCopySubTab('portfolio');
+                                                        setSelectedMaster(null);
+                                                    }}
+                                                    className='free-bots-btn'
+                                                    style={{ width: '100%', height: '4.5rem', fontSize: '1.1rem' }}
+                                                >
+                                                    Confirm & Copy Strategy Now
+                                                </button>
                                             </div>
 
                                             {/* Recent Executed Trades Audit Table */}
-                                            <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.3)', borderRadius: '1.4rem', padding: '28px' }}>
-                                                <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-prominent)', marginBottom: '20px' }}>Recent Mirrored Signals & Execution Log</h4>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                            <div style={{ background: 'var(--general-section-1)', border: '1px solid rgba(0, 168, 107, 0.3)', borderRadius: '1rem', padding: '2.4rem' }}>
+                                                <h4 style={{ fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-prominent)', marginBottom: '1.5rem' }}>Recent Mirrored Signals & Execution Log</h4>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                                     {selected_master.history.map((tx: any) => (
-                                                        <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: 'rgba(0,0,0,0.2)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                        <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.2rem 1.6rem', background: 'rgba(0,0,0,0.15)', borderRadius: '0.8rem', border: '1px solid rgba(255,255,255,0.05)' }}>
                                                             <div>
-                                                                <span style={{ display: 'block', fontWeight: 700, color: 'var(--text-prominent)', fontSize: '1.05rem', marginBottom: '2px' }}>{tx.asset} ({tx.type})</span>
-                                                                <span style={{ fontSize: '0.9rem', color: 'var(--text-prominent)', opacity: 0.8 }}>Timestamp: {tx.time} • Stake: {tx.stake}</span>
+                                                                <span style={{ display: 'block', fontWeight: 500, color: 'var(--text-prominent)', fontSize: '1.05rem', marginBottom: '0.2rem' }}>{tx.asset} ({tx.type})</span>
+                                                                <span style={{ fontSize: '0.95rem', color: 'var(--text-prominent)', opacity: 0.75 }}>Timestamp: {tx.time} • Stake: {tx.stake}</span>
                                                             </div>
-                                                            <strong style={{ color: tx.pnl.startsWith('+') ? '#4caf50' : '#e11d48', fontSize: '1.15rem', fontWeight: 800 }}>{tx.pnl}</strong>
+                                                            <strong style={{ color: tx.pnl.startsWith('+') ? '#4caf50' : '#e11d48', fontSize: '1.1rem', fontWeight: 500 }}>{tx.pnl}</strong>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -674,24 +687,24 @@ const AppWrapper = observer(() => {
                                             {/* Top Header & Sub-Nav */}
                                             <div style={{ marginBottom: '2rem', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                                                 <div>
-                                                    <h3 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--text-prominent)' }}>
+                                                    <h3 style={{ fontSize: '1.6rem', fontWeight: 500, marginBottom: '0.4rem', color: 'var(--text-prominent)' }}>
                                                         Copy Trading Hub
                                                     </h3>
-                                                    <p style={{ color: 'var(--text-prominent)', fontSize: '1.05rem', opacity: 0.9 }}>
+                                                    <p style={{ color: 'var(--text-prominent)', fontSize: '1.05rem', opacity: 0.85 }}>
                                                         Mirror verified master traders and automate multi-asset execution in real-time.
                                                     </p>
                                                 </div>
 
-                                                <div style={{ display: 'flex', gap: '8px', background: 'rgba(255, 255, 255, 0.06)', padding: '6px', borderRadius: '10px' }}>
+                                                <div style={{ display: 'flex', gap: '8px', background: 'rgba(255, 255, 255, 0.05)', padding: '4px', borderRadius: '8px' }}>
                                                     <button 
                                                         onClick={() => setCopySubTab('discover')}
-                                                        style={{ padding: '10px 18px', background: copy_sub_tab === 'discover' ? '#00a86b' : 'transparent', border: 'none', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.95rem' }}
+                                                        style={{ padding: '8px 16px', background: copy_sub_tab === 'discover' ? '#00a86b' : 'transparent', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem' }}
                                                     >
                                                         Discover Masters
                                                     </button>
                                                     <button 
                                                         onClick={() => setCopySubTab('portfolio')}
-                                                        style={{ padding: '10px 18px', background: copy_sub_tab === 'portfolio' ? '#00a86b' : 'transparent', border: 'none', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.95rem' }}
+                                                        style={{ padding: '8px 16px', background: copy_sub_tab === 'portfolio' ? '#00a86b' : 'transparent', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem' }}
                                                     >
                                                         Active Portfolios ({active_portfolios.length})
                                                     </button>
@@ -702,9 +715,9 @@ const AppWrapper = observer(() => {
                                             {copy_sub_tab === 'discover' && (
                                                 <>
                                                     {/* Risk Management Settings Bar */}
-                                                    <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.3)', borderRadius: '1.2rem', padding: '20px', marginBottom: '2.4rem', display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                                    <div style={{ background: 'var(--general-section-1)', border: '1px solid rgba(0, 168, 107, 0.3)', borderRadius: '1rem', padding: '1.6rem', marginBottom: '2rem', display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
                                                         <div style={{ flex: '1', minWidth: '220px', textAlign: 'left' }}>
-                                                            <label style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-prominent)', marginBottom: '8px', fontWeight: 700 }}>Stake Multiplier: <strong style={{ color: '#00a86b' }}>{multiplier}x</strong></label>
+                                                            <label style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-prominent)', marginBottom: '0.6rem', fontWeight: 500 }}>Stake Multiplier: <strong style={{ color: '#00a86b' }}>{multiplier}x</strong></label>
                                                             <input 
                                                                 type='range' min='0.1' max='5.0' step='0.1' value={multiplier} 
                                                                 onChange={(e) => setMultiplier(Number(e.target.value))}
@@ -712,17 +725,17 @@ const AppWrapper = observer(() => {
                                                             />
                                                         </div>
                                                         <div style={{ flex: '1', minWidth: '180px', textAlign: 'left' }}>
-                                                            <label style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-prominent)', marginBottom: '8px', fontWeight: 700 }}>Max Stake Cap ($)</label>
+                                                            <label style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-prominent)', marginBottom: '0.6rem', fontWeight: 500 }}>Max Stake Cap ($)</label>
                                                             <input 
                                                                 type='number' value={maxStake} onChange={(e) => setMaxStake(e.target.value)}
-                                                                style={{ width: '100%', padding: '10px 14px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--text-prominent)', borderRadius: '8px', fontWeight: 700, fontSize: '1rem' }}
+                                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-prominent)', borderRadius: '6px', fontSize: '1rem' }}
                                                             />
                                                         </div>
                                                         <div style={{ flex: '1', minWidth: '180px', textAlign: 'left' }}>
-                                                            <label style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-prominent)', marginBottom: '8px', fontWeight: 700 }}>Daily Stop-Loss ($)</label>
+                                                            <label style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-prominent)', marginBottom: '0.6rem', fontWeight: 500 }}>Daily Stop-Loss ($)</label>
                                                             <input 
                                                                 type='number' value={stopLoss} onChange={(e) => setStopLoss(e.target.value)}
-                                                                style={{ width: '100%', padding: '10px 14px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--text-prominent)', borderRadius: '8px', fontWeight: 700, fontSize: '1rem' }}
+                                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-prominent)', borderRadius: '6px', fontSize: '1rem' }}
                                                             />
                                                         </div>
                                                     </div>
@@ -737,19 +750,19 @@ const AppWrapper = observer(() => {
                                                                 style={{ cursor: 'pointer' }}
                                                             >
                                                                 <div className='free-bots-header'>
-                                                                    <span className='strategy-tag' style={{ fontSize: '1.2rem', fontWeight: 800 }}>MASTER #{index + 1}</span>
-                                                                    <span className='confidence-badge' style={{ background: trader.risk === 'Low' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 152, 0, 0.2)', color: trader.risk === 'Low' ? '#4caf50' : '#ff9800', fontSize: '1rem', fontWeight: 800, padding: '4px 10px' }}>
+                                                                    <span className='strategy-tag'>MASTER #{index + 1}</span>
+                                                                    <span className='confidence-badge' style={{ background: trader.risk === 'Low' ? 'rgba(76, 175, 80, 0.15)' : 'rgba(255, 152, 0, 0.15)', color: trader.risk === 'Low' ? '#4caf50' : '#ff9800' }}>
                                                                         {trader.risk} Risk
                                                                     </span>
                                                                 </div>
 
                                                                 <div className='free-bots-body'>
-                                                                    <h4 className='strategy-title' style={{ fontSize: '1.8rem', fontWeight: 800 }}>{trader.name}</h4>
-                                                                    <p className='strategy-description' style={{ fontSize: '1.05rem', color: 'var(--text-prominent)', opacity: 0.9 }}>Created by <strong>{trader.creator}</strong> • {trader.copiersCount} active copiers</p>
+                                                                    <h4 className='strategy-title'>{trader.name}</h4>
+                                                                    <p className='strategy-description'>Created by {trader.creator} • {trader.copiersCount} active copiers</p>
                                                                     
-                                                                    <div className='strategy-details' style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '16px' }}>
-                                                                        <span className='market-name' style={{ background: 'rgba(0, 168, 107, 0.15)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.9rem', color: 'var(--text-prominent)', fontWeight: 700 }}>Win Rate: <strong style={{ color: '#00a86b' }}>{trader.winRate}</strong></span>
-                                                                        <span className='market-name' style={{ background: 'rgba(76, 175, 80, 0.15)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.9rem', color: '#4caf50', fontWeight: 700 }}>30D ROI: <strong>{trader.roi30d}</strong></span>
+                                                                    <div className='strategy-details' style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+                                                                        <span className='market-name' style={{ background: 'rgba(0, 168, 107, 0.12)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.9rem', color: 'var(--text-prominent)' }}>Win Rate: <strong style={{ color: '#00a86b' }}>{trader.winRate}</strong></span>
+                                                                        <span className='market-name' style={{ background: 'rgba(76, 175, 80, 0.12)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.9rem', color: '#4caf50' }}>30D ROI: <strong>{trader.roi30d}</strong></span>
                                                                     </div>
                                                                 </div>
 
@@ -766,7 +779,7 @@ const AppWrapper = observer(() => {
                                                                         setCopySubTab('portfolio');
                                                                     }} 
                                                                     className='free-bots-btn'
-                                                                    style={{ marginTop: 'auto', height: '4.6rem', fontSize: '1.4rem', fontWeight: 800 }}
+                                                                    style={{ marginTop: 'auto' }}
                                                                 >
                                                                     Quick Copy Strategy
                                                                 </button>
@@ -780,33 +793,33 @@ const AppWrapper = observer(() => {
                                             {copy_sub_tab === 'portfolio' && (
                                                 <div>
                                                     {active_portfolios.length === 0 ? (
-                                                        <div className='free-bots-closed-state' style={{ padding: '60px 20px', textAlign: 'center' }}>
-                                                            <p style={{ marginBottom: '20px', color: 'var(--text-prominent)', fontSize: '1.3rem', fontWeight: 700 }}>You are not currently copying any master traders.</p>
-                                                            <button onClick={() => setCopySubTab('discover')} className='free-bots-btn rescan-btn' style={{ fontSize: '1.2rem', padding: '12px 24px' }}>
+                                                        <div className='free-bots-closed-state' style={{ padding: '4rem 1.6rem', textAlign: 'center' }}>
+                                                            <p style={{ marginBottom: '1.2rem', color: 'var(--text-prominent)', fontSize: '1.1rem' }}>You are not currently copying any master traders.</p>
+                                                            <button onClick={() => setCopySubTab('discover')} className='free-bots-btn rescan-btn'>
                                                                 Discover Strategies
                                                             </button>
                                                         </div>
                                                     ) : (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                                             {active_portfolios.map(item => (
-                                                                <div key={item.id} style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.3)', borderRadius: '1.2rem', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.2rem', textAlign: 'left' }}>
+                                                                <div key={item.id} style={{ background: 'var(--general-section-1)', border: '1px solid rgba(0, 168, 107, 0.3)', borderRadius: '1rem', padding: '1.6rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', textAlign: 'left' }}>
                                                                     <div>
-                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
-                                                                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4caf50', display: 'inline-block' }} />
-                                                                            <h4 style={{ color: 'var(--text-prominent)', fontSize: '1.3rem', fontWeight: 800 }}>{item.name}</h4>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                                                                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4caf50', display: 'inline-block' }} />
+                                                                            <h4 style={{ color: 'var(--text-prominent)', fontSize: '1.15rem', fontWeight: 500 }}>{item.name}</h4>
                                                                         </div>
-                                                                        <p style={{ color: 'var(--text-prominent)', fontSize: '1rem', opacity: 0.9 }}>Allocation: <strong>{item.allocation}</strong> • Multiplier: <strong>{multiplier}x</strong></p>
+                                                                        <p style={{ color: 'var(--text-prominent)', fontSize: '0.95rem', opacity: 0.85 }}>Allocation: {item.allocation} • Multiplier: {multiplier}x</p>
                                                                     </div>
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                                                                         <div style={{ textAlign: 'right' }}>
-                                                                            <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-prominent)', opacity: 0.8, fontWeight: 700 }}>Live P&L</span>
-                                                                            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#4caf50' }}>{item.pnl}</span>
+                                                                            <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-prominent)', opacity: 0.7 }}>Live P&L</span>
+                                                                            <span style={{ fontSize: '1.1rem', fontWeight: 500, color: '#4caf50' }}>{item.pnl}</span>
                                                                         </div>
                                                                         <button 
                                                                             onClick={() => {
                                                                                 setActivePortfolios(prev => prev.filter(p => p.id !== item.id));
                                                                             }}
-                                                                            style={{ padding: '8px 16px', background: 'rgba(244, 67, 54, 0.2)', border: '1.5px solid rgba(244, 67, 54, 0.4)', color: '#f44336', borderRadius: '8px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 800 }}
+                                                                            style={{ padding: '6px 14px', background: 'rgba(244, 67, 54, 0.15)', border: '1px solid rgba(244, 67, 54, 0.3)', color: '#f44336', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500 }}
                                                                         >
                                                                             Unlink
                                                                         </button>
