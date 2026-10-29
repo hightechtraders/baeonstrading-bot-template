@@ -16,7 +16,6 @@ export const HeaderMetrics = observer(() => {
     const isRunning = client?.is_running || run_panel?.is_running || dbot?.is_running || false;
 
     // Check if the current active chart/Blockly asset is R_10 for live streaming feeds
-    // (Adjust `dash_store?.active_symbol` or similar property depending on your exact store structure)
     const activeSymbol = dash_store?.active_symbol || dbot?.active_symbol || 'R_10';
     const isR10Active = activeSymbol === 'R_10';
 
@@ -37,10 +36,8 @@ export const HeaderMetrics = observer(() => {
             </div>
 
             <div className="header-metrics__item">
-                <span className={`header-metrics__dot ${isR10Active ? 'header-metrics__dot--running' : 'header-metrics__dot--amber'}`} />
-                <span className="header-metrics__label">
-                    {isR10Active ? 'API Live (R_10)' : 'API Connected'}
-                </span>
+                <span className={`header-metrics__dot ${isR10Active ? 'header-metrics__dot--connected' : 'header-metrics__dot--amber'}`} />
+                <span className="header-metrics__label">API Connected</span>
             </div>
         </div>
     );
