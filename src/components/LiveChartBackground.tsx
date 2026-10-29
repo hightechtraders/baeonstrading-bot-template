@@ -29,7 +29,6 @@ export const LiveChartBackground = () => {
         const totalPool = 120;
 
         for (let i = 0; i < totalPool; i++) {
-            // Increased price variance so wicks and swings are much more dynamic (preventing straight lines)
             const variance = (Math.random() - 0.47) * 14.0;
             const open = basePrice;
             const close = open + variance;
@@ -39,7 +38,6 @@ export const LiveChartBackground = () => {
             basePrice = close;
         }
 
-        // Tighter vertical bounds so the candles fill up the vertical viewport nicely
         const allPrices = candles.flatMap(c => [c.high, c.low]);
         const fixedMinY = Math.min(...allPrices) - 4;
         const fixedMaxY = Math.max(...allPrices) + 4;
@@ -50,16 +48,13 @@ export const LiveChartBackground = () => {
         const render = () => {
             if (!canvas || !ctx) return;
 
-            // Butter-smooth continuous horizontal sub-pixel slide
-            totalOffset += 0.6;
+            // Reduced horizontal scrolling speed by 30% (from 0.6 down to 0.42)
+            totalOffset += 0.42;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Slightly wider candle width for a bold, prominent look
             const candleWidth = Math.round(canvas.width / 30);
-
             const startIndex = Math.floor(totalOffset / candleWidth);
-            const localOffset = totalOffset % canvas.width; // Keeps coordinate math robust
 
             for (let i = 0; i < 45; i++) {
                 const poolIndex = (startIndex + i) % candles.length;
@@ -71,12 +66,11 @@ export const LiveChartBackground = () => {
 
                 const isGreen = c.close >= c.open;
                 
-                // Dimmed, elegant watermark-style opacities so it sits quietly in the background
-                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.22)' : 'rgba(239, 68, 68, 0.22)';
-                ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)';
-                ctx.lineWidth = 2;
+                // Further greyed out / dimmed opacities so the background chart sits quietly behind the text
+                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)';
+                ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.035)' : 'rgba(239, 68, 68, 0.035)';
+                ctx.lineWidth = 1.5;
 
-                // Center the chart nicely across the vertical middle of the screen
                 const normalizeY = (val: number) => 
                     canvas.height * 0.8 - ((val - fixedMinY) / range) * (canvas.height * 0.6);
 
@@ -91,7 +85,7 @@ export const LiveChartBackground = () => {
                 ctx.lineTo(x + Math.floor(candleWidth / 2), yLow);
                 ctx.stroke();
 
-                // Draw Bold Candle Body (increased minimum height and adjusted padding for the wider columns)
+                // Draw Candle Body
                 const bodyY = Math.min(yOpen, yClose);
                 const bodyHeight = Math.max(Math.abs(yOpen - yClose), 16);
                 ctx.fillRect(x + 4, bodyY, candleWidth - 8, bodyHeight);
