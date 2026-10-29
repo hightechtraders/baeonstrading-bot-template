@@ -206,7 +206,6 @@
             margin-bottom: 16px;
             letter-spacing: -0.02em;
 
-            // Pronounced slow text fade-in and fade-out pulse
             &.glowing-title {
                 animation: titleGlowPulse 6s ease-in-out infinite;
             }
@@ -375,11 +374,12 @@
 
     .landing-footer {
         text-align: center;
-        padding: 10px 0;
-        border-top: 1px solid rgba(255, 255, 25, 0.05);
-        color: #64748b;
-        font-size: 0.75rem;
+        padding: 16px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        color: #94a3b8;
+        font-size: 1.05rem; // Doubled size for high visibility
         font-family: monospace;
+        letter-spacing: 0.5px;
     }
 }
 
@@ -394,7 +394,6 @@
     100% { transform: translateX(-50%); }
 }
 
-// Noticeable text opacity fade-in/fade-out over a slow 6-second rhythm
 @keyframes titleGlowPulse {
     0%, 100% {
         opacity: 0.15;
