@@ -13,26 +13,33 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) => {
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-    // Typing effect state for the hero subtitle
+    // Continuous looping typing effect state
     const fullSubtitleText = "An institutional-grade automated trading platform. Deploy custom Blockly strategies, run real-time multi-asset AI scanners, and manage live ticks with sub-millisecond execution.";
     const [typedSubtitle, setTypedSubtitle] = useState('');
-    const [isTypingComplete, setIsTypingComplete] = useState(false);
 
     useEffect(() => {
         let currentIndex = 0;
-        const typingSpeed = 22; // Speed per character in ms
+        let isDeleting = false;
+        const typingSpeed = 45; // Reduced speed by half for a smooth, readable pace
+        const pauseBetweenLoops = 3000; // Pause for 3 seconds before re-typing
 
-        const typingInterval = setInterval(() => {
-            if (currentIndex < fullSubtitleText.length) {
-                setTypedSubtitle(fullSubtitleText.slice(0, currentIndex + 1));
-                currentIndex++;
-            } else {
-                setIsTypingComplete(true);
-                clearInterval(typingInterval);
+        const interval = setInterval(() => {
+            if (!isDeleting) {
+                if (currentIndex <= fullSubtitleText.length) {
+                    setTypedSubtitle(fullSubtitleText.slice(0, currentIndex));
+                    currentIndex++;
+                } else {
+                    // Finished typing, wait before restarting loop
+                    isDeleting = true;
+                    setTimeout(() => {
+                        isDeleting = false;
+                        currentIndex = 0;
+                    }, pauseBetweenLoops);
+                }
             }
         }, typingSpeed);
 
-        return () => clearInterval(typingInterval);
+        return () => clearInterval(interval);
     }, []);
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -94,16 +101,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                     <span>NEXT-GEN AI TRADING WORKSPACE · DERIV API</span>
                 </div>
                 
-                {/* Main Headline with Smooth Glowing Pulse Effect */}
+                {/* Main Headline with High-Visibility Pulsing Glow Class */}
                 <h1 className="hero-title glowing-title">
                     Stop trading manually.<br />
                     <span className="highlight-text">Let TraderScore.pro do the heavy lifting.</span>
                 </h1>
 
-                {/* Subtitle with Live Terminal Typing Effect */}
+                {/* Subtitle with Looping Terminal Typing Effect */}
                 <p className="hero-subtitle">
                     {typedSubtitle}
-                    {!isTypingComplete && <span className="typing-cursor">_</span>}
+                    <span className="typing-cursor">_</span>
                 </p>
 
                 <div className="hero-actions">
