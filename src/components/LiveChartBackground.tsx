@@ -10,9 +10,16 @@ export const LiveChartBackground = () => {
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        if (!canvas) return;
+        if (!canvas) {
+            console.error('LiveChartBackground: Canvas ref is null');
+            return;
+        }
+
         const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+        if (!ctx) {
+            console.error('LiveChartBackground: 2D context not available');
+            return;
+        }
 
         let animationFrameId: number;
         let subscription: { unsubscribe: () => void } | null = null;
@@ -27,41 +34,40 @@ export const LiveChartBackground = () => {
         window.addEventListener('resize', resize);
 
         let candles: { open: number; high: number; low: number; close: number }[] = [];
-        let basePrice = 1000;
+        let basePrice = 100.0; // Scaled base price for stable rendering
 
         // Initialize smooth background ambient candles
         for (let i = 0; i < 60; i++) {
-            const variance = (Math.random() - 0.5) * 4;
+            const variance = (Math.random() - 0.5) * 2;
             const open = basePrice;
             const close = open + variance;
-            const high = Math.max(open, close) + Math.random() * 2;
-            const low = Math.min(open, close) - Math.random() * 2;
+            const high = Math.max(open, close) + Math.random();
+            const low = Math.min(open, close) - Math.random();
             candles.push({ open, high, low, close });
             basePrice = close;
         }
 
-        // Helper to push a new candle tick onto the stream
         const pushTick = (price: number) => {
             const last = candles[candles.length - 1];
             const open = last ? last.close : price;
             const close = price;
-            const high = Math.max(open, close) + Math.random() * 0.8;
-            const low = Math.min(open, close) - Math.random() * 0.8;
+            const high = Math.max(open, close) + 0.5;
+            const low = Math.min(open, close) - 0.5;
 
             candles.push({ open, high, low, close });
             if (candles.length > 80) candles.shift();
         };
 
-        // 1. Start simulation fallback immediately so the background is lively right away
+        // 1. Simulation fallback ticker
         simulationInterval = setInterval(() => {
             if (!isReceivingLiveTicks) {
-                const lastClose = candles[candles.length - 1]?.close || 1000;
-                const nextPrice = lastClose + (Math.random() - 0.48) * 2.5; // Slight market drift
+                const lastClose = candles[candles.length - 1]?.close || 100.0;
+                const nextPrice = lastClose + (Math.random() - 0.48) * 1.5;
                 pushTick(nextPrice);
             }
-        }, 1200);
+        }, 1000);
 
-        // 2. Try plugging into live R_10 WebSocket feed
+        // 2. Live R_10 feed subscription
         const initLiveFeed = async () => {
             try {
                 if (api_base.api) {
@@ -70,12 +76,12 @@ export const LiveChartBackground = () => {
                         if (data.msg_type === 'tick') {
                             isReceivingLiveTicks = true;
                             if (simulationInterval) clearInterval(simulationInterval);
-                            pushTick(data.tick.quote);
+                            pushTick(Number(data.tick.quote));
                         }
                     });
                 }
             } catch (e) {
-                // Stays safely on simulation fallback if WebSocket fails or is unauthenticated
+                console.warn('LiveChartBackground: WebSocket feed fallback active');
             }
         };
 
@@ -86,35 +92,39 @@ export const LiveChartBackground = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const candleWidth = canvas.width / 70;
-            offset += 0.15; // Slow ambient pan effect
+            offset += 0.12;
+
+            const prices = candles.flatMap(c => [c.high, c.low]);
+            const minY = Math.min(...prices);
+            const maxY = Math.max(...prices);
+            const range = maxY - minY || 1;
 
             candles.forEach((c, index) => {
                 const x = index * candleWidth - (offset % candleWidth);
                 const isGreen = c.close >= c.open;
                 
-                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)';
-                ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.06)' : 'rgba(239, 68, 68, 0.06)';
-                ctx.lineWidth = 1;
+                // Slightly increased opacity so it is clearly visible
+                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)';
+                ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)';
+                ctx.lineWidth = 1.5;
 
-                const minY = Math.min(...candles.map(item => item.low));
-                const maxY = Math.max(...candles.map(item => item.high));
-                const range = maxY - minY || 1;
-                
                 const normalizeY = (val: number) => 
-                    canvas.height - ((val - minY) / range) * (canvas.height * 0.6) - (canvas.height * 0.2);
+                    canvas.height - ((val - minY) / range) * (canvas.height * 0.5) - (canvas.height * 0.25);
 
                 const yHigh = normalizeY(c.high);
                 const yLow = normalizeY(c.low);
                 const yOpen = normalizeY(c.open);
                 const yClose = normalizeY(c.close);
 
+                // Draw Wick
                 ctx.beginPath();
                 ctx.moveTo(x + candleWidth / 2, yHigh);
                 ctx.lineTo(x + candleWidth / 2, yLow);
                 ctx.stroke();
 
+                // Draw Body
                 const bodyY = Math.min(yOpen, yClose);
-                const bodyHeight = Math.max(Math.abs(yOpen - yClose), 2);
+                const bodyHeight = Math.max(Math.abs(yOpen - yClose), 3);
                 ctx.fillRect(x + 2, bodyY, candleWidth - 4, bodyHeight);
                 ctx.strokeRect(x + 2, bodyY, candleWidth - 4, bodyHeight);
             });
