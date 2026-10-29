@@ -7,7 +7,11 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    pointer-events: none; /* Ensures clicks pass straight through to buttons */
-    z-index: 1;          /* Sits behind landing page content */
+    min-width: 100%;
+    min-height: 100%;
+    pointer-events: none; /* Ensures clicks pass straight through to landing page buttons */
+    z-index: 1;          /* Sits safely behind landing page content */
     opacity: 0.8;
+    display: block;
+    background: transparent;
 }
