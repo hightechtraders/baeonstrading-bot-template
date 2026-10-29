@@ -65,14 +65,15 @@ export const LiveChartBackground = () => {
                 const poolIndex = (startIndex + i) % candles.length;
                 const c = candles[poolIndex];
 
-                const x = Math.round((i * candleWidth) - (totalOffset % candleWidth));
+                const x = Math.round((i * candleWidth) - (totalOffset % canvas.width));
 
                 if (x < -candleWidth * 2 || x > canvas.width + candleWidth * 2) continue;
 
                 const isGreen = c.close >= c.open;
                 
-                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)';
-                ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)';
+                // Dimmed, elegant watermark-style opacities so it sits quietly in the background
+                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.22)' : 'rgba(239, 68, 68, 0.22)';
+                ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)';
                 ctx.lineWidth = 2;
 
                 // Center the chart nicely across the vertical middle of the screen
