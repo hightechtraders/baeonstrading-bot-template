@@ -9,6 +9,7 @@ import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
 import { TradingPreloader } from '@/components/trading-preloader/TradingPreloader';
 import { LandingPage } from '@/components/LandingPage';
+import { LiveChartBackground } from '@/components/LiveChartBackground';
 import './app-root.scss';
 
 const AppContent = lazy(() => import('./app-content'));
@@ -160,7 +161,7 @@ const AppRoot = () => {
         }
     }
 
-    // If genuinely not authenticated: play 5s preloader first, then strictly show Landing Page
+    // If genuinely not authenticated: play 5s preloader first, then strictly show Landing Page with Live Background
     if (!isAuthenticated) {
         if (!isPreloaded) {
             return (
@@ -174,7 +175,13 @@ const AppRoot = () => {
 
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
-                <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
+                {/* 🌟 Live R_10 Candle Chart Background */}
+                <LiveChartBackground />
+
+                {/* Landing Page Content layered safely above the chart */}
+                <div style={{ position: 'relative', zIndex: 2, width: '100%', minHeight: '100%' }}>
+                    <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
+                </div>
             </div>
         );
     }
