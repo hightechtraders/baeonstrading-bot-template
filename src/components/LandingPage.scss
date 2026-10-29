@@ -228,6 +228,10 @@
             margin-right: auto;
             font-family: monospace;
 
+            &.hero-subtitle-larger {
+                font-size: 1.2rem;
+            }
+
             .typing-cursor {
                 color: #34d399;
                 font-weight: bold;
