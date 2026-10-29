@@ -13,15 +13,15 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) => {
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-    // Continuous looping typing effect state
+    // Typing effect state with a 5-second hold before looping
     const fullSubtitleText = "An institutional-grade automated trading platform. Deploy custom Blockly strategies, run real-time multi-asset AI scanners, and manage live ticks with sub-millisecond execution.";
     const [typedSubtitle, setTypedSubtitle] = useState('');
 
     useEffect(() => {
         let currentIndex = 0;
         let isDeleting = false;
-        const typingSpeed = 45; // Reduced speed by half for a smooth, readable pace
-        const pauseBetweenLoops = 3000; // Pause for 3 seconds before re-typing
+        const typingSpeed = 45; // Smooth, relaxed speed
+        const pauseBeforeRestart = 5000; // Exactly 5 seconds hold time
 
         const interval = setInterval(() => {
             if (!isDeleting) {
@@ -29,12 +29,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                     setTypedSubtitle(fullSubtitleText.slice(0, currentIndex));
                     currentIndex++;
                 } else {
-                    // Finished typing, wait before restarting loop
+                    // Reached the end, hold for 5 seconds before clearing and restarting
                     isDeleting = true;
                     setTimeout(() => {
                         isDeleting = false;
                         currentIndex = 0;
-                    }, pauseBetweenLoops);
+                    }, pauseBeforeRestart);
                 }
             }
         }, typingSpeed);
@@ -101,13 +101,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                     <span>NEXT-GEN AI TRADING WORKSPACE · DERIV API</span>
                 </div>
                 
-                {/* Main Headline with High-Visibility Pulsing Glow Class */}
+                {/* Main Headline with direct text opacity fade-in/out pulsing */}
                 <h1 className="hero-title glowing-title">
                     Stop trading manually.<br />
                     <span className="highlight-text">Let TraderScore.pro do the heavy lifting.</span>
                 </h1>
 
-                {/* Subtitle with Looping Terminal Typing Effect */}
+                {/* Subtitle with typing effect and 5s hold */}
                 <p className="hero-subtitle">
                     {typedSubtitle}
                     <span className="typing-cursor">_</span>
