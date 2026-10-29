@@ -1,33 +1,27 @@
 // ==========================================
 // FILE: src/components/layout/header/header-metrics.tsx
 // ==========================================
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { useStore } from '@/hooks/useStore';
+import { api_base } from '@/external/bot-skeleton/services/api/api-base';
 import './header-metrics.scss';
 
 export const HeaderMetrics = observer(() => {
-    const { client, run_panel, dbot, dash_store } = useStore() ?? {};
+    const { client, run_panel, dbot } = useStore() ?? {};
+    const [isR10Active, setIsR10Active] = useState(false);
 
     const todayPnl = client?.status?.today_pnl || '+0.00 USD';
     const isProfitable = !todayPnl.startsWith('-');
-    
     const isRunning = client?.is_running || run_panel?.is_running || dbot?.is_running || false;
 
-    // Grab the active symbol from whichever store property holds it
-    const activeSymbol = 
-        dash_store?.active_symbol || 
-        dbot?.active_symbol || 
-        dbot?.symbol || 
-        dash_store?.symbol || 
-        '';
-
-    // Normalize string to check against short code or full Blockly display name
-    const normalizedSymbol = String(activeSymbol).trim().toUpperCase();
-    const isR10Active = 
-        normalizedSymbol === 'R_10' || 
-        normalizedSymbol === 'VOLATILITY 10 INDEX' ||
-        normalizedSymbol.includes('VOLATILITY 10');
+    // Check api_base live feed directly to see if R_10 ticks are streaming
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setIsR10Active(api_base.isR10FeedLive());
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <div className="header-metrics">
