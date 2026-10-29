@@ -86,11 +86,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                     </button>
                     
-                    {/* Wired to use the custom onSignup handler */}
+                    {/* Wired to use the custom onSignup handler with proper SCSS background class */}
                     <button 
                         onClick={onSignup}
                         className="btn-secondary"
-                        style={{ background: 'transparent', cursor: 'pointer' }}
                     >
                         Create Deriv Account
                     </button>
