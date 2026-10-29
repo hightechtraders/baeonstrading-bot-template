@@ -2,16 +2,13 @@
 // FILE: src/components/LiveChartBackground.scss
 // ==========================================
 .live-chart-background {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    min-width: 100%;
-    min-height: 100%;
-    pointer-events: none; /* Ensures clicks pass straight through to landing page buttons */
-    z-index: 1;          /* Sits safely behind landing page content */
-    opacity: 0.8;
-    display: block;
-    background: transparent;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    pointer-events: none !important;
+    z-index: 1 !important;
+    display: block !important;
+    background: transparent !important;
 }
