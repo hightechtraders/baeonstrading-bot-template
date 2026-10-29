@@ -269,14 +269,17 @@
             }
 
             .btn-secondary {
-                background: rgba(15, 23, 42, 0.6);
-                color: #cbd5e1;
-                border: 1px solid rgba(255, 255, 255, 0.12);
+                // Give it a solid pale green translucent background to contrast cleanly against the dark backdrop & chart
+                background: rgba(16, 185, 129, 0.15);
+                color: #34d399;
+                border: 1px solid rgba(16, 185, 129, 0.4);
+                box-shadow: 0 4px 15px rgba(16, 185, 129, 0.15);
 
                 &:hover {
-                    background: rgba(30, 41, 59, 0.8);
-                    border-color: rgba(255, 255, 255, 0.25);
+                    background: rgba(16, 185, 129, 0.25);
+                    border-color: rgba(16, 185, 129, 0.7);
                     color: #ffffff;
+                    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25);
                 }
             }
         }
