@@ -26,52 +26,45 @@ export const LiveChartBackground = () => {
         let candles: { open: number; high: number; low: number; close: number }[] = [];
         let basePrice = 100.0;
 
-        // Initialize enough candles to fill wide viewports comfortably
-        for (let i = 0; i < 100; i++) {
-            const variance = (Math.random() - 0.49) * 2.0;
+        // Initialize a comfortable number of wide candles (e.g., 45 total across screen)
+        const totalCandles = 45;
+        for (let i = 0; i < totalCandles; i++) {
+            const variance = (Math.random() - 0.48) * 3.5;
             const open = basePrice;
             const close = open + variance;
-            const high = Math.max(open, close) + Math.random() * 0.9;
-            const low = Math.min(open, close) - Math.random() * 0.9;
+            const high = Math.max(open, close) + Math.random() * 1.8;
+            const low = Math.min(open, close) - Math.random() * 1.8;
             candles.push({ open, high, low, close });
             basePrice = close;
         }
 
         let lastStructuralTime = performance.now();
-        const structuralInterval = 700; // ms between adding new structural candles
+        const structuralInterval = 900; // ms between shifting new structural candles
         let offset = 0;
 
         const render = (currentTime: number) => {
             if (!canvas || !ctx) return;
 
-            // 1. Perfectly smooth sub-pixel continuous horizontal drift
-            offset += 0.5;
+            // 1. Smooth, clear horizontal scrolling speed
+            offset += 0.8;
 
-            // 2. Add structural candles seamlessly over time
+            // 2. Add structural candles smoothly over time
             if (currentTime - lastStructuralTime > structuralInterval) {
                 lastStructuralTime = currentTime;
                 const last = candles[candles.length - 1];
                 const open = last ? last.close : 100.0;
-                const close = open + (Math.random() - 0.49) * 2.2;
-                const high = Math.max(open, close) + Math.random() * 0.8;
-                const low = Math.min(open, close) - Math.random() * 0.8;
+                const close = open + (Math.random() - 0.48) * 4.0;
+                const high = Math.max(open, close) + Math.random() * 2.0;
+                const low = Math.min(open, close) - Math.random() * 2.0;
 
                 candles.push({ open, high, low, close });
-                if (candles.length > 130) candles.shift();
-            }
-
-            // 3. Gentle micro-fluctuation on the current live candle
-            if (candles.length > 0) {
-                const current = candles[candles.length - 1];
-                current.close += (Math.random() - 0.5) * 0.12;
-                current.high = Math.max(current.high, current.close);
-                current.low = Math.min(current.low, current.close);
+                if (candles.length > 60) candles.shift();
             }
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Force candle width to an even, clean number to eliminate sub-pixel grid shimmering
-            const candleWidth = Math.round(Math.max(canvas.width / 90, 12));
+            // Calculate a wide, substantial candle width so they look like real chart candles
+            const candleWidth = Math.round(canvas.width / 38);
 
             // Seamless loop reset when offset completes one full candle width
             if (offset >= candleWidth) {
@@ -84,17 +77,17 @@ export const LiveChartBackground = () => {
             const range = maxY - minY || 1;
 
             candles.forEach((c, index) => {
-                // Round the final X coordinate to the nearest integer to completely eliminate jitter
                 const x = Math.round((index * candleWidth) - offset);
 
-                // Skip off-screen rendering for pristine performance
+                // Skip off-screen rendering
                 if (x < -candleWidth * 2 || x > canvas.width + candleWidth * 2) return;
 
                 const isGreen = c.close >= c.open;
                 
-                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)';
-                ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
-                ctx.lineWidth = 1.5;
+                // Crisp institutional colors with clean opacity
+                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.45)' : 'rgba(239, 68, 68, 0.45)';
+                ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+                ctx.lineWidth = 2;
 
                 const normalizeY = (val: number) => 
                     canvas.height - ((val - minY) / range) * (canvas.height * 0.5) - (canvas.height * 0.25);
@@ -110,11 +103,11 @@ export const LiveChartBackground = () => {
                 ctx.lineTo(x + Math.floor(candleWidth / 2), yLow);
                 ctx.stroke();
 
-                // Draw Body
+                // Draw Body (with generous spacing so they never touch or look thin)
                 const bodyY = Math.min(yOpen, yClose);
-                const bodyHeight = Math.max(Math.abs(yOpen - yClose), 2);
-                ctx.fillRect(x + 2, bodyY, candleWidth - 4, bodyHeight);
-                ctx.strokeRect(x + 2, bodyY, candleWidth - 4, bodyHeight);
+                const bodyHeight = Math.max(Math.abs(yOpen - yClose), 4);
+                ctx.fillRect(x + 4, bodyY, candleWidth - 8, bodyHeight);
+                ctx.strokeRect(x + 4, bodyY, candleWidth - 8, bodyHeight);
             });
 
             animationFrameId = requestAnimationFrame(render);
