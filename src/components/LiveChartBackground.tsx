@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/components/LiveChartBackground.tsx
+// FILE: src/components/LiveChartBackground.scss / .tsx
 // ==========================================
 import { useEffect, useRef } from 'react';
 import './LiveChartBackground.scss';
@@ -15,9 +15,7 @@ export const LiveChartBackground = () => {
         if (!ctx) return;
 
         let animationFrameId: number;
-        let simulationInterval: NodeJS.Timeout | null = null;
 
-        // Force explicit full-screen sizing on mount and resize
         const updateSize = () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -28,38 +26,59 @@ export const LiveChartBackground = () => {
         let candles: { open: number; high: number; low: number; close: number }[] = [];
         let basePrice = 100.0;
 
-        // Initialize smooth background ambient candles
-        for (let i = 0; i < 75; i++) {
-            const variance = (Math.random() - 0.49) * 2.5;
+        // Initialize smooth background candles
+        for (let i = 0; i < 90; i++) {
+            const variance = (Math.random() - 0.48) * 2.0;
             const open = basePrice;
             const close = open + variance;
-            const high = Math.max(open, close) + Math.random() * 1.5;
-            const low = Math.min(open, close) - Math.random() * 1.5;
+            const high = Math.max(open, close) + Math.random() * 1.0;
+            const low = Math.min(open, close) - Math.random() * 1.0;
             candles.push({ open, high, low, close });
             basePrice = close;
         }
 
-        const pushSimulatedTick = () => {
-            const last = candles[candles.length - 1];
-            const open = last ? last.close : 100.0;
-            const close = open + (Math.random() - 0.49) * 3.0;
-            const high = Math.max(open, close) + Math.random() * 1.5;
-            const low = Math.min(open, close) - Math.random() * 1.5;
-
-            candles.push({ open, high, low, close });
-            if (candles.length > 95) candles.shift();
-        };
-
-        // Smooth simulation tick interval
-        simulationInterval = setInterval(pushSimulatedTick, 800);
+        // Continuously morph the latest active candle smoothly instead of popping new ones
+        let lastUpdateTime = performance.now();
+        const updateInterval = 600; // ms per structural tick
 
         let offset = 0;
-        const render = () => {
+        const render = (currentTime: number) => {
             if (!canvas || !ctx) return;
+
+            // 1. Smooth continuous sub-pixel panning speed (no stutter)
+            offset += 0.4; 
+
+            // 2. Continuous structural candle progression
+            if (currentTime - lastUpdateTime > updateInterval) {
+                lastUpdateTime = currentTime;
+                const last = candles[candles.length - 1];
+                const open = last ? last.close : 100.0;
+                const close = open + (Math.random() - 0.48) * 2.5;
+                const high = Math.max(open, close) + Math.random() * 0.8;
+                const low = Math.min(open, close) - Math.random() * 0.8;
+
+                candles.push({ open, high, low, close });
+                if (candles.length > 120) candles.shift();
+            }
+
+            // Sub-pixel live breathing effect on the current forming candle
+            if (candles.length > 0) {
+                const currentCandle = candles[candles.length - 1];
+                currentCandle.close += (Math.random() - 0.5) * 0.15;
+                currentCandle.high = Math.max(currentCandle.high, currentCandle.close);
+                currentCandle.low = Math.min(currentCandle.low, currentCandle.close);
+            }
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const candleWidth = Math.max(canvas.width / 80, 10);
-            offset += 0.18; // Smooth horizontal drift speed
+            const candleWidth = Math.max(canvas.width / 95, 10);
+            
+            // Reset offset loop seamlessly when it crosses one candle width
+            if (offset >= candleWidth) {
+                offset -= candleWidth;
+                // Shift array smoothly matching the seamless loop reset
+                // (Handled implicitly by continuous index mapping)
+            }
 
             const prices = candles.flatMap(c => [c.high, c.low]);
             const minY = Math.min(...prices);
@@ -67,12 +86,16 @@ export const LiveChartBackground = () => {
             const range = maxY - minY || 1;
 
             candles.forEach((c, index) => {
-                const x = index * candleWidth - (offset % candleWidth);
+                // Pin candles to smooth continuous horizontal offset coordinates
+                const x = (index * candleWidth) - offset;
+                
+                // Skip rendering off-screen candles for maximum performance
+                if (x < -candleWidth || x > canvas.width + candleWidth) return;
+
                 const isGreen = c.close >= c.open;
                 
-                // Professional institutional styling with visible contrast
-                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)';
-                ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)';
+                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)';
+                ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
                 ctx.lineWidth = 1.5;
 
                 const normalizeY = (val: number) => 
@@ -83,15 +106,15 @@ export const LiveChartBackground = () => {
                 const yOpen = normalizeY(c.open);
                 const yClose = normalizeY(c.close);
 
-                // Draw Candle Wick
+                // Draw Wick
                 ctx.beginPath();
                 ctx.moveTo(x + candleWidth / 2, yHigh);
                 ctx.lineTo(x + candleWidth / 2, yLow);
                 ctx.stroke();
 
-                // Draw Candle Body
+                // Draw Body
                 const bodyY = Math.min(yOpen, yClose);
-                const bodyHeight = Math.max(Math.abs(yOpen - yClose), 3);
+                const bodyHeight = Math.max(Math.abs(yOpen - yClose), 2);
                 ctx.fillRect(x + 2, bodyY, candleWidth - 4, bodyHeight);
                 ctx.strokeRect(x + 2, bodyY, candleWidth - 4, bodyHeight);
             });
@@ -99,12 +122,11 @@ export const LiveChartBackground = () => {
             animationFrameId = requestAnimationFrame(render);
         };
 
-        render();
+        animationFrameId = requestAnimationFrame(render);
 
         return () => {
             window.removeEventListener('resize', updateSize);
             cancelAnimationFrame(animationFrameId);
-            if (simulationInterval) clearInterval(simulationInterval);
         };
     }, []);
 
@@ -112,7 +134,6 @@ export const LiveChartBackground = () => {
         <canvas 
             ref={canvasRef} 
             className="live-chart-background"
-            style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 1 }}
         />
     );
 };
