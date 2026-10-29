@@ -29,12 +29,12 @@ export const LiveChartBackground = () => {
         const totalPool = 120;
 
         for (let i = 0; i < totalPool; i++) {
-            // Give candles a healthy, natural price swing so their wicks and bodies are large
-            const variance = (Math.random() - 0.48) * 8.0;
+            // Increased price variance so wicks and swings are much more dynamic (preventing straight lines)
+            const variance = (Math.random() - 0.47) * 14.0;
             const open = basePrice;
             const close = open + variance;
-            const high = Math.max(open, close) + Math.random() * 4.0;
-            const low = Math.min(open, close) - Math.random() * 4.0;
+            const high = Math.max(open, close) + Math.random() * 7.0;
+            const low = Math.min(open, close) - Math.random() * 7.0;
             candles.push({ open, high, low, close });
             basePrice = close;
         }
@@ -55,8 +55,8 @@ export const LiveChartBackground = () => {
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Substantial candle width for a bold, professional look
-            const candleWidth = Math.round(canvas.width / 35);
+            // Slightly wider candle width for a bold, prominent look
+            const candleWidth = Math.round(canvas.width / 30);
 
             const startIndex = Math.floor(totalOffset / candleWidth);
             const localOffset = totalOffset % canvas.width; // Keeps coordinate math robust
@@ -91,11 +91,11 @@ export const LiveChartBackground = () => {
                 ctx.lineTo(x + Math.floor(candleWidth / 2), yLow);
                 ctx.stroke();
 
-                // Draw Bold Candle Body (guaranteed minimum height so they never look like thin lines)
+                // Draw Bold Candle Body (increased minimum height and adjusted padding for the wider columns)
                 const bodyY = Math.min(yOpen, yClose);
-                const bodyHeight = Math.max(Math.abs(yOpen - yClose), 10);
-                ctx.fillRect(x + 5, bodyY, candleWidth - 10, bodyHeight);
-                ctx.strokeRect(x + 5, bodyY, candleWidth - 10, bodyHeight);
+                const bodyHeight = Math.max(Math.abs(yOpen - yClose), 16);
+                ctx.fillRect(x + 4, bodyY, candleWidth - 8, bodyHeight);
+                ctx.strokeRect(x + 4, bodyY, candleWidth - 8, bodyHeight);
             }
 
             animationFrameId = requestAnimationFrame(render);
