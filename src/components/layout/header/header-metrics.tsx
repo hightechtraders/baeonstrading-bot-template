@@ -1,3 +1,6 @@
+// ==========================================
+// FILE: src/components/layout/header/header-metrics.tsx
+// ==========================================
 import React from 'react';
 import { observer } from 'mobx-react-lite';
 import { useStore } from '@/hooks/useStore';
@@ -27,7 +30,7 @@ export const HeaderMetrics = observer(() => {
             </div>
 
             <div className="header-metrics__item">
-                <span className="header-metrics__dot header-metrics__dot--active" />
+                <span className="header-metrics__dot header-metrics__dot--connected" />
                 <span className="header-metrics__label">API Connected</span>
             </div>
         </div>
