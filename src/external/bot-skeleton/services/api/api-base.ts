@@ -170,7 +170,7 @@ class APIBase {
             this.api?.connection.addEventListener('open', this.onsocketopen.bind(this));
             this.api?.connection.addEventListener('close', this.onsocketclose.bind(this));
 
-            // [AI] - Direct Native WebSocket Live Tick Interceptor
+            // [AI] - Direct Native WebSocket Interceptor for Ticks & P&L
             if (this.api && this.api.connection) {
                 const originalOnMessage = this.api.connection.onmessage;
                 this.api.connection.onmessage = (event: MessageEvent) => {
@@ -182,6 +182,24 @@ class APIBase {
 
                     try {
                         const data = JSON.parse(event.data);
+
+                        // Capture proposal open contract stream for real-time P&L (Wins & Losses)
+                        if (data && data.msg_type === 'proposal_open_contract' && data.proposal_open_contract) {
+                            const contract = data.proposal_open_contract;
+                            const profit = Number(contract.profit || 0);
+                            const currency = contract.currency || 'USD';
+                            const formattedPnl = `${profit >= 0 ? '+' : ''}${profit.toFixed(2)} ${currency}`;
+
+                            window.dispatchEvent(
+                                new CustomEvent('deriv_pnl_update', {
+                                    detail: {
+                                        pnl: formattedPnl,
+                                        isSold: Boolean(contract.is_sold),
+                                    },
+                                })
+                            );
+                        }
+
                         if (data && data.msg_type === 'tick' && data.tick) {
                             // Record timestamp if R_10 tick is received
                             if (data.tick.symbol === 'R_10') {
