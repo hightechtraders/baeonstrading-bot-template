@@ -211,6 +211,11 @@
             margin-bottom: 16px;
             letter-spacing: -0.02em;
 
+            // Smooth glowing pulse effect fading in and out
+            &.glowing-title {
+                animation: titleGlowPulse 4s ease-in-out infinite;
+            }
+
             .highlight-text {
                 background: linear-gradient(90deg, #22d3ee 0%, #34d399 100%);
                 -webkit-background-clip: text;
@@ -226,6 +231,13 @@
             max-width: 680px;
             margin-left: auto;
             margin-right: auto;
+            font-family: monospace; // Gives the live typing effect a sleek terminal look
+
+            .typing-cursor {
+                color: #34d399;
+                font-weight: bold;
+                animation: blinkCursor 0.8s infinite;
+            }
         }
 
         .hero-actions {
@@ -378,10 +390,22 @@
 }
 
 @keyframes scrollTicker {
-    0% {
-        transform: translateX(0);
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+@keyframes titleGlowPulse {
+    0%, 100% {
+        text-shadow: 0 0 15px rgba(34, 211, 238, 0.2), 0 0 30px rgba(16, 185, 129, 0.15);
+        filter: brightness(1);
     }
-    100% {
-        transform: translateX(-50%);
+    50% {
+        text-shadow: 0 0 25px rgba(34, 211, 238, 0.45), 0 0 50px rgba(16, 185, 129, 0.35);
+        filter: brightness(1.1);
     }
+}
+
+@keyframes blinkCursor {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
 }
