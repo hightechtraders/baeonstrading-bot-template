@@ -200,11 +200,12 @@
         }
 
         .hero-title {
-            font-size: clamp(2.2rem, 4.5vw, 3.5rem);
+            font-size: clamp(3rem, 6vw, 4.72rem); // Increased by 35%
             font-weight: 800;
             line-height: 1.15;
             margin-bottom: 16px;
             letter-spacing: -0.02em;
+            text-transform: uppercase; // Forced to capital letters
 
             &.glowing-title {
                 animation: titleGlowPulse 6s ease-in-out infinite;
@@ -222,15 +223,13 @@
             font-size: 1.05rem;
             line-height: 1.5;
             margin-bottom: 24px;
-            max-width: 720px;
+            max-width: 680px;
             margin-left: auto;
             margin-right: auto;
             font-family: monospace;
 
             &.hero-subtitle-larger {
-                text-transform: uppercase; // Force capital letters
-                font-size: 1.62rem; // Enlarged by 35%
-                letter-spacing: 0.5px;
+                font-size: 1.2rem;
             }
 
             .typing-cursor {
