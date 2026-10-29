@@ -12,12 +12,22 @@ export const HeaderMetrics = observer(() => {
     const todayPnl = client?.status?.today_pnl || '+0.00 USD';
     const isProfitable = !todayPnl.startsWith('-');
     
-    // Check multiple possible locations for the running state across stores
     const isRunning = client?.is_running || run_panel?.is_running || dbot?.is_running || false;
 
-    // Check if the current active chart/Blockly asset is R_10 for live streaming feeds
-    const activeSymbol = dash_store?.active_symbol || dbot?.active_symbol || 'R_10';
-    const isR10Active = activeSymbol === 'R_10';
+    // Grab the active symbol from whichever store property holds it
+    const activeSymbol = 
+        dash_store?.active_symbol || 
+        dbot?.active_symbol || 
+        dbot?.symbol || 
+        dash_store?.symbol || 
+        '';
+
+    // Normalize string to check against short code or full Blockly display name
+    const normalizedSymbol = String(activeSymbol).trim().toUpperCase();
+    const isR10Active = 
+        normalizedSymbol === 'R_10' || 
+        normalizedSymbol === 'VOLATILITY 10 INDEX' ||
+        normalizedSymbol.includes('VOLATILITY 10');
 
     return (
         <div className="header-metrics">
