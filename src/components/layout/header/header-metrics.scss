@@ -16,13 +16,28 @@
     }
 }
 
+@keyframes pulse-green {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
 .header-metrics {
     display: flex;
     align-items: center;
-    justify-content: center; // Centers them nicely as a unified block
+    justify-content: center;
     flex: 1;
     max-width: 1050px;
-    gap: 12px; // Exact spacing between each component
+    gap: 12px;
     margin: 0 auto;
     height: 100%;
     padding: 0 2rem;
@@ -56,6 +71,12 @@
         &--idle {
             background-color: var(--status-danger);
             animation: pulse-red 1.5s infinite;
+        }
+
+        &--connected {
+            background-color: #10b981;
+            box-shadow: 0 0 10px #10b981;
+            animation: pulse-green 1.5s infinite;
         }
     }
 
