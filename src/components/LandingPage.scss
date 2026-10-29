@@ -382,7 +382,6 @@
         transform: translateX(0);
     }
     100% {
-        // Exactly -50% ensures it loops back precisely at the midpoint of duplicated elements
         transform: translateX(-50%);
     }
 }
