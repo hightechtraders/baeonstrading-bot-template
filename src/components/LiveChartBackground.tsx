@@ -2,7 +2,6 @@
 // FILE: src/components/LiveChartBackground.tsx
 // ==========================================
 import { useEffect, useRef } from 'react';
-import { api_base } from '@/external/bot-skeleton';
 import './LiveChartBackground.scss';
 
 export const LiveChartBackground = () => {
@@ -10,89 +9,59 @@ export const LiveChartBackground = () => {
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        if (!canvas) {
-            console.error('LiveChartBackground: Canvas ref is null');
-            return;
-        }
+        if (!canvas) return;
 
         const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            console.error('LiveChartBackground: 2D context not available');
-            return;
-        }
+        if (!ctx) return;
 
         let animationFrameId: number;
-        let subscription: { unsubscribe: () => void } | null = null;
         let simulationInterval: NodeJS.Timeout | null = null;
-        let isReceivingLiveTicks = false;
 
         const resize = () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            canvas.width = window.innerWidth || document.documentElement.clientWidth;
+            canvas.height = window.innerHeight || document.documentElement.clientHeight;
         };
         resize();
         window.addEventListener('resize', resize);
 
         let candles: { open: number; high: number; low: number; close: number }[] = [];
-        let basePrice = 100.0; // Scaled base price for stable rendering
+        let basePrice = 100.0;
 
         // Initialize smooth background ambient candles
-        for (let i = 0; i < 60; i++) {
-            const variance = (Math.random() - 0.5) * 2;
+        for (let i = 0; i < 70; i++) {
+            const variance = (Math.random() - 0.49) * 2.2;
             const open = basePrice;
             const close = open + variance;
-            const high = Math.max(open, close) + Math.random();
-            const low = Math.min(open, close) - Math.random();
+            const high = Math.max(open, close) + Math.random() * 1.2;
+            const low = Math.min(open, close) - Math.random() * 1.2;
             candles.push({ open, high, low, close });
             basePrice = close;
         }
 
-        const pushTick = (price: number) => {
+        const pushSimulatedTick = () => {
             const last = candles[candles.length - 1];
-            const open = last ? last.close : price;
-            const close = price;
-            const high = Math.max(open, close) + 0.5;
-            const low = Math.min(open, close) - 0.5;
+            const open = last ? last.close : 100.0;
+            // Introduce subtle trending movement with realistic market noise
+            const close = open + (Math.random() - 0.49) * 2.5;
+            const high = Math.max(open, close) + Math.random() * 1.2;
+            const low = Math.min(open, close) - Math.random() * 1.2;
 
             candles.push({ open, high, low, close });
-            if (candles.length > 80) candles.shift();
+            if (candles.length > 90) candles.shift();
         };
 
-        // 1. Simulation fallback ticker
+        // Smooth simulation tick interval (updates every 900ms)
         simulationInterval = setInterval(() => {
-            if (!isReceivingLiveTicks) {
-                const lastClose = candles[candles.length - 1]?.close || 100.0;
-                const nextPrice = lastClose + (Math.random() - 0.48) * 1.5;
-                pushTick(nextPrice);
-            }
-        }, 1000);
-
-        // 2. Live R_10 feed subscription
-        const initLiveFeed = async () => {
-            try {
-                if (api_base.api) {
-                    await api_base.api.subscribe({ ticks: 'R_10' });
-                    subscription = api_base.api.onMessage().subscribe(({ data }: any) => {
-                        if (data.msg_type === 'tick') {
-                            isReceivingLiveTicks = true;
-                            if (simulationInterval) clearInterval(simulationInterval);
-                            pushTick(Number(data.tick.quote));
-                        }
-                    });
-                }
-            } catch (e) {
-                console.warn('LiveChartBackground: WebSocket feed fallback active');
-            }
-        };
-
-        initLiveFeed();
+            pushSimulatedTick();
+        }, 900);
 
         let offset = 0;
         const render = () => {
+            if (!canvas || !ctx) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const candleWidth = canvas.width / 70;
-            offset += 0.12;
+            const candleWidth = Math.max(canvas.width / 75, 12);
+            offset += 0.15; // Smooth horizontal drift speed
 
             const prices = candles.flatMap(c => [c.high, c.low]);
             const minY = Math.min(...prices);
@@ -103,8 +72,8 @@ export const LiveChartBackground = () => {
                 const x = index * candleWidth - (offset % candleWidth);
                 const isGreen = c.close >= c.open;
                 
-                // Slightly increased opacity so it is clearly visible
-                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)';
+                // Professional institutional dark-theme coloring with balanced opacity
+                ctx.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)';
                 ctx.fillStyle = isGreen ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)';
                 ctx.lineWidth = 1.5;
 
@@ -116,13 +85,13 @@ export const LiveChartBackground = () => {
                 const yOpen = normalizeY(c.open);
                 const yClose = normalizeY(c.close);
 
-                // Draw Wick
+                // Draw Candle Wick
                 ctx.beginPath();
                 ctx.moveTo(x + candleWidth / 2, yHigh);
                 ctx.lineTo(x + candleWidth / 2, yLow);
                 ctx.stroke();
 
-                // Draw Body
+                // Draw Candle Body
                 const bodyY = Math.min(yOpen, yClose);
                 const bodyHeight = Math.max(Math.abs(yOpen - yClose), 3);
                 ctx.fillRect(x + 2, bodyY, candleWidth - 4, bodyHeight);
@@ -138,7 +107,6 @@ export const LiveChartBackground = () => {
             window.removeEventListener('resize', resize);
             cancelAnimationFrame(animationFrameId);
             if (simulationInterval) clearInterval(simulationInterval);
-            if (subscription) subscription.unsubscribe();
         };
     }, []);
 
