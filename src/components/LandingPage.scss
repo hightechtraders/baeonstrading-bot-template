@@ -206,9 +206,9 @@
             margin-bottom: 16px;
             letter-spacing: -0.02em;
 
-            // Noticeable, prominent fade-in/out pulsing glow animation
+            // Direct text fading in and out cleanly without box/shadow glows
             &.glowing-title {
-                animation: titleGlowPulse 3s ease-in-out infinite;
+                animation: titleGlowPulse 4s ease-in-out infinite;
             }
 
             .highlight-text {
@@ -390,15 +390,15 @@
     100% { transform: translateX(-50%); }
 }
 
-// Pronounced fade-in and fade-out text glow loop
+// Clean text opacity fade-in and fade-out pulse (no shadows)
 @keyframes titleGlowPulse {
     0%, 100% {
-        text-shadow: 0 0 8px rgba(34, 211, 238, 0.1), 0 0 15px rgba(16, 185, 129, 0.1);
-        opacity: 0.85;
+        opacity: 0.6;
+        filter: brightness(0.9);
     }
     50% {
-        text-shadow: 0 0 25px rgba(34, 211, 238, 0.6), 0 0 45px rgba(16, 185, 129, 0.5);
         opacity: 1;
+        filter: brightness(1.25);
     }
 }
 
