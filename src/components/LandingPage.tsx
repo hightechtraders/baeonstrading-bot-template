@@ -2,6 +2,7 @@
 // FILE: src/components/LandingPage.tsx
 // ==========================================
 import React, { useState } from 'react';
+import { LiveChartBackground } from './LiveChartBackground';
 import './LandingPage.scss';
 
 interface LandingPageProps {
@@ -22,6 +23,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
 
     return (
         <div className="landing-container" onMouseMove={handleMouseMove}>
+            {/* 🌟 Live Simulated Background Chart */}
+            <LiveChartBackground />
+
             {/* Ambient Mouse-Follow Glow Effect */}
             <div 
                 className="mouse-glow" 
