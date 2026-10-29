@@ -42,7 +42,9 @@ export const HeaderMetrics = observer(() => {
 
             <div className="header-metrics__item">
                 <span className={`header-metrics__dot ${isLiveActive ? 'header-metrics__dot--connected' : 'header-metrics__dot--amber'}`} />
-                <span className="header-metrics__label">API Connected</span>
+                <span className="header-metrics__label">
+                    {isLiveActive ? 'API Connected' : 'Standby'}
+                </span>
             </div>
         </div>
     );
