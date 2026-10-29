@@ -567,7 +567,7 @@ const AppWrapper = observer(() => {
                                 </div>
                             </div>
 
-                            {/* Copy Trading Tab Complete Hub */}
+                            {/* Copy Trading Tab Professional Hub */}
                             <div
                                 label={
                                     <>
@@ -581,56 +581,56 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-copy-trading'
                             >
-                                <div className='free-bots-container' style={{ padding: '2rem', boxSizing: 'border-box' }}>
+                                <div className='free-bots-container' style={{ padding: '2.4rem', boxSizing: 'border-box' }}>
                                     
-                                    {/* CONDITIONAL VIEW: MASTER STRATEGY DETAIL PAGE WITH VISIBLE BACK BUTTON */}
+                                    {/* CONDITIONAL VIEW: MASTER STRATEGY DETAIL PAGE */}
                                     {selected_master ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%', maxWidth: '1000px', margin: '0 auto', textAlign: 'left', paddingBottom: '4rem' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%', maxWidth: '1100px', margin: '0 auto', textAlign: 'left', paddingBottom: '4rem' }}>
                                             
                                             {/* Top Navigation Bar with Back Button */}
-                                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center' }}>
                                                 <button 
                                                     onClick={() => setSelectedMaster(null)}
                                                     style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--general-section-1)', border: '1.5px solid #00a86b', color: 'var(--text-prominent)', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 500, fontSize: '1rem' }}
                                                 >
-                                                    <span style={{ fontSize: '1.2rem', color: '#00a86b', marginRight: '6px' }}>←</span> Back to Masters Hub
+                                                    <span style={{ fontSize: '1.2rem', color: '#00a86b', marginRight: '4px' }}>←</span> Back to Masters Hub
                                                 </button>
                                             </div>
 
                                             {/* Master Header Profile Card */}
-                                            <div style={{ background: 'var(--general-section-1)', border: '1px solid rgba(0, 168, 107, 0.4)', borderRadius: '1rem', padding: '2.4rem' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.2rem', marginBottom: '1.5rem' }}>
+                                            <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.4)', borderRadius: '1.2rem', padding: '2.8rem', boxShadow: '0 0.8rem 2rem rgba(0,0,0,0.1)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.2rem', marginBottom: '1.6rem' }}>
                                                     <div>
-                                                        <span style={{ fontSize: '0.95rem', fontWeight: 500, color: '#00a86b', textTransform: 'uppercase' }}>Verified Master Strategy</span>
-                                                        <h2 style={{ fontSize: '1.8rem', fontWeight: 500, color: 'var(--text-prominent)', margin: '0.4rem 0 0.8rem 0' }}>{selected_master.name}</h2>
-                                                        <p style={{ color: 'var(--text-prominent)', fontSize: '1.05rem', opacity: 0.9 }}>Created by <strong>{selected_master.creator}</strong> • <span style={{ color: '#00a86b' }}>{selected_master.copiersCount} active copiers</span></p>
+                                                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#00a86b', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Verified Master Strategy</span>
+                                                        <h2 style={{ fontSize: '2rem', fontWeight: 600, color: 'var(--text-prominent)', margin: '0.6rem 0 0.8rem 0', lineHeight: 1.25 }}>{selected_master.name}</h2>
+                                                        <p style={{ color: 'var(--text-prominent)', fontSize: '1.05rem', opacity: 0.85 }}>Created by <strong>{selected_master.creator}</strong> • <span style={{ color: '#00a86b', fontWeight: 600 }}>{selected_master.copiersCount} active copiers</span></p>
                                                     </div>
-                                                    <span style={{ background: selected_master.risk === 'Low' ? 'rgba(76, 175, 80, 0.15)' : 'rgba(255, 152, 0, 0.15)', color: selected_master.risk === 'Low' ? '#4caf50' : '#ff9800', padding: '0.5rem 1.2rem', borderRadius: '0.8rem', fontWeight: 500, fontSize: '0.95rem' }}>
+                                                    <span style={{ background: selected_master.risk === 'Low' ? 'rgba(76, 175, 80, 0.15)' : 'rgba(255, 152, 0, 0.15)', color: selected_master.risk === 'Low' ? '#4caf50' : '#ff9800', padding: '0.6rem 1.4rem', borderRadius: '0.8rem', fontWeight: 600, fontSize: '0.95rem' }}>
                                                         {selected_master.risk} Risk Profile
                                                     </span>
                                                 </div>
 
-                                                <p style={{ color: 'var(--text-prominent)', fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '2rem', opacity: 0.95 }}>
+                                                <p style={{ color: 'var(--text-prominent)', fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '2.4rem', opacity: 0.9 }}>
                                                     {selected_master.description}
                                                 </p>
 
                                                 {/* Metrics Grid */}
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                                                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.2rem 1.6rem', borderRadius: '0.8rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.2rem', marginBottom: '2.4rem' }}>
+                                                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.4rem 1.8rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.06)' }}>
                                                         <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', opacity: 0.7, marginBottom: '0.4rem' }}>Win Rate</span>
-                                                        <strong style={{ fontSize: '1.3rem', color: '#00a86b', fontWeight: 500 }}>{selected_master.winRate}</strong>
+                                                        <strong style={{ fontSize: '1.4rem', color: '#00a86b', fontWeight: 600 }}>{selected_master.winRate}</strong>
                                                     </div>
-                                                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.2rem 1.6rem', borderRadius: '0.8rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.4rem 1.8rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.06)' }}>
                                                         <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', opacity: 0.7, marginBottom: '0.4rem' }}>30D Net ROI</span>
-                                                        <strong style={{ fontSize: '1.3rem', color: '#4caf50', fontWeight: 500 }}>{selected_master.roi30d}</strong>
+                                                        <strong style={{ fontSize: '1.4rem', color: '#4caf50', fontWeight: 600 }}>{selected_master.roi30d}</strong>
                                                     </div>
-                                                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.2rem 1.6rem', borderRadius: '0.8rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.4rem 1.8rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.06)' }}>
                                                         <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', opacity: 0.7, marginBottom: '0.4rem' }}>Max Drawdown</span>
-                                                        <strong style={{ fontSize: '1.3rem', color: '#e11d48', fontWeight: 500 }}>{selected_master.maxDrawdown}</strong>
+                                                        <strong style={{ fontSize: '1.4rem', color: '#e11d48', fontWeight: 600 }}>{selected_master.maxDrawdown}</strong>
                                                     </div>
-                                                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.2rem 1.6rem', borderRadius: '0.8rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.4rem 1.8rem', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.06)' }}>
                                                         <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', opacity: 0.7, marginBottom: '0.4rem' }}>Total Volume Copied</span>
-                                                        <strong style={{ fontSize: '1.3rem', color: 'var(--text-prominent)', fontWeight: 500 }}>{selected_master.totalVolume}</strong>
+                                                        <strong style={{ fontSize: '1.4rem', color: 'var(--text-prominent)', fontWeight: 600 }}>{selected_master.totalVolume}</strong>
                                                     </div>
                                                 </div>
 
@@ -648,23 +648,23 @@ const AppWrapper = observer(() => {
                                                         setSelectedMaster(null);
                                                     }}
                                                     className='free-bots-btn'
-                                                    style={{ width: '100%', height: '4.5rem', fontSize: '1.1rem' }}
+                                                    style={{ width: '100%', height: '4.8rem', fontSize: '1.1rem', fontWeight: 600 }}
                                                 >
                                                     Confirm & Copy Strategy Now
                                                 </button>
                                             </div>
 
                                             {/* Recent Executed Trades Audit Table */}
-                                            <div style={{ background: 'var(--general-section-1)', border: '1px solid rgba(0, 168, 107, 0.3)', borderRadius: '1rem', padding: '2.4rem' }}>
-                                                <h4 style={{ fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-prominent)', marginBottom: '1.5rem' }}>Recent Mirrored Signals & Execution Log</h4>
+                                            <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.3)', borderRadius: '1.2rem', padding: '2.8rem' }}>
+                                                <h4 style={{ fontSize: '1.3rem', fontWeight: 600, color: 'var(--text-prominent)', marginBottom: '1.6rem' }}>Recent Mirrored Signals & Execution Log</h4>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                                     {selected_master.history.map((tx: any) => (
-                                                        <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.2rem 1.6rem', background: 'rgba(0,0,0,0.15)', borderRadius: '0.8rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                        <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.4rem 1.8rem', background: 'rgba(0,0,0,0.15)', borderRadius: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
                                                             <div>
-                                                                <span style={{ display: 'block', fontWeight: 500, color: 'var(--text-prominent)', fontSize: '1.05rem', marginBottom: '0.2rem' }}>{tx.asset} ({tx.type})</span>
+                                                                <span style={{ display: 'block', fontWeight: 600, color: 'var(--text-prominent)', fontSize: '1.05rem', marginBottom: '0.3rem' }}>{tx.asset} ({tx.type})</span>
                                                                 <span style={{ fontSize: '0.95rem', color: 'var(--text-prominent)', opacity: 0.75 }}>Timestamp: {tx.time} • Stake: {tx.stake}</span>
                                                             </div>
-                                                            <strong style={{ color: tx.pnl.startsWith('+') ? '#4caf50' : '#e11d48', fontSize: '1.1rem', fontWeight: 500 }}>{tx.pnl}</strong>
+                                                            <strong style={{ color: tx.pnl.startsWith('+') ? '#4caf50' : '#e11d48', fontSize: '1.15rem', fontWeight: 600 }}>{tx.pnl}</strong>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -672,27 +672,27 @@ const AppWrapper = observer(() => {
                                         </div>
                                     ) : (
                                         <>
-                                            {/* Top Header & Sub-Nav */}
-                                            <div style={{ marginBottom: '2rem', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                                            {/* Professional Header & Glassmorphic Tab Switcher */}
+                                            <div style={{ marginBottom: '2.4rem', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', background: 'var(--general-section-1)', padding: '2rem 2.4rem', borderRadius: '1.2rem', border: '1.5px solid rgba(0, 168, 107, 0.25)', boxShadow: '0 0.6rem 1.6rem rgba(0,0,0,0.06)' }}>
                                                 <div>
-                                                    <h3 style={{ fontSize: '1.6rem', fontWeight: 500, marginBottom: '0.4rem', color: 'var(--text-prominent)' }}>
+                                                    <h3 style={{ fontSize: '1.8rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-prominent)' }}>
                                                         Copy Trading Hub
                                                     </h3>
-                                                    <p style={{ color: 'var(--text-prominent)', fontSize: '1.05rem', opacity: 0.85 }}>
+                                                    <p style={{ color: 'var(--text-prominent)', fontSize: '1.05rem', opacity: 0.85, margin: 0 }}>
                                                         Mirror verified master traders and automate multi-asset execution in real-time.
                                                     </p>
                                                 </div>
 
-                                                <div style={{ display: 'flex', gap: '8px', background: 'rgba(255, 255, 255, 0.05)', padding: '4px', borderRadius: '8px' }}>
+                                                <div style={{ display: 'flex', gap: '6px', background: 'rgba(0, 168, 107, 0.06)', padding: '6px', borderRadius: '1rem', border: '1px solid rgba(0, 168, 107, 0.2)' }}>
                                                     <button 
                                                         onClick={() => setCopySubTab('discover')}
-                                                        style={{ padding: '8px 16px', background: copy_sub_tab === 'discover' ? '#00a86b' : 'transparent', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem' }}
+                                                        style={{ padding: '10px 20px', background: copy_sub_tab === 'discover' ? '#00a86b' : 'transparent', border: 'none', color: copy_sub_tab === 'discover' ? '#fff' : 'var(--text-prominent)', borderRadius: '0.8rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.95rem', transition: 'all 0.2s ease' }}
                                                     >
                                                         Discover Masters
                                                     </button>
                                                     <button 
                                                         onClick={() => setCopySubTab('portfolio')}
-                                                        style={{ padding: '8px 16px', background: copy_sub_tab === 'portfolio' ? '#00a86b' : 'transparent', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 500, fontSize: '0.95rem' }}
+                                                        style={{ padding: '10px 20px', background: copy_sub_tab === 'portfolio' ? '#00a86b' : 'transparent', border: 'none', color: copy_sub_tab === 'portfolio' ? '#fff' : 'var(--text-prominent)', borderRadius: '0.8rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.95rem', transition: 'all 0.2s ease' }}
                                                     >
                                                         Active Portfolios ({active_portfolios.length})
                                                     </button>
@@ -703,27 +703,27 @@ const AppWrapper = observer(() => {
                                             {copy_sub_tab === 'discover' && (
                                                 <>
                                                     {/* Risk Management Settings Bar */}
-                                                    <div style={{ background: 'var(--general-section-1)', border: '1px solid rgba(0, 168, 107, 0.3)', borderRadius: '1rem', padding: '1.6rem', marginBottom: '2rem', display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                                        <div style={{ flex: '1', minWidth: '220px', textAlign: 'left' }}>
-                                                            <label style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-prominent)', marginBottom: '0.6rem', fontWeight: 500 }}>Stake Multiplier: <strong style={{ color: '#00a86b' }}>{multiplier}x</strong></label>
+                                                    <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.3)', borderRadius: '1.2rem', padding: '2rem 2.4rem', marginBottom: '2.4rem', display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                                        <div style={{ flex: '1', minWidth: '240px', textAlign: 'left' }}>
+                                                            <label style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-prominent)', marginBottom: '0.8rem', fontWeight: 600 }}>Stake Multiplier: <strong style={{ color: '#00a86b' }}>{multiplier}x</strong></label>
                                                             <input 
                                                                 type='range' min='0.1' max='5.0' step='0.1' value={multiplier} 
                                                                 onChange={(e) => setMultiplier(Number(e.target.value))}
-                                                                style={{ width: '100%', accentColor: '#00a86b', cursor: 'pointer' }} 
+                                                                style={{ width: '100%', accentColor: '#00a86b', cursor: 'pointer', height: '6px' }} 
                                                             />
                                                         </div>
-                                                        <div style={{ flex: '1', minWidth: '180px', textAlign: 'left' }}>
-                                                            <label style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-prominent)', marginBottom: '0.6rem', fontWeight: 500 }}>Max Stake Cap ($)</label>
+                                                        <div style={{ flex: '1', minWidth: '200px', textAlign: 'left' }}>
+                                                            <label style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-prominent)', marginBottom: '0.8rem', fontWeight: 600 }}>Max Stake Cap ($)</label>
                                                             <input 
                                                                 type='number' value={maxStake} onChange={(e) => setMaxStake(e.target.value)}
-                                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-prominent)', borderRadius: '6px', fontSize: '1rem' }}
+                                                                style={{ width: '100%', padding: '10px 14px', background: 'rgba(0,0,0,0.25)', border: '1.5px solid rgba(255,255,255,0.12)', color: 'var(--text-prominent)', borderRadius: '0.8rem', fontSize: '1rem', fontWeight: 500 }}
                                                             />
                                                         </div>
-                                                        <div style={{ flex: '1', minWidth: '180px', textAlign: 'left' }}>
-                                                            <label style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-prominent)', marginBottom: '0.6rem', fontWeight: 500 }}>Daily Stop-Loss ($)</label>
+                                                        <div style={{ flex: '1', minWidth: '200px', textAlign: 'left' }}>
+                                                            <label style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-prominent)', marginBottom: '0.8rem', fontWeight: 600 }}>Daily Stop-Loss ($)</label>
                                                             <input 
                                                                 type='number' value={stopLoss} onChange={(e) => setStopLoss(e.target.value)}
-                                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text-prominent)', borderRadius: '6px', fontSize: '1rem' }}
+                                                                style={{ width: '100%', padding: '10px 14px', background: 'rgba(0,0,0,0.25)', border: '1.5px solid rgba(255,255,255,0.12)', color: 'var(--text-prominent)', borderRadius: '0.8rem', fontSize: '1rem', fontWeight: 500 }}
                                                             />
                                                         </div>
                                                     </div>
@@ -749,8 +749,8 @@ const AppWrapper = observer(() => {
                                                                     <p className='strategy-description'>Created by {trader.creator} • {trader.copiersCount} active copiers</p>
                                                                     
                                                                     <div className='strategy-details' style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-                                                                        <span className='market-name' style={{ background: 'rgba(0, 168, 107, 0.12)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.9rem', color: 'var(--text-prominent)' }}>Win Rate: <strong style={{ color: '#00a86b' }}>{trader.winRate}</strong></span>
-                                                                        <span className='market-name' style={{ background: 'rgba(76, 175, 80, 0.12)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.9rem', color: '#4caf50' }}>30D ROI: <strong>{trader.roi30d}</strong></span>
+                                                                        <span className='market-name' style={{ background: 'rgba(0, 168, 107, 0.12)', padding: '6px 10px', borderRadius: '6px', fontSize: '0.9rem', color: 'var(--text-prominent)' }}>Win Rate: <strong style={{ color: '#00a86b' }}>{trader.winRate}</strong></span>
+                                                                        <span className='market-name' style={{ background: 'rgba(76, 175, 80, 0.12)', padding: '6px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#4caf50' }}>30D ROI: <strong>{trader.roi30d}</strong></span>
                                                                     </div>
                                                                 </div>
 
@@ -777,47 +777,58 @@ const AppWrapper = observer(() => {
                                                 </>
                                             )}
 
-                                            {/* ACTIVE PORTFOLIO TAB VIEW WITH BACK BUTTON */}
+                                            {/* ACTIVE PORTFOLIO TAB VIEW WITH SINGLE CLEAN LEFT BACK ARROW */}
                                             {copy_sub_tab === 'portfolio' && (
                                                 <div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                                                        <h4 style={{ fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-prominent)', margin: 0 }}>Active Copy Portfolios</h4>
+                                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2rem', background: 'var(--general-section-1)', padding: '1.6rem 2.4rem', borderRadius: '1.2rem', border: '1.5px solid rgba(0, 168, 107, 0.3)' }}>
                                                         <button 
                                                             onClick={() => setCopySubTab('discover')}
-                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--general-section-1)', border: '1.5px solid #00a86b', color: 'var(--text-prominent)', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500 }}
+                                                            style={{ 
+                                                                display: 'inline-flex', 
+                                                                alignItems: 'center', 
+                                                                gap: '10px', 
+                                                                background: 'transparent', 
+                                                                border: 'none', 
+                                                                color: 'var(--text-prominent)', 
+                                                                cursor: 'pointer', 
+                                                                fontSize: '1.2rem', 
+                                                                fontWeight: 600,
+                                                                padding: 0 
+                                                            }}
                                                         >
-                                                            <span style={{ fontSize: '1.1rem', color: '#00a86b', marginRight: '4px' }}>←</span> Back to Discover
+                                                            <span style={{ fontSize: '1.4rem', color: '#00a86b', fontWeight: 700 }}>←</span> 
+                                                            <span>Active Copy Portfolios ({active_portfolios.length})</span>
                                                         </button>
                                                     </div>
 
                                                     {active_portfolios.length === 0 ? (
-                                                        <div className='free-bots-closed-state' style={{ padding: '4rem 1.6rem', textAlign: 'center' }}>
-                                                            <p style={{ marginBottom: '1.2rem', color: 'var(--text-prominent)', fontSize: '1.1rem' }}>You are not currently copying any master traders.</p>
-                                                            <button onClick={() => setCopySubTab('discover')} className='free-bots-btn rescan-btn'>
+                                                        <div className='free-bots-closed-state' style={{ padding: '5rem 2rem', textAlign: 'center', background: 'var(--general-section-1)', borderRadius: '1.2rem', border: '1.5px solid rgba(0, 168, 107, 0.3)' }}>
+                                                            <p style={{ marginBottom: '1.5rem', color: 'var(--text-prominent)', fontSize: '1.15rem', fontWeight: 500 }}>You are not currently copying any master traders.</p>
+                                                            <button onClick={() => setCopySubTab('discover')} className='free-bots-btn rescan-btn' style={{ width: 'auto', padding: '1.2rem 2.8rem', display: 'inline-flex' }}>
                                                                 Discover Strategies
                                                             </button>
                                                         </div>
                                                     ) : (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                                                             {active_portfolios.map(item => (
-                                                                <div key={item.id} style={{ background: 'var(--general-section-1)', border: '1px solid rgba(0, 168, 107, 0.3)', borderRadius: '1rem', padding: '1.6rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', textAlign: 'left' }}>
+                                                                <div key={item.id} style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1.2rem', padding: '2rem 2.4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', textAlign: 'left', boxShadow: '0 0.6rem 1.6rem rgba(0,0,0,0.06)' }}>
                                                                     <div>
-                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                                                                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4caf50', display: 'inline-block' }} />
-                                                                            <h4 style={{ color: 'var(--text-prominent)', fontSize: '1.15rem', fontWeight: 500 }}>{item.name}</h4>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                                                                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4caf50', display: 'inline-block' }} />
+                                                                            <h4 style={{ color: 'var(--text-prominent)', fontSize: '1.2rem', fontWeight: 600, margin: 0 }}>{item.name}</h4>
                                                                         </div>
-                                                                        <p style={{ color: 'var(--text-prominent)', fontSize: '0.95rem', opacity: 0.85 }}>Allocation: {item.allocation} • Multiplier: {multiplier}x</p>
+                                                                        <p style={{ color: 'var(--text-prominent)', fontSize: '1rem', opacity: 0.85, margin: 0 }}>Allocation: {item.allocation} • Multiplier: {multiplier}x</p>
                                                                     </div>
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                                                                         <div style={{ textAlign: 'right' }}>
-                                                                            <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-prominent)', opacity: 0.7 }}>Live P&L</span>
-                                                                            <span style={{ fontSize: '1.1rem', fontWeight: 500, color: '#4caf50' }}>{item.pnl}</span>
+                                                                            <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-prominent)', opacity: 0.7, marginBottom: '2px' }}>Live P&L</span>
+                                                                            <span style={{ fontSize: '1.2rem', fontWeight: 600, color: '#4caf50' }}>{item.pnl}</span>
                                                                         </div>
                                                                         <button 
                                                                             onClick={() => {
                                                                                 setActivePortfolios(prev => prev.filter(p => p.id !== item.id));
                                                                             }}
-                                                                            style={{ padding: '6px 14px', background: 'rgba(244, 67, 54, 0.15)', border: '1px solid rgba(244, 67, 54, 0.3)', color: '#f44336', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500 }}
+                                                                            style={{ padding: '10px 18px', background: 'rgba(244, 67, 54, 0.15)', border: '1px solid rgba(244, 67, 54, 0.4)', color: '#f44336', borderRadius: '8px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600 }}
                                                                         >
                                                                             Unlink
                                                                         </button>
