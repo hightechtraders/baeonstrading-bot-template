@@ -10,14 +10,8 @@ import './header-metrics.scss';
 export const HeaderMetrics = observer(() => {
     const { client, run_panel, dbot } = useStore() ?? {};
     const [isLiveActive, setIsLiveActive] = useState(false);
+    const [livePnl, setLivePnl] = useState('+0.00 USD');
 
-    // Pull P&L directly from DBot's native client store status
-    const todayPnl = 
-        client?.status?.today_pnl || 
-        client?.today_pnl || 
-        '+0.00 USD';
-
-    const isProfitable = !String(todayPnl).startsWith('-');
     const isRunning = client?.is_running || run_panel?.is_running || dbot?.is_running || false;
 
     // Monitor live data feed streaming status via api_base
@@ -27,6 +21,25 @@ export const HeaderMetrics = observer(() => {
         }, 1000);
         return () => clearInterval(interval);
     }, []);
+
+    // Listen to real-time P&L updates (wins & losses) streamed directly from api_base websocket
+    useEffect(() => {
+        const handlePnlUpdate = (event: Event) => {
+            const customEvent = event as CustomEvent;
+            if (customEvent.detail?.pnl) {
+                setLivePnl(customEvent.detail.pnl);
+            }
+        };
+
+        window.addEventListener('deriv_pnl_update', handlePnlUpdate);
+        return () => {
+            window.removeEventListener('deriv_pnl_update', handlePnlUpdate);
+        };
+    }, []);
+
+    // Fall back to client store status if available, otherwise use live websocket P&L
+    const todayPnl = client?.status?.today_pnl || client?.today_pnl || livePnl;
+    const isProfitable = !String(todayPnl).startsWith('-');
 
     return (
         <div className="header-metrics">
