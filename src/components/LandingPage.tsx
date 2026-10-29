@@ -113,13 +113,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                     <span>NEXT-GEN AI TRADING WORKSPACE · DERIV API</span>
                 </div>
                 
-                {/* Main Headline with direct text opacity fade-in/out pulsing */}
+                {/* Main Headline (Automatically uppercased and enlarged via SCSS) */}
                 <h1 className="hero-title glowing-title">
                     Stop trading manually.<br />
                     <span className="highlight-text">Let TraderScore.pro do the heavy lifting.</span>
                 </h1>
 
-                {/* Subtitle with typing effect, uppercase text, and +35% enlarged font size */}
+                {/* Subtitle with typing effect */}
                 <p className="hero-subtitle hero-subtitle-larger">
                     {typedSubtitle}
                     <span className="typing-cursor">_</span>
