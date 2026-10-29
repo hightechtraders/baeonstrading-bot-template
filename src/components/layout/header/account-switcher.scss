@@ -137,6 +137,7 @@
         margin-bottom: 0.2rem;
     }
 
+    /* Target ONLY real accounts here, leaving virtual accounts untouched */
     &__account-type {
         @include typeface(--xxsmall-left-normal-green);
 
@@ -148,9 +149,11 @@
         text-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
     }
 
+    /* Explicitly override back to yellow for virtual/demo accounts */
     &--is-virtual {
         .acc-info__account-type {
-            color: $color-yellow;
+            color: $color-yellow !important;
+            text-shadow: none !important;
         }
     }
 
@@ -774,8 +777,8 @@
         text-shadow: 0 0 6px rgba(16, 185, 129, 0.3);
 
         &--virtual {
-            color: $color-yellow;
-            text-shadow: none;
+            color: $color-yellow !important;
+            text-shadow: none !important;
         }
     }
 
