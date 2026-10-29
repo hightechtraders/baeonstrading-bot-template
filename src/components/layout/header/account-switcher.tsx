@@ -93,7 +93,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                     }}
                     style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingRight: '8px' }}
                 >
-                    {/* Real Account Badge with Increased Size (34px) & #6022bd USD text */}
+                    {/* Real Account Badge with Soft Lavender Background & #6022bd USD text */}
                     <div style={{
                         width: '34px',
                         height: '34px',
@@ -103,7 +103,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0,
-                        backgroundColor: '#f3f4f6',
+                        backgroundColor: '#f3e8ff', // Soft lavender circle background
                         fontSize: isVirtual ? '18px' : '11px',
                         fontWeight: 'bold',
                         color: '#6022bd'
@@ -185,12 +185,12 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                             }}
                             style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px' }}
                         >
-                            {/* Dropdown Badge with Increased Size (28px) */}
+                            {/* Dropdown Badge with Soft Lavender Background */}
                             <div style={{
                                 width: '28px', height: '28px', borderRadius: '50%', overflow: 'hidden',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: '0', 
                                 fontSize: account.isVirtual ? '16px' : '10px', fontWeight: 'bold', 
-                                backgroundColor: '#f3f4f6', color: '#6022bd'
+                                backgroundColor: '#f3e8ff', color: '#6022bd'
                             }}>
                                 {account.isVirtual ? '🧪' : 'USD'}
                             </div>
