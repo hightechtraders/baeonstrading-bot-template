@@ -1,6 +1,7 @@
 import { getRoundedNumber } from '@/components/shared';
 import { api_base } from '../../api/api-base';
 import { contract as broadcastContract, contractStatus } from '../utils/broadcast';
+import { observer as globalObserver } from '../../utils/observer'; // 👈 Added globalObserver import
 import { openContractReceived, sell } from './state/actions';
 
 export default Engine =>
@@ -20,6 +21,12 @@ export default Engine =>
                     this.data.contract = contract;
 
                     broadcastContract({ accountID: api_base.account_info.loginid, ...contract });
+
+                    // Broadcast real-time P&L from proposal updates (both active and closed trades)
+                    const profit = Number(contract.profit || 0);
+                    const currency = contract.currency || 'USD';
+                    const formattedPnl = `${profit >= 0 ? '+' : ''}${profit.toFixed(2)} ${currency}`;
+                    globalObserver.emit('client.status.today_pnl', formattedPnl);
 
                     if (this.isSold) {
                         this.contractId = '';
