@@ -25,6 +25,17 @@ export default Engine =>
                         this.contractId = '';
                         clearTimeout(this.transaction_recovery_timeout);
                         this.updateTotals(contract);
+
+                        // Force immediate P&L update on the client store when a contract sells (Win/Loss)
+                        if (this.store?.client) {
+                            const profit = Number(contract.profit || 0);
+                            const currency = contract.currency || 'USD';
+                            this.store.client.status = {
+                                ...this.store.client.status,
+                                today_pnl: `${profit >= 0 ? '+' : ''}${profit.toFixed(2)} ${currency}`,
+                            };
+                        }
+
                         contractStatus({
                             id: 'contract.sold',
                             data: contract.transaction_ids.sell,
