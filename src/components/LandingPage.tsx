@@ -61,21 +61,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                 style={{ left: `${mousePos.x}px`, top: `${mousePos.y}px` }}
             ></div>
 
-            {/* Sticky Endless Market Ticker Bar */}
+            {/* Sticky Endless Market Ticker Bar with 15 Expanded Indices */}
             <div className="market-ticker-bar">
                 <div className="ticker-track">
                     {/* Primary Ticker Set */}
                     <span className="ticker-item"><span className="symbol">R_100</span> <span className="up">+1.42%</span></span>
                     <span className="ticker-item"><span className="symbol">Volatility 75 (1s)</span> <span className="up">+0.89%</span></span>
+                    <span className="ticker-item"><span className="symbol">Volatility 100 (1s)</span> <span className="up">+2.15%</span></span>
+                    <span className="ticker-item"><span className="symbol">Volatility 25</span> <span className="down">-0.65%</span></span>
                     <span className="ticker-item"><span className="symbol">Boom 1000</span> <span className="down">-0.34%</span></span>
                     <span className="ticker-item"><span className="symbol">Crash 500</span> <span className="up">+1.12%</span></span>
+                    <span className="ticker-item"><span className="symbol">Jump 75 Index</span> <span className="up">+1.84%</span></span>
+                    <span className="ticker-item"><span className="symbol">Bull Market Index</span> <span className="up">+2.45%</span></span>
+                    <span className="ticker-item"><span className="symbol">Bear Market Index</span> <span className="down">-1.20%</span></span>
+                    <span className="ticker-item"><span className="symbol">Range Break 200</span> <span className="up">+0.45%</span></span>
                     <span className="ticker-item"><span className="symbol">Step Index</span> <span className="up">+0.55%</span></span>
                     
                     {/* Exact Duplicate Set for Seamless -50% Infinite Loop */}
                     <span className="ticker-item"><span className="symbol">R_100</span> <span className="up">+1.42%</span></span>
                     <span className="ticker-item"><span className="symbol">Volatility 75 (1s)</span> <span className="up">+0.89%</span></span>
+                    <span className="ticker-item"><span className="symbol">Volatility 100 (1s)</span> <span className="up">+2.15%</span></span>
+                    <span className="ticker-item"><span className="symbol">Volatility 25</span> <span className="down">-0.65%</span></span>
                     <span className="ticker-item"><span className="symbol">Boom 1000</span> <span className="down">-0.34%</span></span>
                     <span className="ticker-item"><span className="symbol">Crash 500</span> <span className="up">+1.12%</span></span>
+                    <span className="ticker-item"><span className="symbol">Jump 75 Index</span> <span className="up">+1.84%</span></span>
+                    <span className="ticker-item"><span className="symbol">Bull Market Index</span> <span className="up">+2.45%</span></span>
+                    <span className="ticker-item"><span className="symbol">Bear Market Index</span> <span className="down">-1.20%</span></span>
+                    <span className="ticker-item"><span className="symbol">Range Break 200</span> <span className="up">+0.45%</span></span>
                     <span className="ticker-item"><span className="symbol">Step Index</span> <span className="up">+0.55%</span></span>
                 </div>
             </div>
