@@ -1,17 +1,39 @@
 // ==========================================
 // FILE: src/components/LandingPage.tsx
 // ==========================================
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LiveChartBackground } from './LiveChartBackground';
 import './LandingPage.scss';
 
 interface LandingPageProps {
     onLogin: () => void;
-    onSignup: () => void; // Added signup handler prop
+    onSignup: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) => {
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+    // Typing effect state for the hero subtitle
+    const fullSubtitleText = "An institutional-grade automated trading platform. Deploy custom Blockly strategies, run real-time multi-asset AI scanners, and manage live ticks with sub-millisecond execution.";
+    const [typedSubtitle, setTypedSubtitle] = useState('');
+    const [isTypingComplete, setIsTypingComplete] = useState(false);
+
+    useEffect(() => {
+        let currentIndex = 0;
+        const typingSpeed = 22; // Speed per character in ms
+
+        const typingInterval = setInterval(() => {
+            if (currentIndex < fullSubtitleText.length) {
+                setTypedSubtitle(fullSubtitleText.slice(0, currentIndex + 1));
+                currentIndex++;
+            } else {
+                setIsTypingComplete(true);
+                clearInterval(typingInterval);
+            }
+        }, typingSpeed);
+
+        return () => clearInterval(typingInterval);
+    }, []);
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
@@ -32,16 +54,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                 style={{ left: `${mousePos.x}px`, top: `${mousePos.y}px` }}
             ></div>
 
+            {/* Sticky Endless Market Ticker Bar */}
             <div className="market-ticker-bar">
                 <div className="ticker-track">
-                    {/* Primary Ticker Items */}
+                    {/* Primary Ticker Set */}
                     <span className="ticker-item"><span className="symbol">R_100</span> <span className="up">+1.42%</span></span>
                     <span className="ticker-item"><span className="symbol">Volatility 75 (1s)</span> <span className="up">+0.89%</span></span>
                     <span className="ticker-item"><span className="symbol">Boom 1000</span> <span className="down">-0.34%</span></span>
                     <span className="ticker-item"><span className="symbol">Crash 500</span> <span className="up">+1.12%</span></span>
                     <span className="ticker-item"><span className="symbol">Step Index</span> <span className="up">+0.55%</span></span>
                     
-                    {/* Duplicated Items for Seamless Infinite Loop */}
+                    {/* Exact Duplicate Set for Seamless -50% Infinite Loop */}
                     <span className="ticker-item"><span className="symbol">R_100</span> <span className="up">+1.42%</span></span>
                     <span className="ticker-item"><span className="symbol">Volatility 75 (1s)</span> <span className="up">+0.89%</span></span>
                     <span className="ticker-item"><span className="symbol">Boom 1000</span> <span className="down">-0.34%</span></span>
@@ -71,13 +94,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                     <span>NEXT-GEN AI TRADING WORKSPACE · DERIV API</span>
                 </div>
                 
-                <h1 className="hero-title">
+                {/* Main Headline with Smooth Glowing Pulse Effect */}
+                <h1 className="hero-title glowing-title">
                     Stop trading manually.<br />
                     <span className="highlight-text">Let TraderScore.pro do the heavy lifting.</span>
                 </h1>
 
+                {/* Subtitle with Live Terminal Typing Effect */}
                 <p className="hero-subtitle">
-                    An institutional-grade automated trading platform. Deploy custom Blockly strategies, run real-time multi-asset AI scanners, and manage live ticks with sub-millisecond execution.
+                    {typedSubtitle}
+                    {!isTypingComplete && <span className="typing-cursor">_</span>}
                 </p>
 
                 <div className="hero-actions">
@@ -86,11 +112,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                     </button>
                     
-                    {/* Wired to use the custom onSignup handler with proper SCSS background class */}
-                    <button 
-                        onClick={onSignup}
-                        className="btn-secondary"
-                    >
+                    <button onClick={onSignup} className="btn-secondary">
                         Create Deriv Account
                     </button>
                 </div>
