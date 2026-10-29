@@ -9,22 +9,20 @@ import './header-metrics.scss';
 
 export const HeaderMetrics = observer(() => {
     const { client, run_panel, dbot } = useStore() ?? {};
-    const [isR10Active, setIsR10Active] = useState(false);
+    const [isLiveActive, setIsLiveActive] = useState(false);
 
     const todayPnl = client?.status?.today_pnl || '+0.00 USD';
     const isProfitable = !todayPnl.startsWith('-');
     const isRunning = client?.is_running || run_panel?.is_running || dbot?.is_running || false;
 
-    // Check api_base live feed directly to see if R_10 ticks are streaming
+    // Monitor live data feed streaming status via api_base
     useEffect(() => {
         const interval = setInterval(() => {
-            setIsR10Active(api_base.isR10FeedLive());
+            // Checks if live data ticks are actively flowing from the socket
+            setIsLiveActive(api_base.isR10FeedLive());
         }, 1000);
         return () => clearInterval(interval);
     }, []);
-
-    // Professional state logic
-    const connectionLabel = isR10Active ? 'API Live (R_10)' : 'API Connected (Standby)';
 
     return (
         <div className="header-metrics">
@@ -43,8 +41,8 @@ export const HeaderMetrics = observer(() => {
             </div>
 
             <div className="header-metrics__item">
-                <span className={`header-metrics__dot ${isR10Active ? 'header-metrics__dot--connected' : 'header-metrics__dot--amber'}`} />
-                <span className="header-metrics__label">{connectionLabel}</span>
+                <span className={`header-metrics__dot ${isLiveActive ? 'header-metrics__dot--connected' : 'header-metrics__dot--amber'}`} />
+                <span className="header-metrics__label">API Connected</span>
             </div>
         </div>
     );
