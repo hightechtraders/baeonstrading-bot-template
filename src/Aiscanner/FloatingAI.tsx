@@ -73,7 +73,9 @@ export const FloatingAI: React.FC = () => {
     };
 
     velocityRef.current = { vx: 0, vy: 0 };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {}
   }, []);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -127,8 +129,10 @@ export const FloatingAI: React.FC = () => {
       vy *= friction;
 
       if (Math.abs(vx) < 0.05 && Math.abs(vy) < 0.05) {
-        cancelAnimationFrame(animFrameRef.current!);
-        animFrameRef.current = null;
+        if (animFrameRef.current) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = null;
+        }
         return;
       }
 
@@ -256,26 +260,27 @@ export const FloatingAI: React.FC = () => {
 
   return (
     <div className="floating-ai-container">
-      {/* Self-contained animations featuring a smooth, slow, and unhurried vertical float */}
+      {/* GPU-accelerated smooth animations with sub-pixel jitter fix */}
       <style>{`
         @keyframes vividPulseCyan {
-          0% { transform: scale(1); opacity: 0.9; }
-          100% { transform: scale(1.8); opacity: 0; }
+          0% { transform: scale3d(1, 1, 1); opacity: 0.9; }
+          100% { transform: scale3d(1.8, 1.8, 1); opacity: 0; }
         }
         @keyframes vividPulsePaleGreen {
-          0% { transform: scale(1); opacity: 0.85; }
-          100% { transform: scale(2.1); opacity: 0; }
+          0% { transform: scale3d(1, 1, 1); opacity: 0.85; }
+          100% { transform: scale3d(2.1, 2.1, 1); opacity: 0; }
         }
         @keyframes vividPulseOuter {
-          0% { transform: scale(1); opacity: 0.7; }
-          100% { transform: scale(2.5); opacity: 0; }
+          0% { transform: scale3d(1, 1, 1); opacity: 0.7; }
+          100% { transform: scale3d(2.5, 2.5, 1); opacity: 0; }
         }
-        @keyframes smoothSlowBounce {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
+        @keyframes silkySlowFloat {
+          0%, 100% { transform: translate3d(0, 0px, 0); }
+          50% { transform: translate3d(0, -9px, 0); }
         }
       `}</style>
 
+      {/* Physics Wrapper: Strictly handles coordinate placement with zero animation interference */}
       <div 
         ref={orbRef}
         className="dancing-orb-wrapper"
@@ -293,70 +298,90 @@ export const FloatingAI: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          overflow: 'visible',
-          animation: 'smoothSlowBounce 4.2s infinite ease-in-out'
+          overflow: 'visible'
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onClick={handleClick}
       >
-        {/* Ring 1: Vivid Cyan Inner Pulse Ring */}
+        {/* Floating Container: Silk-smooth GPU-accelerated vertical motion */}
         <div style={{
           position: 'absolute',
-          inset: '-12px',
+          width: '100%',
+          height: '100%',
           borderRadius: '50%',
-          border: '2px solid rgba(0, 242, 254, 0.85)',
-          animation: 'vividPulseCyan 2.8s infinite cubic-bezier(0.4, 0, 0.6, 1)',
-          pointerEvents: 'none',
-          boxSizing: 'border-box'
-        }} />
-
-        {/* Ring 2: Pale Green Neon Mid Pulse Ring */}
-        <div style={{
-          position: 'absolute',
-          inset: '-24px',
-          borderRadius: '50%',
-          border: '2px solid rgba(152, 255, 152, 0.75)',
-          animation: 'vividPulsePaleGreen 3.4s infinite cubic-bezier(0.4, 0, 0.6, 1) 0.8s',
-          pointerEvents: 'none',
-          boxSizing: 'border-box'
-        }} />
-
-        {/* Ring 3: Outer Cyan/Green Expansion Ring */}
-        <div style={{
-          position: 'absolute',
-          inset: '-36px',
-          borderRadius: '50%',
-          border: '1.5px solid rgba(0, 255, 170, 0.5)',
-          animation: 'vividPulseOuter 4s infinite cubic-bezier(0.4, 0, 0.6, 1) 1.6s',
-          pointerEvents: 'none',
-          boxSizing: 'border-box'
-        }} />
-
-        {/* Core Solid Circular Orb */}
-        <div 
-          className="dancing-orb-inner"
-          style={{
-            width: '100%',
-            height: '100%',
-            aspectRatio: '1 / 1',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          animation: 'silkySlowFloat 4.5s infinite ease-in-out',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
+          pointerEvents: 'none'
+        }}>
+          {/* Ring 1: Vivid Cyan Inner Pulse Ring */}
+          <div style={{
+            position: 'absolute',
+            inset: '-12px',
             borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxSizing: 'border-box',
-            position: 'relative',
-            zIndex: 2,
-            background: 'radial-gradient(circle at 35% 35%, #34d399 0%, #00a86b 45%, #022c22 100%)',
-            boxShadow: 'inset 0 6px 12px rgba(255, 255, 255, 0.45), inset 0 -8px 14px rgba(0, 0, 0, 0.6), 0 0 35px rgba(0, 242, 254, 0.6)',
-            border: '2px solid rgba(255, 255, 255, 0.5)',
-            color: '#ffffff',
-            fontWeight: 800,
-            fontSize: '15px'
-          }}
-        >
-          🤖 AI
+            border: '2px solid rgba(0, 242, 254, 0.85)',
+            animation: 'vividPulseCyan 3s infinite cubic-bezier(0.4, 0, 0.6, 1)',
+            backfaceVisibility: 'hidden',
+            pointerEvents: 'none',
+            boxSizing: 'border-box'
+          }} />
+
+          {/* Ring 2: Pale Green Neon Mid Pulse Ring */}
+          <div style={{
+            position: 'absolute',
+            inset: '-24px',
+            borderRadius: '50%',
+            border: '2px solid rgba(152, 255, 152, 0.75)',
+            animation: 'vividPulsePaleGreen 3.6s infinite cubic-bezier(0.4, 0, 0.6, 1) 0.9s',
+            backfaceVisibility: 'hidden',
+            pointerEvents: 'none',
+            boxSizing: 'border-box'
+          }} />
+
+          {/* Ring 3: Outer Cyan/Green Expansion Ring */}
+          <div style={{
+            position: 'absolute',
+            inset: '-36px',
+            borderRadius: '50%',
+            border: '1.5px solid rgba(0, 255, 170, 0.5)',
+            animation: 'vividPulseOuter 4.2s infinite cubic-bezier(0.4, 0, 0.6, 1) 1.8s',
+            backfaceVisibility: 'hidden',
+            pointerEvents: 'none',
+            boxSizing: 'border-box'
+          }} />
+
+          {/* Core Solid Circular Orb */}
+          <div 
+            className="dancing-orb-inner"
+            style={{
+              width: '100%',
+              height: '100%',
+              aspectRatio: '1 / 1',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxSizing: 'border-box',
+              position: 'relative',
+              zIndex: 2,
+              pointerEvents: 'auto',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              background: 'radial-gradient(circle at 35% 35%, #34d399 0%, #00a86b 45%, #022c22 100%)',
+              boxShadow: 'inset 0 6px 12px rgba(255, 255, 255, 0.45), inset 0 -8px 14px rgba(0, 0, 0, 0.6), 0 0 35px rgba(0, 242, 254, 0.6)',
+              border: '2px solid rgba(255, 255, 255, 0.5)',
+              color: '#ffffff',
+              fontWeight: 800,
+              fontSize: '15px'
+            }}
+          >
+            🤖 AI
+          </div>
         </div>
       </div>
 
