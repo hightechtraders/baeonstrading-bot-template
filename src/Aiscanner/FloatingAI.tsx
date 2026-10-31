@@ -281,6 +281,39 @@ export const FloatingAI: React.FC = () => {
         onPointerUp={handlePointerUp}
         onClick={handleClick}
       >
+        {/* Ring 1: Inner Pulse */}
+        <div style={{
+          position: 'absolute',
+          inset: '-4px',
+          borderRadius: '50%',
+          border: '1px solid rgba(0, 255, 128, 0.4)',
+          animation: 'pulseRing1 2s infinite cubic-bezier(0.4, 0, 0.6, 1)',
+          pointerEvents: 'none',
+          boxSizing: 'border-box'
+        }} />
+
+        {/* Ring 2: Pale Green Accent Pulse */}
+        <div style={{
+          position: 'absolute',
+          inset: '-10px',
+          borderRadius: '50%',
+          border: '1px solid rgba(152, 255, 152, 0.35)',
+          animation: 'pulseRing2 2.5s infinite cubic-bezier(0.4, 0, 0.6, 1) 0.5s',
+          pointerEvents: 'none',
+          boxSizing: 'border-box'
+        }} />
+
+        {/* Ring 3: Outer Expansion Pulse */}
+        <div style={{
+          position: 'absolute',
+          inset: '-16px',
+          borderRadius: '50%',
+          border: '1px solid rgba(0, 255, 128, 0.15)',
+          animation: 'pulseRing3 3s infinite cubic-bezier(0.4, 0, 0.6, 1) 1s',
+          pointerEvents: 'none',
+          boxSizing: 'border-box'
+        }} />
+
         <div 
           className="dancing-orb-inner"
           style={{
@@ -291,7 +324,9 @@ export const FloatingAI: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxSizing: 'border-box'
+            boxSizing: 'border-box',
+            position: 'relative',
+            zIndex: 2
           }}
         >
           🤖 AI
@@ -315,7 +350,7 @@ export const FloatingAI: React.FC = () => {
               {signalBannerText}
             </div>
 
-{isScanningPhase ? (
+            {isScanningPhase ? (
               <div className="scanner-loading-state">
                 <div className="spinner-animation">🛰️</div>
                 <p className="loading-title">Syncing with Volatility 10 Index feed...</p>
