@@ -49,7 +49,6 @@ export const FloatingAI: React.FC = () => {
     }
   }, []);
 
-  // Cancel ongoing momentum animation if user grabs the orb again
   const stopInertia = () => {
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
@@ -257,6 +256,26 @@ export const FloatingAI: React.FC = () => {
 
   return (
     <div className="floating-ai-container">
+      {/* Inline style tag to self-contain ring animations safely */}
+      <style>{`
+        @keyframes inlinePulseCyan {
+          0% { transform: scale(1); opacity: 0.8; }
+          100% { transform: scale(1.55); opacity: 0; }
+        }
+        @keyframes inlinePulsePaleGreen {
+          0% { transform: scale(1); opacity: 0.7; }
+          100% { transform: scale(1.85); opacity: 0; }
+        }
+        @keyframes inlinePulseOuter {
+          0% { transform: scale(1); opacity: 0.5; }
+          100% { transform: scale(2.2); opacity: 0; }
+        }
+        @keyframes inlineOrbBulge {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.08); }
+        }
+      `}</style>
+
       <div 
         ref={orbRef}
         className="dancing-orb-wrapper"
@@ -281,39 +300,40 @@ export const FloatingAI: React.FC = () => {
         onPointerUp={handlePointerUp}
         onClick={handleClick}
       >
-        {/* Ring 1: Inner Pulse */}
+        {/* Ring 1: Vibrant Cyan Inner Pulse Ring */}
         <div style={{
           position: 'absolute',
-          inset: '-4px',
+          inset: '-6px',
           borderRadius: '50%',
-          border: '1px solid rgba(0, 255, 128, 0.4)',
-          animation: 'pulseRing1 2s infinite cubic-bezier(0.4, 0, 0.6, 1)',
+          border: '1.5px solid rgba(0, 242, 254, 0.75)',
+          animation: 'inlinePulseCyan 2s infinite cubic-bezier(0.4, 0, 0.6, 1)',
           pointerEvents: 'none',
           boxSizing: 'border-box'
         }} />
 
-        {/* Ring 2: Pale Green Accent Pulse */}
+        {/* Ring 2: Pale Green Neon Mid Pulse Ring */}
         <div style={{
           position: 'absolute',
-          inset: '-10px',
+          inset: '-12px',
           borderRadius: '50%',
-          border: '1px solid rgba(152, 255, 152, 0.35)',
-          animation: 'pulseRing2 2.5s infinite cubic-bezier(0.4, 0, 0.6, 1) 0.5s',
+          border: '1.5px solid rgba(152, 255, 152, 0.65)',
+          animation: 'inlinePulsePaleGreen 2.5s infinite cubic-bezier(0.4, 0, 0.6, 1) 0.5s',
           pointerEvents: 'none',
           boxSizing: 'border-box'
         }} />
 
-        {/* Ring 3: Outer Expansion Pulse */}
+        {/* Ring 3: Outer Cyan/Green Expansion Ring */}
         <div style={{
           position: 'absolute',
-          inset: '-16px',
+          inset: '-18px',
           borderRadius: '50%',
-          border: '1px solid rgba(0, 255, 128, 0.15)',
-          animation: 'pulseRing3 3s infinite cubic-bezier(0.4, 0, 0.6, 1) 1s',
+          border: '1px solid rgba(0, 255, 170, 0.35)',
+          animation: 'inlinePulseOuter 3s infinite cubic-bezier(0.4, 0, 0.6, 1) 1s',
           pointerEvents: 'none',
           boxSizing: 'border-box'
         }} />
 
+        {/* Core Orb with Bulging / Dancing Animation */}
         <div 
           className="dancing-orb-inner"
           style={{
@@ -326,7 +346,14 @@ export const FloatingAI: React.FC = () => {
             justifyContent: 'center',
             boxSizing: 'border-box',
             position: 'relative',
-            zIndex: 2
+            zIndex: 2,
+            animation: 'inlineOrbBulge 3s infinite cubic-bezier(0.4, 0, 0.6, 1)',
+            background: 'radial-gradient(circle at 35% 35%, #34d399 0%, #00a86b 45%, #022c22 100%)',
+            boxShadow: 'inset 0 6px 12px rgba(255, 255, 255, 0.45), inset 0 -8px 14px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 168, 107, 0.7)',
+            border: '1.5px solid rgba(255, 255, 255, 0.4)',
+            color: '#ffffff',
+            fontWeight: 800,
+            fontSize: '15px'
           }}
         >
           🤖 AI
