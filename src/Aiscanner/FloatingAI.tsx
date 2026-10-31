@@ -260,7 +260,7 @@ export const FloatingAI: React.FC = () => {
 
   return (
     <div className="floating-ai-container">
-      {/* GPU-accelerated smooth animations with sub-pixel jitter fix */}
+      {/* GPU-accelerated smooth animations: Pure up-and-down floating motion with pulsing rings */}
       <style>{`
         @keyframes vividPulseCyan {
           0% { transform: scale3d(1, 1, 1); opacity: 0.9; }
