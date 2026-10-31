@@ -112,13 +112,13 @@ export const FloatingAI: React.FC = () => {
     orbRef.current.style.top = `${newY}px`;
   }, []);
 
-  // Inertia loop that glides and bounces softly off screen edges
+  // Inertia loop that glides smoothly and stops cleanly at screen edges without bouncing
   const startInertia = () => {
     const orb = orbRef.current;
     if (!orb) return;
 
     let { vx, vy } = velocityRef.current;
-    const friction = 0.92; // deceleration factor
+    const friction = 0.92; // deceleration factor (higher = longer glide)
     const elementWidth = orb.offsetWidth || 60;
     const elementHeight = orb.offsetHeight || 60;
     const padding = 12;
@@ -129,7 +129,7 @@ export const FloatingAI: React.FC = () => {
       vx *= friction;
       vy *= friction;
 
-      if (Math.abs(vx) < 0.1 && Math.abs(vy) < 0.1) {
+      if (Math.abs(vx) < 0.05 && Math.abs(vy) < 0.05) {
         cancelAnimationFrame(animFrameRef.current!);
         animFrameRef.current = null;
         return;
@@ -143,13 +143,13 @@ export const FloatingAI: React.FC = () => {
       const minY = padding;
       const maxY = window.innerHeight - elementHeight - padding;
 
-      // Soft boundary damping / reflection
+      // Clean clamping without bounce inversion
       if (nextX <= minX || nextX >= maxX) {
-        vx = -vx * 0.4; // damp velocity on wall impact
+        vx = 0;
         nextX = Math.max(minX, Math.min(nextX, maxX));
       }
       if (nextY <= minY || nextY >= maxY) {
-        vy = -vy * 0.4;
+        vy = 0;
         nextY = Math.max(minY, Math.min(nextY, maxY));
       }
 
@@ -268,7 +268,8 @@ export const FloatingAI: React.FC = () => {
           position: 'fixed',
           touchAction: 'none',
           cursor: 'grab',
-          zIndex: 9999
+          zIndex: 9999,
+          willChange: 'left, top'
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
