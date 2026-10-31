@@ -256,7 +256,7 @@ export const FloatingAI: React.FC = () => {
 
   return (
     <div className="floating-ai-container">
-      {/* Self-contained animations featuring a noticeable up-and-down smooth bounce */}
+      {/* Self-contained animations featuring a smooth, slow, and unhurried vertical float */}
       <style>{`
         @keyframes vividPulseCyan {
           0% { transform: scale(1); opacity: 0.9; }
@@ -270,9 +270,9 @@ export const FloatingAI: React.FC = () => {
           0% { transform: scale(1); opacity: 0.7; }
           100% { transform: scale(2.5); opacity: 0; }
         }
-        @keyframes noticeableBounce {
+        @keyframes smoothSlowBounce {
           0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-12px); }
+          50% { transform: translateY(-10px); }
         }
       `}</style>
 
@@ -294,7 +294,7 @@ export const FloatingAI: React.FC = () => {
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'visible',
-          animation: 'noticeableBounce 2.2s infinite ease-in-out'
+          animation: 'smoothSlowBounce 4.2s infinite ease-in-out'
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -307,7 +307,7 @@ export const FloatingAI: React.FC = () => {
           inset: '-12px',
           borderRadius: '50%',
           border: '2px solid rgba(0, 242, 254, 0.85)',
-          animation: 'vividPulseCyan 2.2s infinite cubic-bezier(0.4, 0, 0.6, 1)',
+          animation: 'vividPulseCyan 2.8s infinite cubic-bezier(0.4, 0, 0.6, 1)',
           pointerEvents: 'none',
           boxSizing: 'border-box'
         }} />
@@ -318,7 +318,7 @@ export const FloatingAI: React.FC = () => {
           inset: '-24px',
           borderRadius: '50%',
           border: '2px solid rgba(152, 255, 152, 0.75)',
-          animation: 'vividPulsePaleGreen 2.8s infinite cubic-bezier(0.4, 0, 0.6, 1) 0.6s',
+          animation: 'vividPulsePaleGreen 3.4s infinite cubic-bezier(0.4, 0, 0.6, 1) 0.8s',
           pointerEvents: 'none',
           boxSizing: 'border-box'
         }} />
@@ -329,7 +329,7 @@ export const FloatingAI: React.FC = () => {
           inset: '-36px',
           borderRadius: '50%',
           border: '1.5px solid rgba(0, 255, 170, 0.5)',
-          animation: 'vividPulseOuter 3.4s infinite cubic-bezier(0.4, 0, 0.6, 1) 1.2s',
+          animation: 'vividPulseOuter 4s infinite cubic-bezier(0.4, 0, 0.6, 1) 1.6s',
           pointerEvents: 'none',
           boxSizing: 'border-box'
         }} />
