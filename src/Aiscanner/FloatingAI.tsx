@@ -256,23 +256,24 @@ export const FloatingAI: React.FC = () => {
 
   return (
     <div className="floating-ai-container">
-      {/* Inline style tag to self-contain ring animations safely */}
+      {/* Self-contained vivid glowing ring & vivid dancing animations */}
       <style>{`
-        @keyframes inlinePulseCyan {
-          0% { transform: scale(1); opacity: 0.8; }
-          100% { transform: scale(1.55); opacity: 0; }
+        @keyframes vividPulseCyan {
+          0% { transform: scale(1); opacity: 0.9; }
+          100% { transform: scale(1.8); opacity: 0; }
         }
-        @keyframes inlinePulsePaleGreen {
+        @keyframes vividPulsePaleGreen {
+          0% { transform: scale(1); opacity: 0.85; }
+          100% { transform: scale(2.1); opacity: 0; }
+        }
+        @keyframes vividPulseOuter {
           0% { transform: scale(1); opacity: 0.7; }
-          100% { transform: scale(1.85); opacity: 0; }
+          100% { transform: scale(2.5); opacity: 0; }
         }
-        @keyframes inlinePulseOuter {
-          0% { transform: scale(1); opacity: 0.5; }
-          100% { transform: scale(2.2); opacity: 0; }
-        }
-        @keyframes inlineOrbBulge {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.08); }
+        @keyframes vividOrbDance {
+          0%, 100% { transform: scale(1) translateY(0px); }
+          30% { transform: scale(1.12) translateY(-4px); }
+          60% { transform: scale(0.96) translateY(3px); }
         }
       `}</style>
 
@@ -300,13 +301,13 @@ export const FloatingAI: React.FC = () => {
         onPointerUp={handlePointerUp}
         onClick={handleClick}
       >
-        {/* Ring 1: Vibrant Cyan Inner Pulse Ring */}
+        {/* Ring 1: Vivid Cyan Inner Pulse Ring */}
         <div style={{
           position: 'absolute',
-          inset: '-6px',
+          inset: '-12px',
           borderRadius: '50%',
-          border: '1.5px solid rgba(0, 242, 254, 0.75)',
-          animation: 'inlinePulseCyan 2s infinite cubic-bezier(0.4, 0, 0.6, 1)',
+          border: '2px solid rgba(0, 242, 254, 0.85)',
+          animation: 'vividPulseCyan 2.2s infinite cubic-bezier(0.4, 0, 0.6, 1)',
           pointerEvents: 'none',
           boxSizing: 'border-box'
         }} />
@@ -314,10 +315,10 @@ export const FloatingAI: React.FC = () => {
         {/* Ring 2: Pale Green Neon Mid Pulse Ring */}
         <div style={{
           position: 'absolute',
-          inset: '-12px',
+          inset: '-24px',
           borderRadius: '50%',
-          border: '1.5px solid rgba(152, 255, 152, 0.65)',
-          animation: 'inlinePulsePaleGreen 2.5s infinite cubic-bezier(0.4, 0, 0.6, 1) 0.5s',
+          border: '2px solid rgba(152, 255, 152, 0.75)',
+          animation: 'vividPulsePaleGreen 2.8s infinite cubic-bezier(0.4, 0, 0.6, 1) 0.6s',
           pointerEvents: 'none',
           boxSizing: 'border-box'
         }} />
@@ -325,15 +326,15 @@ export const FloatingAI: React.FC = () => {
         {/* Ring 3: Outer Cyan/Green Expansion Ring */}
         <div style={{
           position: 'absolute',
-          inset: '-18px',
+          inset: '-36px',
           borderRadius: '50%',
-          border: '1px solid rgba(0, 255, 170, 0.35)',
-          animation: 'inlinePulseOuter 3s infinite cubic-bezier(0.4, 0, 0.6, 1) 1s',
+          border: '1.5px solid rgba(0, 255, 170, 0.5)',
+          animation: 'vividPulseOuter 3.4s infinite cubic-bezier(0.4, 0, 0.6, 1) 1.2s',
           pointerEvents: 'none',
           boxSizing: 'border-box'
         }} />
 
-        {/* Core Orb with Bulging / Dancing Animation */}
+        {/* Core Orb with Vivid Dancing / Bulging & Floating Animation */}
         <div 
           className="dancing-orb-inner"
           style={{
@@ -347,10 +348,10 @@ export const FloatingAI: React.FC = () => {
             boxSizing: 'border-box',
             position: 'relative',
             zIndex: 2,
-            animation: 'inlineOrbBulge 3s infinite cubic-bezier(0.4, 0, 0.6, 1)',
+            animation: 'vividOrbDance 2.5s infinite ease-in-out',
             background: 'radial-gradient(circle at 35% 35%, #34d399 0%, #00a86b 45%, #022c22 100%)',
-            boxShadow: 'inset 0 6px 12px rgba(255, 255, 255, 0.45), inset 0 -8px 14px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 168, 107, 0.7)',
-            border: '1.5px solid rgba(255, 255, 255, 0.4)',
+            boxShadow: 'inset 0 6px 12px rgba(255, 255, 255, 0.45), inset 0 -8px 14px rgba(0, 0, 0, 0.6), 0 0 35px rgba(0, 242, 254, 0.6)',
+            border: '2px solid rgba(255, 255, 255, 0.5)',
             color: '#ffffff',
             fontWeight: 800,
             fontSize: '15px'
