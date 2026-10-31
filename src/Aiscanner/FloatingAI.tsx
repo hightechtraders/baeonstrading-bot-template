@@ -19,12 +19,15 @@ export const FloatingAI: React.FC = () => {
   const [isSweetSpot, setIsSweetSpot] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
 
-  // Refs for zero-latency drag tracking without re-triggering React renders on every pixel move
+  // Physics & Drag Refs
   const orbRef = useRef<HTMLDivElement>(null);
   const posRef = useRef<{ x: number; y: number }>({ x: window.innerWidth - 80, y: window.innerHeight - 100 });
+  const velocityRef = useRef<{ vx: number; vy: number }>({ vx: 0, vy: 0 });
+  const lastMousePosRef = useRef<{ x: number; y: number; time: number }>({ x: 0, y: 0, time: 0 });
   const isDraggingRef = useRef<boolean>(false);
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const hasMovedRef = useRef<boolean>(false);
+  const animFrameRef = useRef<number | null>(null);
 
   const isOpenRef = useRef<boolean>(false);
   const isScanningPhaseRef = useRef<boolean>(true);
@@ -38,7 +41,7 @@ export const FloatingAI: React.FC = () => {
     isScanningPhaseRef.current = isScanningPhase;
   }, [isScanningPhase]);
 
-  // Initialize position via DOM ref on mount
+  // Initialize position on mount
   useEffect(() => {
     if (orbRef.current) {
       orbRef.current.style.left = `${posRef.current.x}px`;
@@ -46,7 +49,16 @@ export const FloatingAI: React.FC = () => {
     }
   }, []);
 
+  // Cancel ongoing momentum animation if user grabs the orb again
+  const stopInertia = () => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+  };
+
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    stopInertia();
     isDraggingRef.current = true;
     hasMovedRef.current = false;
     
@@ -54,39 +66,111 @@ export const FloatingAI: React.FC = () => {
       x: e.clientX - posRef.current.x,
       y: e.clientY - posRef.current.y
     };
-    
+
+    lastMousePosRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      time: performance.now()
+    };
+
+    velocityRef.current = { vx: 0, vy: 0 };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }, []);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current || !orbRef.current) return;
 
-    const dx = e.clientX - posRef.current.x - dragOffsetRef.current.x;
-    const dy = e.clientY - posRef.current.y - dragOffsetRef.current.y;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-      hasMovedRef.current = true;
+    const now = performance.now();
+    const dt = now - lastMousePosRef.current.time;
+
+    if (dt > 0) {
+      // Calculate instantaneous velocity for the throw release
+      const dx = e.clientX - lastMousePosRef.current.x;
+      const dy = e.clientY - lastMousePosRef.current.y;
+      
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+        hasMovedRef.current = true;
+      }
+
+      velocityRef.current = {
+        vx: (dx / dt) * 16, // normalized velocity per frame
+        vy: (dy / dt) * 16
+      };
+
+      lastMousePosRef.current = { x: e.clientX, y: e.clientY, time: now };
     }
 
     const elementWidth = orbRef.current.offsetWidth || 60;
     const elementHeight = orbRef.current.offsetHeight || 60;
     const padding = 12;
 
-    // Strict boundary math clamping
     const newX = Math.max(padding, Math.min(e.clientX - dragOffsetRef.current.x, window.innerWidth - elementWidth - padding));
     const newY = Math.max(padding, Math.min(e.clientY - dragOffsetRef.current.y, window.innerHeight - elementHeight - padding));
 
     posRef.current = { x: newX, y: newY };
-
-    // Direct DOM mutation for buttery smooth 60/120fps tracking without React reconciliation lag
     orbRef.current.style.left = `${newX}px`;
     orbRef.current.style.top = `${newY}px`;
   }, []);
+
+  // Inertia loop that glides and bounces softly off screen edges
+  const startInertia = () => {
+    const orb = orbRef.current;
+    if (!orb) return;
+
+    let { vx, vy } = velocityRef.current;
+    const friction = 0.92; // deceleration factor
+    const elementWidth = orb.offsetWidth || 60;
+    const elementHeight = orb.offsetHeight || 60;
+    const padding = 12;
+
+    const step = () => {
+      if (isDraggingRef.current) return;
+
+      vx *= friction;
+      vy *= friction;
+
+      if (Math.abs(vx) < 0.1 && Math.abs(vy) < 0.1) {
+        cancelAnimationFrame(animFrameRef.current!);
+        animFrameRef.current = null;
+        return;
+      }
+
+      let nextX = posRef.current.x + vx;
+      let nextY = posRef.current.y + vy;
+
+      const minX = padding;
+      const maxX = window.innerWidth - elementWidth - padding;
+      const minY = padding;
+      const maxY = window.innerHeight - elementHeight - padding;
+
+      // Soft boundary damping / reflection
+      if (nextX <= minX || nextX >= maxX) {
+        vx = -vx * 0.4; // damp velocity on wall impact
+        nextX = Math.max(minX, Math.min(nextX, maxX));
+      }
+      if (nextY <= minY || nextY >= maxY) {
+        vy = -vy * 0.4;
+        nextY = Math.max(minY, Math.min(nextY, maxY));
+      }
+
+      posRef.current = { x: nextX, y: nextY };
+      orb.style.left = `${nextX}px`;
+      orb.style.top = `${nextY}px`;
+
+      animFrameRef.current = requestAnimationFrame(step);
+    };
+
+    animFrameRef.current = requestAnimationFrame(step);
+  };
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     isDraggingRef.current = false;
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {}
+
+    // Trigger smooth glide/throw momentum on release
+    startInertia();
   }, []);
 
   const handleClick = useCallback(() => {
