@@ -1,7 +1,7 @@
 // ==========================================
 // FILE: src/Aiscanner/FloatingAI.tsx
 // ==========================================
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ScannerBridge } from './scannerBridge';
 import { Strategy, INITIAL_STRATEGIES } from './strategies';
 import { useScannerFeed } from './useScannerFeed'; 
@@ -19,6 +19,13 @@ export const FloatingAI: React.FC = () => {
   const [isSweetSpot, setIsSweetSpot] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
 
+  // Refs for zero-latency drag tracking without re-triggering React renders on every pixel move
+  const orbRef = useRef<HTMLDivElement>(null);
+  const posRef = useRef<{ x: number; y: number }>({ x: window.innerWidth - 80, y: window.innerHeight - 100 });
+  const isDraggingRef = useRef<boolean>(false);
+  const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const hasMovedRef = useRef<boolean>(false);
+
   const isOpenRef = useRef<boolean>(false);
   const isScanningPhaseRef = useRef<boolean>(true);
   const sweetSpotStreakRef = useRef<number>(0);
@@ -31,21 +38,72 @@ export const FloatingAI: React.FC = () => {
     isScanningPhaseRef.current = isScanningPhase;
   }, [isScanningPhase]);
 
+  // Initialize position via DOM ref on mount
+  useEffect(() => {
+    if (orbRef.current) {
+      orbRef.current.style.left = `${posRef.current.x}px`;
+      orbRef.current.style.top = `${posRef.current.y}px`;
+    }
+  }, []);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    isDraggingRef.current = true;
+    hasMovedRef.current = false;
+    
+    dragOffsetRef.current = {
+      x: e.clientX - posRef.current.x,
+      y: e.clientY - posRef.current.y
+    };
+    
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current || !orbRef.current) return;
+
+    const dx = e.clientX - posRef.current.x - dragOffsetRef.current.x;
+    const dy = e.clientY - posRef.current.y - dragOffsetRef.current.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      hasMovedRef.current = true;
+    }
+
+    const elementWidth = orbRef.current.offsetWidth || 60;
+    const elementHeight = orbRef.current.offsetHeight || 60;
+    const padding = 12;
+
+    // Strict boundary math clamping
+    const newX = Math.max(padding, Math.min(e.clientX - dragOffsetRef.current.x, window.innerWidth - elementWidth - padding));
+    const newY = Math.max(padding, Math.min(e.clientY - dragOffsetRef.current.y, window.innerHeight - elementHeight - padding));
+
+    posRef.current = { x: newX, y: newY };
+
+    // Direct DOM mutation for buttery smooth 60/120fps tracking without React reconciliation lag
+    orbRef.current.style.left = `${newX}px`;
+    orbRef.current.style.top = `${newY}px`;
+  }, []);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    isDraggingRef.current = false;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {}
+  }, []);
+
+  const handleClick = useCallback(() => {
+    if (!hasMovedRef.current) {
+      setIsOpen(true);
+    }
+  }, []);
+
   useEffect(() => {
     const handleStrategiesUpdated = (e: CustomEvent) => {
-      // Support all event payload variants dispatched across the bridge
       const updated = e.detail?.strategies || e.detail?.updatedStrategies;
       if (Array.isArray(updated) && updated.length > 0) {
         setStrategies(updated);
 
-        if (
-          isOpenRef.current && 
-          !isScanningPhaseRef.current && 
-          !isSignalLocked
-        ) {
+        if (isOpenRef.current && !isScanningPhaseRef.current && !isSignalLocked) {
           const sorted = [...updated].sort((a, b) => b.confidence - a.confidence);
           const topStrat = sorted[0];
-
           const isHighConviction = topStrat && topStrat.confidence >= 78 && topStrat.confidence <= 96;
 
           if (isHighConviction) {
@@ -71,7 +129,6 @@ export const FloatingAI: React.FC = () => {
       }
     };
 
-    // Listen to all possible event names to guarantee event synchronization
     window.addEventListener('ai-tick-received' as any, handleStrategiesUpdated as EventListener);
     window.addEventListener('deriv_scanner_updated' as any, handleStrategiesUpdated as EventListener);
     window.addEventListener('ai-strategies-updated' as any, handleStrategiesUpdated as EventListener);
@@ -104,7 +161,6 @@ export const FloatingAI: React.FC = () => {
 
   const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
 
-  // Instantly loads the strategy and triggers the workspace Run button simultaneously
   const handleRunBot = (strat: Strategy) => {
     ScannerBridge.loadStrategyToWorkspace(strat);
     setIsOpen(false);
@@ -121,14 +177,24 @@ export const FloatingAI: React.FC = () => {
 
   return (
     <div className="floating-ai-container">
-      <button 
+      <div 
+        ref={orbRef}
         className="dancing-orb-wrapper"
-        onClick={() => setIsOpen(true)}
+        style={{
+          position: 'fixed',
+          touchAction: 'none',
+          cursor: 'grab',
+          zIndex: 9999
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onClick={handleClick}
       >
         <div className="dancing-orb-inner">
           🤖 AI
         </div>
-      </button>
+      </div>
 
       {isOpen && (
         <div className="ai-modal-backdrop" onClick={() => setIsOpen(false)}>
@@ -138,7 +204,6 @@ export const FloatingAI: React.FC = () => {
               <button className="close-btn" onClick={() => setIsOpen(false)}>×</button>
             </div>
             
-            {/* Live Mini Price Ticker Bar */}
             <ScannerTickerBar />
 
             <div 
