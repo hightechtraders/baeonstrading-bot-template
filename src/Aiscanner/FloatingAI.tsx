@@ -256,7 +256,7 @@ export const FloatingAI: React.FC = () => {
 
   return (
     <div className="floating-ai-container">
-      {/* Self-contained vivid glowing ring & vivid dancing animations */}
+      {/* Self-contained animations for vivid rings and smooth vertical floating/dancing */}
       <style>{`
         @keyframes vividPulseCyan {
           0% { transform: scale(1); opacity: 0.9; }
@@ -270,10 +270,9 @@ export const FloatingAI: React.FC = () => {
           0% { transform: scale(1); opacity: 0.7; }
           100% { transform: scale(2.5); opacity: 0; }
         }
-        @keyframes vividOrbDance {
-          0%, 100% { transform: scale(1) translateY(0px); }
-          30% { transform: scale(1.12) translateY(-4px); }
-          60% { transform: scale(0.96) translateY(3px); }
+        @keyframes smoothFloatDance {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-7px); }
         }
       `}</style>
 
@@ -294,7 +293,8 @@ export const FloatingAI: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          overflow: 'visible'
+          overflow: 'visible',
+          animation: 'smoothFloatDance 2.8s infinite ease-in-out'
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -334,7 +334,7 @@ export const FloatingAI: React.FC = () => {
           boxSizing: 'border-box'
         }} />
 
-        {/* Core Orb with Vivid Dancing / Bulging & Floating Animation */}
+        {/* Core Solid Circular Orb */}
         <div 
           className="dancing-orb-inner"
           style={{
@@ -348,7 +348,6 @@ export const FloatingAI: React.FC = () => {
             boxSizing: 'border-box',
             position: 'relative',
             zIndex: 2,
-            animation: 'vividOrbDance 2.5s infinite ease-in-out',
             background: 'radial-gradient(circle at 35% 35%, #34d399 0%, #00a86b 45%, #022c22 100%)',
             boxShadow: 'inset 0 6px 12px rgba(255, 255, 255, 0.45), inset 0 -8px 14px rgba(0, 0, 0, 0.6), 0 0 35px rgba(0, 242, 254, 0.6)',
             border: '2px solid rgba(255, 255, 255, 0.5)',
