@@ -256,7 +256,7 @@ export const FloatingAI: React.FC = () => {
 
   return (
     <div className="floating-ai-container">
-      {/* Self-contained animations for vivid rings and smooth vertical floating/dancing */}
+      {/* Self-contained animations featuring a noticeable up-and-down smooth bounce */}
       <style>{`
         @keyframes vividPulseCyan {
           0% { transform: scale(1); opacity: 0.9; }
@@ -270,9 +270,9 @@ export const FloatingAI: React.FC = () => {
           0% { transform: scale(1); opacity: 0.7; }
           100% { transform: scale(2.5); opacity: 0; }
         }
-        @keyframes smoothFloatDance {
+        @keyframes noticeableBounce {
           0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-7px); }
+          50% { transform: translateY(-12px); }
         }
       `}</style>
 
@@ -294,7 +294,7 @@ export const FloatingAI: React.FC = () => {
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'visible',
-          animation: 'smoothFloatDance 2.8s infinite ease-in-out'
+          animation: 'noticeableBounce 2.2s infinite ease-in-out'
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
