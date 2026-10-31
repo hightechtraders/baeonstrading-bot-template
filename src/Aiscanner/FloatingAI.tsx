@@ -84,7 +84,6 @@ export const FloatingAI: React.FC = () => {
     const dt = now - lastMousePosRef.current.time;
 
     if (dt > 0) {
-      // Calculate instantaneous velocity for the throw release
       const dx = e.clientX - lastMousePosRef.current.x;
       const dy = e.clientY - lastMousePosRef.current.y;
       
@@ -93,7 +92,7 @@ export const FloatingAI: React.FC = () => {
       }
 
       velocityRef.current = {
-        vx: (dx / dt) * 16, // normalized velocity per frame
+        vx: (dx / dt) * 16,
         vy: (dy / dt) * 16
       };
 
@@ -112,13 +111,12 @@ export const FloatingAI: React.FC = () => {
     orbRef.current.style.top = `${newY}px`;
   }, []);
 
-  // Inertia loop that glides smoothly and stops cleanly at screen edges without bouncing
   const startInertia = () => {
     const orb = orbRef.current;
     if (!orb) return;
 
     let { vx, vy } = velocityRef.current;
-    const friction = 0.92; // deceleration factor (higher = longer glide)
+    const friction = 0.92;
     const elementWidth = orb.offsetWidth || 60;
     const elementHeight = orb.offsetHeight || 60;
     const padding = 12;
@@ -143,7 +141,6 @@ export const FloatingAI: React.FC = () => {
       const minY = padding;
       const maxY = window.innerHeight - elementHeight - padding;
 
-      // Clean clamping without bounce inversion
       if (nextX <= minX || nextX >= maxX) {
         vx = 0;
         nextX = Math.max(minX, Math.min(nextX, maxX));
@@ -169,7 +166,6 @@ export const FloatingAI: React.FC = () => {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {}
 
-    // Trigger smooth glide/throw momentum on release
     startInertia();
   }, []);
 
@@ -269,14 +265,35 @@ export const FloatingAI: React.FC = () => {
           touchAction: 'none',
           cursor: 'grab',
           zIndex: 9999,
-          willChange: 'left, top'
+          willChange: 'left, top',
+          width: '60px',
+          height: '60px',
+          aspectRatio: '1 / 1',
+          boxSizing: 'border-box',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'visible'
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onClick={handleClick}
       >
-        <div className="dancing-orb-inner">
+        <div 
+          className="dancing-orb-inner"
+          style={{
+            width: '100%',
+            height: '100%',
+            aspectRatio: '1 / 1',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxSizing: 'border-box'
+          }}
+        >
           🤖 AI
         </div>
       </div>
@@ -298,7 +315,7 @@ export const FloatingAI: React.FC = () => {
               {signalBannerText}
             </div>
 
-            {isScanningPhase ? (
+{isScanningPhase ? (
               <div className="scanner-loading-state">
                 <div className="spinner-animation">🛰️</div>
                 <p className="loading-title">Syncing with Volatility 10 Index feed...</p>
