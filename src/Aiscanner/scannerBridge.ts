@@ -165,6 +165,7 @@ export class ScannerBridge {
             blocks.forEach((block: any) => {
               if (!block) return;
 
+              // 1. Force Symbol Match
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
@@ -179,8 +180,16 @@ export class ScannerBridge {
                 }
               }
 
-              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
-                const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
+              // 2. Broadened Purchase / Contract Type block targeting
+              const isPurchaseBlock = 
+                block.type === 'purchase' || 
+                block.type?.includes('purchase') || 
+                block.type?.includes('trade_definition') ||
+                block.type === 'trade_definition_purchase' ||
+                block.type === 'trade_definition_tradeoptions';
+
+              if (isPurchaseBlock) {
+                const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE', 'SUBTYPE_LIST'];
                 fieldNames.forEach(name => {
                   const field = block.getField(name);
                   if (field && typeof field.setValue === 'function') {
@@ -196,13 +205,10 @@ export class ScannerBridge {
                       }
                     });
 
+                    // Force explicit lowercase machine value fallback if options haven't rendered yet
                     let desiredVal = targetMatch ? targetMatch[1] : null;
                     if (!desiredVal) {
-                      if (isFall) {
-                        desiredVal = options.find((opt: any) => ['put', 'fall', 'lower'].includes(String(opt[1]).toLowerCase()))?.[1] || 'put';
-                      } else {
-                        desiredVal = options.find((opt: any) => ['call', 'rise', 'higher'].includes(String(opt[1]).toLowerCase()))?.[1] || 'call';
-                      }
+                      desiredVal = isFall ? 'put' : 'call';
                     }
 
                     if (field.getValue() !== desiredVal) {
