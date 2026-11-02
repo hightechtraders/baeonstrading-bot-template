@@ -1038,7 +1038,7 @@
 }
 
 /* ==========================================
-   MANUAL TRADER - DIGIT CIRCLES & EXECUTION PANEL
+   MANUAL TRADER - SVG DIGIT GAUGE & STYLES
    ========================================== */
 
 .manual-trader-wrapper {
@@ -1048,263 +1048,39 @@
     margin: 0 auto;
     box-sizing: border-box;
 
-    .scanner-header-card {
-        background: var(--general-section-1);
-        border: 1.5px solid rgba(0, 168, 107, 0.35);
-        border-radius: 1.2rem;
-        padding: 1.6rem 2rem;
-        margin-bottom: 1.5rem;
+    .digit-gauge-card {
         display: flex;
-        justify-content: space-between;
+        flex-direction: column;
         align-items: center;
-        flex-wrap: wrap;
-        gap: 1rem;
+        justify-content: center;
+        padding: 10px 6px;
+        background: var(--general-main-1);
+        border: 1.5px solid rgba(0, 168, 107, 0.25);
+        border-radius: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
 
-        .scanner-title {
-            font-size: 1.6rem;
-            font-weight: 800;
-            color: var(--text-prominent);
-            margin-bottom: 0.2rem;
+        &:hover {
+            border-color: #00a86b;
+            background: rgba(0, 168, 107, 0.08);
+            transform: translateY(-2px);
         }
 
-        .scanner-desc {
-            color: var(--text-prominent);
-            font-size: 0.95rem;
-            opacity: 0.95;
-            font-weight: 500;
+        &--selected {
+            background: rgba(99, 102, 241, 0.15) !important;
+            border: 2px solid #6366f1 !important;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
         }
 
-        .scanner-live-badge {
-            background: rgba(0, 168, 107, 0.2);
-            color: #00a86b;
-            padding: 6px 14px;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            border: 1px solid rgba(0, 168, 107, 0.4);
-        }
-    }
-
-    .digit-circles-grid-card {
-        background: var(--general-section-1);
-        border: 1.5px solid rgba(0, 168, 107, 0.35);
-        border-radius: 1.4rem;
-        padding: 24px 20px;
-        margin-bottom: 2rem;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-
-        .digits-grid {
-            display: grid;
-            grid-template-columns: repeat(10, minmax(0, 1fr));
-            gap: 12px;
-            justify-content: center;
-            width: 100%;
-            box-sizing: border-box;
-
-            @media (max-width: 1024px) {
-                grid-template-columns: repeat(5, minmax(0, 1fr));
-            }
-
-            @include mobile-or-tablet-screen {
-                grid-template-columns: repeat(5, minmax(0, 1fr));
-                gap: 8px;
-            }
-
-            .digit-item {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                padding: 14px 6px;
-                background: var(--general-main-1);
-                border: 1.5px solid rgba(0, 168, 107, 0.25);
-                border-radius: 14px;
-                cursor: pointer;
-                transition: all 0.2s ease;
-                min-width: 0;
-
-                &:hover {
-                    border-color: #00a86b;
-                    background: rgba(0, 168, 107, 0.08);
-                    transform: translateY(-2px);
-                }
-
-                &--selected {
-                    background: rgba(99, 102, 241, 0.15);
-                    border: 2px solid #6366f1;
-                    box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
-                }
-
-                .digit-circle {
-                    width: 46px;
-                    height: 46px;
-                    border-radius: 50%;
-                    border: 2.5px solid rgba(0, 168, 107, 0.4);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 1.2rem;
-                    font-weight: 800;
-                    color: var(--text-prominent);
-                    margin-bottom: 8px;
-                    background: var(--general-section-1);
-                    cursor: pointer;
-
-                    &--selected {
-                        border-color: #6366f1;
-                        color: #818cf8;
-                        background: rgba(99, 102, 241, 0.2);
-                    }
-                }
-
-                .digit-percentage {
-                    font-size: 0.85rem;
-                    font-weight: 700;
-                    color: var(--text-prominent);
-                    white-space: nowrap;
-                }
-            }
-        }
-    }
-
-    // High / Low Trend Bubble Modifiers for Manual Trader
-    .digit-card--high {
-        border-color: rgba(20, 184, 166, 0.8) !important;
-        background: rgba(7, 36, 40, 0.5) !important;
-    }
-
-    .digit-card--low {
-        border-color: rgba(244, 63, 94, 0.8) !important;
-        background: rgba(40, 12, 22, 0.5) !important;
-    }
-
-    .digit-card--selected {
-        border-color: #6366f1 !important;
-        background: rgba(99, 102, 241, 0.2) !important;
-        box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
-    }
-
-    .execution-panel-card {
-        background: var(--general-section-1);
-        border: 1.5px solid rgba(0, 168, 107, 0.35);
-        border-radius: 1.4rem;
-        padding: 24px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-
-        .execution-top-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-            gap: 1rem;
-
-            .trade-type-pill {
-                background: rgba(0, 168, 107, 0.1);
-                border: 1px solid rgba(0, 168, 107, 0.3);
-                padding: 8px 14px;
-                border-radius: 8px;
-                font-weight: 700;
-                font-size: 0.9rem;
-                color: var(--text-prominent);
-            }
-
-            .selected-digit-text {
-                font-weight: 700;
-                font-size: 0.95rem;
-                color: var(--text-prominent);
-
-                strong {
-                    color: #00a86b;
-                    font-size: 1.1rem;
-                }
-            }
-
-            .stake-input-group {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-
-                .stake-duration {
-                    font-size: 0.9rem;
-                    font-weight: 600;
-                    color: var(--text-prominent);
-                }
-
-                input {
-                    width: 120px;
-                    padding: 8px 12px;
-                    background: var(--general-main-1);
-                    border: 1.5px solid rgba(0, 168, 107, 0.35);
-                    border-radius: 8px;
-                    color: var(--text-prominent);
-                    font-weight: 700;
-                    text-align: right;
-                    outline: none;
-                    cursor: text;
-
-                    &:focus {
-                        border-color: #00a86b;
-                        box-shadow: 0 0 0 2px rgba(0, 168, 107, 0.2);
-                    }
-                }
-
-                .stake-label {
-                    font-size: 0.9rem;
-                    font-weight: 700;
-                    color: var(--text-prominent);
-                }
-            }
+        &--high {
+            border-color: rgba(20, 184, 166, 0.8) !important;
+            background: rgba(7, 36, 40, 0.4) !important;
         }
 
-        .action-buttons-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-
-            @include mobile-or-tablet-screen {
-                grid-template-columns: 1fr;
-            }
-
-            .exec-btn {
-                border: none;
-                padding: 16px;
-                border-radius: 12px;
-                font-weight: 800;
-                font-size: 1.05rem;
-                cursor: pointer;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                transition: transform 0.2s ease, opacity 0.2s ease;
-
-                &:hover {
-                    opacity: 0.9;
-                    transform: translateY(-2px);
-                }
-
-                &:active {
-                    transform: scale(0.98);
-                }
-
-                &--over {
-                    background: #00a86b;
-                    color: #fff;
-                    box-shadow: 0 4px 14px rgba(0, 168, 107, 0.3);
-                }
-
-                &--under {
-                    background: #e11d48;
-                    color: #fff;
-                    box-shadow: 0 4px 14px rgba(225, 29, 72, 0.3);
-                }
-
-                .btn-payout {
-                    font-size: 0.9rem;
-                    opacity: 0.95;
-                    font-weight: 700;
-                }
-            }
+        &--low {
+            border-color: rgba(244, 63, 94, 0.8) !important;
+            background: rgba(40, 12, 22, 0.4) !important;
         }
     }
 }
