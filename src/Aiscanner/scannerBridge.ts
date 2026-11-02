@@ -1,4 +1,6 @@
-// src/Aiscanner/scannerBridge.ts
+// ==========================================
+// FILE: src/Aiscanner/scannerBridge.ts
+// ==========================================
 import { RiskManager } from './riskManager';
 import { ScannerLogic, DerivTickResponse } from './scannerLogic';
 
@@ -10,11 +12,12 @@ export interface AIScannerPayload {
   durationUnit?: string;   
   stopLoss?: number;
   takeProfit?: number;
+  recoveryStep?: number;
 }
 
 export class ScannerBridge {
   private static isScannerActive: boolean = false; 
-  private static scannerLogicInstance = new ScannerLogic(); // 👈 Instantiate core calculation logic
+  private static scannerLogicInstance = new ScannerLogic();
 
   static {
     if (typeof window !== 'undefined') {
@@ -34,38 +37,21 @@ export class ScannerBridge {
   }
 
   private static translateSymbol(rawSymbol: string): string {
-    if (!rawSymbol || typeof rawSymbol !== 'string') return '1HZ100V';
-    
-    const clean = rawSymbol
-      .toUpperCase()
-      .replace(/INDEX/g, '')
-      .replace(/[\s\(\)]+/g, '');
-    
-    const symbolMap: Record<string, string> = {
-      'VOLATILITY101S':  '1HZ10V',
-      'VOLATILITY501S': '1HZ50V',
-      'VOLATILITY751S': '1HZ75V',
-      'VOLATILITY1001S':'1HZ100V',
-      'VOLATILITY10':     'R_10',
-      'VOLATILITY25':     'R_25',
-      'VOLATILITY50':     'R_50',
-      'VOLATILITY75':     'R_75',
-      'VOLATILITY100':    'R_100',
-    };
-
-    return symbolMap[clean] || '1HZ100V';
+    if (!rawSymbol || typeof rawSymbol !== 'string') return 'R_10';
+    return 'R_10';
   }
 
-  /**
-   * Seamlessly intercepts live ticks from api-base, processes them through ScannerLogic,
-   * and broadcasts the fully updated strategy array to the UI components.
-   */
+  public static recordTradeOutcome(isWin: boolean) {
+    ScannerBridge.scannerLogicInstance.recordTradeOutcome(isWin);
+  }
+
   public static pushTick(assetName: string, quote: number, strategies?: any[]) {
-    // Process live tick through our calculation engine to evaluate UP/DOWN directions & dynamic scores
+    if (assetName && assetName !== 'R_10') return;
+
     const tickPayload: DerivTickResponse = {
       msg_type: 'tick',
       tick: {
-        symbol: assetName,
+        symbol: 'R_10',
         quote: quote,
         epoch: Date.now(),
         id: Math.random().toString()
@@ -75,12 +61,14 @@ export class ScannerBridge {
     const updatedStrategies = ScannerBridge.scannerLogicInstance.handleIncomingMessage(tickPayload);
 
     if (typeof window !== 'undefined') {
-      // Dispatch both event names to ensure full backward compatibility with any listening component
       window.dispatchEvent(new CustomEvent('ai-tick-received', {
-        detail: { assetName, quote, strategies: updatedStrategies }
+        detail: { assetName: 'R_10', quote, strategies: updatedStrategies }
       }));
       window.dispatchEvent(new CustomEvent('deriv_scanner_updated', {
-        detail: { assetName, quote, strategies: updatedStrategies }
+        detail: { assetName: 'R_10', quote, strategies: updatedStrategies }
+      }));
+      window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
+        detail: { strategies: updatedStrategies }
       }));
     }
   }
@@ -91,30 +79,32 @@ export class ScannerBridge {
       sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
     }
 
-    const rawSymbol = options?.symbol || strategy?.market || strategy?.symbol || '1HZ100V'; 
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
 
     const payload: AIScannerPayload = {
-      symbol: rawSymbol,
+      symbol: 'R_10',
       stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
       stopLoss: options?.stopLoss || strategy?.stopLoss || 150,
-      takeProfit: options?.takeProfit || strategy?.takeProfit || 100
+      takeProfit: options?.takeProfit || strategy?.takeProfit || 100,
+      recoveryStep: options?.recoveryStep || strategy?.recoveryStep || 3
     };
 
     RiskManager.configure(payload.stopLoss, payload.takeProfit);
 
     const rootStore = (window as any).derivBotAppStore;
-    const strictDerivSymbol = this.translateSymbol(payload.symbol);
+    const strictDerivSymbol = 'R_10';
     
     const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
     const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
     
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
-    const martingaleMultiplier = 2.4;
+    
+    const martingaleMultiplier = 1.4;
+    const recoveryStep = payload.recoveryStep;
 
     if (rootStore?.quick_strategy) {
       const quickStrategy = rootStore.quick_strategy;
@@ -126,6 +116,7 @@ export class ScannerBridge {
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
           quickStrategy.setValue('size', martingaleMultiplier);
+          quickStrategy.setValue('recovery_step', recoveryStep);
           
           if (payload.stopLoss !== undefined) {
             quickStrategy.setValue('loss', payload.stopLoss);
@@ -137,6 +128,7 @@ export class ScannerBridge {
           }
         }
         
+        // Restored tradetype: 'rise_fall' combined with explicit contract_type and type
         const mockFormData = {
           symbol: strictDerivSymbol, 
           durationtype: payload.durationUnit || 't', 
@@ -147,6 +139,7 @@ export class ScannerBridge {
           contract_type: storeContractType,
           type: storeType,
           size: martingaleMultiplier,
+          recovery_step: recoveryStep,
           loss: payload.stopLoss,
           stop_loss: payload.stopLoss,
           profit: payload.takeProfit,
@@ -193,17 +186,23 @@ export class ScannerBridge {
                   const field = block.getField(name);
                   if (field && typeof field.setValue === 'function') {
                     const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
+                    
                     const targetMatch = options.find((opt: any) => {
                       const label = String(opt[0] || '').toLowerCase();
                       const val = String(opt[1] || '').toLowerCase();
                       if (isFall) {
-                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
+                        return label.includes('fall') || label.includes('put') || label.includes('lower') || val.includes('fall') || val.includes('put') || val.includes('lower');
                       } else {
-                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
+                        return label.includes('rise') || label.includes('call') || label.includes('higher') || val.includes('rise') || val.includes('call') || val.includes('higher');
                       }
                     });
 
-                    const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
+                    // Machine-safe fallback ensures Blockly accepts the value instead of defaulting to Rise
+                    let desiredVal = targetMatch ? targetMatch[1] : null;
+                    if (!desiredVal) {
+                      desiredVal = isFall ? 'put' : 'call';
+                    }
+
                     if (field.getValue() !== desiredVal) {
                       field.setValue(desiredVal);
                       updated = true;
