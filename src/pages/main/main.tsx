@@ -52,12 +52,12 @@ import './main.scss';
 const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
 
 // ==========================================
-// SUB-COMPONENT: PROFESSIONAL SVG GAUGE CIRCLE (Compact for single-screen fit)
+// SUB-COMPONENT: PROFESSIONAL SVG GAUGE CIRCLE
 // ==========================================
 function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
-  const circleRadius = 15;
-  const lineThickness = 3;
-  const pathCircumference = 2 * Math.PI * circleRadius;
+  const circleRadius = 18;
+  const lineThickness = 3.5;
+  const pathCircumference = 2 * Math.PI * circleRadius; // ~113.1
   
   const operationalScale = 15;
   const scaledValue = Math.min(percentage, operationalScale);
@@ -79,7 +79,7 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
       trackColor: '#1e1b4b',
       activeColor: '#6366f1',
       background: 'rgba(99, 102, 241, 0.15)',
-      glow: '0 0 10px rgba(99, 102, 241, 0.4)'
+      glow: '0 0 12px rgba(99, 102, 241, 0.4)'
     };
   } else if (trendMode === 'high') {
     themeConfig = {
@@ -88,7 +88,7 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
       trackColor: 'rgba(20, 184, 166, 0.15)',
       activeColor: '#14b8a6',
       background: 'rgba(20, 184, 166, 0.1)',
-      glow: '0 0 8px rgba(20, 184, 166, 0.25)'
+      glow: '0 0 10px rgba(20, 184, 166, 0.25)'
     };
   } else if (trendMode === 'low') {
     themeConfig = {
@@ -97,21 +97,21 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
       trackColor: 'rgba(244, 63, 94, 0.15)',
       activeColor: '#f43f5e',
       background: 'rgba(244, 63, 94, 0.1)',
-      glow: '0 0 8px rgba(244, 63, 94, 0.25)'
+      glow: '0 0 10px rgba(244, 63, 94, 0.25)'
     };
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2px', userSelect: 'none' }}>
-      <span style={{ fontSize: '11px', fontWeight: 900, marginBottom: '2px', color: themeConfig.labelColor }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4px', userSelect: 'none' }}>
+      <span style={{ fontSize: '12px', fontWeight: 900, marginBottom: '4px', letterSpacing: '0.5px', color: themeConfig.labelColor }}>
         {digit}
       </span>
       
       <div 
         style={{ 
           position: 'relative', 
-          width: '42px', 
-          height: '42px', 
+          width: '52px', 
+          height: '52px', 
           borderRadius: '50%', 
           display: 'flex', 
           alignItems: 'center', 
@@ -121,18 +121,18 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
           transition: 'all 0.3s ease'
         }}
       >
-        <svg style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }} viewBox="0 0 36 36">
+        <svg style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }} viewBox="0 0 44 44">
           <circle 
-            cx="18" 
-            cy="18" 
+            cx="22" 
+            cy="22" 
             r={circleRadius} 
             fill="none"
             stroke={themeConfig.trackColor}
             strokeWidth={lineThickness} 
           />
           <circle
-            cx="18"
-            cy="18"
+            cx="22"
+            cy="22"
             r={circleRadius}
             fill="none"
             stroke={themeConfig.activeColor}
@@ -144,7 +144,7 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
           />
         </svg>
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-          <span style={{ fontSize: '9px', fontWeight: 800, color: themeConfig.valueColor }}>
+          <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '-0.5px', color: themeConfig.valueColor }}>
             {percentage}%
           </span>
         </div>
@@ -282,13 +282,12 @@ const AppWrapper = observer(() => {
     const [targetDigit, setTargetDigit] = useState<number>(8);
     const [manualStake, setManualStake] = useState<string>('500.00');
 
-    // Moving Cursor simulation state for active digit tracking
-    const [cursorPosition, setCursorPosition] = useState<number>(8);
+    // Moving Cursor simulation state for active red upward arrow cursor underneath
+    const [cursorPosition, setCursorPosition] = useState<number>(6);
     useEffect(() => {
         const interval = setInterval(() => {
-            // Automatically glide/move cursor across active digits for live scanning effect
             setCursorPosition(prev => (prev + 1) % 10);
-        }, 2200);
+        }, 2000);
         return () => clearInterval(interval);
     }, []);
 
@@ -688,7 +687,7 @@ const AppWrapper = observer(() => {
                                 </div>
                             </div>
 
-                            {/* MANUAL TRADER TAB - COMPACT SINGLE-SCREEN FIT WITH MOVING CURSOR */}
+                            {/* MANUAL TRADER TAB - SINGLE PAGE LAYOUT WITH BOTTOM ARROW CURSOR SPACE */}
                             <div
                                 label={
                                     <>
@@ -702,21 +701,17 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-manual-trader'
                             >
-                                <div className='manual-trader-wrapper' style={{ maxWidth: '1000px', margin: '0 auto', padding: '0.8rem 1.2rem', boxSizing: 'border-box' }}>
+                                <div className='manual-trader-wrapper' style={{ maxWidth: '1000px', margin: '0 auto', padding: '0.4rem 0.8rem', boxSizing: 'border-box' }}>
                                     
-                                    {/* Market Mode & Live Cursor Status Header */}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '8px', flexWrap: 'wrap' }}>
-                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-prominent)', background: 'var(--general-section-1)', padding: '4px 12px', borderRadius: '16px', border: '1px solid rgba(0, 168, 107, 0.3)', fontWeight: 600 }}>
-                                            Market: <strong style={{ color: '#00a86b' }}>{selectedSymbol}</strong>
-                                        </span>
-                                        <span style={{ fontSize: '0.75rem', color: '#818cf8', background: 'rgba(99, 102, 241, 0.12)', padding: '4px 10px', borderRadius: '12px', border: '1px solid rgba(99, 102, 241, 0.3)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#6366f1', display: 'inline-block', boxShadow: '0 0 8px #6366f1' }} />
-                                            Active Cursor Scanning Digit: {cursorPosition}
+                                    {/* Market Mode Banner */}
+                                    <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-prominent)', background: 'var(--general-section-1)', padding: '4px 12px', borderRadius: '16px', border: '1.5px solid rgba(0, 168, 107, 0.3)', fontWeight: 600 }}>
+                                            Market Mode: <strong style={{ color: '#00a86b' }}>{selectedSymbol}</strong>
                                         </span>
                                     </div>
 
-                                    {/* Compact 10-Digit Dynamic SVG Gauge Grid with Live Cursor Highlight */}
-                                    <div className='digit-stats-grid' style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1rem', padding: '10px 12px', marginBottom: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+                                    {/* 10-Digit Dynamic SVG Gauge Grid with bottom space reserved for red arrow cursor */}
+                                    <div className='digit-stats-grid' style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1rem', padding: '10px 10px 18px 10px', marginBottom: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
                                         <div className='digit-stats-grid__inner'>
                                             {digitStats.map((item) => {
                                                 const isSelected = targetDigit === item.digit;
@@ -734,23 +729,21 @@ const AppWrapper = observer(() => {
                                                             setCursorPosition(item.digit);
                                                         }}
                                                         className={`digit-gauge-card ${cardModifier}`}
-                                                        style={{
-                                                            position: 'relative',
-                                                            border: isCursorHere && !isSelected ? '1.5px dashed #818cf8' : undefined
-                                                        }}
+                                                        style={{ position: 'relative', paddingBottom: '22px' }}
                                                     >
-                                                        {/* Live Moving Cursor Badge Indicator */}
-                                                        {isCursorHere && (
-                                                            <div style={{ position: 'absolute', top: '-6px', right: '-4px', background: '#6366f1', color: '#fff', fontSize: '8px', fontWeight: 900, padding: '1px 4px', borderRadius: '4px', boxShadow: '0 0 6px rgba(99, 102, 241, 0.6)', zIndex: 3, pointerEvents: 'none' }}>
-                                                                CURSOR
-                                                            </div>
-                                                        )}
                                                         <ProfessionalDigitGauge
                                                             digit={item.digit}
                                                             percentage={item.percent}
                                                             isSelected={isSelected}
                                                             trendMode={isSelected ? 'selected' : item.trend}
                                                         />
+
+                                                        {/* Red Upward Arrow Cursor Design cleanly positioned underneath */}
+                                                        {isCursorHere && (
+                                                            <div style={{ position: 'absolute', bottom: '2px', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', animation: 'bounceCursor 0.8s infinite alternate', pointerEvents: 'none' }}>
+                                                                <span style={{ color: '#ef4444', fontSize: '14px', fontWeight: 900, lineHeight: 1, filter: 'drop-shadow(0 2px 3px rgba(239, 68, 68, 0.4))' }}>▲</span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 );
                                             })}
@@ -758,7 +751,7 @@ const AppWrapper = observer(() => {
                                     </div>
 
                                     {/* Compact Interactive Controls & Strategy Setup Card */}
-                                    <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1rem', padding: '14px 16px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+                                    <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1rem', padding: '12px 14px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
                                         
                                         {/* Strategy Selection & Targets Row */}
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
@@ -783,7 +776,7 @@ const AppWrapper = observer(() => {
                                         </div>
 
                                         {/* Contract Duration & Stake Allocation Row */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '10px', marginBottom: '12px', alignItems: 'center' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '10px', marginBottom: '10px', alignItems: 'center' }}>
                                             <div>
                                                 <label style={{ fontSize: '0.68rem', color: 'var(--text-general)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: '4px' }}>Contract Duration</label>
                                                 <div style={{ width: '100%', background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.25)', color: 'var(--text-prominent)', padding: '8px 10px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, textAlign: 'center' }}>
