@@ -182,7 +182,7 @@ const AppWrapper = observer(() => {
         {
             id: 'master_1',
             name: 'Baeons AI Momentum Master',
-            creator: 'Baeons Tech Labs',
+            creator: 'Barons Tech Lab', // Updated as requested
             winRate: '78.5%',
             roi30d: '+34.2%',
             maxDrawdown: '-4.1%',
@@ -568,7 +568,8 @@ const AppWrapper = observer(() => {
                                             <h3 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-prominent)' }}>
                                                 Copy Trading Hub
                                             </h3>
-                                            <p style={{ color: 'var(--text-general)', fontSize: '0.95rem' }}>
+                                            {/* Fixed subtitle font size and contrast visibility */}
+                                            <p style={{ color: 'var(--text-prominent)', fontSize: '1.05rem', fontWeight: 500, opacity: 0.9 }}>
                                                 Mirror verified master traders and automate multi-asset execution in real-time.
                                             </p>
                                         </div>
@@ -577,13 +578,13 @@ const AppWrapper = observer(() => {
                                         <div style={{ display: 'flex', gap: '8px', background: 'rgba(255, 255, 255, 0.05)', padding: '4px', borderRadius: '8px' }}>
                                             <button 
                                                 onClick={() => setCopySubTab('discover')}
-                                                style={{ padding: '8px 16px', background: copy_sub_tab === 'discover' ? 'var(--brand-coral)' : 'transparent', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+                                                style={{ padding: '8px 16px', background: copy_sub_tab === 'discover' ? 'var(--brand-coral)' : 'transparent', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}
                                             >
                                                 Discover Masters
                                             </button>
                                             <button 
                                                 onClick={() => setCopySubTab('portfolio')}
-                                                style={{ padding: '8px 16px', background: copy_sub_tab === 'portfolio' ? 'var(--brand-coral)' : 'transparent', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+                                                style={{ padding: '8px 16px', background: copy_sub_tab === 'portfolio' ? 'var(--brand-coral)' : 'transparent', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}
                                             >
                                                 Active Portfolios ({active_portfolios.length})
                                             </button>
@@ -596,7 +597,7 @@ const AppWrapper = observer(() => {
                                             {/* Risk Management Settings Bar */}
                                             <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', padding: '16px', marginBottom: '2rem', display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
                                                 <div style={{ flex: '1', minWidth: '200px' }}>
-                                                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-general)', marginBottom: '6px' }}>Stake Multiplier: <strong>{multiplier}x</strong></label>
+                                                    <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', fontWeight: 600, marginBottom: '6px' }}>Stake Multiplier: <strong>{multiplier}x</strong></label>
                                                     <input 
                                                         type='range' min='0.1' max='5.0' step='0.1' value={multiplier} 
                                                         onChange={(e) => setMultiplier(Number(e.target.value))}
@@ -604,17 +605,17 @@ const AppWrapper = observer(() => {
                                                     />
                                                 </div>
                                                 <div style={{ flex: '1', minWidth: '180px' }}>
-                                                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-general)', marginBottom: '6px' }}>Max Stake Cap ($)</label>
+                                                    <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', fontWeight: 600, marginBottom: '6px' }}>Max Stake Cap ($)</label>
                                                     <input 
                                                         type='number' value={maxStake} onChange={(e) => setMaxStake(e.target.value)}
-                                                        style={{ width: '100%', padding: '6px 10px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px' }}
+                                                        style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px', fontSize: '0.95rem' }}
                                                     />
                                                 </div>
                                                 <div style={{ flex: '1', minWidth: '180px' }}>
-                                                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-general)', marginBottom: '6px' }}>Daily Stop-Loss ($)</label>
+                                                    <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', fontWeight: 600, marginBottom: '6px' }}>Daily Stop-Loss ($)</label>
                                                     <input 
                                                         type='number' value={stopLoss} onChange={(e) => setStopLoss(e.target.value)}
-                                                        style={{ width: '100%', padding: '6px 10px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px' }}
+                                                        style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px', fontSize: '0.95rem' }}
                                                     />
                                                 </div>
                                             </div>
@@ -624,19 +625,22 @@ const AppWrapper = observer(() => {
                                                 {master_traders.map((trader, index) => (
                                                     <div className='free-bots-card' key={trader.id}>
                                                         <div className='free-bots-header'>
-                                                            <span className='strategy-tag'>MASTER #{index + 1}</span>
-                                                            <span className='confidence-badge' style={{ background: trader.risk === 'Low' ? 'rgba(76, 175, 80, 0.15)' : 'rgba(255, 152, 0, 0.15)', color: trader.risk === 'Low' ? '#4caf50' : '#ff9800' }}>
+                                                            <span className='strategy-tag' style={{ fontSize: '0.85rem' }}>MASTER #{index + 1}</span>
+                                                            <span className='confidence-badge' style={{ background: trader.risk === 'Low' ? 'rgba(76, 175, 80, 0.15)' : 'rgba(255, 152, 0, 0.15)', color: trader.risk === 'Low' ? '#4caf50' : '#ff9800', fontSize: '0.85rem' }}>
                                                                 {trader.risk} Risk
                                                             </span>
                                                         </div>
 
                                                         <div className='free-bots-body'>
-                                                            <h4 className='strategy-title'>{trader.name}</h4>
-                                                            <p className='strategy-description'>Created by {trader.creator} • {trader.copiersCount} active copiers</p>
+                                                            <h4 className='strategy-title' style={{ fontSize: '1.2rem' }}>{trader.name}</h4>
+                                                            {/* Enhanced creator text visibility */}
+                                                            <p className='strategy-description' style={{ fontSize: '0.95rem', color: 'var(--text-prominent)', opacity: 0.95 }}>
+                                                                Created by {trader.creator} • {trader.copiersCount} active copiers
+                                                            </p>
                                                             
                                                             <div className='strategy-details' style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-                                                                <span className='market-name' style={{ background: 'rgba(33, 150, 243, 0.1)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}>Win Rate: <strong>{trader.winRate}</strong></span>
-                                                                <span className='market-name' style={{ background: 'rgba(76, 175, 80, 0.1)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', color: '#4caf50' }}>30D ROI: <strong>{trader.roi30d}</strong></span>
+                                                                <span className='market-name' style={{ background: 'rgba(33, 150, 243, 0.15)', padding: '6px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#fff' }}>Win Rate: <strong>{trader.winRate}</strong></span>
+                                                                <span className='market-name' style={{ background: 'rgba(76, 175, 80, 0.15)', padding: '6px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#4caf50' }}>30D ROI: <strong>{trader.roi30d}</strong></span>
                                                             </div>
                                                         </div>
 
@@ -652,7 +656,7 @@ const AppWrapper = observer(() => {
                                                                 setCopySubTab('portfolio');
                                                             }} 
                                                             className='free-bots-btn'
-                                                            style={{ marginTop: 'auto' }}
+                                                            style={{ marginTop: 'auto', fontSize: '0.95rem' }}
                                                         >
                                                             Copy Strategy
                                                         </button>
