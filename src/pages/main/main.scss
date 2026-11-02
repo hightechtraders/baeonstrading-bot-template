@@ -1032,3 +1032,42 @@
         display: inline-flex;
     }
 }
+
+/* ==========================================
+   COPY TRADING & FREE BOTS TEXT LEGIBILITY FIX
+   ========================================== */
+#id-copy-trading, 
+.free-bots-container {
+    h3 {
+        font-size: 2rem !important;
+        color: var(--text-prominent) !important;
+    }
+
+    p, span, label {
+        color: var(--text-prominent);
+        opacity: 0.95;
+    }
+
+    .strategy-description, 
+    .free-bots-body p {
+        font-size: 1.35rem !important;
+        color: var(--text-general) !important;
+        opacity: 1 !important;
+    }
+
+    .market-name, 
+    .strategy-details span,
+    .confidence-badge {
+        font-size: 1.25rem !important;
+        font-weight: 600;
+    }
+
+    label {
+        font-size: 1.3rem !important;
+        font-weight: 600;
+    }
+
+    input[type='number'] {
+        font-size: 1.4rem !important;
+    }
+}
