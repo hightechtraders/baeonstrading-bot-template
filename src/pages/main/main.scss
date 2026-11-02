@@ -1,3 +1,7 @@
+// ==========================================
+// FILE: src/pages/main/main.scss
+// ==========================================
+
 @use 'components/shared/styles/constants' as *;
 @use 'components/shared/styles/mixins' as *;
 
@@ -1037,6 +1041,7 @@
    COPY TRADING & FREE BOTS PROFESSIONAL THEME & CONTRAST FIX
    ========================================================= */
 #id-copy-trading, 
+#id-manual-trader,
 .free-bots-container {
     h3 {
         font-size: 2rem !important;
