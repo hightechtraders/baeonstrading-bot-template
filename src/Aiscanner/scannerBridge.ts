@@ -119,6 +119,7 @@ export class ScannerBridge {
             blocks.forEach((block: any) => {
               if (!block) return;
 
+              // 1. Force symbol field update
               if (typeof block.getField === 'function') {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
@@ -133,6 +134,7 @@ export class ScannerBridge {
                 }
               }
 
+              // 2. Force contract type / purchase block updates
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
