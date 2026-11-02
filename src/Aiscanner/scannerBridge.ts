@@ -128,14 +128,14 @@ export class ScannerBridge {
           }
         }
         
-        // Restored tradetype: 'rise_fall' combined with explicit contract_type and type
+        // Fixed: Use 'rise_fall' for form submission category while directing contract type via storeContractType/storeType
         const mockFormData = {
           symbol: strictDerivSymbol, 
           durationtype: payload.durationUnit || 't', 
           duration: payload.duration,
           stake: payload.stake,
           amount: payload.stake,
-          tradetype: 'rise_fall',
+          tradetype: 'rise_fall', 
           contract_type: storeContractType,
           type: storeType,
           size: martingaleMultiplier,
@@ -197,7 +197,6 @@ export class ScannerBridge {
                       }
                     });
 
-                    // Machine-safe fallback ensures Blockly accepts the value instead of defaulting to Rise
                     let desiredVal = targetMatch ? targetMatch[1] : null;
                     if (!desiredVal) {
                       desiredVal = isFall ? 'put' : 'call';
