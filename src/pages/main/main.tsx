@@ -63,7 +63,6 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
   const scaledValue = Math.min(percentage, operationalScale);
   const strokeOffsetProgress = pathCircumference - (scaledValue / operationalScale) * pathCircumference;
   
-  // Theme styling profiles using explicit inline values for bulletproof rendering
   let themeConfig = {
     labelColor: '#9ca3af',
     valueColor: 'var(--text-prominent)',
@@ -276,8 +275,9 @@ const AppWrapper = observer(() => {
         }
     ]);
 
-    // Manual Trader State & Exact 10-Digit Stat Array with Trend Highlights
-    const [selectedSymbol] = useState('Volatility 90 (1s) Index');
+    // Manual Trader State Set strictly to Volatility 10 (R_10)
+    const [selectedSymbol] = useState('Volatility 10 Index');
+    const symbolCode = 'R_10';
     const [contractType, setContractType] = useState('Over/Under');
     const [targetDigit, setTargetDigit] = useState<number>(8);
     const [manualStake, setManualStake] = useState<string>('500.00');
@@ -321,7 +321,7 @@ const AppWrapper = observer(() => {
             winRate: '82.1%',
             roi30d: '+48.9%',
             maxDrawdown: '-6.8%',
-            asset: 'Volatility 75 Index',
+            asset: 'Volatility 10 Index',
             risk: 'High',
             copiersCount: 289,
         },
@@ -332,7 +332,7 @@ const AppWrapper = observer(() => {
             winRate: '91.4%',
             roi30d: '+18.5%',
             maxDrawdown: '-1.5%',
-            asset: 'Volatility 25 Index',
+            asset: 'Volatility 10 Index',
             risk: 'Low',
             copiersCount: 94,
         },
@@ -678,7 +678,7 @@ const AppWrapper = observer(() => {
                                 </div>
                             </div>
 
-                            {/* MANUAL TRADER TAB - WITH PROFESSIONAL SVG GAUGE CIRCLES */}
+                            {/* MANUAL TRADER TAB - LOCKED TO VOLATILITY 10 (R_10) */}
                             <div
                                 label={
                                     <>
@@ -701,9 +701,9 @@ const AppWrapper = observer(() => {
                                         </span>
                                     </div>
 
-                                    {/* 10-Digit Dynamic SVG Gauge Grid */}
-                                    <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1.4rem', padding: '24px 20px', marginBottom: '24px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gap: '8px', justifyContent: 'center' }}>
+                                    {/* 10-Digit Dynamic SVG Gauge Grid with Class Hook */}
+                                    <div className='digit-stats-grid' style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1.4rem', padding: '24px 20px', marginBottom: '24px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
+                                        <div className='digit-stats-grid__inner'>
                                             {digitStats.map((item) => {
                                                 const isSelected = targetDigit === item.digit;
                                                 let cardModifier = '';
@@ -777,13 +777,13 @@ const AppWrapper = observer(() => {
                                             </div>
                                         </div>
 
-                                        {/* Dual Block Execution Payout Action Area */}
+                                        {/* Dual Block Execution Payout Action Area - Locked to R_10 */}
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                             <button 
                                                 onClick={() => {
                                                     ScannerBridge.executeDirectTrade(
-                                                        { strategyName: `Manual Over ${targetDigit}`, symbol: '1HZ90V' },
-                                                        { symbol: '1HZ90V', contractType: 'DIGITOVER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
+                                                        { strategyName: `Manual Over ${targetDigit}`, symbol: symbolCode },
+                                                        { symbol: symbolCode, contractType: 'DIGITOVER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
                                                     );
                                                 }}
                                                 style={{ background: '#059669', border: 'none', padding: '16px', borderRadius: '12px', color: '#fff', fontWeight: 900, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(5, 150, 105, 0.35)', transition: 'all 0.2s ease' }}
@@ -798,8 +798,8 @@ const AppWrapper = observer(() => {
                                             <button 
                                                 onClick={() => {
                                                     ScannerBridge.executeDirectTrade(
-                                                        { strategyName: `Manual Under ${targetDigit}`, symbol: '1HZ90V' },
-                                                        { symbol: '1HZ90V', contractType: 'DIGITUNDER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
+                                                        { strategyName: `Manual Under ${targetDigit}`, symbol: symbolCode },
+                                                        { symbol: symbolCode, contractType: 'DIGITUNDER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
                                                     );
                                                 }}
                                                 style={{ background: '#e11d48', border: 'none', padding: '16px', borderRadius: '12px', color: '#fff', fontWeight: 900, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(225, 29, 72, 0.35)', transition: 'all 0.2s ease' }}
