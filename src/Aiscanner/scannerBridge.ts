@@ -134,7 +134,7 @@ export class ScannerBridge {
           duration: payload.duration,
           stake: payload.stake,
           amount: payload.stake,
-          tradetype: storeType,          // Fixed: dynamically uses storeType instead of 'rise_fall'
+          tradetype: storeType,
           contract_type: storeContractType,
           type: storeType,
           size: martingaleMultiplier,
@@ -196,7 +196,6 @@ export class ScannerBridge {
                       }
                     });
 
-                    // Safeguard fallback to safe lowercase machine values
                     let desiredVal = targetMatch ? targetMatch[1] : null;
                     if (!desiredVal) {
                       if (isFall) {
