@@ -177,16 +177,17 @@ const AppWrapper = observer(() => {
     const [multiplier, setMultiplier] = useState<number>(1.0);
     const [maxStake, setMaxStake] = useState<string>('50');
     const [stopLoss, setStopLoss] = useState<string>('20');
+    const [riskFilter, setRiskFilter] = useState<'ALL' | 'Low' | 'Medium' | 'High'>('ALL');
 
     const [master_traders] = useState([
         {
             id: 'master_1',
             name: 'Baeons AI Momentum Master',
-            creator: 'Barons Tech Lab', // Updated as requested
+            creator: 'Barons Tech Lab',
             winRate: '78.5%',
             roi30d: '+34.2%',
             maxDrawdown: '-4.1%',
-            asset: 'Volatility 10 Index (R_10)',
+            asset: 'Volatility 10 Index',
             risk: 'Medium',
             copiersCount: 142,
         },
@@ -222,6 +223,12 @@ const AppWrapper = observer(() => {
             pnl: '+14.50 USD',
             status: 'Active',
         }
+    ]);
+
+    const [trade_history] = useState([
+        { id: 'tx_1', time: '12:04:12', master: 'Baeons AI Momentum Master', type: 'CALL', stake: '$10.00', pnl: '+$4.50', status: 'Won' },
+        { id: 'tx_2', time: '11:58:30', master: 'Baeons AI Momentum Master', type: 'PUT', stake: '$10.00', pnl: '-$10.00', status: 'Lost' },
+        { id: 'tx_3', time: '11:42:05', master: 'Synthetic Scalper Pro V2', type: 'DIGITOVER', stake: '$15.00', pnl: '+$20.00', status: 'Won' },
     ]);
 
     // Trade type modal state
@@ -548,7 +555,7 @@ const AppWrapper = observer(() => {
                                 </div>
                             </div>
 
-                            {/* Copy Trading Tab Complete Hub */}
+                            {/* Copy Trading Tab Complete Production Hub */}
                             <div
                                 label={
                                     <>
@@ -562,31 +569,37 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-copy-trading'
                             >
-                                <div className='free-bots-container' style={{ padding: '20px' }}>
-                                    <div style={{ marginBottom: '1.5rem', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                                <div className='free-bots-container' style={{ padding: '24px' }}>
+                                    {/* Header & Sub-Nav Bar */}
+                                    <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', borderBottom: '1px solid rgba(0, 168, 107, 0.2)', paddingBottom: '1.2rem' }}>
                                         <div>
-                                            <h3 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-prominent)' }}>
+                                            <h3 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.4rem', color: 'var(--text-prominent)', letterSpacing: '0.5px' }}>
                                                 Copy Trading Hub
                                             </h3>
-                                            {/* Fixed subtitle font size and contrast visibility */}
                                             <p style={{ color: 'var(--text-prominent)', fontSize: '1.05rem', fontWeight: 500, opacity: 0.9 }}>
                                                 Mirror verified master traders and automate multi-asset execution in real-time.
                                             </p>
                                         </div>
 
-                                        {/* Sub-Navigation Tabs */}
-                                        <div style={{ display: 'flex', gap: '8px', background: 'rgba(255, 255, 255, 0.05)', padding: '4px', borderRadius: '8px' }}>
+                                        {/* Professional Sub-Navigation Tabs */}
+                                        <div style={{ display: 'flex', gap: '8px', background: 'rgba(0, 168, 107, 0.08)', padding: '6px', borderRadius: '12px', border: '1px solid rgba(0, 168, 107, 0.2)' }}>
                                             <button 
                                                 onClick={() => setCopySubTab('discover')}
-                                                style={{ padding: '8px 16px', background: copy_sub_tab === 'discover' ? 'var(--brand-coral)' : 'transparent', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}
+                                                style={{ padding: '10px 18px', background: copy_sub_tab === 'discover' ? '#00a86b' : 'transparent', border: 'none', color: copy_sub_tab === 'discover' ? '#fff' : 'var(--text-prominent)', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', transition: 'all 0.2s ease' }}
                                             >
                                                 Discover Masters
                                             </button>
                                             <button 
                                                 onClick={() => setCopySubTab('portfolio')}
-                                                style={{ padding: '8px 16px', background: copy_sub_tab === 'portfolio' ? 'var(--brand-coral)' : 'transparent', border: 'none', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}
+                                                style={{ padding: '10px 18px', background: copy_sub_tab === 'portfolio' ? '#00a86b' : 'transparent', border: 'none', color: copy_sub_tab === 'portfolio' ? '#fff' : 'var(--text-prominent)', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', transition: 'all 0.2s ease' }}
                                             >
                                                 Active Portfolios ({active_portfolios.length})
+                                            </button>
+                                            <button 
+                                                onClick={() => setCopySubTab('history')}
+                                                style={{ padding: '10px 18px', background: copy_sub_tab === 'history' ? '#00a86b' : 'transparent', border: 'none', color: copy_sub_tab === 'history' ? '#fff' : 'var(--text-prominent)', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', transition: 'all 0.2s ease' }}
+                                            >
+                                                Trade Audit Log
                                             </button>
                                         </div>
                                     </div>
@@ -594,117 +607,169 @@ const AppWrapper = observer(() => {
                                     {/* DISCOVER TAB VIEW */}
                                     {copy_sub_tab === 'discover' && (
                                         <>
-                                            {/* Risk Management Settings Bar */}
-                                            <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', padding: '16px', marginBottom: '2rem', display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                                <div style={{ flex: '1', minWidth: '200px' }}>
-                                                    <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', fontWeight: 600, marginBottom: '6px' }}>Stake Multiplier: <strong>{multiplier}x</strong></label>
+                                            {/* Advanced Risk Management & Capital Allocation Panel */}
+                                            <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.3)', borderRadius: '1.4rem', padding: '20px 24px', marginBottom: '2.4rem', display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+                                                <div style={{ flex: '1.2', minWidth: '220px' }}>
+                                                    <label style={{ display: 'block', fontSize: '0.95rem', color: 'var(--text-prominent)', fontWeight: 700, marginBottom: '8px' }}>Global Stake Multiplier: <strong style={{ color: '#00a86b' }}>{multiplier}x</strong></label>
                                                     <input 
                                                         type='range' min='0.1' max='5.0' step='0.1' value={multiplier} 
                                                         onChange={(e) => setMultiplier(Number(e.target.value))}
-                                                        style={{ width: '100%', accentColor: 'var(--brand-coral)' }} 
+                                                        style={{ width: '100%', accentColor: '#00a86b', cursor: 'pointer' }} 
                                                     />
                                                 </div>
                                                 <div style={{ flex: '1', minWidth: '180px' }}>
-                                                    <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', fontWeight: 600, marginBottom: '6px' }}>Max Stake Cap ($)</label>
+                                                    <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', fontWeight: 700, marginBottom: '6px' }}>Max Stake Cap ($)</label>
                                                     <input 
                                                         type='number' value={maxStake} onChange={(e) => setMaxStake(e.target.value)}
-                                                        style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px', fontSize: '0.95rem' }}
+                                                        style={{ width: '100%', padding: '10px 14px', background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', color: 'var(--text-prominent)', borderRadius: '8px', fontSize: '1rem', fontWeight: 600 }}
                                                     />
                                                 </div>
                                                 <div style={{ flex: '1', minWidth: '180px' }}>
-                                                    <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', fontWeight: 600, marginBottom: '6px' }}>Daily Stop-Loss ($)</label>
+                                                    <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', fontWeight: 700, marginBottom: '6px' }}>Daily Stop-Loss ($)</label>
                                                     <input 
                                                         type='number' value={stopLoss} onChange={(e) => setStopLoss(e.target.value)}
-                                                        style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px', fontSize: '0.95rem' }}
+                                                        style={{ width: '100%', padding: '10px 14px', background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', color: 'var(--text-prominent)', borderRadius: '8px', fontSize: '1rem', fontWeight: 600 }}
                                                     />
+                                                </div>
+                                                <div style={{ flex: '1', minWidth: '160px' }}>
+                                                    <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-prominent)', fontWeight: 700, marginBottom: '6px' }}>Risk Filter</label>
+                                                    <select 
+                                                        value={riskFilter} 
+                                                        onChange={(e) => setRiskFilter(e.target.value as any)}
+                                                        style={{ width: '100%', padding: '10px 12px', background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', color: 'var(--text-prominent)', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer' }}
+                                                    >
+                                                        <option value='ALL'>All Risk Profiles</option>
+                                                        <option value='Low'>Low Risk Only</option>
+                                                        <option value='Medium'>Medium Risk Only</option>
+                                                        <option value='High'>High Risk Only</option>
+                                                    </select>
                                                 </div>
                                             </div>
 
-                                            {/* Master Traders Grid */}
+                                            {/* Master Traders Production Cards Grid */}
                                             <div className='free-bots-grid'>
-                                                {master_traders.map((trader, index) => (
-                                                    <div className='free-bots-card' key={trader.id}>
-                                                        <div className='free-bots-header'>
-                                                            <span className='strategy-tag' style={{ fontSize: '0.85rem' }}>MASTER #{index + 1}</span>
-                                                            <span className='confidence-badge' style={{ background: trader.risk === 'Low' ? 'rgba(76, 175, 80, 0.15)' : 'rgba(255, 152, 0, 0.15)', color: trader.risk === 'Low' ? '#4caf50' : '#ff9800', fontSize: '0.85rem' }}>
-                                                                {trader.risk} Risk
-                                                            </span>
-                                                        </div>
-
-                                                        <div className='free-bots-body'>
-                                                            <h4 className='strategy-title' style={{ fontSize: '1.2rem' }}>{trader.name}</h4>
-                                                            {/* Enhanced creator text visibility */}
-                                                            <p className='strategy-description' style={{ fontSize: '0.95rem', color: 'var(--text-prominent)', opacity: 0.95 }}>
-                                                                Created by {trader.creator} • {trader.copiersCount} active copiers
-                                                            </p>
-                                                            
-                                                            <div className='strategy-details' style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-                                                                <span className='market-name' style={{ background: 'rgba(33, 150, 243, 0.15)', padding: '6px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#fff' }}>Win Rate: <strong>{trader.winRate}</strong></span>
-                                                                <span className='market-name' style={{ background: 'rgba(76, 175, 80, 0.15)', padding: '6px 10px', borderRadius: '6px', fontSize: '0.9rem', color: '#4caf50' }}>30D ROI: <strong>{trader.roi30d}</strong></span>
+                                                {master_traders
+                                                    .filter(trader => riskFilter === 'ALL' || trader.risk === riskFilter)
+                                                    .map((trader, index) => (
+                                                        <div className='free-bots-card' key={trader.id} style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.4)', borderRadius: '1.4rem', padding: '20px' }}>
+                                                            <div className='free-bots-header'>
+                                                                <span className='strategy-tag' style={{ fontSize: '0.85rem', fontWeight: 800 }}>MASTER #{index + 1}</span>
+                                                                <span className='confidence-badge' style={{ background: trader.risk === 'Low' ? 'rgba(76, 175, 80, 0.18)' : trader.risk === 'Medium' ? 'rgba(33, 150, 243, 0.18)' : 'rgba(255, 152, 0, 0.18)', color: trader.risk === 'Low' ? '#4caf50' : trader.risk === 'Medium' ? '#2196f3' : '#ff9800', fontSize: '0.85rem', fontWeight: 700, padding: '4px 10px', borderRadius: '6px' }}>
+                                                                    {trader.risk} Risk
+                                                                </span>
                                                             </div>
-                                                        </div>
 
-                                                        <button 
-                                                            onClick={() => {
-                                                                setActivePortfolios(prev => [...prev, {
-                                                                    id: `active_${Date.now()}`,
-                                                                    name: trader.name,
-                                                                    allocation: `$${(0.35 * multiplier).toFixed(2)} / trade`,
-                                                                    pnl: '+0.00 USD',
-                                                                    status: 'Active',
-                                                                }]);
-                                                                setCopySubTab('portfolio');
-                                                            }} 
-                                                            className='free-bots-btn'
-                                                            style={{ marginTop: 'auto', fontSize: '0.95rem' }}
-                                                        >
-                                                            Copy Strategy
-                                                        </button>
-                                                    </div>
+                                                            <div className='free-bots-body'>
+                                                                <h4 className='strategy-title' style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-prominent)' }}>{trader.name}</h4>
+                                                                <p className='strategy-description' style={{ fontSize: '0.95rem', color: 'var(--text-prominent)', opacity: 0.9, fontWeight: 500 }}>
+                                                                    Created by <strong style={{ color: '#00a86b' }}>{trader.creator}</strong> • {trader.copiersCount} active copiers
+                                                                </p>
+                                                                
+                                                                {/* High-Contrast Production Stat Boxes */}
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '14px' }}>
+                                                                    <div style={{ background: 'rgba(0, 168, 107, 0.08)', border: '1px solid rgba(0, 168, 107, 0.25)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
+                                                                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-general)', fontWeight: 600, textTransform: 'uppercase' }}>Win Rate</span>
+                                                                        <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-prominent)' }}>{trader.winRate}</span>
+                                                                    </div>
+                                                                    <div style={{ background: 'rgba(76, 175, 80, 0.1)', border: '1px solid rgba(76, 175, 80, 0.3)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
+                                                                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-general)', fontWeight: 600, textTransform: 'uppercase' }}>30D ROI</span>
+                                                                        <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#4caf50' }}>{trader.roi30d}</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div style={{ marginTop: '10px', fontSize: '0.85rem', color: 'var(--text-less-prominent)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                    <span>Primary Asset:</span>
+                                                                    <strong style={{ color: 'var(--text-prominent)' }}>{trader.asset}</strong>
+                                                                </div>
+                                                            </div>
+
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setActivePortfolios(prev => [...prev, {
+                                                                        id: `active_${Date.now()}`,
+                                                                        name: trader.name,
+                                                                        allocation: `$${(0.35 * multiplier).toFixed(2)} / trade`,
+                                                                        pnl: '+0.00 USD',
+                                                                        status: 'Active',
+                                                                    }]);
+                                                                    setCopySubTab('portfolio');
+                                                                }} 
+                                                                className='free-bots-btn'
+                                                                style={{ marginTop: '1.2rem', background: '#00a86b', color: '#fff', border: 'none', fontWeight: 800, padding: '12px', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                                                            >
+                                                                Copy Strategy Now
+                                                            </button>
+                                                        </div>
                                                 ))}
                                             </div>
                                         </>
                                     )}
 
-                                    {/* ACTIVE PORTFOLIO TAB VIEW */}
+                                    {/* ACTIVE PORTFOLIOS TAB VIEW */}
                                     {copy_sub_tab === 'portfolio' && (
                                         <div>
                                             {active_portfolios.length === 0 ? (
-                                                <div className='free-bots-closed-state' style={{ padding: '40px', textAlign: 'center' }}>
-                                                    <p style={{ marginBottom: '16px' }}>You are not currently copying any master traders.</p>
-                                                    <button onClick={() => setCopySubTab('discover')} className='free-bots-btn rescan-btn'>
+                                                <div className='free-bots-closed-state' style={{ padding: '60px', textAlign: 'center', background: 'var(--general-section-1)', borderRadius: '1.4rem', border: '1.5px dashed rgba(0, 168, 107, 0.3)' }}>
+                                                    <p style={{ marginBottom: '16px', fontSize: '1.1rem', fontWeight: 600 }}>You are not currently copying any master traders.</p>
+                                                    <button onClick={() => setCopySubTab('discover')} className='free-bots-btn rescan-btn' style={{ background: '#00a86b', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 700 }}>
                                                         Discover Strategies
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                                     {active_portfolios.map(item => (
-                                                        <div key={item.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                                                        <div key={item.id} style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.4)', borderRadius: '1.4rem', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
                                                             <div>
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                                                                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4caf50', display: 'inline-block' }} />
-                                                                    <h4 style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 600 }}>{item.name}</h4>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
+                                                                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4caf50', display: 'inline-block', boxShadow: '0 0 8px #4caf50' }} />
+                                                                    <h4 style={{ color: 'var(--text-prominent)', fontSize: '1.2rem', fontWeight: 800 }}>{item.name}</h4>
                                                                 </div>
-                                                                <p style={{ color: 'var(--text-general)', fontSize: '0.85rem' }}>Allocation: {item.allocation} • Multiplier: {multiplier}x</p>
+                                                                <p style={{ color: 'var(--text-prominent)', fontSize: '0.95rem', fontWeight: 500, opacity: 0.9 }}>
+                                                                    Allocation: <strong>{item.allocation}</strong> • Multiplier: <strong>{multiplier}x</strong> • Max Stake: <strong>${maxStake}</strong>
+                                                                </p>
                                                             </div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                                                                <div style={{ textAlign: 'right' }}>
-                                                                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-general)' }}>Live P&L</span>
-                                                                    <span style={{ fontSize: '1rem', fontWeight: 700, color: '#4caf50' }}>{item.pnl}</span>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                                                                <div style={{ textAlign: 'right', background: 'rgba(76, 175, 80, 0.08)', padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(76, 175, 80, 0.2)' }}>
+                                                                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-general)', fontWeight: 700, textTransform: 'uppercase' }}>Live P&L</span>
+                                                                    <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#4caf50' }}>{item.pnl}</span>
                                                                 </div>
                                                                 <button 
                                                                     onClick={() => {
                                                                         setActivePortfolios(prev => prev.filter(p => p.id !== item.id));
                                                                     }}
-                                                                    style={{ padding: '6px 12px', background: 'rgba(244, 67, 54, 0.15)', border: '1px solid rgba(244, 67, 54, 0.3)', color: '#f44336', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
+                                                                    style={{ padding: '10px 18px', background: 'rgba(244, 67, 54, 0.15)', border: '1px solid rgba(244, 67, 54, 0.4)', color: '#f44336', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 700, transition: 'all 0.2s ease' }}
                                                                 >
-                                                                    Unlink
+                                                                    Unlink Master
                                                                 </button>
                                                             </div>
                                                         </div>
                                                     ))}
                                                 </div>
                                             )}
+                                        </div>
+                                    )}
+
+                                    {/* TRADE AUDIT LOG TAB VIEW */}
+                                    {copy_sub_tab === 'history' && (
+                                        <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1.4rem', padding: '24px', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+                                            <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-prominent)', marginBottom: '16px' }}>Executed Mirror Trades Audit Log</h4>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                {trade_history.map(tx => (
+                                                    <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--general-main-1)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                                        <div>
+                                                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '4px' }}>
+                                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-general)', fontWeight: 700 }}>{tx.time}</span>
+                                                                <span style={{ fontSize: '0.85rem', fontWeight: 700, background: 'rgba(0,168,107,0.15)', color: '#00a86b', padding: '2px 8px', borderRadius: '4px' }}>{tx.type}</span>
+                                                            </div>
+                                                            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-prominent)' }}>{tx.master}</span>
+                                                        </div>
+                                                        <div style={{ textAlign: 'right' }}>
+                                                            <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-general)', fontWeight: 600 }}>Stake: {tx.stake}</span>
+                                                            <span style={{ fontSize: '1rem', fontWeight: 800, color: tx.status === 'Won' ? '#4caf50' : '#f44336' }}>{tx.pnl} ({tx.status})</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -782,5 +847,7 @@ const AppWrapper = observer(() => {
         </React.Fragment>
     );
 });
+
+AppWrapper.displayName = 'AppWrapper';
 
 export default AppWrapper;
