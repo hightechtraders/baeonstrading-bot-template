@@ -51,6 +51,81 @@ import './main.scss';
 
 const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
 
+// ==========================================
+// SUB-COMPONENT: PROFESSIONAL SVG GAUGE CIRCLE
+// ==========================================
+function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
+  const circleRadius = 20;
+  const lineThickness = 3.5;
+  const pathCircumference = 2 * Math.PI * circleRadius; // ~125.66
+  
+  const operationalScale = 15;
+  const scaledValue = Math.min(percentage, operationalScale);
+  const strokeOffsetProgress = pathCircumference - (scaledValue / operationalScale) * pathCircumference;
+  
+  let styleProfile = {
+    labelColor: 'text-gray-400', 
+    valueColor: 'text-[var(--text-prominent)]', 
+    trackStroke: 'stroke-gray-800', 
+    activeStroke: 'stroke-gray-500', 
+    innerBackground: 'bg-transparent'
+  };
+
+  if (trendMode === 'selected' || isSelected) {
+    styleProfile = {
+      labelColor: 'text-[#818cf8]', 
+      valueColor: 'text-white font-black scale-105',
+      trackStroke: 'stroke-indigo-950', 
+      activeStroke: 'stroke-[#6366f1]', 
+      innerBackground: 'bg-transparent'
+    };
+  } else if (trendMode === 'high') {
+    styleProfile = {
+      labelColor: 'text-[#14b8a6]', 
+      valueColor: 'text-white font-bold',
+      trackStroke: 'stroke-teal-950/40',
+      activeStroke: 'stroke-[#14b8a6]', 
+      innerBackground: 'bg-[#134e4a]/10'
+    };
+  } else if (trendMode === 'low') {
+    styleProfile = {
+      labelColor: 'text-[#f43f5e]', 
+      valueColor: 'text-white font-bold',
+      trackStroke: 'stroke-rose-950/40',
+      activeStroke: 'stroke-[#f43f5e]', 
+      innerBackground: 'bg-[#4c0519]/10'
+    };
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center p-1 select-none">
+      <span className={`text-[11px] font-extrabold mb-1.5 tracking-wider transition-colors duration-200 ${styleProfile.labelColor}`}>
+        {digit}
+      </span>
+      
+      <div className={`relative w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ease-out ${styleProfile.innerBackground}`}>
+        <svg className="w-full h-full transform -rotate-90 scale-95 antialiased" viewBox="0 0 50 50">
+          <circle cx="25" cy="25" r={circleRadius} className={`fill-none ${styleProfile.trackStroke}`} strokeWidth={lineThickness} />
+          <circle
+            cx="25"
+            cy="25"
+            r={circleRadius}
+            className={`fill-none transition-all duration-500 ease-out stroke-linecap-round ${styleProfile.activeStroke}`}
+            strokeWidth={lineThickness}
+            strokeDasharray={pathCircumference}
+            strokeDashoffset={strokeOffsetProgress}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span className={`text-[10px] font-extrabold tracking-tight ${styleProfile.valueColor}`}>
+            {percentage}%
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
     const { dashboard, load_modal, run_panel, quick_strategy, summary_card, blockly_store } = useStore();
@@ -575,7 +650,7 @@ const AppWrapper = observer(() => {
                                 </div>
                             </div>
 
-                            {/* MANUAL TRADER TAB - EXACT MATCH DESIGN */}
+                            {/* MANUAL TRADER TAB - WITH PROFESSIONAL SVG GAUGE CIRCLES */}
                             <div
                                 label={
                                     <>
@@ -598,46 +673,28 @@ const AppWrapper = observer(() => {
                                         </span>
                                     </div>
 
-                                    {/* 10-Digit Realtime Stat Bubble Configuration Grid with Trend Highlights */}
+                                    {/* 10-Digit Dynamic SVG Gauge Grid */}
                                     <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1.4rem', padding: '24px 20px', marginBottom: '24px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gap: '12px', justifyContent: 'center' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gap: '8px', justifyContent: 'center' }}>
                                             {digitStats.map((item) => {
                                                 const isSelected = targetDigit === item.digit;
-                                                let ringStyle = { borderColor: 'rgba(255,255,255,0.15)', background: 'var(--general-main-1)', color: 'var(--text-prominent)' };
-                                                
-                                                if (isSelected) {
-                                                    ringStyle = { borderColor: '#6366f1', background: 'rgba(99, 102, 241, 0.2)', color: '#fff' };
-                                                } else if (item.trend === 'high') {
-                                                    ringStyle = { borderColor: 'rgba(20, 184, 166, 0.8)', background: 'rgba(7, 36, 40, 0.5)', color: '#2dd4bf' };
-                                                } else if (item.trend === 'low') {
-                                                    ringStyle = { borderColor: 'rgba(244, 63, 94, 0.8)', background: 'rgba(40, 12, 22, 0.5)', color: '#fb7185' };
-                                                }
+                                                let cardModifier = '';
+                                                if (isSelected) cardModifier = 'digit-card--selected';
+                                                else if (item.trend === 'high') cardModifier = 'digit-card--high';
+                                                else if (item.trend === 'low') cardModifier = 'digit-card--low';
 
                                                 return (
                                                     <div 
                                                         key={item.digit} 
                                                         onClick={() => setTargetDigit(item.digit)}
-                                                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', transition: 'transform 0.2s ease' }}
+                                                        className={`digit-gauge-card ${cardModifier}`}
                                                     >
-                                                        <span style={{ fontSize: '0.8rem', fontWeight: 800, marginBottom: '6px', color: isSelected ? '#818cf8' : 'var(--text-prominent)' }}>
-                                                            {item.digit}
-                                                        </span>
-                                                        <div style={{ 
-                                                            width: '46px', 
-                                                            height: '46px', 
-                                                            borderRadius: '50%', 
-                                                            border: `2.5px solid ${ringStyle.borderColor}`, 
-                                                            display: 'flex', 
-                                                            alignItems: 'center', 
-                                                            justifyContent: 'center', 
-                                                            fontSize: '0.85rem', 
-                                                            fontWeight: 800, 
-                                                            backgroundColor: ringStyle.background,
-                                                            color: ringStyle.color,
-                                                            boxShadow: isSelected ? '0 0 15px rgba(99, 102, 241, 0.4)' : 'none'
-                                                        }}>
-                                                            {item.percent}%
-                                                        </div>
+                                                        <ProfessionalDigitGauge
+                                                            digit={item.digit}
+                                                            percentage={item.percent}
+                                                            isSelected={isSelected}
+                                                            trendMode={isSelected ? 'selected' : item.trend}
+                                                        />
                                                     </div>
                                                 );
                                             })}
@@ -678,7 +735,7 @@ const AppWrapper = observer(() => {
                                                 </div>
                                             </div>
 
-                                            <div style={{ background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '10px', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'between' }}>
+                                            <div style={{ background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '10px', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                 <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                                                     <span style={{ fontSize: '0.7rem', color: 'var(--text-general)', textTransform: 'uppercase', fontWeight: 800 }}>Risk Capital Allocation</span>
                                                     <input 
