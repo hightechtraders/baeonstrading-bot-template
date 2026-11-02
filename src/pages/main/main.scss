@@ -1033,9 +1033,9 @@
     }
 }
 
-/* ==========================================
-   COPY TRADING & FREE BOTS TEXT LEGIBILITY & CLEAN BORDER FIX
-   ========================================== */
+/* =========================================================
+   COPY TRADING & FREE BOTS PROFESSIONAL THEME & CONTRAST FIX
+   ========================================================= */
 #id-copy-trading, 
 .free-bots-container {
     h3 {
@@ -1043,7 +1043,7 @@
         color: var(--text-prominent) !important;
     }
 
-    /* Target the copy trading description subtitle directly */
+    /* Subtitle clear high-contrast text */
     p {
         color: var(--text-prominent) !important;
         opacity: 1 !important;
@@ -1058,12 +1058,20 @@
     .strategy-description, 
     .free-bots-body p {
         font-size: 1.35rem !important;
-        color: var(--text-general) !important;
-        opacity: 1 !important;
+        color: var(--text-prominent) !important;
+        opacity: 0.9 !important;
     }
 
-    .market-name, 
-    .strategy-details span,
+    /* Professional solid backgrounds and sharp borders for stat boxes (Win Rate / ROI) */
+    .market-name {
+        font-size: 1.25rem !important;
+        font-weight: 600;
+        opacity: 1 !important;
+        border: 1px solid rgba(0, 168, 107, 0.3) !important;
+        background: rgba(0, 168, 107, 0.08) !important;
+        color: var(--text-prominent) !important;
+    }
+
     .confidence-badge {
         font-size: 1.25rem !important;
         font-weight: 600;
