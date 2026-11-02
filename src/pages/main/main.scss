@@ -1038,26 +1038,33 @@
 }
 
 /* ==========================================
-   MANUAL TRADER - SVG DIGIT GAUGE STYLES
+   MANUAL TRADER - COMPACT SINGLE-PAGE LAYOUT
    ========================================== */
 
 .manual-trader-wrapper {
-    padding: 2.4rem;
+    padding: 0.6rem 1rem !important;
     width: 100%;
-    max-width: 1400px;
+    max-width: 1000px;
     margin: 0 auto;
     box-sizing: border-box;
 
-    /* Clean targeted class selector for 10-digit grid layout */
+    /* Tighter outer container for 10-digit grid layout to fit single mobile screen */
+    .digit-stats-grid {
+        padding: 8px 8px 12px 8px !important;
+        margin-bottom: 8px !important;
+        border-radius: 1rem !important;
+    }
+
     .digit-stats-grid__inner {
         display: grid;
         grid-template-columns: repeat(10, minmax(0, 1fr));
-        gap: 8px;
+        gap: 4px;
         justify-content: center;
+        align-items: stretch;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-            gap: 6px !important;
+            gap: 4px !important;
         }
     }
 
@@ -1066,29 +1073,29 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 10px 4px;
+        padding: 6px 1px 12px 1px !important;
         background: var(--general-main-1);
         border: 1.5px solid rgba(0, 168, 107, 0.25);
-        border-radius: 14px;
+        border-radius: 10px;
         cursor: pointer;
         transition: all 0.2s ease;
         user-select: none;
 
         @include mobile-or-tablet-screen {
-            padding: 6px 2px;
-            border-radius: 10px;
+            padding: 4px 1px 10px 1px !important;
+            border-radius: 8px;
         }
 
         &:hover {
             border-color: #00a86b;
             background: rgba(0, 168, 107, 0.08);
-            transform: translateY(-2px);
+            transform: translateY(-1px);
         }
 
         &--selected {
             background: rgba(99, 102, 241, 0.15) !important;
             border: 2px solid #6366f1 !important;
-            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
         }
 
         &--high {
@@ -1101,6 +1108,12 @@
             background: rgba(40, 12, 22, 0.4) !important;
         }
     }
+}
+
+// Bounce animation for the red upward arrow cursor underneath digits
+@keyframes bounceCursor {
+    0% { transform: translateX(-50%) translateY(0); }
+    100% { transform: translateX(-50%) translateY(-3px); }
 }
 
 /* =========================================================
