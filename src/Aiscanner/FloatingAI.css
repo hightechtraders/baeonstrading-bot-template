@@ -111,15 +111,16 @@
   }
 }
 
-/* 🪟 Institutional Modal Backdrop */
+/* 🪟 Institutional Transparent Modal Backdrop (No Background Greying/Blur) */
 .ai-modal-backdrop {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(5, 7, 13, 0.75);
-  backdrop-filter: blur(8px);
+  background: transparent !important;
+  backdrop-filter: none !important;
+  pointer-events: none !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -139,8 +140,9 @@
   border-radius: 16px;
   padding: 22px;
   color: #f1f5f9;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 0 1.5px rgba(0, 168, 107, 0.4);
   overflow-y: auto;
+  pointer-events: auto !important;
   animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
