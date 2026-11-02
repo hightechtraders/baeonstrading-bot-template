@@ -1048,6 +1048,14 @@
     margin: 0 auto;
     box-sizing: border-box;
 
+    /* Responsive mobile 2-row x 5-column grid layout */
+    div[style*="gridTemplateColumns"] {
+        @include mobile-or-tablet-screen {
+            grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+            gap: 6px !important;
+        }
+    }
+
     .digit-gauge-card {
         display: flex;
         flex-direction: column;
@@ -1063,6 +1071,7 @@
 
         @include mobile-or-tablet-screen {
             padding: 6px 2px;
+            border-radius: 10px;
         }
 
         &:hover {
