@@ -55,69 +55,96 @@ const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
 // SUB-COMPONENT: PROFESSIONAL SVG GAUGE CIRCLE
 // ==========================================
 function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
-  const circleRadius = 20;
+  const circleRadius = 18;
   const lineThickness = 3.5;
-  const pathCircumference = 2 * Math.PI * circleRadius; // ~125.66
+  const pathCircumference = 2 * Math.PI * circleRadius; // ~113.1
   
   const operationalScale = 15;
   const scaledValue = Math.min(percentage, operationalScale);
   const strokeOffsetProgress = pathCircumference - (scaledValue / operationalScale) * pathCircumference;
   
-  let styleProfile = {
-    labelColor: 'text-gray-400', 
-    valueColor: 'text-[var(--text-prominent)]', 
-    trackStroke: 'stroke-gray-800', 
-    activeStroke: 'stroke-gray-500', 
-    innerBackground: 'bg-transparent'
+  let themeConfig = {
+    labelColor: '#9ca3af',
+    valueColor: 'var(--text-prominent)',
+    trackColor: 'rgba(255, 255, 255, 0.08)',
+    activeColor: '#6b7280',
+    background: 'transparent',
+    glow: 'none'
   };
 
   if (trendMode === 'selected' || isSelected) {
-    styleProfile = {
-      labelColor: 'text-[#818cf8]', 
-      valueColor: 'text-white font-black scale-105',
-      trackStroke: 'stroke-indigo-950', 
-      activeStroke: 'stroke-[#6366f1]', 
-      innerBackground: 'bg-transparent'
+    themeConfig = {
+      labelColor: '#818cf8',
+      valueColor: '#ffffff',
+      trackColor: '#1e1b4b',
+      activeColor: '#6366f1',
+      background: 'rgba(99, 102, 241, 0.15)',
+      glow: '0 0 12px rgba(99, 102, 241, 0.4)'
     };
   } else if (trendMode === 'high') {
-    styleProfile = {
-      labelColor: 'text-[#14b8a6]', 
-      valueColor: 'text-white font-bold',
-      trackStroke: 'stroke-teal-950/40',
-      activeStroke: 'stroke-[#14b8a6]', 
-      innerBackground: 'bg-[#134e4a]/10'
+    themeConfig = {
+      labelColor: '#14b8a6',
+      valueColor: '#2dd4bf',
+      trackColor: 'rgba(20, 184, 166, 0.15)',
+      activeColor: '#14b8a6',
+      background: 'rgba(20, 184, 166, 0.1)',
+      glow: '0 0 10px rgba(20, 184, 166, 0.25)'
     };
   } else if (trendMode === 'low') {
-    styleProfile = {
-      labelColor: 'text-[#f43f5e]', 
-      valueColor: 'text-white font-bold',
-      trackStroke: 'stroke-rose-950/40',
-      activeStroke: 'stroke-[#f43f5e]', 
-      innerBackground: 'bg-[#4c0519]/10'
+    themeConfig = {
+      labelColor: '#f43f5e',
+      valueColor: '#fb7185',
+      trackColor: 'rgba(244, 63, 94, 0.15)',
+      activeColor: '#f43f5e',
+      background: 'rgba(244, 63, 94, 0.1)',
+      glow: '0 0 10px rgba(244, 63, 94, 0.25)'
     };
   }
 
   return (
-    <div className="flex flex-col items-center justify-center p-1 select-none">
-      <span className={`text-[11px] font-extrabold mb-1.5 tracking-wider transition-colors duration-200 ${styleProfile.labelColor}`}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4px', userSelect: 'none' }}>
+      <span style={{ fontSize: '12px', fontWeight: 900, marginBottom: '4px', letterSpacing: '0.5px', color: themeConfig.labelColor }}>
         {digit}
       </span>
       
-      <div className={`relative w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ease-out ${styleProfile.innerBackground}`}>
-        <svg className="w-full h-full transform -rotate-90 scale-95 antialiased" viewBox="0 0 50 50">
-          <circle cx="25" cy="25" r={circleRadius} className={`fill-none ${styleProfile.trackStroke}`} strokeWidth={lineThickness} />
+      <div 
+        style={{ 
+          position: 'relative', 
+          width: '52px', 
+          height: '52px', 
+          borderRadius: '50%', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          background: themeConfig.background,
+          boxShadow: themeConfig.glow,
+          transition: 'all 0.3s ease'
+        }}
+      >
+        <svg style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }} viewBox="0 0 44 44">
+          <circle 
+            cx="22" 
+            cy="22" 
+            r={circleRadius} 
+            fill="none"
+            stroke={themeConfig.trackColor}
+            strokeWidth={lineThickness} 
+          />
           <circle
-            cx="25"
-            cy="25"
+            cx="22"
+            cy="22"
             r={circleRadius}
-            className={`fill-none transition-all duration-500 ease-out stroke-linecap-round ${styleProfile.activeStroke}`}
+            fill="none"
+            stroke={themeConfig.activeColor}
             strokeWidth={lineThickness}
             strokeDasharray={pathCircumference}
             strokeDashoffset={strokeOffsetProgress}
+            strokeLinecap="round"
+            style={{ transition: 'stroke-dashoffset 0.5s ease-out' }}
           />
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span className={`text-[10px] font-extrabold tracking-tight ${styleProfile.valueColor}`}>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+          <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '-0.5px', color: themeConfig.valueColor }}>
             {percentage}%
           </span>
         </div>
@@ -248,8 +275,9 @@ const AppWrapper = observer(() => {
         }
     ]);
 
-    // Manual Trader State & Exact 10-Digit Stat Array with Trend Highlights
-    const [selectedSymbol] = useState('Volatility 90 (1s) Index');
+    // Manual Trader State Set strictly to Volatility 10 (R_10)
+    const [selectedSymbol] = useState('Volatility 10 Index');
+    const symbolCode = 'R_10';
     const [contractType, setContractType] = useState('Over/Under');
     const [targetDigit, setTargetDigit] = useState<number>(8);
     const [manualStake, setManualStake] = useState<string>('500.00');
@@ -293,7 +321,7 @@ const AppWrapper = observer(() => {
             winRate: '82.1%',
             roi30d: '+48.9%',
             maxDrawdown: '-6.8%',
-            asset: 'Volatility 75 Index',
+            asset: 'Volatility 10 Index',
             risk: 'High',
             copiersCount: 289,
         },
@@ -304,7 +332,7 @@ const AppWrapper = observer(() => {
             winRate: '91.4%',
             roi30d: '+18.5%',
             maxDrawdown: '-1.5%',
-            asset: 'Volatility 25 Index',
+            asset: 'Volatility 10 Index',
             risk: 'Low',
             copiersCount: 94,
         },
@@ -650,7 +678,7 @@ const AppWrapper = observer(() => {
                                 </div>
                             </div>
 
-                            {/* MANUAL TRADER TAB - WITH PROFESSIONAL SVG GAUGE CIRCLES */}
+                            {/* MANUAL TRADER TAB - LOCKED TO VOLATILITY 10 (R_10) */}
                             <div
                                 label={
                                     <>
@@ -749,13 +777,13 @@ const AppWrapper = observer(() => {
                                             </div>
                                         </div>
 
-                                        {/* Dual Block Execution Payout Action Area */}
+                                        {/* Dual Block Execution Payout Action Area - Locked to R_10 */}
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                             <button 
                                                 onClick={() => {
                                                     ScannerBridge.executeDirectTrade(
-                                                        { strategyName: `Manual Over ${targetDigit}`, symbol: '1HZ90V' },
-                                                        { symbol: '1HZ90V', contractType: 'DIGITOVER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
+                                                        { strategyName: `Manual Over ${targetDigit}`, symbol: symbolCode },
+                                                        { symbol: symbolCode, contractType: 'DIGITOVER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
                                                     );
                                                 }}
                                                 style={{ background: '#059669', border: 'none', padding: '16px', borderRadius: '12px', color: '#fff', fontWeight: 900, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(5, 150, 105, 0.35)', transition: 'all 0.2s ease' }}
@@ -770,8 +798,8 @@ const AppWrapper = observer(() => {
                                             <button 
                                                 onClick={() => {
                                                     ScannerBridge.executeDirectTrade(
-                                                        { strategyName: `Manual Under ${targetDigit}`, symbol: '1HZ90V' },
-                                                        { symbol: '1HZ90V', contractType: 'DIGITUNDER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
+                                                        { strategyName: `Manual Under ${targetDigit}`, symbol: symbolCode },
+                                                        { symbol: symbolCode, contractType: 'DIGITUNDER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
                                                     );
                                                 }}
                                                 style={{ background: '#e11d48', border: 'none', padding: '16px', borderRadius: '12px', color: '#fff', fontWeight: 900, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(225, 29, 72, 0.35)', transition: 'all 0.2s ease' }}
