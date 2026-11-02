@@ -1037,6 +1037,249 @@
     }
 }
 
+/* ==========================================
+   MANUAL TRADER - DIGIT CIRCLES & EXECUTION PANEL
+   ========================================== */
+
+.manual-trader-wrapper {
+    padding: 2.4rem;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    box-sizing: border-box;
+
+    .scanner-header-card {
+        background: var(--general-section-1);
+        border: 1.5px solid rgba(0, 168, 107, 0.3);
+        border-radius: 1.2rem;
+        padding: 1.6rem 2rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+
+        .scanner-title {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--text-prominent);
+            margin-bottom: 0.2rem;
+        }
+
+        .scanner-desc {
+            color: var(--text-prominent);
+            font-size: 0.95rem;
+            opacity: 0.85;
+            font-weight: 500;
+        }
+
+        .scanner-live-badge {
+            background: rgba(0, 168, 107, 0.15);
+            color: #00a86b;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+    }
+
+    .digit-circles-grid-card {
+        background: var(--general-section-1);
+        border: 1.5px solid rgba(0, 168, 107, 0.3);
+        border-radius: 1.4rem;
+        padding: 24px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+
+        .digits-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 16px;
+            justify-content: center;
+
+            @media (max-width: 1024px) {
+                grid-template-columns: repeat(5, 1fr);
+            }
+
+            @include mobile-or-tablet-screen {
+                grid-template-columns: repeat(auto-fit, minmax(75px, 1fr));
+            }
+
+            .digit-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 14px 10px;
+                background: var(--general-main-1);
+                border: 1.5px solid rgba(255, 255, 255, 0.08);
+                border-radius: 16px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+
+                &:hover {
+                    border-color: #00a86b;
+                    transform: translateY(-2px);
+                }
+
+                &--selected {
+                    background: rgba(0, 168, 107, 0.12);
+                    border: 2px solid #00a86b;
+                    box-shadow: 0 0 15px rgba(0, 168, 107, 0.25);
+                }
+
+                .digit-circle {
+                    width: 52px;
+                    height: 52px;
+                    border-radius: 50%;
+                    border: 3px solid rgba(255, 255, 255, 0.15);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.2rem;
+                    font-weight: 800;
+                    color: var(--text-prominent);
+                    margin-bottom: 8px;
+                    background: rgba(0, 0, 0, 0.2);
+
+                    &--selected {
+                        border-color: #00a86b;
+                        color: #00a86b;
+                    }
+                }
+
+                .digit-percentage {
+                    font-size: 0.85rem;
+                    font-weight: 700;
+                    color: var(--text-prominent);
+                }
+            }
+        }
+    }
+
+    .execution-panel-card {
+        background: var(--general-section-1);
+        border: 1.5px solid rgba(0, 168, 107, 0.3);
+        border-radius: 1.4rem;
+        padding: 24px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+
+        .execution-top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 1rem;
+
+            .trade-type-pill {
+                background: rgba(255, 255, 255, 0.06);
+                padding: 8px 14px;
+                border-radius: 8px;
+                font-weight: 700;
+                font-size: 0.9rem;
+                color: var(--text-prominent);
+            }
+
+            .selected-digit-text {
+                font-weight: 700;
+                font-size: 0.95rem;
+                color: var(--text-prominent);
+
+                strong {
+                    color: #00a86b;
+                    font-size: 1.1rem;
+                }
+            }
+
+            .stake-input-group {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+
+                .stake-duration {
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                    color: var(--text-general);
+                }
+
+                input {
+                    width: 120px;
+                    padding: 8px 12px;
+                    background: var(--general-main-1);
+                    border: 1.5px solid rgba(0, 168, 107, 0.35);
+                    border-radius: 8px;
+                    color: #fff;
+                    font-weight: 700;
+                    text-align: right;
+                    outline: none;
+
+                    &:focus {
+                        border-color: #00a86b;
+                    }
+                }
+
+                .stake-label {
+                    font-size: 0.9rem;
+                    font-weight: 700;
+                    color: var(--text-prominent);
+                }
+            }
+        }
+
+        .action-buttons-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+
+            @include mobile-or-tablet-screen {
+                grid-template-columns: 1fr;
+            }
+
+            .exec-btn {
+                border: none;
+                padding: 16px;
+                border-radius: 12px;
+                font-weight: 800;
+                font-size: 1.05rem;
+                cursor: pointer;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                transition: transform 0.2s ease, opacity 0.2s ease;
+
+                &:hover {
+                    opacity: 0.9;
+                    transform: translateY(-2px);
+                }
+
+                &:active {
+                    transform: scale(0.98);
+                }
+
+                &--over {
+                    background: #00a86b;
+                    color: #fff;
+                    box-shadow: 0 4px 14px rgba(0, 168, 107, 0.3);
+                }
+
+                &--under {
+                    background: #e11d48;
+                    color: #fff;
+                    box-shadow: 0 4px 14px rgba(225, 29, 72, 0.3);
+                }
+
+                .btn-payout {
+                    font-size: 0.9rem;
+                    opacity: 0.9;
+                    font-weight: 700;
+                }
+            }
+        }
+    }
+}
+
 /* =========================================================
    COPY TRADING & FREE BOTS PROFESSIONAL THEME & CONTRAST FIX
    ========================================================= */
@@ -1048,7 +1291,6 @@
         color: var(--text-prominent) !important;
     }
 
-    /* Subtitle clear high-contrast text */
     p {
         color: var(--text-prominent) !important;
         opacity: 1 !important;
@@ -1067,7 +1309,6 @@
         opacity: 0.9 !important;
     }
 
-    /* Professional solid backgrounds and sharp borders for stat boxes (Win Rate / ROI) */
     .market-name {
         font-size: 1.25rem !important;
         font-weight: 600;
@@ -1089,7 +1330,6 @@
         color: var(--text-prominent) !important;
     }
 
-    /* Clean solid borders and crisp background fills for inputs, selects and settings containers */
     input[type='number'],
     input[type='text'],
     select {
