@@ -1034,7 +1034,7 @@
 }
 
 /* ==========================================
-   COPY TRADING & FREE BOTS TEXT LEGIBILITY FIX
+   COPY TRADING & FREE BOTS TEXT LEGIBILITY & CLEAN BORDER FIX
    ========================================== */
 #id-copy-trading, 
 .free-bots-container {
@@ -1043,9 +1043,16 @@
         color: var(--text-prominent) !important;
     }
 
-    p, span, label {
+    /* Target the copy trading description subtitle directly */
+    p {
+        color: var(--text-prominent) !important;
+        opacity: 1 !important;
+        font-size: 1.05rem !important;
+    }
+
+    span, label {
         color: var(--text-prominent);
-        opacity: 0.95;
+        opacity: 1 !important;
     }
 
     .strategy-description, 
@@ -1060,14 +1067,29 @@
     .confidence-badge {
         font-size: 1.25rem !important;
         font-weight: 600;
+        opacity: 1 !important;
     }
 
     label {
         font-size: 1.3rem !important;
         font-weight: 600;
+        color: var(--text-prominent) !important;
     }
 
-    input[type='number'] {
+    /* Clean solid borders and crisp background fills for inputs and settings containers */
+    input[type='number'],
+    input[type='text'] {
         font-size: 1.4rem !important;
+        background: var(--general-section-1) !important;
+        border: 1.5px solid rgba(0, 168, 107, 0.35) !important;
+        color: var(--text-prominent) !important;
+        border-radius: 8px !important;
+        padding: 10px 14px !important;
+        outline: none !important;
+
+        &:focus {
+            border-color: #00a86b !important;
+            box-shadow: 0 0 0 2px rgba(0, 168, 107, 0.2) !important;
+        }
     }
 }
