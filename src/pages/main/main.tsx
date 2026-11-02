@@ -701,9 +701,9 @@ const AppWrapper = observer(() => {
                                         </span>
                                     </div>
 
-                                    {/* 10-Digit Dynamic SVG Gauge Grid */}
-                                    <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1.4rem', padding: '24px 20px', marginBottom: '24px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gap: '8px', justifyContent: 'center' }}>
+                                    {/* 10-Digit Dynamic SVG Gauge Grid with Class Hook */}
+                                    <div className='digit-stats-grid' style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1.4rem', padding: '24px 20px', marginBottom: '24px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
+                                        <div className='digit-stats-grid__inner'>
                                             {digitStats.map((item) => {
                                                 const isSelected = targetDigit === item.digit;
                                                 let cardModifier = '';
@@ -1111,4 +1111,4 @@ const AppWrapper = observer(() => {
 
 AppWrapper.displayName = 'AppWrapper';
 
-export default AppWrapper;
+exports.default = AppWrapper;
