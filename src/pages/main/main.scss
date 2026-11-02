@@ -1119,7 +1119,7 @@
                 background: var(--general-main-1);
                 border: 1.5px solid rgba(0, 168, 107, 0.25);
                 border-radius: 14px;
-                cursor: pointer; /* Explicit pointer cursor */
+                cursor: pointer;
                 transition: all 0.2s ease;
                 min-width: 0;
 
@@ -1130,9 +1130,9 @@
                 }
 
                 &--selected {
-                    background: rgba(0, 168, 107, 0.15);
-                    border: 2px solid #00a86b;
-                    box-shadow: 0 0 15px rgba(0, 168, 107, 0.3);
+                    background: rgba(99, 102, 241, 0.15);
+                    border: 2px solid #6366f1;
+                    box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
                 }
 
                 .digit-circle {
@@ -1151,9 +1151,9 @@
                     cursor: pointer;
 
                     &--selected {
-                        border-color: #00a86b;
-                        color: #00a86b;
-                        background: rgba(0, 168, 107, 0.1);
+                        border-color: #6366f1;
+                        color: #818cf8;
+                        background: rgba(99, 102, 241, 0.2);
                     }
                 }
 
@@ -1165,6 +1165,23 @@
                 }
             }
         }
+    }
+
+    // High / Low Trend Bubble Modifiers for Manual Trader
+    .digit-card--high {
+        border-color: rgba(20, 184, 166, 0.8) !important;
+        background: rgba(7, 36, 40, 0.5) !important;
+    }
+
+    .digit-card--low {
+        border-color: rgba(244, 63, 94, 0.8) !important;
+        background: rgba(40, 12, 22, 0.5) !important;
+    }
+
+    .digit-card--selected {
+        border-color: #6366f1 !important;
+        background: rgba(99, 102, 241, 0.2) !important;
+        box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
     }
 
     .execution-panel-card {
