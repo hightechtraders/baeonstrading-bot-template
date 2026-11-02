@@ -1048,8 +1048,13 @@
     margin: 0 auto;
     box-sizing: border-box;
 
-    /* Responsive mobile 2-row x 5-column grid layout */
-    div[style*="gridTemplateColumns"] {
+    /* Clean targeted class selector for 10-digit grid layout */
+    .digit-stats-grid__inner {
+        display: grid;
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+        gap: 8px;
+        justify-content: center;
+
         @include mobile-or-tablet-screen {
             grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
             gap: 6px !important;
