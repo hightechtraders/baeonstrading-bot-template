@@ -173,21 +173,24 @@ const AppWrapper = observer(() => {
         }
     ]);
 
-    // Manual Trader Digit Circles State (0-9 statistical distribution)
-    const [selectedDigit, setSelectedDigit] = useState<number>(8);
-    const [digitStats] = useState([
-        { digit: 0, percentage: 9.5 },
-        { digit: 1, percentage: 9.4 },
-        { digit: 2, percentage: 10.4 },
-        { digit: 3, percentage: 10.0 },
-        { digit: 4, percentage: 10.4 },
-        { digit: 5, percentage: 8.7 },
-        { digit: 6, percentage: 11.3 },
-        { digit: 7, percentage: 11.6 },
-        { digit: 8, percentage: 9.3 },
-        { digit: 9, percentage: 9.4 },
-    ]);
+    // Manual Trader State & Exact 10-Digit Stat Array with Trend Highlights
+    const [selectedSymbol] = useState('Volatility 90 (1s) Index');
+    const [contractType, setContractType] = useState('Over/Under');
+    const [targetDigit, setTargetDigit] = useState<number>(8);
     const [manualStake, setManualStake] = useState<string>('500.00');
+
+    const [digitStats] = useState([
+        { digit: 0, percent: 9.5, trend: 'neutral' },
+        { digit: 1, percent: 9.4, trend: 'neutral' },
+        { digit: 2, percent: 10.4, trend: 'neutral' },
+        { digit: 3, percent: 10.0, trend: 'neutral' },
+        { digit: 4, percent: 10.4, trend: 'neutral' },
+        { digit: 5, percent: 8.7,  trend: 'low' },     // Highlighted low state
+        { digit: 6, percent: 11.3, trend: 'high' },    // High trend
+        { digit: 7, percent: 11.6, trend: 'high' },    // High trend
+        { digit: 8, percent: 9.3,  trend: 'selected' },// Highlighted/active digit
+        { digit: 9, percent: 9.4,  trend: 'neutral' }
+    ]);
 
     // Copy Trading Hub State & Mock Datasets
     const [copy_sub_tab, setCopySubTab] = useState<'discover' | 'portfolio' | 'history'>('discover');
@@ -572,7 +575,7 @@ const AppWrapper = observer(() => {
                                 </div>
                             </div>
 
-                            {/* MANUAL TRADER TAB (Digit Circles Dashboard) */}
+                            {/* MANUAL TRADER TAB - EXACT MATCH DESIGN */}
                             <div
                                 label={
                                     <>
@@ -586,93 +589,144 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-manual-trader'
                             >
-                                <div className='manual-trader-wrapper'>
-                                    {/* Header Banner */}
-                                    <div className='scanner-header-card'>
-                                        <div>
-                                            <h3 className='scanner-title'>
-                                                Volatility 10 (1s) Index • Last Digit Stats
-                                            </h3>
-                                            <p className='scanner-desc'>
-                                                Live tick distribution and probability circles for manual Over/Under execution.
-                                            </p>
-                                        </div>
-                                        <span className='scanner-live-badge'>
-                                            Scanner Live
+                                <div className='manual-trader-wrapper' style={{ maxWidth: '1000px', margin: '0 auto', padding: '2.4rem', boxSizing: 'border-box' }}>
+                                    
+                                    {/* Market Mode Banner */}
+                                    <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-prominent)', background: 'var(--general-section-1)', padding: '8px 16px', borderRadius: '20px', border: '1.5px solid rgba(0, 168, 107, 0.3)', fontWeight: 600 }}>
+                                            Market Mode: <strong style={{ color: '#00a86b' }}>{selectedSymbol}</strong>
                                         </span>
                                     </div>
 
-                                    {/* 0-9 Digit Circles Grid */}
-                                    <div className='digit-circles-grid-card'>
-                                        <div className='digits-grid'>
-                                            {digitStats.map(item => {
-                                                const isSelected = selectedDigit === item.digit;
+                                    {/* 10-Digit Realtime Stat Bubble Configuration Grid with Trend Highlights */}
+                                    <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1.4rem', padding: '24px 20px', marginBottom: '24px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gap: '12px', justifyContent: 'center' }}>
+                                            {digitStats.map((item) => {
+                                                const isSelected = targetDigit === item.digit;
+                                                let ringStyle = { borderColor: 'rgba(255,255,255,0.15)', background: 'var(--general-main-1)', color: 'var(--text-prominent)' };
+                                                
+                                                if (isSelected) {
+                                                    ringStyle = { borderColor: '#6366f1', background: 'rgba(99, 102, 241, 0.2)', color: '#fff' };
+                                                } else if (item.trend === 'high') {
+                                                    ringStyle = { borderColor: 'rgba(20, 184, 166, 0.8)', background: 'rgba(7, 36, 40, 0.5)', color: '#2dd4bf' };
+                                                } else if (item.trend === 'low') {
+                                                    ringStyle = { borderColor: 'rgba(244, 63, 94, 0.8)', background: 'rgba(40, 12, 22, 0.5)', color: '#fb7185' };
+                                                }
+
                                                 return (
                                                     <div 
-                                                        key={item.digit}
-                                                        onClick={() => setSelectedDigit(item.digit)}
-                                                        className={`digit-item ${isSelected ? 'digit-item--selected' : ''}`}
+                                                        key={item.digit} 
+                                                        onClick={() => setTargetDigit(item.digit)}
+                                                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', transition: 'transform 0.2s ease' }}
                                                     >
-                                                        <div className={`digit-circle ${isSelected ? 'digit-circle--selected' : ''}`}>
+                                                        <span style={{ fontSize: '0.8rem', fontWeight: 800, marginBottom: '6px', color: isSelected ? '#818cf8' : 'var(--text-prominent)' }}>
                                                             {item.digit}
+                                                        </span>
+                                                        <div style={{ 
+                                                            width: '46px', 
+                                                            height: '46px', 
+                                                            borderRadius: '50%', 
+                                                            border: `2.5px solid ${ringStyle.borderColor}`, 
+                                                            display: 'flex', 
+                                                            alignItems: 'center', 
+                                                            justifyContent: 'center', 
+                                                            fontSize: '0.85rem', 
+                                                            fontWeight: 800, 
+                                                            backgroundColor: ringStyle.background,
+                                                            color: ringStyle.color,
+                                                            boxShadow: isSelected ? '0 0 15px rgba(99, 102, 241, 0.4)' : 'none'
+                                                        }}>
+                                                            {item.percent}%
                                                         </div>
-                                                        <span className='digit-percentage'>{item.percentage}%</span>
                                                     </div>
                                                 );
                                             })}
                                         </div>
                                     </div>
 
-                                    {/* Manual Execution Panel */}
-                                    <div className='execution-panel-card'>
-                                        <div className='execution-top-row'>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem', flexWrap: 'wrap' }}>
-                                                <span className='trade-type-pill'>
-                                                    Over/Under
-                                                </span>
-                                                <span className='selected-digit-text'>
-                                                    Selected Digit: <strong>{selectedDigit}</strong>
-                                                </span>
+                                    {/* Interactive Controls & Strategy Setup Card */}
+                                    <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1.4rem', padding: '24px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
+                                        
+                                        {/* Strategy Selection & Targets Row */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-general)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: '6px' }}>Trade Logic Blueprint</label>
+                                                <select 
+                                                    value={contractType} 
+                                                    onChange={(e) => setContractType(e.target.value)}
+                                                    style={{ width: '100%', background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', color: 'var(--text-prominent)', padding: '12px 14px', borderRadius: '10px', fontSize: '0.9rem', fontWeight: 700, outline: 'none', cursor: 'pointer' }}
+                                                >
+                                                    <option value='Over/Under'>Over / Under</option>
+                                                    <option value='Matches/Differs'>Matches / Differs</option>
+                                                    <option value='Even/Odd'>Even / Odd</option>
+                                                </select>
                                             </div>
-                                            <div className='stake-input-group'>
-                                                <span className='stake-duration'>1 tick</span>
-                                                <input 
-                                                    type='text' 
-                                                    value={manualStake} 
-                                                    onChange={(e) => setManualStake(e.target.value)}
-                                                />
-                                                <span className='stake-label'>USD Stake</span>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-general)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: '6px' }}>Prediction Target</label>
+                                                <div style={{ width: '100%', background: 'var(--general-main-1)', border: '1.5px solid rgba(99, 102, 241, 0.5)', color: '#818cf8', padding: '12px 14px', borderRadius: '10px', fontSize: '0.9rem', fontWeight: 900, textAlign: 'center' }}>
+                                                    Digit: {targetDigit}
+                                                </div>
                                             </div>
                                         </div>
 
-                                        {/* Over / Under Action Buttons */}
-                                        <div className='action-buttons-grid'>
+                                        {/* Contract Duration & Stake Allocation Row */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '16px', marginBottom: '20px', alignItems: 'center' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-general)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: '6px' }}>Contract Duration</label>
+                                                <div style={{ width: '100%', background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.25)', color: 'var(--text-prominent)', padding: '12px 14px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, textAlign: 'center' }}>
+                                                    1 Tick Execution
+                                                </div>
+                                            </div>
+
+                                            <div style={{ background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '10px', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'between' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-general)', textTransform: 'uppercase', fontWeight: 800 }}>Risk Capital Allocation</span>
+                                                    <input 
+                                                        type='text' 
+                                                        value={manualStake}
+                                                        onChange={(e) => setManualStake(e.target.value)}
+                                                        style={{ background: 'transparent', color: 'var(--text-prominent)', fontWeight: 900, fontSize: '1.1rem', border: 'none', outline: 'none', width: '100%', marginTop: '2px' }}
+                                                    />
+                                                </div>
+                                                <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-prominent)', background: 'var(--general-section-1)', padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(0, 168, 107, 0.3)' }}>USD STAKE</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Dual Block Execution Payout Action Area */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                             <button 
                                                 onClick={() => {
                                                     ScannerBridge.executeDirectTrade(
-                                                        { strategyName: `Manual Over ${selectedDigit}`, symbol: '1HZ10V' },
-                                                        { symbol: '1HZ10V', contractType: 'DIGITOVER', barrier: String(selectedDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
+                                                        { strategyName: `Manual Over ${targetDigit}`, symbol: '1HZ90V' },
+                                                        { symbol: '1HZ90V', contractType: 'DIGITOVER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
                                                     );
                                                 }}
-                                                className='exec-btn exec-btn--over'
+                                                style={{ background: '#059669', border: 'none', padding: '16px', borderRadius: '12px', color: '#fff', fontWeight: 900, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(5, 150, 105, 0.35)', transition: 'all 0.2s ease' }}
                                             >
-                                                <span>OVER {selectedDigit}</span>
-                                                <span className='btn-payout'>Payout: ${(Number(manualStake) * 3.5).toFixed(2)}</span>
+                                                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', opacity: 0.9 }}>Purchase Over</span>
+                                                <span style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '2px' }}>OVER {targetDigit}</span>
+                                                <span style={{ marginTop: '6px', fontSize: '0.75rem', fontWeight: 700, background: 'rgba(0,0,0,0.2)', padding: '3px 8px', borderRadius: '6px' }}>
+                                                    Est. Payout: +3,514.41 USD
+                                                </span>
                                             </button>
 
                                             <button 
                                                 onClick={() => {
                                                     ScannerBridge.executeDirectTrade(
-                                                        { strategyName: `Manual Under ${selectedDigit}`, symbol: '1HZ10V' },
-                                                        { symbol: '1HZ10V', contractType: 'DIGITUNDER', barrier: String(selectedDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
+                                                        { strategyName: `Manual Under ${targetDigit}`, symbol: '1HZ90V' },
+                                                        { symbol: '1HZ90V', contractType: 'DIGITUNDER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
                                                     );
                                                 }}
-                                                className='exec-btn exec-btn--under'
+                                                style={{ background: '#e11d48', border: 'none', padding: '16px', borderRadius: '12px', color: '#fff', fontWeight: 900, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(225, 29, 72, 0.35)', transition: 'all 0.2s ease' }}
                                             >
-                                                <span>UNDER {selectedDigit}</span>
-                                                <span className='btn-payout'>Payout: ${(Number(manualStake) * 1.2).toFixed(2)}</span>
+                                                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', opacity: 0.9 }}>Purchase Under</span>
+                                                <span style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '2px' }}>UNDER {targetDigit}</span>
+                                                <span style={{ marginTop: '6px', fontSize: '0.75rem', fontWeight: 700, background: 'rgba(0,0,0,0.2)', padding: '3px 8px', borderRadius: '6px' }}>
+                                                    Est. Payout: +593.82 USD
+                                                </span>
                                             </button>
                                         </div>
+
                                     </div>
                                 </div>
                             </div>
