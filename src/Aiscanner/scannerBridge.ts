@@ -37,7 +37,6 @@ export class ScannerBridge {
   }
 
   private static translateSymbol(rawSymbol: string): string {
-    // Explicitly fallback and map everything strictly to R_10
     if (!rawSymbol || typeof rawSymbol !== 'string') return 'R_10';
     return 'R_10';
   }
@@ -47,7 +46,6 @@ export class ScannerBridge {
   }
 
   public static pushTick(assetName: string, quote: number, strategies?: any[]) {
-    // Force strict enforcement so only R_10 ticks are processed by the scanner logic
     if (assetName && assetName !== 'R_10') return;
 
     const tickPayload: DerivTickResponse = {
@@ -63,7 +61,6 @@ export class ScannerBridge {
     const updatedStrategies = ScannerBridge.scannerLogicInstance.handleIncomingMessage(tickPayload);
 
     if (typeof window !== 'undefined') {
-      // Broadcast across all component listeners to ensure full compatibility
       window.dispatchEvent(new CustomEvent('ai-tick-received', {
         detail: { assetName: 'R_10', quote, strategies: updatedStrategies }
       }));
@@ -137,7 +134,7 @@ export class ScannerBridge {
           duration: payload.duration,
           stake: payload.stake,
           amount: payload.stake,
-          tradetype: 'rise_fall',
+          tradetype: storeType,          // Fixed: dynamically uses storeType instead of 'rise_fall'
           contract_type: storeContractType,
           type: storeType,
           size: martingaleMultiplier,
@@ -188,17 +185,27 @@ export class ScannerBridge {
                   const field = block.getField(name);
                   if (field && typeof field.setValue === 'function') {
                     const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
+                    
                     const targetMatch = options.find((opt: any) => {
                       const label = String(opt[0] || '').toLowerCase();
                       const val = String(opt[1] || '').toLowerCase();
                       if (isFall) {
-                        return label.includes('fall') || label.includes('put') || val.includes('fall') || val.includes('put');
+                        return label.includes('fall') || label.includes('put') || label.includes('lower') || val.includes('fall') || val.includes('put') || val.includes('lower');
                       } else {
-                        return label.includes('rise') || label.includes('call') || val.includes('rise') || val.includes('call');
+                        return label.includes('rise') || label.includes('call') || label.includes('higher') || val.includes('rise') || val.includes('call') || val.includes('higher');
                       }
                     });
 
-                    const desiredVal = targetMatch ? targetMatch[1] : (isFall ? 'Fall' : 'Rise');
+                    // Safeguard fallback to safe lowercase machine values
+                    let desiredVal = targetMatch ? targetMatch[1] : null;
+                    if (!desiredVal) {
+                      if (isFall) {
+                        desiredVal = options.find((opt: any) => ['put', 'fall', 'lower'].includes(String(opt[1]).toLowerCase()))?.[1] || 'put';
+                      } else {
+                        desiredVal = options.find((opt: any) => ['call', 'rise', 'higher'].includes(String(opt[1]).toLowerCase()))?.[1] || 'call';
+                      }
+                    }
+
                     if (field.getValue() !== desiredVal) {
                       field.setValue(desiredVal);
                       updated = true;
