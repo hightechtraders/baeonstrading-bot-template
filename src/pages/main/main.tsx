@@ -182,7 +182,7 @@ const AppWrapper = observer(() => {
     const [master_traders] = useState([
         {
             id: 'master_1',
-            name: 'Baeons AI Momentum Master',
+            name: 'Barons AI Momentum Master',
             creator: 'Barons Tech Lab',
             winRate: '78.5%',
             roi30d: '+34.2%',
@@ -218,7 +218,7 @@ const AppWrapper = observer(() => {
     const [active_portfolios, setActivePortfolios] = useState([
         {
             id: 'active_1',
-            name: 'Baeons AI Momentum Master',
+            name: 'Barons AI Momentum Master',
             allocation: '$10.00 / trade',
             pnl: '+14.50 USD',
             status: 'Active',
@@ -226,8 +226,8 @@ const AppWrapper = observer(() => {
     ]);
 
     const [trade_history] = useState([
-        { id: 'tx_1', time: '12:04:12', master: 'Baeons AI Momentum Master', type: 'CALL', stake: '$10.00', pnl: '+$4.50', status: 'Won' },
-        { id: 'tx_2', time: '11:58:30', master: 'Baeons AI Momentum Master', type: 'PUT', stake: '$10.00', pnl: '-$10.00', status: 'Lost' },
+        { id: 'tx_1', time: '12:04:12', master: 'Barons AI Momentum Master', type: 'CALL', stake: '$10.00', pnl: '+$4.50', status: 'Won' },
+        { id: 'tx_2', time: '11:58:30', master: 'Barons AI Momentum Master', type: 'PUT', stake: '$10.00', pnl: '-$10.00', status: 'Lost' },
         { id: 'tx_3', time: '11:42:05', master: 'Synthetic Scalper Pro V2', type: 'DIGITOVER', stake: '$15.00', pnl: '+$20.00', status: 'Won' },
     ]);
 
