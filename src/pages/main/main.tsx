@@ -39,6 +39,7 @@ import {
     LabelPairedPuzzlePieceTwoCaptionBoldIcon,
     LabelPairedBookmarkCaptionRegularIcon,
     LabelPairedUsersCaptionRegularIcon,
+    LabelPairedMonitorCaptionRegularIcon,
 } from '@deriv/quill-icons/LabelPaired';
 import { Localize, localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
@@ -81,7 +82,7 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'free_bots', 'copy_trading', 'chart', 'tutorial'];
+    const hash = ['dashboard', 'bot_builder', 'free_bots', 'manual_trader', 'copy_trading', 'chart', 'tutorial'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -171,6 +172,22 @@ const AppWrapper = observer(() => {
             status: 'HIGH',
         }
     ]);
+
+    // Manual Trader Digit Circles State (0-9 statistical distribution)
+    const [selectedDigit, setSelectedDigit] = useState<number>(8);
+    const [digitStats] = useState([
+        { digit: 0, percentage: 9.5 },
+        { digit: 1, percentage: 9.4 },
+        { digit: 2, percentage: 10.4 },
+        { digit: 3, percentage: 10.0 },
+        { digit: 4, percentage: 10.4 },
+        { digit: 5, percentage: 8.7 },
+        { digit: 6, percentage: 11.3 },
+        { digit: 7, percentage: 11.6 },
+        { digit: 8, percentage: 9.3 },
+        { digit: 9, percentage: 9.4 },
+    ]);
+    const [manualStake, setManualStake] = useState<string>('500.00');
 
     // Copy Trading Hub State & Mock Datasets
     const [copy_sub_tab, setCopySubTab] = useState<'discover' | 'portfolio' | 'history'>('discover');
@@ -552,6 +569,139 @@ const AppWrapper = observer(() => {
                                             </button>
                                         </div>
                                     )}
+                                </div>
+                            </div>
+
+                            {/* MANUAL TRADER TAB (Digit Circles Dashboard) */}
+                            <div
+                                label={
+                                    <>
+                                        <LabelPairedMonitorCaptionRegularIcon
+                                            height='24px'
+                                            width='24px'
+                                            fill='var(--text-general)'
+                                        />
+                                        <Localize i18n_default_text='Manual Trader' />
+                                    </>
+                                }
+                                id='id-manual-trader'
+                            >
+                                <div className='free-bots-container' style={{ padding: '24px' }}>
+                                    <div style={{ marginBottom: '1.5rem', textAlign: 'left', background: 'var(--general-section-1)', padding: '16px 20px', borderRadius: '12px', border: '1.5px solid rgba(0, 168, 107, 0.3)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                                            <div>
+                                                <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-prominent)', marginBottom: '0.2rem' }}>
+                                                    Volatility 10 (1s) Index • Last Digit Stats
+                                                </h3>
+                                                <p style={{ color: 'var(--text-prominent)', fontSize: '0.95rem', opacity: 0.85, fontWeight: 500 }}>
+                                                    Live tick distribution and probability circles for manual Over/Under execution.
+                                                </p>
+                                            </div>
+                                            <span style={{ background: 'rgba(0, 168, 107, 0.15)', color: '#00a86b', padding: '6px 14px', borderRadius: '8px', fontWeight: 700, fontSize: '0.9rem' }}>
+                                                Scanner Live
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* 0-9 Digit Circles Grid */}
+                                    <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.3)', borderRadius: '1.4rem', padding: '24px', marginBottom: '2rem', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: '16px', justifyContent: 'center' }}>
+                                            {digitStats.map(item => {
+                                                const isSelected = selectedDigit === item.digit;
+                                                return (
+                                                    <div 
+                                                        key={item.digit}
+                                                        onClick={() => setSelectedDigit(item.digit)}
+                                                        style={{
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            padding: '14px 10px',
+                                                            background: isSelected ? 'rgba(0, 168, 107, 0.12)' : 'var(--general-main-1)',
+                                                            border: isSelected ? '2px solid #00a86b' : '1.5px solid rgba(255, 255, 255, 0.08)',
+                                                            borderRadius: '16px',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s ease',
+                                                            boxShadow: isSelected ? '0 0 15px rgba(0, 168, 107, 0.25)' : 'none'
+                                                        }}
+                                                    >
+                                                        {/* Circular Progress Indicator Mock */}
+                                                        <div style={{
+                                                            width: '52px',
+                                                            height: '52px',
+                                                            borderRadius: '50%',
+                                                            border: `3px solid ${isSelected ? '#00a86b' : 'rgba(255, 255, 255, 0.15)'}`,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            fontSize: '1.2rem',
+                                                            fontWeight: 800,
+                                                            color: isSelected ? '#00a86b' : 'var(--text-prominent)',
+                                                            marginBottom: '8px',
+                                                            background: 'rgba(0,0,0,0.2)'
+                                                        }}>
+                                                            {item.digit}
+                                                        </div>
+                                                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-prominent)' }}>{item.percentage}%</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Manual Execution Panel */}
+                                    <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.3)', borderRadius: '1.4rem', padding: '24px', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '1rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <span style={{ background: 'rgba(255,255,255,0.06)', padding: '8px 14px', borderRadius: '8px', fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-prominent)' }}>
+                                                    Over/Under
+                                                </span>
+                                                <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-prominent)' }}>
+                                                    Selected Digit: <strong style={{ color: '#00a86b', fontSize: '1.1rem' }}>{selectedDigit}</strong>
+                                                </span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-general)' }}>1 tick</span>
+                                                <input 
+                                                    type='text' 
+                                                    value={manualStake} 
+                                                    onChange={(e) => setManualStake(e.target.value)}
+                                                    style={{ width: '120px', padding: '8px 12px', background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '8px', color: '#fff', fontWeight: 700, textAlign: 'right' }} 
+                                                />
+                                                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-prominent)' }}>USD Stake</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Over / Under Action Buttons */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                            <button 
+                                                onClick={() => {
+                                                    ScannerBridge.executeDirectTrade(
+                                                        { strategyName: `Manual Over ${selectedDigit}`, symbol: '1HZ10V' },
+                                                        { symbol: '1HZ10V', contractType: 'DIGITOVER', barrier: String(selectedDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
+                                                    );
+                                                }}
+                                                style={{ background: '#00a86b', color: '#fff', border: 'none', padding: '16px', borderRadius: '12px', fontWeight: 800, fontSize: '1.05rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 14px rgba(0, 168, 107, 0.3)' }}
+                                            >
+                                                <span>OVER {selectedDigit}</span>
+                                                <span style={{ fontSize: '0.9rem', opacity: 0.9 }}>Payout: ${(Number(manualStake) * 3.5).toFixed(2)}</span>
+                                            </button>
+
+                                            <button 
+                                                onClick={() => {
+                                                    ScannerBridge.executeDirectTrade(
+                                                        { strategyName: `Manual Under ${selectedDigit}`, symbol: '1HZ10V' },
+                                                        { symbol: '1HZ10V', contractType: 'DIGITUNDER', barrier: String(selectedDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
+                                                    );
+                                                }}
+                                                style={{ background: '#e11d48', color: '#fff', border: 'none', padding: '16px', borderRadius: '12px', fontWeight: 800, fontSize: '1.05rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 14px rgba(225, 29, 72, 0.3)' }}
+                                            >
+                                                <span>UNDER {selectedDigit}</span>
+                                                <span style={{ fontSize: '0.9rem', opacity: 0.9 }}>Payout: ${(Number(manualStake) * 1.2).toFixed(2)}</span>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
