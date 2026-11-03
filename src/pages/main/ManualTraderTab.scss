@@ -3,7 +3,6 @@
 
 .manual-trader-tab-container {
     width: 100% !important;
-    min-height: 100vh !important;
     height: 100% !important;
     display: flex !important;
     flex-direction: column !important;
@@ -15,7 +14,6 @@
 
     @include mobile-or-tablet-screen {
         padding: 8px !important;
-        min-height: auto !important;
         height: auto !important;
         overflow-y: auto !important;
     }
@@ -26,17 +24,13 @@
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        flex: 1;
-        justify-content: space-between;
         gap: 16px;
         box-sizing: border-box;
-        padding-bottom: 2rem;
+        padding-bottom: 3rem;
         position: relative;
         z-index: 1;
 
         @include mobile-or-tablet-screen {
-            flex: unset;
-            justify-content: flex-start;
             gap: 8px;
             padding-bottom: 120px !important;
         }
