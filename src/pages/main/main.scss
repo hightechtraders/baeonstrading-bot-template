@@ -35,7 +35,7 @@
     display: flex;
     overflow: hidden;
     width: 100%;
-    height: 100vh; // Removed subtracted spacing to eliminate bottom gaps
+    height: 100vh;
     padding: 0.8rem 1.6rem;
     background: var(--general-main-1);
     box-sizing: border-box;
@@ -67,7 +67,6 @@
         }
 
         &--active {
-            // css for onboard tour overlay
             &:before {
                 content: '';
                 position: fixed;
@@ -87,7 +86,6 @@
             flex-direction: column;
             height: 100%;
 
-            // Active tab indicator underline color & accurate positioning fix
             &__active-line {
                 background-color: #00805a !important; 
                 transition: transform 0.2s ease, width 0.2s ease;
@@ -97,7 +95,6 @@
                 bottom: 0;
             }
 
-            // Active tab indicator highlight
             &__active {
                 background: rgba(0, 168, 107, 0.15) !important;
                 color: #00a86b !important; 
@@ -109,7 +106,6 @@
                 }
             }
 
-            // Unified pale green background container set to flat 77.5% width
             &__list {
                 background: rgba(0, 168, 107, 0.06); 
                 border: 1.5px solid rgba(0, 168, 107, 0.25); 
@@ -147,24 +143,6 @@
                         display: none; 
                     }
                 }
-
-                &--header {
-                    &--main {
-                        &__tabs {
-                            @include mobile-or-tablet-screen {
-                                width: 100%;
-                                overflow-x: auto;
-                                padding: 0.4rem 1rem 0;
-                            }
-                        }
-                    }
-                }
-
-                &--border-bottom {
-                    @include mobile-or-tablet-screen {
-                        border-bottom: 0;
-                    }
-                }
             }
 
             &__content {
@@ -178,45 +156,10 @@
                     height: auto !important; 
                     overflow-y: visible !important; 
                     -webkit-overflow-scrolling: touch;
-                    padding-bottom: 6rem; // Clears floating mobile bottom panel/buttons
-
-                    &--no-result {
-                        @include flex-center;
-
-                        flex-direction: column;
-                        justify-content: flex-start;
-                        height: 100vh;
-                        margin-top: 3rem;
-
-                        svg {
-                            margin-bottom: 2rem;
-                        }
-
-                        h1 {
-                            margin-bottom: 0.8rem;
-                        }
-
-                        span {
-                            word-break: break-word;
-                            text-align: center;
-                        }
-                    }
-                }
-
-                &--main {
-                    &__tabs {
-                        display: flex;
-                        justify-content: space-between;
-
-                        @include mobile-or-tablet-screen {
-                            flex-direction: column;
-                            background-color: var(--general-section-1);
-                        }
-                    }
+                    padding-bottom: 6rem;
                 }
             }
 
-            // Individual tabs expand proportionally to fill container cleanly
             &__item {
                 border-radius: 0.8rem;
                 height: 3.8rem;
@@ -263,16 +206,6 @@
                 svg {
                     padding-inline-end: 0;
                     margin-inline-end: 0.5rem;
-
-                    @include mobile-or-tablet-screen {
-                        margin-inline-end: 0.4rem;
-                    }
-                }
-
-                &__icon {
-                    @include mobile-or-tablet-screen {
-                        padding-top: 0.3rem;
-                    }
                 }
             }
         }
@@ -306,574 +239,92 @@
             }
         }
     }
-
-    &__sidebar-wrapper {
-        &--active {
-            position: fixed;
-            right: 0;
-        }
-
-        &--hidden {
-            display: none;
-        }
-    }
-}
-
-.animation__wrapper,
-.run-panel,
-.dashboard {
-    background: var(--general-main-1);
-
-    .animation {
-        &__button#db-animation {
-            &__run-button {
-                background-color: #00a86b !important;
-                color: #ffffff !important;
-                font-weight: 800 !important;
-                box-shadow: 0 0 1.5rem rgba(0, 168, 107, 0.3) !important;
-            }
-
-            &__stop-button {
-                background-color: #ff3366 !important;
-                color: #ffffff !important;
-            }
-        }
-    }
-}
-
-.bot-stopped-dialog {
-    @include mobile-or-tablet-screen {
-        padding: 2rem;
-    }
-
-    .dc-dialog {
-        position: relative;
-
-        &__header-wrapper {
-            margin: 0 0 2.4rem;
-        }
-
-        &__content {
-            &__header {
-                display: flex;
-                justify-content: space-between;
-                margin: 0 0 2.4rem;
-
-                .dc-icon {
-                    cursor: pointer;
-                }
-            }
-        }
-
-        @include mobile-or-tablet-screen {
-            &__footer {
-                flex-wrap: unset;
-
-                .dc-dialog__button {
-                    padding: 0;
-                    width: 40%;
-                    min-width: unset;
-                    flex-basis: unset;
-
-                    &:first-child {
-                        margin-right: 1rem;
-                    }
-                }
-            }
-        }
-    }
-}
-
-.dashboard {
-    background: var(--general-main-1);
-
-    &__chart-wrapper {
-        position: relative;
-        height: var(--tab-content-height);
-        width: 100%;
-        transition: all 0.4s;
-
-        @include mobile-or-tablet-screen {
-            height: var(--tab-content-height-mobile);
-            background: var(--general-main-1);
-
-            .smartcharts {
-                height: calc(100% - 4rem);
-                z-index: 1;
-
-                &:has(.stxMenuActive) {
-                    z-index: 99;
-                    transition: all 1s ease-out;
-                }
-            }
-        }
-
-        &--expanded {
-            width: calc(100vw - 39.8rem);
-        }
-
-        &--modal {
-            width: 40rem;
-        }
-    }
-
-    &__toolbox {
-        position: absolute;
-        top: 0;
-        inset-inline-start: 0;
-        width: 23.6rem;
-        padding: 0.8rem;
-        background: var(--general-main-1);
-        z-index: 1;
-
-        .db-toolbox {
-            &__title {
-                height: 2.6rem;
-                line-height: 2.6rem;
-                position: relative;
-                cursor: pointer;
-
-                &__chevron {
-                    position: absolute;
-                    inset-inline-end: 0;
-                    top: 0.3rem;
-                    transition: transform 0.3s ease;
-
-                    &--active {
-                        transform: rotate(180deg);
-                        top: -0.2rem;
-                    }
-                }
-            }
-
-            &__content {
-                border: solid 1px var(--general-section-1);
-            }
-
-            &__category-menu {
-                height: calc(100vh - 33.6rem);
-                overflow-y: scroll;
-            }
-
-            &__search {
-                padding: 1.3rem 0.8rem;
-                height: 6rem;
-            }
-
-            &__content-wrapper {
-                height: 0;
-            }
-
-            &__content-wrapper.active {
-                height: 100%;
-            }
-        }
-    }
-
-    &__run-strategy-wrapper {
-        inset-inline-end: 1.6rem;
-        top: 1.6rem;
-        z-index: 2;
-
-        @include desktop-screen {
-            position: absolute;
-        }
-
-        .animation {
-            &__button {
-                background-color: #00a86b !important;
-                color: #ffffff !important;
-            }
-
-            &__container {
-                background-color: var(--general-main-1);
-            }
-        }
-    }
-
-    &__sidebar-wrapper {
-        &--active {
-            position: fixed;
-            inset-inline-end: 0;
-        }
-
-        &--hidden {
-            display: none;
-        }
-    }
-}
-
-.bot-builder {
-    position: absolute;
-    top: 6.6rem;
-    inset-inline-start: 1.6rem;
-    z-index: -1;
-    background: var(--general-main-1);
-    height: var(--tab-content-height);
-
-    .injectionDiv {
-        .blocklyTrash {
-            transition: all 0.4s;
-
-            @include mobile-or-tablet-screen {
-                display: none;
-            }
-        }
-    }
-
-    &--tour-active {
-        .blocklyTrash {
-            display: none;
-        }
-    }
-
-    &--active {
-        z-index: 1;
-    }
-
-    &--inactive {
-        display: none;
-    }
-
-    @include mobile-or-tablet-screen {
-        top: 5.6rem;
-        inset-inline-start: 0;
-        width: 100vw;
-        height: var(--tab-content-height-mobile);
-    }
-}
-
-#react-joyride-step-6 {
-    .onboard__label {
-        margin-bottom: 1.6rem;
-    }
-}
-
-#react-joyride-step-4 {
-    .__floater__arrow {
-        span {
-            inset-inline-end: 0;
-        }
-    }
-}
-
-.onboard {
-    &__header {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 2.4rem;
-        margin-top: -2rem;
-
-        &--close {
-            cursor: pointer;
-        }
-    }
-
-    &__steps {
-        @media (height <= 730px) {
-            max-height: 40vh;
-            overflow-y: auto;
-        }
-    }
-
-    &__label {
-        text-align: left;
-        margin-bottom: 2.4rem;
-    }
-
-    &__container {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        justify-content: center;
-        margin-bottom: 2.4rem;
-
-        img {
-            width: 97%;
-        }
-
-        .initial-loader {
-            width: 33rem;
-            height: 18rem;
-        }
-    }
-
-    &__content {
-        text-align: left;
-
-        @include rtl {
-            text-align: right;
-        }
-
-        p {
-            font-size: 1.4rem;
-        }
-
-        &__block {
-            &:first-child {
-                margin-bottom: 2.4rem;
-            }
-        }
-    }
-}
-
-.joyride-content {
-    font-size: 1.4rem;
-
-    @media (height <= 790px) {
-        max-height: 46vh;
-        overflow-y: auto;
-    }
-
-    &__left {
-        text-align: start;
-
-        &__step-three {
-            margin-bottom: 0.8rem;
-        }
-    }
-
-    &__sub-title {
-        margin-top: 1rem;
-    }
-
-    ul {
-        list-style: disc;
-        margin-left: 4rem;
-        margin-top: 1rem;
-
-        li {
-            margin-bottom: 1rem;
-        }
-    }
-
-    video {
-        width: 100%;
-        margin-top: 1rem;
-    }
-
-    &__with-icon {
-        display: flex;
-        margin-bottom: 1rem;
-
-        &__right {
-            margin-left: 0.8rem;
-        }
-
-        &__left {
-            margin: 0.3rem 0 0 1.2rem;
-
-            @include mobile-or-tablet-screen {
-                margin: 0;
-
-                svg {
-                    margin: 0;
-                }
-            }
-        }
-    }
-}
-
-.dbot-slider {
-    @include flex-center(flex-start);
-
-    flex-direction: column;
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    width: 100%;
-    height: 100vh;
-    padding: 1.6rem;
-    border-top: solid 1px var(--border-normal);
-    z-index: 1000;
-    background-color: var(--general-main-1);
-
-    &--tour-position {
-        top: 0;
-
-        .progress-bar-circle:first-child {
-            display: none;
-        }
-    }
-
-    &--active {
-        height: auto;
-        min-height: 18rem;
-    }
-
-    &__navbar {
-        display: flex;
-        justify-content: space-between;
-        padding: 0 1.6rem;
-        width: 100%;
-        margin-bottom: 1.8rem;
-    }
-
-    &__title {
-        margin-bottom: 0.8rem;
-    }
-
-    &__label {
-        margin-bottom: 0.8rem;
-    }
-
-    &__content {
-        text-align: center;
-        padding: 0 1.6rem;
-
-        @include mobile-or-tablet-screen {
-            line-height: 1.8;
-        }
-
-        &:last-child {
-            margin-bottom: 3rem;
-        }
-    }
-
-    &__image,
-    &__media {
-        background: var(--general-section-1);
-        text-align: center;
-        width: 100%;
-        height: 55%;
-        margin-bottom: auto;
-    }
-
-    img {
-        height: 100%;
-    }
-
-    video {
-        height: 100%;
-        width: 65%;
-    }
-
-    &__progress-bar {
-        margin: 1.6rem 0;
-    }
-
-    &__status {
-        width: 100%;
-    }
-
-    &__button-group {
-        display: flex;
-        padding: 0 1.6rem;
-
-        button {
-            height: 4rem;
-            width: 100%;
-            border: 0.2rem solid $color-grey-1;
-            background: $color-white;
-            border-radius: 0.4rem;
-            outline: none;
-            cursor: pointer;
-            margin-inline-end: 0.8rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            &.default {
-                background: transparent;
-            }
-
-            &.danger {
-                background: $color-red;
-                border: none;
-                margin-right: 0;
-
-                span {
-                    color: $color-white;
-                }
-            }
-        }
-    }
-
-    &__bot-builder-tour {
-        height: auto;
-        background: var(--general-section-1);
-
-        .dbot-slider {
-            width: 100%;
-
-            &__content {
-                margin-bottom: auto;
-            }
-
-            &__status {
-                @include flex-center(flex-start);
-            }
-
-            &__progress-bar {
-                width: 50%;
-                margin-bottom: unset;
-
-                @include flex-center(flex-start);
-
-                margin-inline-start: 1rem;
-
-                .progress-bar-circle {
-                    opacity: 0.16;
-                }
-            }
-
-            &__button-group {
-                width: 50%;
-                display: flex;
-                justify-content: center;
-                padding: 1rem 0;
-
-                .default {
-                    background: transparent;
-
-                    span {
-                        color: var(--text-prominent);
-                    }
-                }
-            }
-        }
-    }
-}
-
-@keyframes blink {
-    0%,
-    100% {
-        border: 1px solid $color-red;
-    }
-
-    50% {
-        border: 1px solid transparent;
-    }
-}
-
-.dbot-tour-blink {
-    animation: blink 1.25s infinite;
-    animation: blink 1.25s ease-in infinite;
-    animation: blink 1.25s ease-in infinite;
-    border-radius: $BORDER-RADIUS * 12.5;
-    height: 2.5rem !important;
-    width: 2.5rem !important;
-    padding: 0.2rem 0;
-
-    @include flex-center;
-}
-
-.beta-server-bot {
-    color: var(--brand-red-coral);
-    margin-left: 8px;
-    padding: 4px 8px;
-    height: 22px;
-    border-radius: 16px;
-    font-size: 1.2rem;
-    border: 2px solid var(--brand-red-coral);
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 /* ==========================================
-   FREE BOTS & COPY TRADING TABS - STYLES
+   MANUAL TRADER - SCREEN FIT LAYOUT & CURSOR
    ========================================== */
+
+.manual-trader-wrapper {
+    padding: 0.4rem 0.8rem !important;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    box-sizing: border-box;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+
+    .digit-stats-grid {
+        padding: 6px 8px 12px 8px !important;
+        margin-bottom: 6px !important;
+        border-radius: 0.9rem !important;
+    }
+
+    .digit-stats-grid__inner {
+        display: grid;
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+        gap: 4px;
+        justify-content: center;
+        align-items: stretch;
+
+        @include mobile-or-tablet-screen {
+            grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+            gap: 4px !important;
+        }
+    }
+
+    .digit-gauge-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 1px 16px 1px !important; 
+        background: var(--general-main-1);
+        border: 1.5px solid rgba(0, 168, 107, 0.25);
+        border-radius: 9px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+
+        @include mobile-or-tablet-screen {
+            padding: 3px 1px 14px 1px !important;
+            border-radius: 7px;
+        }
+
+        &:hover {
+            border-color: #00a86b;
+            background: rgba(0, 168, 107, 0.08);
+            transform: translateY(-1px);
+        }
+
+        &--selected {
+            background: rgba(99, 102, 241, 0.15) !important;
+            border: 2px solid #6366f1 !important;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+        }
+
+        &--high {
+            border-color: rgba(20, 184, 166, 0.8) !important;
+            background: rgba(7, 36, 40, 0.4) !important;
+        }
+
+        &--low {
+            border-color: rgba(244, 63, 94, 0.8) !important;
+            background: rgba(40, 12, 22, 0.4) !important;
+        }
+    }
+}
+
+@keyframes bounceCursor {
+    0% { transform: translateX(-50%) translateY(0); }
+    100% { transform: translateX(-50%) translateY(-3px); }
+}
+
+/* =========================================================
+   FREE BOTS & COPY TRADING TABS - STYLES & CONTRAST FIX
+   ========================================================= */
 
 .free-bots-container {
     padding: 1.6rem;
@@ -922,7 +373,6 @@
     word-break: break-word; 
     overflow: hidden;
     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-    will-change: transform; 
 
     &:hover {
         transform: translateY(-2px);
@@ -966,7 +416,6 @@
             color: var(--text-prominent); 
             margin: 0;
             line-height: 1.3;
-            word-wrap: break-word;
         }
 
         .strategy-description {
@@ -974,7 +423,6 @@
             color: var(--text-general);
             line-height: 1.4;
             margin: 0.2rem 0;
-            word-wrap: break-word;
         }
 
         .strategy-details {
@@ -1040,7 +488,6 @@
     p {
         margin-bottom: 1rem;
         font-size: 1.3rem;
-        word-wrap: break-word;
     }
 
     .rescan-btn {
@@ -1051,88 +498,6 @@
     }
 }
 
-/* ==========================================
-   MANUAL TRADER - COMPACT SINGLE-PAGE LAYOUT
-   ========================================== */
-
-.manual-trader-wrapper {
-    padding: 0.4rem 0.8rem !important;
-    width: 100%;
-    max-width: 1000px;
-    margin: 0 auto;
-    box-sizing: border-box;
-
-    /* Tighter outer container for 10-digit grid layout to fit single screen */
-    .digit-stats-grid {
-        padding: 6px 8px 14px 8px !important;
-        margin-bottom: 6px !important;
-        border-radius: 0.9rem !important;
-    }
-
-    .digit-stats-grid__inner {
-        display: grid;
-        grid-template-columns: repeat(10, minmax(0, 1fr));
-        gap: 4px;
-        justify-content: center;
-        align-items: stretch;
-
-        @include mobile-or-tablet-screen {
-            grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-            gap: 4px !important;
-        }
-    }
-
-    .digit-gauge-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 4px 1px 20px 1px !important; // Ample bottom space reserved for the bouncing arrow cursor
-        background: var(--general-main-1);
-        border: 1.5px solid rgba(0, 168, 107, 0.25);
-        border-radius: 9px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        user-select: none;
-
-        @include mobile-or-tablet-screen {
-            padding: 3px 1px 18px 1px !important;
-            border-radius: 7px;
-        }
-
-        &:hover {
-            border-color: #00a86b;
-            background: rgba(0, 168, 107, 0.08);
-            transform: translateY(-1px);
-        }
-
-        &--selected {
-            background: rgba(99, 102, 241, 0.15) !important;
-            border: 2px solid #6366f1 !important;
-            box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
-        }
-
-        &--high {
-            border-color: rgba(20, 184, 166, 0.8) !important;
-            background: rgba(7, 36, 40, 0.4) !important;
-        }
-
-        &--low {
-            border-color: rgba(244, 63, 94, 0.8) !important;
-            background: rgba(40, 12, 22, 0.4) !important;
-        }
-    }
-}
-
-// Bounce animation for the red upward arrow cursor underneath digits
-@keyframes bounceCursor {
-    0% { transform: translateX(-50%) translateY(0); }
-    100% { transform: translateX(-50%) translateY(-3px); }
-}
-
-/* =========================================================
-   COPY TRADING & FREE BOTS PROFESSIONAL THEME & CONTRAST FIX
-   ========================================================= */
 #id-copy-trading, 
 #id-manual-trader,
 .free-bots-container {
@@ -1152,34 +517,6 @@
         opacity: 1 !important;
     }
 
-    .strategy-description, 
-    .free-bots-body p {
-        font-size: 1.25rem !important;
-        color: var(--text-prominent) !important;
-        opacity: 0.95 !important;
-    }
-
-    .market-name {
-        font-size: 1.2rem !important;
-        font-weight: 600;
-        opacity: 1 !important;
-        border: 1.5px solid rgba(0, 168, 107, 0.3) !important;
-        background: rgba(0, 168, 107, 0.08) !important;
-        color: var(--text-prominent) !important;
-    }
-
-    .confidence-badge {
-        font-size: 1.2rem !important;
-        font-weight: 600;
-        opacity: 1 !important;
-    }
-
-    label {
-        font-size: 1.2rem !important;
-        font-weight: 600;
-        color: var(--text-prominent) !important;
-    }
-
     input[type='number'],
     input[type='text'],
     select {
@@ -1190,7 +527,6 @@
         border-radius: 8px !important;
         padding: 8px 12px !important;
         outline: none !important;
-        cursor: text !important;
 
         &:focus {
             border-color: #00a86b !important;
