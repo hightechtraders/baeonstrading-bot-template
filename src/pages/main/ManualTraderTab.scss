@@ -114,8 +114,14 @@
                 cursor: pointer;
                 white-space: nowrap;
                 transition: background 0.2s ease;
+                
+                /* Explicitly purged lines/borders */
                 border: none !important;
+                border-top: none !important;
                 border-bottom: none !important;
+                box-shadow: none !important;
+                outline: none !important;
+                background-image: none !important;
 
                 &:hover {
                     background: rgba(0, 168, 107, 0.1);
@@ -342,6 +348,13 @@
                 color: var(--text-prominent);
                 cursor: pointer;
                 transition: background 0.2s ease;
+                
+                /* Explicitly purged lines/borders */
+                border: none !important;
+                border-top: none !important;
+                border-bottom: none !important;
+                box-shadow: none !important;
+                outline: none !important;
 
                 &:hover {
                     background: rgba(0, 168, 107, 0.1);
