@@ -3,8 +3,9 @@ import { ScannerBridge } from '../../Aiscanner/scannerBridge';
 import './ManualTraderTab.scss';
 
 function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
-  const circleRadius = 18;
-  const lineThickness = 3.5;
+  // High-resolution SVG scale for razor-sharp rendering
+  const circleRadius = 36;
+  const lineThickness = 6;
   const pathCircumference = 2 * Math.PI * circleRadius;
   
   const operationalScale = 15;
@@ -12,40 +13,40 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
   const strokeOffsetProgress = pathCircumference - (scaledValue / operationalScale) * pathCircumference;
    
   let themeConfig = {
-    labelColor: '#9ca3af',
+    labelColor: 'var(--text-general)',
     valueColor: 'var(--text-prominent)',
-    trackColor: 'rgba(255, 255, 255, 0.08)',
-    activeColor: '#6b7280',
+    trackColor: 'rgba(255, 255, 255, 0.1)',
+    activeColor: '#64748b',
     background: 'transparent',
     glow: 'none'
   };
 
   if (trendMode === 'selected' || isSelected) {
     themeConfig = {
-      labelColor: '#818cf8',
+      labelColor: '#6366f1',
       valueColor: '#ffffff',
-      trackColor: '#1e1b4b',
+      trackColor: 'rgba(99, 102, 241, 0.2)',
       activeColor: '#6366f1',
-      background: 'rgba(99, 102, 241, 0.15)',
-      glow: '0 0 12px rgba(99, 102, 241, 0.4)'
+      background: 'rgba(99, 102, 241, 0.12)',
+      glow: '0 0 16px rgba(99, 102, 241, 0.35)'
     };
   } else if (trendMode === 'high') {
     themeConfig = {
-      labelColor: '#14b8a6',
-      valueColor: '#2dd4bf',
-      trackColor: 'rgba(20, 184, 166, 0.15)',
-      activeColor: '#14b8a6',
-      background: 'rgba(20, 184, 166, 0.1)',
-      glow: '0 0 10px rgba(20, 184, 166, 0.25)'
+      labelColor: '#10b981',
+      valueColor: '#34d399',
+      trackColor: 'rgba(16, 185, 129, 0.2)',
+      activeColor: '#10b981',
+      background: 'rgba(16, 185, 129, 0.08)',
+      glow: '0 0 12px rgba(16, 185, 129, 0.25)'
     };
   } else if (trendMode === 'low') {
     themeConfig = {
       labelColor: '#f43f5e',
       valueColor: '#fb7185',
-      trackColor: 'rgba(244, 63, 94, 0.15)',
+      trackColor: 'rgba(244, 63, 94, 0.2)',
       activeColor: '#f43f5e',
-      background: 'rgba(244, 63, 94, 0.1)',
-      glow: '0 0 10px rgba(244, 63, 94, 0.25)'
+      background: 'rgba(244, 63, 94, 0.08)',
+      glow: '0 0 12px rgba(244, 63, 94, 0.25)'
     };
   }
 
@@ -53,10 +54,10 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
     <div className="manual-digit-gauge">
       <span className="manual-digit-label" style={{ color: themeConfig.labelColor }}>{digit}</span>
       <div className="manual-gauge-circle" style={{ background: themeConfig.background, boxShadow: themeConfig.glow }}>
-        <svg viewBox="0 0 44 44">
-          <circle cx="22" cy="22" r={circleRadius} fill="none" stroke={themeConfig.trackColor} strokeWidth={lineThickness} />
+        <svg viewBox="0 0 88 88">
+          <circle cx="44" cy="44" r={circleRadius} fill="none" stroke={themeConfig.trackColor} strokeWidth={lineThickness} />
           <circle
-            cx="22" cy="22" r={circleRadius} fill="none"
+            cx="44" cy="44" r={circleRadius} fill="none"
             stroke={themeConfig.activeColor} strokeWidth={lineThickness}
             strokeDasharray={pathCircumference} strokeDashoffset={strokeOffsetProgress} strokeLinecap="round"
           />
@@ -89,42 +90,38 @@ export default function ManualTraderTab() {
 
   const [contractType, setContractType] = useState('Over/Under');
   const [isContractDropdownOpen, setIsContractDropdownOpen] = useState(false);
-  const [targetDigit, setTargetDigit] = useState<number>(7);
+  const [targetDigit, setTargetDigit] = useState<number>(4);
   const [manualStake, setManualStake] = useState<string>('500.00');
-  const [cursorPosition, setCursorPosition] = useState<number>(7);
+  const [cursorPosition, setCursorPosition] = useState<number>(4);
   const [scannerStatus, setScannerStatus] = useState<string>('Scanning live tick momentum...');
 
-  // Realistic Statistical Digit State Model
   const [digitStats, setDigitStats] = useState([
     { digit: 0, percent: 9.2, trend: 'neutral' },
-    { digit: 1, percent: 8.8, trend: 'low' },
-    { digit: 2, percent: 10.1, trend: 'neutral' },
-    { digit: 3, percent: 9.7, trend: 'neutral' },
-    { digit: 4, percent: 10.5, trend: 'neutral' },
-    { digit: 5, percent: 8.5, trend: 'low' },
-    { digit: 6, percent: 11.2, trend: 'high' },
-    { digit: 7, percent: 12.4, trend: 'selected' },
-    { digit: 8, percent: 10.0, trend: 'neutral' },
-    { digit: 9, percent: 9.6, trend: 'neutral' }
+    { digit: 1, percent: 12.6, trend: 'high' },
+    { digit: 2, percent: 9.9, trend: 'neutral' },
+    { digit: 3, percent: 10.1, trend: 'neutral' },
+    { digit: 4, percent: 11.4, trend: 'selected' },
+    { digit: 5, percent: 8.5, trend: 'neutral' },
+    { digit: 6, percent: 10.5, trend: 'neutral' },
+    { digit: 7, percent: 9.4, trend: 'neutral' },
+    { digit: 8, percent: 7.7, trend: 'low' },
+    { digit: 9, percent: 10.3, trend: 'neutral' }
   ]);
 
-  // 100% Realistic Social-Media Algorithmic Scanner Simulation Loop
+  // Simulation Loop
   useEffect(() => {
     const scannerInterval = setInterval(() => {
-      // 1. Stochastic probability shift: Pick a focal scanning digit based on momentum weight
-      const weightedScannerPool = [7, 6, 2, 4, 8, 1, 9, 3, 5, 0];
+      const weightedScannerPool = [4, 1, 8, 6, 2, 0, 9, 3, 5, 7];
       const nextActiveDigit = weightedScannerPool[Math.floor(Math.random() * weightedScannerPool.length)];
       
       setCursorPosition(nextActiveDigit);
 
-      // 2. Recalculate percentages and assign strictly ONE high (green) and ONE low (red)
       setDigitStats(currentStats => {
         let maxVal = -1;
         let minVal = 999;
         let highIndex = 0;
         let lowIndex = 0;
 
-        // Pre-generate simulated values to find exact single peak and single trough
         const updatedValues = currentStats.map((item, idx) => {
           const simulatedPercent = +(Math.random() * (12.8 - 7.5) + 7.5).toFixed(1);
           if (simulatedPercent > maxVal) { maxVal = simulatedPercent; highIndex = idx; }
@@ -145,7 +142,6 @@ export default function ManualTraderTab() {
         });
       });
 
-      // 3. Update status ticker with realistic logic feedback
       const statuses = [
         `Analyzing 1,000 tick sample for ${selectedSymbol}...`,
         `Momentum spike detected on digit ${nextActiveDigit}. Evaluating variance...`,
@@ -154,7 +150,7 @@ export default function ManualTraderTab() {
       ];
       setScannerStatus(statuses[Math.floor(Math.random() * statuses.length)]);
 
-    }, 2200); // Scans and shifts every 2.2 seconds
+    }, 2500);
 
     return () => clearInterval(scannerInterval);
   }, [selectedSymbol, targetDigit]);
