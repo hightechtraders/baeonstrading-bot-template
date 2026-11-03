@@ -24,6 +24,34 @@
         padding-bottom: 3rem;
     }
 
+    /* Top Navigation Tabs Styling */
+    .manual-trader-navigation-tabs {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding-bottom: 12px;
+        margin-bottom: 4px;
+
+        .nav-tab-item {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-general);
+            cursor: pointer;
+            padding: 4px 8px;
+            transition: color 0.2s ease;
+
+            &:hover {
+                color: var(--text-prominent);
+            }
+
+            &.active {
+                color: #00a86b;
+                border-bottom: 2px solid #00a86b;
+            }
+        }
+    }
+
     /* Header Row featuring Title Banner & Market Selector side-by-side */
     .manual-trader-header-row {
         display: flex;
