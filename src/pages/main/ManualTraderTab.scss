@@ -3,7 +3,8 @@
 
 .manual-trader-tab-container {
     width: 100% !important;
-    height: 100% !important;
+    min-height: 100% !important;
+    height: auto !important;
     display: flex !important;
     flex-direction: column !important;
     box-sizing: border-box !important;
@@ -14,10 +15,8 @@
 
     @include mobile-or-tablet-screen {
         padding: 8px !important;
-        /* Ensures container takes exact mobile height without forcing extra document scroll */
-        height: 100vh !important; 
-        overflow-y: scroll !important;
-        -webkit-overflow-scrolling: touch;
+        height: auto !important;
+        overflow-y: auto !important;
     }
 
     .manual-trader-wrapper {
@@ -28,14 +27,13 @@
         flex-direction: column;
         gap: 16px;
         box-sizing: border-box;
-        padding-bottom: 2rem;
+        padding-bottom: 4rem;
         position: relative;
         z-index: 1;
 
         @include mobile-or-tablet-screen {
             gap: 8px;
-            /* Gives exact breathing room at the bottom so buttons sit right above the device bar */
-            padding-bottom: 120px !important; 
+            padding-bottom: 120px !important;
         }
     }
 
@@ -156,7 +154,6 @@
         justify-content: center;
 
         @include mobile-or-tablet-screen {
-            /* 2 rows of 5 circles, tightly optimized for mobile widths */
             grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
             gap: 4px !important; 
         }
@@ -217,7 +214,7 @@
             justify-content: center;
 
             @include mobile-or-tablet-screen {
-                width: 36px; /* Scaled down perfectly for mobile 2-row grid */
+                width: 36px;
                 height: 36px;
             }
 
@@ -498,19 +495,18 @@
         }
     }
 
-    /* Purchase Buttons Action Zone */
+    /* Purchase Buttons Action Zone - Side-by-side on both mobile and laptop with compact sizing */
     .manual-trader-buttons-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 30px;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 16px;
         max-width: 900px;
         margin: 10px auto 0 auto;
         width: 100%;
 
         @include mobile-or-tablet-screen {
-            /* Vertical stack on mobile so buttons are large, clear, and never cut off */
-            grid-template-columns: 1fr;
-            gap: 8px;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 6px !important;
         }
     }
 
@@ -528,7 +524,7 @@
         transition: all 0.2s ease;
 
         @include mobile-or-tablet-screen {
-            padding: 8px 12px;
+            padding: 8px 6px !important;
         }
 
         &--over {
@@ -555,7 +551,7 @@
             opacity: 0.9;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.58rem;
+                font-size: 0.52rem !important;
             }
         }
 
@@ -565,7 +561,7 @@
             margin-top: 2px;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.82rem;
+                font-size: 0.72rem !important;
             }
         }
 
@@ -578,7 +574,8 @@
             border-radius: 4px;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.52rem;
+                font-size: 0.45rem !important;
+                padding: 1px 4px;
             }
         }
     }
