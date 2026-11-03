@@ -36,13 +36,13 @@
         }
     }
 
-    /* Compact Market Dropdown Bar */
+    /* Harmonized Market Dropdown Bar */
     .manual-market-dropdown-bar {
         background: var(--general-section-1);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 10px;
         position: relative;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
         width: fit-content;
         min-width: 260px;
         box-sizing: border-box;
@@ -75,7 +75,7 @@
                     color: var(--text-general);
 
                     .banner-highlight {
-                        color: #00a86b;
+                        color: #059669;
                         font-weight: 900;
                         font-size: 0.9rem;
                         margin-left: 4px;
@@ -104,7 +104,7 @@
             right: 0;
             margin-top: 4px;
             background: var(--general-section-1);
-            border: 1px solid rgba(0, 168, 107, 0.3);
+            border: 1px solid rgba(5, 150, 105, 0.3);
             border-radius: 10px;
             box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
             z-index: 999;
@@ -122,13 +122,13 @@
                 border: none !important;
 
                 &:hover {
-                    background: rgba(0, 168, 107, 0.1);
-                    color: #00a86b;
+                    background: rgba(5, 150, 105, 0.1);
+                    color: #059669;
                 }
 
                 &.active {
-                    background: rgba(0, 168, 107, 0.15);
-                    color: #00a86b;
+                    background: rgba(5, 150, 105, 0.15);
+                    color: #059669;
                     font-weight: 900;
                 }
             }
@@ -164,24 +164,30 @@
         align-items: center;
         justify-content: center;
         position: relative;
-        padding: 6px 2px 10px 2px !important;
-        background: transparent !important;
-        border: none !important;
+        padding: 8px 4px 12px 4px !important;
+        background: var(--general-section-1) !important;
+        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        border-radius: 10px;
         cursor: pointer;
         transition: all 0.2s ease;
         user-select: none;
         width: 100%;
         box-sizing: border-box;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
 
         &:hover {
             transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.15) !important;
         }
 
         &--selected {
+            border-color: rgba(99, 102, 241, 0.6) !important;
+            background: rgba(99, 102, 241, 0.06) !important;
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+
             .manual-gauge-circle {
                 border: 2.5px solid #6366f1 !important;
                 background: rgba(99, 102, 241, 0.12);
-                box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
             }
         }
     }
@@ -199,6 +205,7 @@
             font-size: 11px;
             font-weight: 800;
             margin-bottom: 2px;
+            color: var(--text-prominent);
         }
 
         .manual-gauge-circle {
@@ -206,8 +213,8 @@
             width: 50px;
             height: 50px;
             border-radius: 50%;
-            border: 2px solid rgba(200, 205, 215, 0.2);
-            background: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.15);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -249,7 +256,7 @@
 
     .digit-cursor-arrow {
         position: absolute;
-        bottom: 0px;
+        bottom: 2px;
         left: 50%;
         transform: translateX(-50%);
         display: flex;
@@ -320,7 +327,7 @@
             right: 0;
             margin-top: 4px;
             background: var(--general-section-1);
-            border: 1px solid rgba(0, 168, 107, 0.3);
+            border: 1px solid rgba(5, 150, 105, 0.3);
             border-radius: 10px;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
             z-index: 50;
@@ -336,26 +343,26 @@
                 border: none !important;
 
                 &:hover {
-                    background: rgba(0, 168, 107, 0.1);
-                    color: #00a86b;
+                    background: rgba(5, 150, 105, 0.1);
+                    color: #059669;
                 }
 
                 &.active {
-                    background: rgba(0, 168, 107, 0.15);
-                    color: #00a86b;
+                    background: rgba(5, 150, 105, 0.15);
+                    color: #059669;
                     font-weight: 900;
                 }
             }
         }
     }
 
-    /* Controls Card */
+    /* Controls Card - Harmonized with Template Card Style */
     .manual-trader-controls-card {
         background: var(--general-section-1);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 10px;
-        padding: 14px 18px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        padding: 16px 20px;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
         display: flex;
         flex-direction: column;
         gap: 12px;
@@ -418,6 +425,7 @@
 
     .manual-trader-target-box {
         border-color: rgba(99, 102, 241, 0.4);
+        background: rgba(99, 102, 241, 0.05);
         color: #818cf8;
         font-weight: 900;
         text-align: center;
@@ -494,12 +502,12 @@
         }
     }
 
-    /* Purchase Buttons Action Zone - 80px gap with 650px max-width on laptop */
+    /* Purchase Buttons Action Zone - Stable grid positioning with template button styling */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr !important;
-        gap: 80px !important; 
-        max-width: 650px !important; 
+        gap: 32px !important; 
+        max-width: 800px !important; 
         margin: 15px auto 0 auto;
         width: 100%;
 
@@ -512,7 +520,7 @@
 
     .manual-trader-btn {
         border: none;
-        padding: 12px 18px;
+        padding: 14px 20px;
         border-radius: 10px;
         color: #fff;
         font-weight: 900;
