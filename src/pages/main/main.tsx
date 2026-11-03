@@ -39,7 +39,6 @@ import {
     LabelPairedPuzzlePieceTwoCaptionBoldIcon,
     LabelPairedBookmarkCaptionRegularIcon,
     LabelPairedUsersCaptionRegularIcon,
-    LabelPairedLaptopCaptionRegularIcon,
 } from '@deriv/quill-icons/LabelPaired';
 import { Localize, localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
@@ -50,108 +49,6 @@ import RunStrategy from '../dashboard/run-strategy';
 import './main.scss';
 
 const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
-
-// ==========================================
-// SUB-COMPONENT: PROFESSIONAL SVG GAUGE CIRCLE
-// ==========================================
-function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
-  const circleRadius = 18;
-  const lineThickness = 3.5;
-  const pathCircumference = 2 * Math.PI * circleRadius; // ~113.1
-  
-  const operationalScale = 15;
-  const scaledValue = Math.min(percentage, operationalScale);
-  const strokeOffsetProgress = pathCircumference - (scaledValue / operationalScale) * pathCircumference;
-  
-  let themeConfig = {
-    labelColor: '#9ca3af',
-    valueColor: 'var(--text-prominent)',
-    trackColor: 'rgba(255, 255, 255, 0.08)',
-    activeColor: '#6b7280',
-    background: 'transparent',
-    glow: 'none'
-  };
-
-  if (trendMode === 'selected' || isSelected) {
-    themeConfig = {
-      labelColor: '#818cf8',
-      valueColor: '#ffffff',
-      trackColor: '#1e1b4b',
-      activeColor: '#6366f1',
-      background: 'rgba(99, 102, 241, 0.15)',
-      glow: '0 0 12px rgba(99, 102, 241, 0.4)'
-    };
-  } else if (trendMode === 'high') {
-    themeConfig = {
-      labelColor: '#14b8a6',
-      valueColor: '#2dd4bf',
-      trackColor: 'rgba(20, 184, 166, 0.15)',
-      activeColor: '#14b8a6',
-      background: 'rgba(20, 184, 166, 0.1)',
-      glow: '0 0 10px rgba(20, 184, 166, 0.25)'
-    };
-  } else if (trendMode === 'low') {
-    themeConfig = {
-      labelColor: '#f43f5e',
-      valueColor: '#fb7185',
-      trackColor: 'rgba(244, 63, 94, 0.15)',
-      activeColor: '#f43f5e',
-      background: 'rgba(244, 63, 94, 0.1)',
-      glow: '0 0 10px rgba(244, 63, 94, 0.25)'
-    };
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4px', userSelect: 'none' }}>
-      <span style={{ fontSize: '12px', fontWeight: 900, marginBottom: '4px', letterSpacing: '0.5px', color: themeConfig.labelColor }}>
-        {digit}
-      </span>
-      
-      <div 
-        style={{ 
-          position: 'relative', 
-          width: '52px', 
-          height: '52px', 
-          borderRadius: '50%', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          background: themeConfig.background,
-          boxShadow: themeConfig.glow,
-          transition: 'all 0.3s ease'
-        }}
-      >
-        <svg style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }} viewBox="0 0 44 44">
-          <circle 
-            cx="22" 
-            cy="22" 
-            r={circleRadius} 
-            fill="none"
-            stroke={themeConfig.trackColor}
-            strokeWidth={lineThickness} 
-          />
-          <circle
-            cx="22"
-            cy="22"
-            r={circleRadius}
-            fill="none"
-            stroke={themeConfig.activeColor}
-            strokeWidth={lineThickness}
-            strokeDasharray={pathCircumference}
-            strokeDashoffset={strokeOffsetProgress}
-            strokeLinecap="round"
-            style={{ transition: 'stroke-dashoffset 0.5s ease-out' }}
-          />
-        </svg>
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-          <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '-0.5px', color: themeConfig.valueColor }}>
-            {percentage}%
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
@@ -184,7 +81,7 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'free_bots', 'manual_trader', 'copy_trading', 'chart', 'tutorial'];
+    const hash = ['dashboard', 'bot_builder', 'free_bots', 'copy_trading', 'chart', 'tutorial'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -273,35 +170,6 @@ const AppWrapper = observer(() => {
             confidence: '90%',
             status: 'HIGH',
         }
-    ]);
-
-    // Manual Trader State Set strictly to Volatility 10 (R_10)
-    const [selectedSymbol] = useState('Volatility 10 Index');
-    const symbolCode = 'R_10';
-    const [contractType, setContractType] = useState('Over/Under');
-    const [targetDigit, setTargetDigit] = useState<number>(8);
-    const [manualStake, setManualStake] = useState<string>('500.00');
-
-    // Moving Cursor simulation state for active red upward arrow cursor underneath
-    const [cursorPosition, setCursorPosition] = useState<number>(6);
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCursorPosition(prev => (prev + 1) % 10);
-        }, 2000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const [digitStats] = useState([
-        { digit: 0, percent: 9.5, trend: 'neutral' },
-        { digit: 1, percent: 9.4, trend: 'neutral' },
-        { digit: 2, percent: 10.4, trend: 'neutral' },
-        { digit: 3, percent: 10.0, trend: 'neutral' },
-        { digit: 4, percent: 10.4, trend: 'neutral' },
-        { digit: 5, percent: 8.7,  trend: 'low' },
-        { digit: 6, percent: 11.3, trend: 'high' },
-        { digit: 7, percent: 11.6, trend: 'high' },
-        { digit: 8, percent: 9.3,  trend: 'selected' },
-        { digit: 9, percent: 9.4,  trend: 'neutral' }
     ]);
 
     // Copy Trading Hub State & Mock Datasets
@@ -684,156 +552,6 @@ const AppWrapper = observer(() => {
                                             </button>
                                         </div>
                                     )}
-                                </div>
-                            </div>
-
-                            {/* MANUAL TRADER TAB - PROPERLY FIT IN SCREEN */}
-                            <div
-                                label={
-                                    <>
-                                        <LabelPairedLaptopCaptionRegularIcon
-                                            height='24px'
-                                            width='24px'
-                                            fill='var(--text-general)'
-                                        />
-                                        <Localize i18n_default_text='Manual Trader' />
-                                    </>
-                                }
-                                id='id-manual-trader'
-                            >
-                                <div className='manual-trader-wrapper' style={{ maxWidth: '1100px', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', gap: '8px', margin: '0 auto', padding: '0.4rem 0.8rem', boxSizing: 'border-box', overflowY: 'auto' }}>
-                                    
-                                    {/* Market Mode Banner */}
-                                    <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-prominent)', background: 'var(--general-section-1)', padding: '4px 12px', borderRadius: '16px', border: '1.5px solid rgba(0, 168, 107, 0.3)', fontWeight: 600 }}>
-                                            Market Mode: <strong style={{ color: '#00a86b' }}>{selectedSymbol}</strong>
-                                        </span>
-                                    </div>
-
-                                    {/* 10-Digit Dynamic SVG Gauge Grid with bottom space reserved for red arrow cursor */}
-                                    <div className='digit-stats-grid' style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1rem', padding: '8px 10px 16px 10px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)', flexShrink: 0 }}>
-                                        <div className='digit-stats-grid__inner'>
-                                            {digitStats.map((item) => {
-                                                const isSelected = targetDigit === item.digit;
-                                                const isCursorHere = cursorPosition === item.digit;
-                                                let cardModifier = '';
-                                                if (isSelected) cardModifier = 'digit-card--selected';
-                                                else if (item.trend === 'high') cardModifier = 'digit-card--high';
-                                                else if (item.trend === 'low') cardModifier = 'digit-card--low';
-
-                                                return (
-                                                    <div 
-                                                        key={item.digit} 
-                                                        onClick={() => {
-                                                            setTargetDigit(item.digit);
-                                                            setCursorPosition(item.digit);
-                                                        }}
-                                                        className={`digit-gauge-card ${cardModifier}`}
-                                                        style={{ position: 'relative', paddingBottom: '20px' }}
-                                                    >
-                                                        <ProfessionalDigitGauge
-                                                            digit={item.digit}
-                                                            percentage={item.percent}
-                                                            isSelected={isSelected}
-                                                            trendMode={isSelected ? 'selected' : item.trend}
-                                                        />
-
-                                                        {/* Red Upward Arrow Cursor Design cleanly positioned underneath */}
-                                                        {isCursorHere && (
-                                                            <div style={{ position: 'absolute', bottom: '2px', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', animation: 'bounceCursor 0.8s infinite alternate', pointerEvents: 'none' }}>
-                                                                <span style={{ color: '#ef4444', fontSize: '14px', fontWeight: 900, lineHeight: 1, filter: 'drop-shadow(0 2px 3px rgba(239, 68, 68, 0.4))' }}>▲</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* Compact Interactive Controls & Strategy Setup Card */}
-                                    <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1rem', padding: '10px 14px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)', flexShrink: 0 }}>
-                                        
-                                        {/* Strategy Selection & Targets Row */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '8px' }}>
-                                            <div>
-                                                <label style={{ fontSize: '0.68rem', color: 'var(--text-general)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: '4px' }}>Trade Logic Blueprint</label>
-                                                <select 
-                                                    value={contractType} 
-                                                    onChange={(e) => setContractType(e.target.value)}
-                                                    style={{ width: '100%', background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', color: 'var(--text-prominent)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700, outline: 'none', cursor: 'pointer' }}
-                                                >
-                                                    <option value='Over/Under'>Over / Under</option>
-                                                    <option value='Matches/Differs'>Matches / Differs</option>
-                                                    <option value='Even/Odd'>Even / Odd</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '0.68rem', color: 'var(--text-general)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: '4px' }}>Prediction Target</label>
-                                                <div style={{ width: '100%', background: 'var(--general-main-1)', border: '1.5px solid rgba(99, 102, 241, 0.5)', color: '#818cf8', padding: '6px 10px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 900, textAlign: 'center' }}>
-                                                    Digit: {targetDigit}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Contract Duration & Stake Allocation Row */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '10px', marginBottom: '8px', alignItems: 'center' }}>
-                                            <div>
-                                                <label style={{ fontSize: '0.68rem', color: 'var(--text-general)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: '4px' }}>Contract Duration</label>
-                                                <div style={{ width: '100%', background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.25)', color: 'var(--text-prominent)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, textAlign: 'center' }}>
-                                                    1 Tick Execution
-                                                </div>
-                                            </div>
-
-                                            <div style={{ background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '8px', padding: '4px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                                                    <span style={{ fontSize: '0.62rem', color: 'var(--text-general)', textTransform: 'uppercase', fontWeight: 800 }}>Risk Capital Allocation</span>
-                                                    <input 
-                                                        type='text' 
-                                                        value={manualStake}
-                                                        onChange={(e) => setManualStake(e.target.value)}
-                                                        style={{ background: 'transparent', color: 'var(--text-prominent)', fontWeight: 900, fontSize: '0.95rem', border: 'none', outline: 'none', width: '100%', marginTop: '1px' }}
-                                                    />
-                                                </div>
-                                                <span style={{ fontSize: '0.68rem', fontWeight: 900, color: 'var(--text-prominent)', background: 'var(--general-section-1)', padding: '3px 8px', borderRadius: '6px', border: '1.5px solid rgba(0, 168, 107, 0.3)' }}>USD STAKE</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Dual Block Execution Payout Action Area - Locked to R_10 */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                            <button 
-                                                onClick={() => {
-                                                    ScannerBridge.executeDirectTrade(
-                                                        { strategyName: `Manual Over ${targetDigit}`, symbol: symbolCode },
-                                                        { symbol: symbolCode, contractType: 'DIGITOVER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
-                                                    );
-                                                }}
-                                                style={{ background: '#059669', border: 'none', padding: '8px', borderRadius: '10px', color: '#fff', fontWeight: 900, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 10px rgba(5, 150, 105, 0.35)', transition: 'all 0.2s ease' }}
-                                            >
-                                                <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.9 }}>Purchase Over</span>
-                                                <span style={{ fontSize: '0.9rem', fontWeight: 900, marginTop: '1px' }}>OVER {targetDigit}</span>
-                                                <span style={{ marginTop: '2px', fontSize: '0.62rem', fontWeight: 700, background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>
-                                                    Payout: +3,514.41 USD
-                                                </span>
-                                            </button>
-
-                                            <button 
-                                                onClick={() => {
-                                                    ScannerBridge.executeDirectTrade(
-                                                        { strategyName: `Manual Under ${targetDigit}`, symbol: symbolCode },
-                                                        { symbol: symbolCode, contractType: 'DIGITUNDER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
-                                                    );
-                                                }}
-                                                style={{ background: '#e11d48', border: 'none', padding: '8px', borderRadius: '10px', color: '#fff', fontWeight: 900, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 10px rgba(225, 29, 72, 0.35)', transition: 'all 0.2s ease' }}
-                                            >
-                                                <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.9 }}>Purchase Under</span>
-                                                <span style={{ fontSize: '0.9rem', fontWeight: 900, marginTop: '1px' }}>UNDER {targetDigit}</span>
-                                                <span style={{ marginTop: '2px', fontSize: '0.62rem', fontWeight: 700, background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>
-                                                    Payout: +593.82 USD
-                                                </span>
-                                            </button>
-                                        </div>
-
-                                    </div>
                                 </div>
                             </div>
 
