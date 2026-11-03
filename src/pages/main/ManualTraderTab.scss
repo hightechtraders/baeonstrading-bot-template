@@ -8,31 +8,31 @@
     display: flex !important;
     flex-direction: column !important;
     box-sizing: border-box !important;
-    padding: 1.5rem 2.5rem !important; /* Full desktop padding */
+    padding: 1.5rem 2.5rem !important;
     background: var(--general-main-1) !important;
     overflow-y: auto !important;
     position: relative;
 
     @include mobile-or-tablet-screen {
-        padding: 0.5rem !important; /* Compact mobile padding */
+        padding: 0.5rem !important;
     }
 
     .manual-trader-wrapper {
         width: 100% !important;
-        max-width: 1200px !important; /* Full laptop width restored */
+        max-width: 1200px !important;
         height: auto !important;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        gap: 20px; /* Spacious desktop gap */
+        gap: 20px;
         box-sizing: border-box;
         padding-bottom: 4rem;
         position: relative;
         z-index: 1;
 
         @include mobile-or-tablet-screen {
-            gap: 10px; /* Tight mobile gap */
-            padding-bottom: 8.5rem !important; /* Keeps buttons clear of mobile bottom bar */
+            gap: 10px;
+            padding-bottom: 8.5rem !important;
         }
     }
 
@@ -160,7 +160,6 @@
         justify-content: center;
 
         @include mobile-or-tablet-screen {
-            /* 2 rows of 5 for phones */
             grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
             gap: 6px !important; 
         }
@@ -232,7 +231,7 @@
 
         .manual-gauge-circle {
             position: relative;
-            width: 54px; /* Crisp laptop size */
+            width: 54px;
             height: 54px;
             border-radius: 50%;
             border: 2.5px solid rgba(200, 205, 215, 0.2);
@@ -243,7 +242,7 @@
             transition: all 0.2s ease;
 
             @include mobile-or-tablet-screen {
-                width: 38px; /* Compact mobile size */
+                width: 38px;
                 height: 38px;
             }
 
@@ -533,17 +532,17 @@
         }
     }
 
-    /* Purchase Buttons Action Zone */
+    /* Purchase Buttons Action Zone - Correctly placed at container root level */
     .manual-trader-buttons-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr; /* Side-by-side on laptop */
+        grid-template-columns: 1fr 1fr;
         gap: 40px;
         max-width: 1000px;
         margin: 16px auto 0 auto;
         width: 100%;
 
         @include mobile-or-tablet-screen {
-            grid-template-columns: 1fr; /* Clean vertical stack on mobile so they never overflow */
+            grid-template-columns: 1fr;
             gap: 12px;
         }
     }
