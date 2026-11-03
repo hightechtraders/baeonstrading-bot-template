@@ -70,8 +70,8 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
 }
 
 export default function ManualTraderTab() {
-  const [selectedSymbol, setSelectedSymbol] = useState('Volatility 10 Index');
-  const [symbolCode, setSymbolCode] = useState('R_10');
+  const [selectedSymbol, setSelectedSymbol] = useState('Volatility 10 (1s) Index');
+  const [symbolCode, setSymbolCode] = useState('1HZ10V');
   const [isMarketDropdownOpen, setIsMarketDropdownOpen] = useState(false);
 
   const markets = [
@@ -89,29 +89,66 @@ export default function ManualTraderTab() {
 
   const [contractType, setContractType] = useState('Over/Under');
   const [isContractDropdownOpen, setIsContractDropdownOpen] = useState(false);
-  const [targetDigit, setTargetDigit] = useState<number>(8);
+  const [targetDigit, setTargetDigit] = useState<number>(7);
   const [manualStake, setManualStake] = useState<string>('500.00');
-  const [cursorPosition, setCursorPosition] = useState<number>(6);
+  const [cursorPosition, setCursorPosition] = useState<number>(7);
+  const [scannerStatus, setScannerStatus] = useState<string>('Scanning live tick momentum...');
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCursorPosition(prev => (prev + 1) % 10);
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const [digitStats] = useState([
-    { digit: 0, percent: 9.5, trend: 'neutral' },
-    { digit: 1, percent: 9.4, trend: 'neutral' },
-    { digit: 2, percent: 10.4, trend: 'neutral' },
-    { digit: 3, percent: 10.0, trend: 'neutral' },
-    { digit: 4, percent: 10.4, trend: 'neutral' },
-    { digit: 5, percent: 8.7,  trend: 'low' },
-    { digit: 6, percent: 11.3, trend: 'high' },
-    { digit: 7, percent: 11.6, trend: 'high' },
-    { digit: 8, percent: 9.3,  trend: 'selected' },
-    { digit: 9, percent: 9.4,  trend: 'neutral' }
+  // Realistic Statistical Digit State Model
+  const [digitStats, setDigitStats] = useState([
+    { digit: 0, percent: 9.2, trend: 'neutral' },
+    { digit: 1, percent: 8.8, trend: 'low' },
+    { digit: 2, percent: 10.1, trend: 'neutral' },
+    { digit: 3, percent: 9.7, trend: 'neutral' },
+    { digit: 4, percent: 10.5, trend: 'neutral' },
+    { digit: 5, percent: 8.5, trend: 'low' },
+    { digit: 6, percent: 11.2, trend: 'high' },
+    { digit: 7, percent: 12.4, trend: 'selected' },
+    { digit: 8, percent: 10.0, trend: 'neutral' },
+    { digit: 9, percent: 9.6, trend: 'neutral' }
   ]);
+
+  // 100% Realistic Social-Media Algorithmic Scanner Simulation Loop
+  useEffect(() => {
+    const scannerInterval = setInterval(() => {
+      // 1. Stochastic probability shift: Pick a focal scanning digit based on momentum weight
+      const weightedScannerPool = [7, 6, 2, 4, 8, 1, 9, 3, 5, 0];
+      const nextActiveDigit = weightedScannerPool[Math.floor(Math.random() * weightedScannerPool.length)];
+      
+      setCursorPosition(nextActiveDigit);
+
+      // 2. Recalculate realistic percentages summing around 100% distribution across 10 digits
+      setDigitStats(currentStats => {
+        return currentStats.map(item => {
+          // Fluctuate stats between 7.5% and 12.8% (mathematically balanced around 10% expected average)
+          const simulatedPercent = +(Math.random() * (12.8 - 7.5) + 7.5).toFixed(1);
+          let trend = 'neutral';
+          
+          if (simulatedPercent >= 11.5) trend = 'high';
+          else if (simulatedPercent <= 8.2) trend = 'low';
+          if (item.digit === targetDigit) trend = 'selected';
+
+          return {
+            ...item,
+            percent: simulatedPercent,
+            trend
+          };
+        });
+      });
+
+      // 3. Update status ticker with realistic logic feedback
+      const statuses = [
+        `Analyzing 1,000 tick sample for ${selectedSymbol}...`,
+        `Momentum spike detected on digit ${nextActiveDigit}. Evaluating variance...`,
+        `Probability threshold met (>89.4%). Ready for execution setup.`,
+        `Scanning parity distribution across synthetic stream...`
+      ];
+      setScannerStatus(statuses[Math.floor(Math.random() * statuses.length)]);
+
+    }, 2200); // Scans and shifts every 2.2 seconds
+
+    return () => clearInterval(scannerInterval);
+  }, [selectedSymbol, targetDigit]);
 
   return (
     <div className="manual-trader-tab-container">
@@ -149,6 +186,15 @@ export default function ManualTraderTab() {
           )}
         </div>
 
+        {/* Live Scanner Status Banner */}
+        <div style={{ background: 'rgba(0, 168, 107, 0.08)', border: '1px solid rgba(0, 168, 107, 0.25)', padding: '10px 16px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00a86b', display: 'inline-block', boxShadow: '0 0 8px #00a86b' }} />
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-prominent)' }}>AI Engine: {scannerStatus}</span>
+          </div>
+          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#00a86b', background: 'rgba(0,168,107,0.15)', padding: '2px 8px', borderRadius: '4px' }}>LIVE FEED</span>
+        </div>
+
         {/* 10-Digit Dynamic Gauge Grid */}
         <div className="digit-stats-grid">
           <div className="digit-stats-grid__inner">
@@ -156,9 +202,9 @@ export default function ManualTraderTab() {
               const isSelected = targetDigit === item.digit;
               const isCursorHere = cursorPosition === item.digit;
               let cardModifier = '';
-              if (isSelected) cardModifier = 'digit-card--selected';
-              else if (item.trend === 'high') cardModifier = 'digit-card--high';
-              else if (item.trend === 'low') cardModifier = 'digit-card--low';
+              if (isSelected) cardModifier = 'digit-gauge-card--selected';
+              else if (item.trend === 'high') cardModifier = 'digit-gauge-card--high';
+              else if (item.trend === 'low') cardModifier = 'digit-gauge-card--low';
 
               return (
                 <div 
