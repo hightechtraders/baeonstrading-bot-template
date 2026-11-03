@@ -162,6 +162,7 @@
         }
     }
 
+    /* Completely borderless, cardless floating layout */
     .digit-gauge-card {
         display: flex;
         flex-direction: column;
@@ -169,15 +170,15 @@
         justify-content: center;
         position: relative;
         padding: 8px 4px 16px 4px !important;
-        background: transparent !important; /* Removes the grey square box */
-        border: none !important;             /* Removes bulky borders */
+        background: transparent !important;
+        border: none !important;
         border-radius: 12px;
         cursor: pointer;
         transition: all 0.2s ease;
         user-select: none;
         width: 100%;
         box-sizing: border-box;
-        box-shadow: none !important;         /* Removes card shadow */
+        box-shadow: none !important;
 
         &:hover {
             transform: translateY(-2px);
@@ -187,14 +188,16 @@
             }
         }
 
+        /* Dynamic target selection highlighting purely the gauge circle */
         &--selected {
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
 
             .manual-gauge-circle {
-                border: 2px solid #2e3057 !important;
-                background: rgba(46, 48, 87, 0.2);
+                border: 2.5px solid #6366f1 !important;
+                background: rgba(99, 102, 241, 0.12);
+                box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
             }
         }
 
@@ -231,7 +234,7 @@
             width: 56px;
             height: 56px;
             border-radius: 50%;
-            border: 2.5px solid rgba(200, 205, 215, 0.25); /* Clean outer ring border like reference */
+            border: 2.5px solid rgba(200, 205, 215, 0.25);
             background: transparent;
             display: flex;
             align-items: center;
