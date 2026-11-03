@@ -687,7 +687,7 @@ const AppWrapper = observer(() => {
                                 </div>
                             </div>
 
-                            {/* MANUAL TRADER TAB - FULL VERTICAL SCREEN FIT */}
+                            {/* MANUAL TRADER TAB - PROPERLY FIT IN SCREEN */}
                             <div
                                 label={
                                     <>
@@ -701,17 +701,17 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-manual-trader'
                             >
-                                <div className='manual-trader-wrapper' style={{ maxWidth: '1100px', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', margin: '0 auto', padding: '0.4rem 0.8rem', boxSizing: 'border-box' }}>
+                                <div className='manual-trader-wrapper' style={{ maxWidth: '1100px', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', gap: '8px', margin: '0 auto', padding: '0.4rem 0.8rem', boxSizing: 'border-box', overflowY: 'auto' }}>
                                     
                                     {/* Market Mode Banner */}
-                                    <div style={{ textAlign: 'center', marginBottom: '6px', flexShrink: 0 }}>
+                                    <div style={{ textAlign: 'center', flexShrink: 0 }}>
                                         <span style={{ fontSize: '0.78rem', color: 'var(--text-prominent)', background: 'var(--general-section-1)', padding: '4px 12px', borderRadius: '16px', border: '1.5px solid rgba(0, 168, 107, 0.3)', fontWeight: 600 }}>
                                             Market Mode: <strong style={{ color: '#00a86b' }}>{selectedSymbol}</strong>
                                         </span>
                                     </div>
 
                                     {/* 10-Digit Dynamic SVG Gauge Grid with bottom space reserved for red arrow cursor */}
-                                    <div className='digit-stats-grid' style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1rem', padding: '10px 10px 18px 10px', marginBottom: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)', flexShrink: 0 }}>
+                                    <div className='digit-stats-grid' style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1rem', padding: '8px 10px 16px 10px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)', flexShrink: 0 }}>
                                         <div className='digit-stats-grid__inner'>
                                             {digitStats.map((item) => {
                                                 const isSelected = targetDigit === item.digit;
@@ -729,7 +729,7 @@ const AppWrapper = observer(() => {
                                                             setCursorPosition(item.digit);
                                                         }}
                                                         className={`digit-gauge-card ${cardModifier}`}
-                                                        style={{ position: 'relative', paddingBottom: '22px' }}
+                                                        style={{ position: 'relative', paddingBottom: '20px' }}
                                                     >
                                                         <ProfessionalDigitGauge
                                                             digit={item.digit}
