@@ -1121,111 +1121,268 @@
 }
 
 /* =========================================================
-   MANUAL TRADER TAB - FLUID FULL-SCREEN CORE ARCHITECTURE
+   MANUAL TRADER TAB - PROPER SINGLE SCREEN VIEW LAYOUT
    ========================================================= */
 #id-manual-trader {
     height: 100% !important;
     min-height: 100% !important;
     display: flex !important;
     flex-direction: column !important;
-    overflow: hidden !important;
+    overflow-y: auto !important;
     box-sizing: border-box !important;
-    padding: 0.6rem 1rem !important;
+    padding: 0.6rem 1.2rem !important;
 
     .manual-trader-wrapper {
-        flex: 1;
         width: 100%;
         max-width: 1200px;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        height: 100%;
-        gap: 0.6rem;
+        gap: 8px;
         box-sizing: border-box;
-        overflow: hidden;
+    }
 
-        /* Market Mode Banner */
-        div:first-child {
-            flex-shrink: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+    /* Market Mode Banner */
+    .manual-trader-banner {
+        text-align: center;
+        flex-shrink: 0;
+    }
 
-        /* 10-Digit Grid */
-        .digit-stats-grid {
-            flex-shrink: 0;
-            background: var(--general-section-1);
-            border: 1.5px solid rgba(0, 168, 107, 0.35);
-            border-radius: 0.9rem;
-            padding: 6px 8px 12px 8px !important;
-            margin-bottom: 0 !important;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    /* 10-Digit Grid Container */
+    .digit-stats-grid {
+        background: var(--general-section-1);
+        border: 1.5px solid rgba(0, 168, 107, 0.35);
+        border-radius: 1rem;
+        padding: 8px 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+        width: 100%;
+        box-sizing: border-box;
+    }
 
-            .digit-stats-grid__inner {
-                display: grid;
-                grid-template-columns: repeat(10, minmax(0, 1fr));
-                gap: 4px;
-                justify-content: center;
-                align-items: stretch;
+    .digit-stats-grid__inner {
+        display: grid;
+        grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+        width: 100%;
+        align-items: center;
+        justify-content: center;
 
-                @include mobile-or-tablet-screen {
-                    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-                    gap: 4px !important;
-                }
-            }
-
-            .digit-gauge-card {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                padding: 4px 1px 18px 1px !important;
-                background: var(--general-main-1);
-                border: 1.5px solid rgba(0, 168, 107, 0.25);
-                border-radius: 8px;
-                cursor: pointer;
-                transition: all 0.2s ease;
-                user-select: none;
-
-                &:hover {
-                    border-color: #00a86b;
-                    background: rgba(0, 168, 107, 0.08);
-                    transform: translateY(-1px);
-                }
-
-                &--selected {
-                    background: rgba(99, 102, 241, 0.15) !important;
-                    border: 2px solid #6366f1 !important;
-                    box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
-                }
-
-                &--high {
-                    border-color: rgba(20, 184, 166, 0.8) !important;
-                    background: rgba(7, 36, 40, 0.4) !important;
-                }
-
-                &--low {
-                    border-color: rgba(244, 63, 94, 0.8) !important;
-                    background: rgba(40, 12, 22, 0.4) !important;
-                }
-            }
-        }
-
-        /* Dynamic Execution Control Panel (Consumes remaining screen depth cleanly) */
-        > div:last-child {
-            flex: 1;
-            min-height: 0;
-            background: var(--general-section-1);
-            border: 1.5px solid rgba(0, 168, 107, 0.35);
-            border-radius: 0.9rem;
-            padding: 10px 14px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            box-sizing: border-box;
-            overflow-y: auto;
+        @include mobile-or-tablet-screen {
+            grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
         }
     }
+
+    .digit-gauge-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        padding: 4px 1px 18px 1px !important;
+        background: var(--general-main-1);
+        border: 1.5px solid rgba(0, 168, 107, 0.25);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+
+        &:hover {
+            border-color: #00a86b;
+            background: rgba(0, 168, 107, 0.08);
+            transform: translateY(-1px);
+        }
+
+        &--selected {
+            background: rgba(99, 102, 241, 0.15) !important;
+            border: 2px solid #6366f1 !important;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+        }
+
+        &--high {
+            border-color: rgba(20, 184, 166, 0.8) !important;
+            background: rgba(7, 36, 40, 0.4) !important;
+        }
+
+        &--low {
+            border-color: rgba(244, 63, 94, 0.8) !important;
+            background: rgba(40, 12, 22, 0.4) !important;
+        }
+    }
+
+    .digit-cursor-arrow {
+        position: absolute;
+        bottom: 2px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        animation: bounceCursor 0.8s infinite alternate;
+        pointer-events: none;
+
+        span {
+            color: #ef4444;
+            font-size: 13px;
+            font-weight: 900;
+            line-height: 1;
+        }
+    }
+
+    /* Controls & Execution Action Panel */
+    .manual-trader-controls-card {
+        background: var(--general-section-1);
+        border: 1.5px solid rgba(0, 168, 107, 0.35);
+        border-radius: 1rem;
+        padding: 12px 16px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    .manual-trader-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+
+        &--align {
+            align-items: center;
+        }
+    }
+
+    .manual-trader-label {
+        font-size: 0.7rem;
+        color: var(--text-general);
+        display: block;
+        text-transform: uppercase;
+        font-weight: 800;
+        margin-bottom: 4px;
+    }
+
+    .manual-trader-select,
+    .manual-trader-target-box,
+    .manual-trader-duration-box {
+        width: 100%;
+        background: var(--general-main-1);
+        border: 1.5px solid rgba(0, 168, 107, 0.35);
+        color: var(--text-prominent);
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        box-sizing: border-box;
+    }
+
+    .manual-trader-target-box {
+        border-color: rgba(99, 102, 241, 0.5);
+        color: #818cf8;
+        font-weight: 900;
+        text-align: center;
+    }
+
+    .manual-trader-duration-box {
+        text-align: center;
+    }
+
+    .manual-trader-stake-container {
+        background: var(--general-main-1);
+        border: 1.5px solid rgba(0, 168, 107, 0.35);
+        border-radius: 8px;
+        padding: 4px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-sizing: border-box;
+    }
+
+    .manual-trader-stake-inner {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .manual-trader-stake-title {
+        font-size: 0.65rem;
+        color: var(--text-general);
+        text-transform: uppercase;
+        font-weight: 800;
+    }
+
+    .manual-trader-input {
+        background: transparent;
+        color: var(--text-prominent);
+        font-weight: 900;
+        font-size: 1rem;
+        border: none;
+        outline: none;
+        width: 100%;
+    }
+
+    .manual-trader-currency-badge {
+        font-size: 0.7rem;
+        font-weight: 900;
+        color: var(--text-prominent);
+        background: var(--general-section-1);
+        padding: 3px 8px;
+        border-radius: 6px;
+        border: 1.5px solid rgba(0, 168, 107, 0.3);
+    }
+
+    .manual-trader-buttons-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .manual-trader-btn {
+        border: none;
+        padding: 10px;
+        border-radius: 10px;
+        color: #fff;
+        font-weight: 900;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+
+        &--over {
+            background: #059669;
+            box-shadow: 0 3px 10px rgba(5, 150, 105, 0.35);
+        }
+
+        &--under {
+            background: #e11d48;
+            box-shadow: 0 3px 10px rgba(225, 29, 72, 0.35);
+        }
+
+        .manual-trader-btn-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            opacity: 0.9;
+        }
+
+        .manual-trader-btn-main {
+            font-size: 1rem;
+            font-weight: 900;
+            margin-top: 1px;
+        }
+
+        .manual-trader-btn-payout {
+            margin-top: 2px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+    }
+}
+
+@keyframes bounceCursor {
+    0% { transform: translateX(-50%) translateY(0); }
+    100% { transform: translateX(-50%) translateY(-3px); }
 }
