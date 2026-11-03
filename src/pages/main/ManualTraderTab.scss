@@ -19,27 +19,95 @@
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        gap: 24px; // Generous space between sections so nothing is cramped
+        gap: 20px;
         box-sizing: border-box;
         padding-bottom: 3rem;
     }
 
-    .manual-trader-banner {
-        text-align: center;
-        flex-shrink: 0;
-        margin-bottom: 4px;
+    /* Interactive Market Dropdown Bar */
+    .manual-market-dropdown-bar {
+        background: var(--general-section-1);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        position: relative;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+        width: 100%;
+        box-sizing: border-box;
 
-        .banner-badge {
-            font-size: 0.9rem;
-            color: var(--text-prominent);
+        .market-dropdown-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            cursor: pointer;
+            user-select: none;
+
+            .market-dropdown-title-group {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+
+                .market-type-icon {
+                    font-size: 1rem;
+                }
+
+                .market-dropdown-label {
+                    font-size: 0.85rem;
+                    font-weight: 700;
+                    color: var(--text-general);
+
+                    .banner-highlight {
+                        color: #00a86b;
+                        font-weight: 900;
+                        font-size: 0.95rem;
+                        margin-left: 4px;
+                    }
+                }
+            }
+
+            .market-chevron {
+                font-size: 1.2rem;
+                font-weight: 900;
+                color: var(--text-prominent);
+                transition: transform 0.2s ease;
+
+                &.open {
+                    transform: rotate(90deg);
+                }
+            }
+        }
+
+        .market-dropdown-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 6px;
             background: var(--general-section-1);
-            padding: 8px 20px;
-            border-radius: 14px;
-            border: 1px solid rgba(0, 168, 107, 0.25);
-            font-weight: 600;
+            border: 1px solid rgba(0, 168, 107, 0.3);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            z-index: 50;
+            overflow: hidden;
 
-            .banner-highlight {
-                color: #00a86b;
+            .market-option-item {
+                padding: 12px 20px;
+                font-size: 0.9rem;
+                font-weight: 700;
+                color: var(--text-prominent);
+                cursor: pointer;
+                transition: background 0.2s ease;
+
+                &:hover {
+                    background: rgba(0, 168, 107, 0.1);
+                    color: #00a86b;
+                }
+
+                &.active {
+                    background: rgba(0, 168, 107, 0.15);
+                    color: #00a86b;
+                    font-weight: 900;
+                }
             }
         }
     }
@@ -56,7 +124,7 @@
     .digit-stats-grid__inner {
         display: grid;
         grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
-        gap: 12px !important; // Ample breathing room between digit cards
+        gap: 12px !important;
         width: 100%;
         align-items: center;
         justify-content: center;
@@ -72,7 +140,7 @@
         align-items: center;
         justify-content: center;
         position: relative;
-        padding: 12px 6px 20px 6px !important; // Comfortable inner padding for each digit
+        padding: 12px 6px 20px 6px !important;
         background: var(--general-section-1);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 12px;
@@ -176,7 +244,7 @@
         }
     }
 
-    /* Spacious Over/Under Dropdown Bar */
+    /* Contract Type Dropdown Bar */
     .manual-contract-dropdown-bar {
         background: var(--general-section-1);
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -257,16 +325,16 @@
         }
     }
 
-    /* Spacious Controls Card with comfortable vertical spacing */
+    /* Controls Card */
     .manual-trader-controls-card {
         background: var(--general-section-1);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        padding: 22px 28px;
+        border-radius: 12px;
+        padding: 20px 24px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 16px;
         width: 100%;
         box-sizing: border-box;
     }
@@ -362,13 +430,13 @@
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    /* Standalone Action Zone with comfortable padding */
+    /* Spaced Standalone Action Zone with proper gap and max-width */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 20px;
-        max-width: 750px;
-        margin: 6px auto 0 auto;
+        gap: 24px; // Gives nice distance between the buttons
+        max-width: 800px;
+        margin: 8px auto 0 auto;
         width: 100%;
     }
 
