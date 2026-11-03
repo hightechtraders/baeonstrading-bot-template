@@ -14,7 +14,7 @@
     position: relative;
 
     @include mobile-or-tablet-screen {
-        padding: 0.6rem 0.6rem !important;
+        padding: 0.5rem 0.5rem !important;
     }
 
     .manual-trader-wrapper {
@@ -24,15 +24,16 @@
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 12px;
         box-sizing: border-box;
-        padding-bottom: 5rem; // Generous bottom spacing so purchase buttons never overlap
+        padding-bottom: 5rem;
         position: relative;
         z-index: 1;
 
         @include mobile-or-tablet-screen {
-            gap: 10px;
-            padding-bottom: 7rem;
+            gap: 6px;
+            /* Generous bottom clearance so purchase buttons never get hidden by the mobile footer */
+            padding-bottom: 9rem !important; 
         }
     }
 
@@ -160,8 +161,9 @@
         justify-content: center;
 
         @include mobile-or-tablet-screen {
+            /* Smooth 2-row layout (5 columns x 2 rows) tailored for mobile */
             grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-            gap: 6px !important;
+            gap: 4px !important; 
         }
     }
 
@@ -172,7 +174,7 @@
         align-items: center;
         justify-content: center;
         position: relative;
-        padding: 6px 2px 14px 2px !important;
+        padding: 4px 2px 12px 2px !important;
         background: transparent !important;
         border: none !important;
         border-radius: 12px;
@@ -225,16 +227,16 @@
         width: 100%;
 
         .manual-digit-label {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 800;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             letter-spacing: 0.3px;
         }
 
         .manual-gauge-circle {
             position: relative;
-            width: 48px;
-            height: 48px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             border: 2.5px solid rgba(200, 205, 215, 0.2);
             background: transparent;
@@ -244,8 +246,8 @@
             transition: all 0.2s ease;
 
             @include mobile-or-tablet-screen {
-                width: 38px;
-                height: 38px;
+                width: 36px;
+                height: 36px;
             }
 
             svg {
@@ -270,12 +272,12 @@
                 align-items: center;
                 justify-content: center;
                 pointer-events: none;
-                font-size: 10px;
+                font-size: 9.5px;
                 font-weight: 800;
                 letter-spacing: -0.5px;
 
                 @include mobile-or-tablet-screen {
-                    font-size: 8.5px;
+                    font-size: 8px;
                 }
             }
         }
@@ -283,7 +285,7 @@
 
     .digit-cursor-arrow {
         position: absolute;
-        bottom: 1px;
+        bottom: 0px;
         left: 50%;
         transform: translateX(-50%);
         display: flex;
@@ -294,7 +296,7 @@
 
         span {
             color: #ef4444;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 900;
             line-height: 1;
             filter: drop-shadow(0 2px 3px rgba(239, 68, 68, 0.5));
@@ -316,28 +318,28 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 10px 16px;
+            padding: 8px 14px;
             cursor: pointer;
             user-select: none;
 
             .contract-dropdown-title-group {
                 display: flex;
                 align-items: center;
-                gap: 10px;
+                gap: 8px;
 
                 .contract-type-icon {
-                    font-size: 0.9rem;
+                    font-size: 0.85rem;
                 }
 
                 .contract-dropdown-label {
-                    font-size: 0.85rem;
+                    font-size: 0.8rem;
                     font-weight: 800;
                     color: var(--text-prominent);
                 }
             }
 
             .contract-chevron {
-                font-size: 1.1rem;
+                font-size: 1rem;
                 font-weight: 900;
                 color: var(--text-prominent);
                 transition: transform 0.2s ease;
@@ -393,11 +395,11 @@
         background: var(--general-section-1);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 10px;
-        padding: 14px 18px;
+        padding: 10px 14px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 8px;
         width: 100%;
         box-sizing: border-box;
     }
@@ -405,11 +407,11 @@
     .manual-trader-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 14px;
+        gap: 10px;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr;
-            gap: 10px;
+            gap: 8px;
         }
 
         &--align {
@@ -418,12 +420,12 @@
     }
 
     .manual-trader-label {
-        font-size: 0.68rem;
+        font-size: 0.65rem;
         color: var(--text-general);
         display: block;
         text-transform: uppercase;
         font-weight: 800;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
         letter-spacing: 0.4px;
     }
 
@@ -434,9 +436,9 @@
         background: var(--general-main-1);
         border: 1px solid rgba(255, 255, 255, 0.1);
         color: var(--text-prominent);
-        padding: 10px 14px;
+        padding: 8px 12px;
         border-radius: 8px;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         font-weight: 700;
         box-sizing: border-box;
     }
@@ -451,14 +453,14 @@
     .manual-trader-duration-box {
         text-align: center;
         border-color: rgba(255, 255, 255, 0.1);
-        font-size: 0.85rem;
+        font-size: 0.8rem;
     }
 
     .manual-trader-stake-container {
         background: var(--general-main-1);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 8px;
-        padding: 6px 14px;
+        padding: 4px 12px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -471,7 +473,7 @@
     }
 
     .manual-trader-stake-title {
-        font-size: 0.6rem;
+        font-size: 0.58rem;
         color: var(--text-general);
         text-transform: uppercase;
         font-weight: 800;
@@ -481,7 +483,7 @@
         background: transparent;
         color: var(--text-prominent);
         font-weight: 900;
-        font-size: 1rem;
+        font-size: 0.95rem;
         border: none;
         outline: none;
         width: 100%;
@@ -489,33 +491,33 @@
     }
 
     .manual-trader-currency-badge {
-        font-size: 0.68rem;
+        font-size: 0.62rem;
         font-weight: 900;
         color: var(--text-prominent);
         background: var(--general-section-1);
-        padding: 4px 10px;
+        padding: 4px 8px;
         border-radius: 6px;
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    /* Purchase Buttons Action Zone - Fixed non-overlapping positioning */
+    /* Purchase Buttons Action Zone */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 30px;
+        gap: 20px;
         max-width: 900px;
-        margin: 12px auto 0 auto;
+        margin: 10px auto 0 auto;
         width: 100%;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr;
-            gap: 14px;
+            gap: 10px;
         }
     }
 
     .manual-trader-btn {
         border: none;
-        padding: 12px 18px;
+        padding: 10px 14px;
         border-radius: 10px;
         color: #fff;
         font-weight: 900;
@@ -545,23 +547,23 @@
         }
 
         .manual-trader-btn-label {
-            font-size: 0.68rem;
+            font-size: 0.62rem;
             text-transform: uppercase;
             opacity: 0.9;
         }
 
         .manual-trader-btn-main {
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 900;
-            margin-top: 2px;
+            margin-top: 1px;
         }
 
         .manual-trader-btn-payout {
-            margin-top: 3px;
-            font-size: 0.62rem;
+            margin-top: 2px;
+            font-size: 0.58rem;
             font-weight: 700;
             background: rgba(0, 0, 0, 0.2);
-            padding: 2px 8px;
+            padding: 2px 6px;
             border-radius: 4px;
         }
     }
