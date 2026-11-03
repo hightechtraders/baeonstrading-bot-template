@@ -117,36 +117,44 @@ export default function ManualTraderTab() {
     <div className="manual-trader-tab-container">
       <div className="manual-trader-wrapper">
         
-        {/* Compact Market Selector Dropdown Bar */}
-        <div className="manual-market-dropdown-bar">
-          <div 
-            className="market-dropdown-header"
-            onClick={() => setIsMarketDropdownOpen(!isMarketDropdownOpen)}
-          >
-            <div className="market-dropdown-title-group">
-              <span className="market-type-icon">📊</span>
-              <span className="market-dropdown-label">Market Mode: <strong className="banner-highlight">{selectedSymbol}</strong></span>
-              <span className={`market-chevron ${isMarketDropdownOpen ? 'open' : ''}`}>›</span>
-            </div>
+        {/* Restored Header Banner & Compact Market Selector */}
+        <div className="manual-trader-header-row">
+          <div className="manual-trader-banner">
+            <span className="banner-badge">
+              ⚡ Manual <span className="banner-highlight">Digit Trader</span>
+            </span>
           </div>
 
-          {isMarketDropdownOpen && (
-            <div className="market-dropdown-options">
-              {markets.map((m) => (
-                <div 
-                  key={m.code}
-                  className={`market-option-item ${selectedSymbol === m.name ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedSymbol(m.name);
-                    setSymbolCode(m.code);
-                    setIsMarketDropdownOpen(false);
-                  }}
-                >
-                  {m.name}
-                </div>
-              ))}
+          <div className="manual-market-dropdown-bar">
+            <div 
+              className="market-dropdown-header"
+              onClick={() => setIsMarketDropdownOpen(!isMarketDropdownOpen)}
+            >
+              <div className="market-dropdown-title-group">
+                <span className="market-type-icon">📊</span>
+                <span className="market-dropdown-label">Market: <strong className="banner-highlight">{selectedSymbol}</strong></span>
+                <span className={`market-chevron ${isMarketDropdownOpen ? 'open' : ''}`}>›</span>
+              </div>
             </div>
-          )}
+
+            {isMarketDropdownOpen && (
+              <div className="market-dropdown-options">
+                {markets.map((m) => (
+                  <div 
+                    key={m.code}
+                    className={`market-option-item ${selectedSymbol === m.name ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedSymbol(m.name);
+                      setSymbolCode(m.code);
+                      setIsMarketDropdownOpen(false);
+                    }}
+                  >
+                    {m.name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 10-Digit Dynamic Gauge Grid */}
@@ -258,7 +266,7 @@ export default function ManualTraderTab() {
           </div>
         </div>
 
-        {/* Well-Separated Purchase Buttons Action Zone */}
+        {/* Well-Separated Purchase Buttons Action Zone (80px Gap) */}
         <div className="manual-trader-buttons-grid">
           <button 
             onClick={() => {
