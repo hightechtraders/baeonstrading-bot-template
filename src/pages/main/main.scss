@@ -1217,3 +1217,22 @@
         padding-bottom: 2rem !important;
     }
 }
+/* ==========================================
+   MANUAL TRADER TAB - DEFINITIVE SCREEN FIT FIX
+   ========================================== */
+#id-manual-trader {
+    height: auto !important;
+    min-height: 100% !important;
+    display: block !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+    padding-bottom: 3rem !important;
+
+    .manual-trader-wrapper {
+        height: auto !important;
+        max-height: none !important;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+}
