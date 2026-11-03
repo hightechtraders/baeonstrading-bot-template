@@ -1198,3 +1198,22 @@
         }
     }
 }
+/* ==========================================
+   MANUAL TRADER TAB - PROPER SCREEN FIT FIX
+   ========================================== */
+#id-manual-trader {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+
+    .manual-trader-wrapper {
+        height: auto !important;
+        max-height: none !important;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding-bottom: 2rem !important;
+    }
+}
