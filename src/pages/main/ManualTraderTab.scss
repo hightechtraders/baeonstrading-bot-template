@@ -114,6 +114,8 @@
                 cursor: pointer;
                 white-space: nowrap;
                 transition: background 0.2s ease;
+                border: none !important;
+                border-bottom: none !important;
 
                 &:hover {
                     background: rgba(0, 168, 107, 0.1);
