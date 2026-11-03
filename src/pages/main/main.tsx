@@ -10,7 +10,7 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
   const operationalScale = 15;
   const scaledValue = Math.min(percentage, operationalScale);
   const strokeOffsetProgress = pathCircumference - (scaledValue / operationalScale) * pathCircumference;
-  
+   
   let themeConfig = {
     labelColor: '#9ca3af',
     valueColor: 'var(--text-prominent)',
