@@ -39,6 +39,7 @@ import {
     LabelPairedPuzzlePieceTwoCaptionBoldIcon,
     LabelPairedBookmarkCaptionRegularIcon,
     LabelPairedUsersCaptionRegularIcon,
+    LabelPairedLaptopCaptionRegularIcon,
 } from '@deriv/quill-icons/LabelPaired';
 import { Localize, localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
@@ -46,6 +47,7 @@ import RunPanel from '../../components/run-panel';
 import ChartModal from '../chart/chart-modal';
 import Dashboard from '../dashboard';
 import RunStrategy from '../dashboard/run-strategy';
+import ManualTraderTab from './ManualTraderTab'; // <--- IMPORTED HERE
 import './main.scss';
 
 const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
@@ -81,7 +83,7 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'free_bots', 'copy_trading', 'chart', 'tutorial'];
+    const hash = ['dashboard', 'bot_builder', 'free_bots', 'manual_trader', 'copy_trading', 'chart', 'tutorial']; // <--- 'manual_trader' added to hash
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -553,6 +555,23 @@ const AppWrapper = observer(() => {
                                         </div>
                                     )}
                                 </div>
+                            </div>
+
+                            {/* MANUAL TRADER TAB INTEGRATED CLEANLY */}
+                            <div
+                                label={
+                                    <>
+                                        <LabelPairedLaptopCaptionRegularIcon
+                                            height='24px'
+                                            width='24px'
+                                            fill='var(--text-general)'
+                                        />
+                                        <Localize i18n_default_text='Manual Trader' />
+                                    </>
+                                }
+                                id='id-manual-trader'
+                            >
+                                <ManualTraderTab />
                             </div>
 
                             {/* Copy Trading Tab Complete Production Hub */}
