@@ -8,38 +8,43 @@
     display: flex !important;
     flex-direction: column !important;
     box-sizing: border-box !important;
-    padding: 1.5rem 2.5rem !important;
+    padding: 1rem 1.5rem !important;
     background: var(--general-main-1) !important;
     overflow-y: auto !important;
     position: relative;
 
     @include mobile-or-tablet-screen {
-        padding: 1rem 1rem !important;
+        padding: 0.6rem 0.6rem !important;
     }
 
     .manual-trader-wrapper {
         width: 100% !important;
-        max-width: 1200px !important;
+        max-width: 1100px !important;
         height: auto !important;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 14px;
         box-sizing: border-box;
-        padding-bottom: 3rem;
+        padding-bottom: 5rem; // Generous bottom spacing so purchase buttons never overlap
         position: relative;
         z-index: 1;
+
+        @include mobile-or-tablet-screen {
+            gap: 10px;
+            padding-bottom: 7rem;
+        }
     }
 
     /* Compact Market Dropdown Bar */
     .manual-market-dropdown-bar {
         background: var(--general-section-1);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
+        border-radius: 10px;
         position: relative;
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
         width: fit-content;
-        min-width: 280px;
+        min-width: 260px;
         box-sizing: border-box;
         z-index: 100;
 
@@ -50,35 +55,35 @@
         .market-dropdown-header {
             display: flex;
             align-items: center;
-            padding: 10px 18px;
+            padding: 8px 14px;
             cursor: pointer;
             user-select: none;
 
             .market-dropdown-title-group {
                 display: flex;
                 align-items: center;
-                gap: 10px;
+                gap: 8px;
                 width: 100%;
 
                 .market-type-icon {
-                    font-size: 1rem;
+                    font-size: 0.9rem;
                 }
 
                 .market-dropdown-label {
-                    font-size: 0.85rem;
+                    font-size: 0.8rem;
                     font-weight: 700;
                     color: var(--text-general);
 
                     .banner-highlight {
                         color: #00a86b;
                         font-weight: 900;
-                        font-size: 0.95rem;
+                        font-size: 0.9rem;
                         margin-left: 4px;
                     }
                 }
 
                 .market-chevron {
-                    font-size: 1.3rem;
+                    font-size: 1.1rem;
                     font-weight: 900;
                     color: var(--text-prominent);
                     transition: transform 0.2s ease;
@@ -96,19 +101,19 @@
             position: absolute;
             top: 100%;
             left: 0;
-            right: 0;
-            margin-top: 6px;
+            right: 0.0px;
+            margin-top: 4px;
             background: var(--general-section-1);
             border: 1px solid rgba(0, 168, 107, 0.3);
-            border-radius: 12px;
+            border-radius: 10px;
             box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
             z-index: 999;
-            max-height: 240px;
+            max-height: 220px;
             overflow-y: auto;
 
             .market-option-item {
-                padding: 12px 20px;
-                font-size: 0.9rem;
+                padding: 10px 16px;
+                font-size: 0.85rem;
                 font-weight: 700;
                 color: var(--text-prominent);
                 cursor: pointer;
@@ -149,28 +154,28 @@
     .digit-stats-grid__inner {
         display: grid;
         grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
-        gap: 14px !important;
+        gap: 8px !important;
         width: 100%;
         align-items: center;
         justify-content: center;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-            gap: 8px !important;
+            gap: 6px !important;
         }
     }
 
-    /* Sleek HD Floating Circular Cards */
+    /* Optimized Compact HD Circular Cards */
     .digit-gauge-card {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         position: relative;
-        padding: 10px 4px 18px 4px !important;
+        padding: 6px 2px 14px 2px !important;
         background: transparent !important;
         border: none !important;
-        border-radius: 16px;
+        border-radius: 12px;
         cursor: pointer;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         user-select: none;
@@ -179,7 +184,7 @@
         box-shadow: none !important;
 
         &:hover {
-            transform: translateY(-3px);
+            transform: translateY(-2px);
             
             .manual-gauge-circle {
                 border-color: rgba(99, 102, 241, 0.4);
@@ -193,9 +198,9 @@
             box-shadow: none !important;
 
             .manual-gauge-circle {
-                border: 3px solid #6366f1 !important;
+                border: 2.5px solid #6366f1 !important;
                 background: rgba(99, 102, 241, 0.12);
-                box-shadow: 0 0 16px rgba(99, 102, 241, 0.4);
+                box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
             }
         }
 
@@ -215,32 +220,32 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 4px;
+        padding: 2px;
         user-select: none;
         width: 100%;
 
         .manual-digit-label {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 800;
-            margin-bottom: 8px;
-            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            letter-spacing: 0.3px;
         }
 
         .manual-gauge-circle {
             position: relative;
-            width: 64px;
-            height: 64px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
-            border: 3px solid rgba(200, 205, 215, 0.2);
+            border: 2.5px solid rgba(200, 205, 215, 0.2);
             background: transparent;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.25s ease;
+            transition: all 0.2s ease;
 
             @include mobile-or-tablet-screen {
-                width: 48px;
-                height: 48px;
+                width: 38px;
+                height: 38px;
             }
 
             svg {
@@ -252,7 +257,7 @@
                 overflow: visible;
 
                 circle {
-                    transition: stroke-dashoffset 0.4s ease-out;
+                    transition: stroke-dashoffset 0.3s ease-out;
                     shape-rendering: geometricPrecision;
                 }
             }
@@ -265,12 +270,12 @@
                 align-items: center;
                 justify-content: center;
                 pointer-events: none;
-                font-size: 11.5px;
+                font-size: 10px;
                 font-weight: 800;
                 letter-spacing: -0.5px;
 
                 @include mobile-or-tablet-screen {
-                    font-size: 9.5px;
+                    font-size: 8.5px;
                 }
             }
         }
@@ -278,7 +283,7 @@
 
     .digit-cursor-arrow {
         position: absolute;
-        bottom: 2px;
+        bottom: 1px;
         left: 50%;
         transform: translateX(-50%);
         display: flex;
@@ -289,10 +294,10 @@
 
         span {
             color: #ef4444;
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 900;
             line-height: 1;
-            filter: drop-shadow(0 2px 4px rgba(239, 68, 68, 0.5));
+            filter: drop-shadow(0 2px 3px rgba(239, 68, 68, 0.5));
         }
     }
 
@@ -300,7 +305,7 @@
     .manual-contract-dropdown-bar {
         background: var(--general-section-1);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
+        border-radius: 10px;
         position: relative;
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
         width: 100%;
@@ -311,28 +316,28 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 14px 22px;
+            padding: 10px 16px;
             cursor: pointer;
             user-select: none;
 
             .contract-dropdown-title-group {
                 display: flex;
                 align-items: center;
-                gap: 12px;
+                gap: 10px;
 
                 .contract-type-icon {
-                    font-size: 1rem;
+                    font-size: 0.9rem;
                 }
 
                 .contract-dropdown-label {
-                    font-size: 0.95rem;
+                    font-size: 0.85rem;
                     font-weight: 800;
                     color: var(--text-prominent);
                 }
             }
 
             .contract-chevron {
-                font-size: 1.2rem;
+                font-size: 1.1rem;
                 font-weight: 900;
                 color: var(--text-prominent);
                 transition: transform 0.2s ease;
@@ -348,17 +353,17 @@
             top: 100%;
             left: 0;
             right: 0;
-            margin-top: 6px;
+            margin-top: 4px;
             background: var(--general-section-1);
             border: 1px solid rgba(0, 168, 107, 0.3);
-            border-radius: 12px;
+            border-radius: 10px;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
             z-index: 50;
             overflow: hidden;
 
             .contract-option-item {
-                padding: 12px 22px;
-                font-size: 0.9rem;
+                padding: 10px 16px;
+                font-size: 0.85rem;
                 font-weight: 700;
                 color: var(--text-prominent);
                 cursor: pointer;
@@ -387,12 +392,12 @@
     .manual-trader-controls-card {
         background: var(--general-section-1);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        padding: 20px 24px;
+        border-radius: 10px;
+        padding: 14px 18px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 12px;
         width: 100%;
         box-sizing: border-box;
     }
@@ -400,11 +405,11 @@
     .manual-trader-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 20px;
+        gap: 14px;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr;
-            gap: 12px;
+            gap: 10px;
         }
 
         &--align {
@@ -413,12 +418,12 @@
     }
 
     .manual-trader-label {
-        font-size: 0.72rem;
+        font-size: 0.68rem;
         color: var(--text-general);
         display: block;
         text-transform: uppercase;
         font-weight: 800;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         letter-spacing: 0.4px;
     }
 
@@ -429,9 +434,9 @@
         background: var(--general-main-1);
         border: 1px solid rgba(255, 255, 255, 0.1);
         color: var(--text-prominent);
-        padding: 12px 16px;
-        border-radius: 10px;
-        font-size: 0.95rem;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 0.9rem;
         font-weight: 700;
         box-sizing: border-box;
     }
@@ -446,14 +451,14 @@
     .manual-trader-duration-box {
         text-align: center;
         border-color: rgba(255, 255, 255, 0.1);
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
 
     .manual-trader-stake-container {
         background: var(--general-main-1);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
-        padding: 8px 16px;
+        border-radius: 8px;
+        padding: 6px 14px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -466,7 +471,7 @@
     }
 
     .manual-trader-stake-title {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
         color: var(--text-general);
         text-transform: uppercase;
         font-weight: 800;
@@ -476,42 +481,42 @@
         background: transparent;
         color: var(--text-prominent);
         font-weight: 900;
-        font-size: 1.1rem;
+        font-size: 1rem;
         border: none;
         outline: none;
         width: 100%;
-        margin-top: 2px;
+        margin-top: 1px;
     }
 
     .manual-trader-currency-badge {
-        font-size: 0.72rem;
+        font-size: 0.68rem;
         font-weight: 900;
         color: var(--text-prominent);
         background: var(--general-section-1);
-        padding: 6px 12px;
-        border-radius: 8px;
+        padding: 4px 10px;
+        border-radius: 6px;
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    /* Purchase Buttons Action Zone */
+    /* Purchase Buttons Action Zone - Fixed non-overlapping positioning */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 60px;
+        gap: 30px;
         max-width: 900px;
-        margin: 16px auto 0 auto;
+        margin: 12px auto 0 auto;
         width: 100%;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr;
-            gap: 20px;
+            gap: 14px;
         }
     }
 
     .manual-trader-btn {
         border: none;
-        padding: 14px 20px;
-        border-radius: 12px;
+        padding: 12px 18px;
+        border-radius: 10px;
         color: #fff;
         font-weight: 900;
         cursor: pointer;
@@ -532,7 +537,7 @@
 
         &--under {
             background: #e11d48;
-            box-shadow: 0 4px 1px rgba(225, 29, 72, 0.35);
+            box-shadow: 0 4px 14px rgba(225, 29, 72, 0.35);
 
             &:hover {
                 background: #be123c;
@@ -540,24 +545,24 @@
         }
 
         .manual-trader-btn-label {
-            font-size: 0.72rem;
+            font-size: 0.68rem;
             text-transform: uppercase;
             opacity: 0.9;
         }
 
         .manual-trader-btn-main {
-            font-size: 1.05rem;
+            font-size: 1rem;
             font-weight: 900;
-            margin-top: 3px;
+            margin-top: 2px;
         }
 
         .manual-trader-btn-payout {
-            margin-top: 4px;
-            font-size: 0.68rem;
+            margin-top: 3px;
+            font-size: 0.62rem;
             font-weight: 700;
             background: rgba(0, 0, 0, 0.2);
-            padding: 3px 10px;
-            border-radius: 6px;
+            padding: 2px 8px;
+            border-radius: 4px;
         }
     }
 }
