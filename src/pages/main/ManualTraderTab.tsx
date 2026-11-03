@@ -117,7 +117,17 @@ export default function ManualTraderTab() {
     <div className="manual-trader-tab-container">
       <div className="manual-trader-wrapper">
         
-        {/* Restored Header Banner & Compact Market Selector */}
+        {/* Top Navigation Bar with Tabs */}
+        <div className="manual-trader-navigation-tabs">
+          <div className="nav-tab-item">Dashboard</div>
+          <div className="nav-tab-item">Bot Builder</div>
+          <div className="nav-tab-item">Free Bots</div>
+          <div className="nav-tab-item active">Manual Trader</div>
+          <div className="nav-tab-item">Copy Trading</div>
+          <div className="nav-tab-item">Charts</div>
+        </div>
+
+        {/* Header Row featuring Title Banner & Compact Market Selector */}
         <div className="manual-trader-header-row">
           <div className="manual-trader-banner">
             <span className="banner-badge">
