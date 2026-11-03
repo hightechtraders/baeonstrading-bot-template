@@ -70,8 +70,23 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
 }
 
 export default function ManualTraderTab() {
-  const [selectedSymbol] = useState('Volatility 10 Index');
-  const symbolCode = 'R_10';
+  const [selectedSymbol, setSelectedSymbol] = useState('Volatility 10 Index');
+  const [symbolCode, setSymbolCode] = useState('R_10');
+  const [isMarketDropdownOpen, setIsMarketDropdownOpen] = useState(false);
+
+  const markets = [
+    { name: 'Volatility 10 Index', code: 'R_10' },
+    { name: 'Volatility 10 (1s) Index', code: '1HZ10V' },
+    { name: 'Volatility 25 Index', code: 'R_25' },
+    { name: 'Volatility 25 (1s) Index', code: '1HZ25V' },
+    { name: 'Volatility 50 Index', code: 'R_50' },
+    { name: 'Volatility 50 (1s) Index', code: '1HZ50V' },
+    { name: 'Volatility 75 Index', code: 'R_75' },
+    { name: 'Volatility 75 (1s) Index', code: '1HZ75V' },
+    { name: 'Volatility 100 Index', code: 'R_100' },
+    { name: 'Volatility 100 (1s) Index', code: '1HZ100V' },
+  ];
+
   const [contractType, setContractType] = useState('Over/Under');
   const [isContractDropdownOpen, setIsContractDropdownOpen] = useState(false);
   const [targetDigit, setTargetDigit] = useState<number>(8);
@@ -102,11 +117,36 @@ export default function ManualTraderTab() {
     <div className="manual-trader-tab-container">
       <div className="manual-trader-wrapper">
         
-        {/* Market Mode Banner */}
-        <div className="manual-trader-banner">
-          <span className="banner-badge">
-            Market Mode: <strong className="banner-highlight">{selectedSymbol}</strong>
-          </span>
+        {/* Compact Market Selector Dropdown Bar */}
+        <div className="manual-market-dropdown-bar">
+          <div 
+            className="market-dropdown-header"
+            onClick={() => setIsMarketDropdownOpen(!isMarketDropdownOpen)}
+          >
+            <div className="market-dropdown-title-group">
+              <span className="market-type-icon">📊</span>
+              <span className="market-dropdown-label">Market Mode: <strong className="banner-highlight">{selectedSymbol}</strong></span>
+              <span className={`market-chevron ${isMarketDropdownOpen ? 'open' : ''}`}>›</span>
+            </div>
+          </div>
+
+          {isMarketDropdownOpen && (
+            <div className="market-dropdown-options">
+              {markets.map((m) => (
+                <div 
+                  key={m.code}
+                  className={`market-option-item ${selectedSymbol === m.name ? 'active' : ''}`}
+                  onClick={() => {
+                    setSelectedSymbol(m.name);
+                    setSymbolCode(m.code);
+                    setIsMarketDropdownOpen(false);
+                  }}
+                >
+                  {m.name}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 10-Digit Dynamic Gauge Grid */}
@@ -147,7 +187,7 @@ export default function ManualTraderTab() {
           </div>
         </div>
 
-        {/* Reference-Style Over/Under Dropdown Selector Bar */}
+        {/* Contract Type Dropdown Bar */}
         <div className="manual-contract-dropdown-bar">
           <div 
             className="contract-dropdown-header"
@@ -178,7 +218,7 @@ export default function ManualTraderTab() {
           )}
         </div>
 
-        {/* Compact Interactive Controls & Strategy Setup Card */}
+        {/* Terminal-Grade Controls Card */}
         <div className="manual-trader-controls-card">
           <div className="manual-trader-row">
             <div>
@@ -216,38 +256,39 @@ export default function ManualTraderTab() {
               <span className="manual-trader-currency-badge">USD STAKE</span>
             </div>
           </div>
-
-          <div className="manual-trader-buttons-grid">
-            <button 
-              onClick={() => {
-                ScannerBridge.executeDirectTrade(
-                  { strategyName: `Manual Over ${targetDigit}`, symbol: symbolCode },
-                  { symbol: symbolCode, contractType: 'DIGITOVER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
-                );
-              }}
-              className="manual-trader-btn manual-trader-btn--over"
-            >
-              <span className="manual-trader-btn-label">Purchase Over</span>
-              <span className="manual-trader-btn-main">OVER {targetDigit}</span>
-              <span className="manual-trader-btn-payout">Payout: +3,514.41 USD</span>
-            </button>
-
-            <button 
-              onClick={() => {
-                ScannerBridge.executeDirectTrade(
-                  { strategyName: `Manual Under ${targetDigit}`, symbol: symbolCode },
-                  { symbol: symbolCode, contractType: 'DIGITUNDER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
-                );
-              }}
-              className="manual-trader-btn manual-trader-btn--under"
-            >
-              <span className="manual-trader-btn-label">Purchase Under</span>
-              <span className="manual-trader-btn-main">UNDER {targetDigit}</span>
-              <span className="manual-trader-btn-payout">Payout: +593.82 USD</span>
-            </button>
-          </div>
-
         </div>
+
+        {/* Well-Separated Purchase Buttons Action Zone */}
+        <div className="manual-trader-buttons-grid">
+          <button 
+            onClick={() => {
+              ScannerBridge.executeDirectTrade(
+                { strategyName: `Manual Over ${targetDigit}`, symbol: symbolCode },
+                { symbol: symbolCode, contractType: 'DIGITOVER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
+              );
+            }}
+            className="manual-trader-btn manual-trader-btn--over"
+          >
+            <span className="manual-trader-btn-label">Purchase Over</span>
+            <span className="manual-trader-btn-main">OVER {targetDigit}</span>
+            <span className="manual-trader-btn-payout">Payout: +3,514.41 USD</span>
+          </button>
+
+          <button 
+            onClick={() => {
+              ScannerBridge.executeDirectTrade(
+                { strategyName: `Manual Under ${targetDigit}`, symbol: symbolCode },
+                { symbol: symbolCode, contractType: 'DIGITUNDER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
+              );
+            }}
+            className="manual-trader-btn manual-trader-btn--under"
+          >
+            <span className="manual-trader-btn-label">Purchase Under</span>
+            <span className="manual-trader-btn-main">UNDER {targetDigit}</span>
+            <span className="manual-trader-btn-payout">Payout: +593.82 USD</span>
+          </button>
+        </div>
+
       </div>
     </div>
   );
