@@ -73,6 +73,7 @@ export default function ManualTraderTab() {
   const [selectedSymbol] = useState('Volatility 10 Index');
   const symbolCode = 'R_10';
   const [contractType, setContractType] = useState('Over/Under');
+  const [isContractDropdownOpen, setIsContractDropdownOpen] = useState(false);
   const [targetDigit, setTargetDigit] = useState<number>(8);
   const [manualStake, setManualStake] = useState<string>('500.00');
   const [cursorPosition, setCursorPosition] = useState<number>(6);
@@ -146,20 +147,45 @@ export default function ManualTraderTab() {
           </div>
         </div>
 
+        {/* Reference-Style Over/Under Dropdown Selector Bar */}
+        <div className="manual-contract-dropdown-bar">
+          <div 
+            className="contract-dropdown-header"
+            onClick={() => setIsContractDropdownOpen(!isContractDropdownOpen)}
+          >
+            <div className="contract-dropdown-title-group">
+              <span className="contract-type-icon">📈📉</span>
+              <span className="contract-dropdown-label">{contractType}</span>
+            </div>
+            <span className={`contract-chevron ${isContractDropdownOpen ? 'open' : ''}`}>›</span>
+          </div>
+
+          {isContractDropdownOpen && (
+            <div className="contract-dropdown-options">
+              {['Over/Under', 'Matches/Differs', 'Even/Odd'].map((type) => (
+                <div 
+                  key={type}
+                  className={`contract-option-item ${contractType === type ? 'active' : ''}`}
+                  onClick={() => {
+                    setContractType(type);
+                    setIsContractDropdownOpen(false);
+                  }}
+                >
+                  {type}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Compact Interactive Controls & Strategy Setup Card */}
         <div className="manual-trader-controls-card">
           <div className="manual-trader-row">
             <div>
               <label className="manual-trader-label">Trade Logic Blueprint</label>
-              <select 
-                value={contractType} 
-                onChange={(e) => setContractType(e.target.value)}
-                className="manual-trader-select"
-              >
-                <option value='Over/Under'>Over / Under</option>
-                <option value='Matches/Differs'>Matches / Differs</option>
-                <option value='Even/Odd'>Even / Odd</option>
-              </select>
+              <div className="manual-trader-target-box">
+                {contractType}
+              </div>
             </div>
             <div>
               <label className="manual-trader-label">Prediction Target</label>
