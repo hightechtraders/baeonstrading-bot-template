@@ -687,7 +687,7 @@ const AppWrapper = observer(() => {
                                 </div>
                             </div>
 
-                            {/* MANUAL TRADER TAB - PROPERLY FIT IN SCREEN */}
+                            {/* MANUAL TRADER TAB - CLEAN LAYOUT FIT */}
                             <div
                                 label={
                                     <>
@@ -701,17 +701,17 @@ const AppWrapper = observer(() => {
                                 }
                                 id='id-manual-trader'
                             >
-                                <div className='manual-trader-wrapper' style={{ maxWidth: '1100px', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', gap: '8px', margin: '0 auto', padding: '0.4rem 0.8rem', boxSizing: 'border-box', overflowY: 'auto' }}>
+                                <div className='manual-trader-wrapper'>
                                     
                                     {/* Market Mode Banner */}
-                                    <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                                        <span style={{ fontSize: '0.78rem', color: 'var(--text-prominent)', background: 'var(--general-section-1)', padding: '4px 12px', borderRadius: '16px', border: '1.5px solid rgba(0, 168, 107, 0.3)', fontWeight: 600 }}>
-                                            Market Mode: <strong style={{ color: '#00a86b' }}>{selectedSymbol}</strong>
+                                    <div className='manual-trader-banner'>
+                                        <span>
+                                            Market Mode: <strong className='manual-trader-symbol'>{selectedSymbol}</strong>
                                         </span>
                                     </div>
 
-                                    {/* 10-Digit Dynamic SVG Gauge Grid with bottom space reserved for red arrow cursor */}
-                                    <div className='digit-stats-grid' style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1rem', padding: '8px 10px 16px 10px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)', flexShrink: 0 }}>
+                                    {/* 10-Digit Dynamic SVG Gauge Grid */}
+                                    <div className='digit-stats-grid'>
                                         <div className='digit-stats-grid__inner'>
                                             {digitStats.map((item) => {
                                                 const isSelected = targetDigit === item.digit;
@@ -729,7 +729,6 @@ const AppWrapper = observer(() => {
                                                             setCursorPosition(item.digit);
                                                         }}
                                                         className={`digit-gauge-card ${cardModifier}`}
-                                                        style={{ position: 'relative', paddingBottom: '20px' }}
                                                     >
                                                         <ProfessionalDigitGauge
                                                             digit={item.digit}
@@ -738,10 +737,9 @@ const AppWrapper = observer(() => {
                                                             trendMode={isSelected ? 'selected' : item.trend}
                                                         />
 
-                                                        {/* Red Upward Arrow Cursor Design cleanly positioned underneath */}
                                                         {isCursorHere && (
-                                                            <div style={{ position: 'absolute', bottom: '2px', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', animation: 'bounceCursor 0.8s infinite alternate', pointerEvents: 'none' }}>
-                                                                <span style={{ color: '#ef4444', fontSize: '14px', fontWeight: 900, lineHeight: 1, filter: 'drop-shadow(0 2px 3px rgba(239, 68, 68, 0.4))' }}>▲</span>
+                                                            <div className='digit-cursor-arrow'>
+                                                                <span>▲</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -751,16 +749,16 @@ const AppWrapper = observer(() => {
                                     </div>
 
                                     {/* Compact Interactive Controls & Strategy Setup Card */}
-                                    <div style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '1rem', padding: '10px 14px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)', flexShrink: 0 }}>
+                                    <div className='manual-trader-controls-card'>
                                         
                                         {/* Strategy Selection & Targets Row */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '8px' }}>
+                                        <div className='manual-trader-row'>
                                             <div>
-                                                <label style={{ fontSize: '0.68rem', color: 'var(--text-general)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: '4px' }}>Trade Logic Blueprint</label>
+                                                <label className='manual-trader-label'>Trade Logic Blueprint</label>
                                                 <select 
                                                     value={contractType} 
                                                     onChange={(e) => setContractType(e.target.value)}
-                                                    style={{ width: '100%', background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', color: 'var(--text-prominent)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700, outline: 'none', cursor: 'pointer' }}
+                                                    className='manual-trader-select'
                                                 >
                                                     <option value='Over/Under'>Over / Under</option>
                                                     <option value='Matches/Differs'>Matches / Differs</option>
@@ -768,38 +766,38 @@ const AppWrapper = observer(() => {
                                                 </select>
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: '0.68rem', color: 'var(--text-general)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: '4px' }}>Prediction Target</label>
-                                                <div style={{ width: '100%', background: 'var(--general-main-1)', border: '1.5px solid rgba(99, 102, 241, 0.5)', color: '#818cf8', padding: '6px 10px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 900, textAlign: 'center' }}>
+                                                <label className='manual-trader-label'>Prediction Target</label>
+                                                <div className='manual-trader-target-box'>
                                                     Digit: {targetDigit}
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* Contract Duration & Stake Allocation Row */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '10px', marginBottom: '8px', alignItems: 'center' }}>
+                                        <div className='manual-trader-row manual-trader-row--align'>
                                             <div>
-                                                <label style={{ fontSize: '0.68rem', color: 'var(--text-general)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: '4px' }}>Contract Duration</label>
-                                                <div style={{ width: '100%', background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.25)', color: 'var(--text-prominent)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, textAlign: 'center' }}>
+                                                <label className='manual-trader-label'>Contract Duration</label>
+                                                <div className='manual-trader-duration-box'>
                                                     1 Tick Execution
                                                 </div>
                                             </div>
 
-                                            <div style={{ background: 'var(--general-main-1)', border: '1.5px solid rgba(0, 168, 107, 0.35)', borderRadius: '8px', padding: '4px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                                                    <span style={{ fontSize: '0.62rem', color: 'var(--text-general)', textTransform: 'uppercase', fontWeight: 800 }}>Risk Capital Allocation</span>
+                                            <div className='manual-trader-stake-container'>
+                                                <div className='manual-trader-stake-inner'>
+                                                    <span className='manual-trader-stake-title'>Risk Capital Allocation</span>
                                                     <input 
                                                         type='text' 
                                                         value={manualStake}
                                                         onChange={(e) => setManualStake(e.target.value)}
-                                                        style={{ background: 'transparent', color: 'var(--text-prominent)', fontWeight: 900, fontSize: '0.95rem', border: 'none', outline: 'none', width: '100%', marginTop: '1px' }}
+                                                        className='manual-trader-input'
                                                     />
                                                 </div>
-                                                <span style={{ fontSize: '0.68rem', fontWeight: 900, color: 'var(--text-prominent)', background: 'var(--general-section-1)', padding: '3px 8px', borderRadius: '6px', border: '1.5px solid rgba(0, 168, 107, 0.3)' }}>USD STAKE</span>
+                                                <span className='manual-trader-currency-badge'>USD STAKE</span>
                                             </div>
                                         </div>
 
-                                        {/* Dual Block Execution Payout Action Area - Locked to R_10 */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                        {/* Dual Block Execution Payout Action Area */}
+                                        <div className='manual-trader-buttons-grid'>
                                             <button 
                                                 onClick={() => {
                                                     ScannerBridge.executeDirectTrade(
@@ -807,13 +805,11 @@ const AppWrapper = observer(() => {
                                                         { symbol: symbolCode, contractType: 'DIGITOVER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
                                                     );
                                                 }}
-                                                style={{ background: '#059669', border: 'none', padding: '8px', borderRadius: '10px', color: '#fff', fontWeight: 900, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 10px rgba(5, 150, 105, 0.35)', transition: 'all 0.2s ease' }}
+                                                className='manual-trader-btn manual-trader-btn--over'
                                             >
-                                                <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.9 }}>Purchase Over</span>
-                                                <span style={{ fontSize: '0.9rem', fontWeight: 900, marginTop: '1px' }}>OVER {targetDigit}</span>
-                                                <span style={{ marginTop: '2px', fontSize: '0.62rem', fontWeight: 700, background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>
-                                                    Payout: +3,514.41 USD
-                                                </span>
+                                                <span className='manual-trader-btn-label'>Purchase Over</span>
+                                                <span className='manual-trader-btn-main'>OVER {targetDigit}</span>
+                                                <span className='manual-trader-btn-payout'>Payout: +3,514.41 USD</span>
                                             </button>
 
                                             <button 
@@ -823,13 +819,11 @@ const AppWrapper = observer(() => {
                                                         { symbol: symbolCode, contractType: 'DIGITUNDER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
                                                     );
                                                 }}
-                                                style={{ background: '#e11d48', border: 'none', padding: '8px', borderRadius: '10px', color: '#fff', fontWeight: 900, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 10px rgba(225, 29, 72, 0.35)', transition: 'all 0.2s ease' }}
+                                                className='manual-trader-btn manual-trader-btn--under'
                                             >
-                                                <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.9 }}>Purchase Under</span>
-                                                <span style={{ fontSize: '0.9rem', fontWeight: 900, marginTop: '1px' }}>UNDER {targetDigit}</span>
-                                                <span style={{ marginTop: '2px', fontSize: '0.62rem', fontWeight: 700, background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>
-                                                    Payout: +593.82 USD
-                                                </span>
+                                                <span className='manual-trader-btn-label'>Purchase Under</span>
+                                                <span className='manual-trader-btn-main'>UNDER {targetDigit}</span>
+                                                <span className='manual-trader-btn-payout'>Payout: +593.82 USD</span>
                                             </button>
                                         </div>
 
