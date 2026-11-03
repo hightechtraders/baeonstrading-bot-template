@@ -117,20 +117,29 @@ export default function ManualTraderTab() {
       
       setCursorPosition(nextActiveDigit);
 
-      // 2. Recalculate realistic percentages summing around 100% distribution across 10 digits
+      // 2. Recalculate percentages and assign strictly ONE high (green) and ONE low (red)
       setDigitStats(currentStats => {
-        return currentStats.map(item => {
-          // Fluctuate stats between 7.5% and 12.8% (mathematically balanced around 10% expected average)
+        let maxVal = -1;
+        let minVal = 999;
+        let highIndex = 0;
+        let lowIndex = 0;
+
+        // Pre-generate simulated values to find exact single peak and single trough
+        const updatedValues = currentStats.map((item, idx) => {
           const simulatedPercent = +(Math.random() * (12.8 - 7.5) + 7.5).toFixed(1);
+          if (simulatedPercent > maxVal) { maxVal = simulatedPercent; highIndex = idx; }
+          if (simulatedPercent < minVal) { minVal = simulatedPercent; lowIndex = idx; }
+          return { ...item, percent: simulatedPercent };
+        });
+
+        return updatedValues.map((item, idx) => {
           let trend = 'neutral';
-          
-          if (simulatedPercent >= 11.5) trend = 'high';
-          else if (simulatedPercent <= 8.2) trend = 'low';
+          if (idx === highIndex) trend = 'high';
+          if (idx === lowIndex) trend = 'low';
           if (item.digit === targetDigit) trend = 'selected';
 
           return {
             ...item,
-            percent: simulatedPercent,
             trend
           };
         });
