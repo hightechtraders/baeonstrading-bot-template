@@ -134,7 +134,32 @@ export class ScannerBridge {
                 }
               }
 
-              // 2. Force contract type / purchase block updates
+              // 2. Force duration and duration unit updates on trade definition blocks
+              if (block.type === 'trade_definition' || block.type === 'trade_definition_duration' || block.type?.includes('duration')) {
+                const durationFields = ['DURATION', 'BARRIEROFFSET', 'DURATION_VALUE'];
+                durationFields.forEach(fieldName => {
+                  const field = block.getField(fieldName);
+                  if (field && typeof field.setValue === 'function') {
+                    if (Number(field.getValue()) !== Number(payload.duration)) {
+                      field.setValue(String(payload.duration));
+                      updated = true;
+                    }
+                  }
+                });
+
+                const unitFieldNames = ['DURATION_UNITS_LIST', 'DURATION_UNIT'];
+                unitFieldNames.forEach(unitName => {
+                  const unitField = block.getField(unitName);
+                  if (unitField && typeof unitField.setValue === 'function') {
+                    if (unitField.getValue() !== payload.durationUnit) {
+                      unitField.setValue(payload.durationUnit);
+                      updated = true;
+                    }
+                  }
+                });
+              }
+
+              // 3. Force contract type / purchase block updates
               if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
@@ -180,6 +205,7 @@ export class ScannerBridge {
         if (typeof quickStrategy.setValue === 'function') {
           quickStrategy.setValue('symbol', strictDerivSymbol);
           quickStrategy.setValue('duration', payload.duration);
+          quickStrategy.setValue('duration_unit', payload.durationUnit);
           quickStrategy.setValue('amount', payload.stake);
           quickStrategy.setValue('contract_type', storeContractType);
           quickStrategy.setValue('type', storeType);
