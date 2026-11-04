@@ -57,56 +57,63 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // Clear session storage when the tab closes so reopening requires a fresh landing page entry
+    // Wipe cached token when the tab/browser is fully closed so reopening requires a fresh login
     useEffect(() => {
         const handleTabClose = () => {
-            sessionStorage.clear();
+            // Optional: Uncomment if you want closing the tab to always require re-logging in
+            // localStorage.removeItem('authToken');
+            // localStorage.removeItem('active_loginid');
         };
         window.addEventListener('beforeunload', handleTabClose);
         return () => window.removeEventListener('beforeunload', handleTabClose);
     }, []);
 
-    // ==========================================
-    // AUTHENTICATION STATE & OAUTH CAPTURE
-    // ==========================================
+    // 1. Your original strict authentication check using localStorage
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
-        const urlParams = new URLSearchParams(search);
-        let tokenFound = false;
+        const hasAuthToken = !!localStorage.getItem('authToken');
+        const hasAccountParam = new URLSearchParams(search).has('account');
+        const hasUrlTokens = search.includes('token') || search.includes('acct');
 
-        // Capture incoming tokens if returning from Deriv redirect
+        const urlParams = new URLSearchParams(search);
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
-                sessionStorage.setItem(key, value);
-                tokenFound = true;
-                if (key.includes('token1') || key === 'token') { // <--- FIXED: changed '[' to '('
-                    sessionStorage.setItem('authToken', value);
+                localStorage.setItem(key, value);
+                if (key.includes('token1') || key === 'token') {
+                    localStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
-                    sessionStorage.setItem('active_loginid', value);
+                    localStorage.setItem('active_loginid', value);
                 }
             }
         }
 
-        const hasUrlTokens = search.includes('token') || search.includes('acct');
-        const hasAccountParam = urlParams.has('account');
-        const hasSessionToken = !!sessionStorage.getItem('authToken');
-        const isSessionActive = sessionStorage.getItem('isLoggedInSession') === 'true';
-
-        // Evaluate true if they just returned with tokens OR have an active session established
-        const isAuthed = hasUrlTokens || tokenFound || hasAccountParam || hasSessionToken || isSessionActive;
-
-        if (isAuthed) {
-            sessionStorage.setItem('isLoggedInSession', 'true');
-        }
-
-        return isAuthed;
+        // True ONLY if a real auth token exists or active redirect params are present
+        return hasAuthToken || hasAccountParam || hasUrlTokens;
     });
 
-    // ==========================================
-    // API INITIALIZATION
-    // ==========================================
+    // 2. Initialize API and clean URL parameters once on mount
     useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        let tokenFound = false;
+
+        for (const [key, value] of urlParams.entries()) {
+            if (key.includes('token') || key.startsWith('acct')) {
+                localStorage.setItem(key, value);
+                tokenFound = true;
+            }
+        }
+
+        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        const timeoutId = setTimeout(() => {
+            if (!api_base_initialized.current) {
+                setIsApiInitialized(true);
+            }
+        }, 1500);
+
         const initializeApi = async () => {
             if (!api_base_initialized.current) {
                 try {
@@ -116,6 +123,7 @@ const AppRoot = () => {
                     console.error('API initialization failed:', error);
                 } finally {
                     setIsApiInitialized(true);
+                    clearTimeout(timeoutId);
                 }
             }
         };
@@ -125,29 +133,12 @@ const AppRoot = () => {
         } else {
             setIsApiInitialized(true);
         }
-    }, [isAuthenticated]);
 
-    // ==========================================
-    // URL CLEANUP (Starts counting ONLY when you are inside the workspace)
-    // ==========================================
-    useEffect(() => {
-        if (isAuthenticated && store && is_api_initialized) {
-            // Wait 3 seconds AFTER the workspace is fully visible before wiping tokens from the URL bar
-            const stripTimer = setTimeout(() => {
-                const search = window.location.search;
-                if (search.includes('token') || search.includes('acct')) {
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                }
-            }, 3000);
+        return () => clearTimeout(timeoutId);
+    }, []);
 
-            return () => clearTimeout(stripTimer);
-        }
-    }, [isAuthenticated, store, is_api_initialized]);
-
-    // Login Handler for Deriv OAuth
+    // Twin-button handler for Login (Clean redirect without premature session flags)
     const handleLogin = () => {
-        sessionStorage.setItem('clicked_login', 'true');
-
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
         if (originalLoginBtn) {
@@ -159,7 +150,7 @@ const AppRoot = () => {
         }
     };
 
-    // Signup Handler
+    // Twin-button handler for Signup
     const handleSignup = () => {
         const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
         
@@ -170,18 +161,17 @@ const AppRoot = () => {
         }
     };
 
-    // ==========================================
     // RENDER GUARDS
-    // ==========================================
     const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
 
+    // Intercept incoming OAuth return flows to prevent landing page flash
     if (hasTokensInUrl) {
         if (!store || !is_api_initialized) {
             return <AppRootLoader />;
         }
     }
 
-    // Fresh open: if not authenticated, show landing page
+    // If genuinely not authenticated: play 5s preloader first, then render LandingPage
     if (!isAuthenticated) {
         if (!isPreloaded) {
             return (
@@ -200,7 +190,7 @@ const AppRoot = () => {
         );
     }
 
-    // Authenticated session view
+    // If authenticated but still initializing workspace store/API
     if (!store || !is_api_initialized) {
         return <AppRootLoader />;
     }
