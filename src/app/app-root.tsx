@@ -57,27 +57,27 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // 1. Strict authentication check matching the bulletproof layout logic
+    // 1. Strict session-only authentication check (resets when tab/browser closes)
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
-        const hasAuthToken = !!localStorage.getItem('authToken');
+        const hasAuthToken = !!sessionStorage.getItem('authToken');
         const hasAccountParam = new URLSearchParams(search).has('account');
         const hasUrlTokens = search.includes('token') || search.includes('acct');
 
         const urlParams = new URLSearchParams(search);
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem(key, value);
+                sessionStorage.setItem(key, value);
                 if (key.includes('token1') || key === 'token') {
-                    localStorage.setItem('authToken', value);
+                    sessionStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
-                    localStorage.setItem('active_loginid', value);
+                    sessionStorage.setItem('active_loginid', value);
                 }
             }
         }
 
-        // True ONLY if a real auth token exists or active redirect params are present
+        // True ONLY if an active session token exists or fresh redirect params are present
         return hasAuthToken || hasAccountParam || hasUrlTokens;
     });
 
@@ -88,7 +88,7 @@ const AppRoot = () => {
 
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem(key, value);
+                sessionStorage.setItem(key, value);
                 tokenFound = true;
             }
         }
