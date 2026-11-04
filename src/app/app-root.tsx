@@ -67,18 +67,18 @@ const AppRoot = () => {
         return () => window.removeEventListener('beforeunload', handleTabClose);
     }, []);
 
-    // 1. Your original strict authentication check using localStorage
+    // 1. Authentication check supporting tokens, accounts, AND oauth codes
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const hasAuthToken = !!localStorage.getItem('authToken');
         const hasAccountParam = new URLSearchParams(search).has('account');
-        const hasUrlTokens = search.includes('token') || search.includes('acct');
+        const hasUrlTokens = search.includes('token') || search.includes('acct') || search.includes('code');
 
         const urlParams = new URLSearchParams(search);
         for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
+            if (key.includes('token') || key.startsWith('acct') || key === 'code') {
                 localStorage.setItem(key, value);
-                if (key.includes('token1') || key === 'token') {
+                if (key.includes('token1') || key === 'token' || key === 'code') {
                     localStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
@@ -87,7 +87,7 @@ const AppRoot = () => {
             }
         }
 
-        // True ONLY if a real auth token exists or active redirect params are present
+        // True if a real auth token/code exists or active redirect params are present
         return hasAuthToken || hasAccountParam || hasUrlTokens;
     });
 
@@ -97,13 +97,13 @@ const AppRoot = () => {
         let tokenFound = false;
 
         for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
+            if (key.includes('token') || key.startsWith('acct') || key === 'code') {
                 localStorage.setItem(key, value);
                 tokenFound = true;
             }
         }
 
-        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
+        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct') || window.location.search.includes('code')) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -136,7 +136,7 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Twin-button handler for Login (Clean redirect without premature session flags)
+    // Twin-button handler for Login
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
@@ -160,8 +160,8 @@ const AppRoot = () => {
         }
     };
 
-    // RENDER GUARDS
-    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
+    // RENDER GUARDS (Including code check)
+    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct') || window.location.search.includes('code');
 
     // Intercept incoming OAuth return flows to prevent landing page flash
     if (hasTokensInUrl) {
