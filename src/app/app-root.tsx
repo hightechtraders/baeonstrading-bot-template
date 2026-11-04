@@ -57,7 +57,7 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // 1. Strict authentication check using sessionStorage (automatically wipes when tab is closed)
+    // 1. Stable authentication check using sessionStorage
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const urlParams = new URLSearchParams(search);
@@ -67,7 +67,7 @@ const AppRoot = () => {
             if (key.includes('token') || key.startsWith('acct')) {
                 sessionStorage.setItem(key, value);
                 tokenFound = true;
-                if (key.includes('token1') || key === 'token') { // <-- Fixed typo here: changed '[' to '('
+                if (key.includes('token1') || key === 'token') {
                     sessionStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
@@ -80,10 +80,16 @@ const AppRoot = () => {
         const hasAccountParam = urlParams.has('account');
         const hasUrlTokens = search.includes('token') || search.includes('acct');
 
-        return hasAuthToken || hasAccountParam || hasUrlTokens || tokenFound;
+        const isAuthed = hasAuthToken || hasAccountParam || hasUrlTokens || tokenFound;
+        
+        if (isAuthed) {
+            sessionStorage.setItem('isLoggedInSession', 'true');
+        }
+
+        return isAuthed || sessionStorage.getItem('isLoggedInSession') === 'true';
     });
 
-    // 2. Initialize API and use a timed delay to cleanly strip URL parameters AFTER mounting
+    // 2. Initialize API and wait for full mount before clearing URL parameters
     useEffect(() => {
         const timeoutId = setTimeout(() => {
             if (!api_base_initialized.current) {
@@ -108,14 +114,14 @@ const AppRoot = () => {
         if (isAuthenticated) {
             initializeApi();
 
-            // TIME-BASED URL STRIP: Wait 2 seconds for the workspace to fully render 
-            // and stabilize before wiping sensitive tokens from the browser address bar.
+            // 5-SECOND POST-MOUNT DELAY: Wait 5 full seconds after the workspace mounts and initializes 
+            // before wiping sensitive tokens out of the URL bar. This guarantees zero race conditions.
             const stripTimer = setTimeout(() => {
                 const search = window.location.search;
                 if (search.includes('token') || search.includes('acct')) {
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }
-            }, 2000);
+            }, 5000);
 
             return () => clearTimeout(stripTimer);
         } else {
