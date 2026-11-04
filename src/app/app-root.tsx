@@ -57,45 +57,16 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // SAFE TAB-CLOSE WIPE: Only wipe tokens when genuinely closing the tab, NOT during OAuth redirects
-    useEffect(() => {
-        const handleTabClose = () => {
-            const search = window.location.search;
-            const isReceivingOAuth = search.includes('token') || search.includes('acct');
-
-            // If we are currently handling an OAuth redirect return, DO NOT wipe storage!
-            if (isReceivingOAuth) return;
-
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('active_loginid');
-            for (let i = localStorage.length - 1; i >= 0; i--) {
-                const key = localStorage.key(i);
-                if (key && (key.includes('token') || key.startsWith('acct'))) {
-                    localStorage.removeItem(key);
-                }
-            }
-        };
-
-        window.addEventListener('pagehide', handleTabClose);
-        window.addEventListener('beforeunload', handleTabClose);
-        
-        return () => {
-            window.removeEventListener('pagehide', handleTabClose);
-            window.removeEventListener('beforeunload', handleTabClose);
-        };
-    }, []);
-
-    // 1. Your original strict authentication check using localStorage
+    // 1. Strict authentication check & immediate URL token capture
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
-        const hasAuthToken = !!localStorage.getItem('authToken');
-        const hasAccountParam = new URLSearchParams(search).has('account');
-        const hasUrlTokens = search.includes('token') || search.includes('acct');
-
         const urlParams = new URLSearchParams(search);
+        let tokenFound = false;
+
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
+                tokenFound = true;
                 if (key.includes('token1') || key === 'token') {
                     localStorage.setItem('authToken', value);
                 }
@@ -105,23 +76,20 @@ const AppRoot = () => {
             }
         }
 
-        // True ONLY if a real auth token exists or active redirect params are present
-        return hasAuthToken || hasAccountParam || hasUrlTokens;
+        const hasAuthToken = !!localStorage.getItem('authToken');
+        const hasAccountParam = urlParams.has('account');
+
+        // True if valid token exists or we just captured tokens from the redirect
+        return hasAuthToken || hasAccountParam || tokenFound;
     });
 
-    // 2. Initialize API and clean URL parameters once on mount
+    // 2. Initialize API and instantly strip sensitive tokens from URL history via replaceState
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        let tokenFound = false;
+        const search = window.location.search;
+        const hasUrlTokens = search.includes('token') || search.includes('acct');
 
-        for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem(key, value);
-                tokenFound = true;
-            }
-        }
-
-        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
+        if (hasUrlTokens) {
+            // Clean the URL bar immediately so sensitive tokens don't linger in history/address bar
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -152,9 +120,9 @@ const AppRoot = () => {
         }
 
         return () => clearTimeout(timeoutId);
-    }, []);
+    }, [isAuthenticated]);
 
-    // Twin-button handler for Login (Clean redirect without premature session flags)
+    // Twin-button handler for Login
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
