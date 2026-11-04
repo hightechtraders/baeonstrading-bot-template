@@ -57,69 +57,56 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // Wipe cached token when the tab/browser is fully closed so reopening requires a fresh landing page entry
+    // Clear session storage when the tab closes so reopening requires a fresh landing page entry
     useEffect(() => {
         const handleTabClose = () => {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('active_loginid');
+            sessionStorage.clear();
         };
         window.addEventListener('beforeunload', handleTabClose);
         return () => window.removeEventListener('beforeunload', handleTabClose);
     }, []);
 
     // ==========================================
-    // 1. FRESH OAUTH CAPTURE & AUTHENTICATION CHECK
+    // AUTHENTICATION STATE & OAUTH CAPTURE
     // ==========================================
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const urlParams = new URLSearchParams(search);
         let tokenFound = false;
 
+        // Capture incoming tokens if returning from Deriv redirect
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem(key, value);
+                sessionStorage.setItem(key, value);
                 tokenFound = true;
-                if (key.includes('token1') || key === 'token') { // <--- FIXED: changed '[' to '('
-                    localStorage.setItem('authToken', value);
+                if (key.includes('token1') || key === 'token') {
+                    sessionStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
-                    localStorage.setItem('active_loginid', value);
+                    sessionStorage.setItem('active_loginid', value);
                 }
             }
         }
 
         const hasUrlTokens = search.includes('token') || search.includes('acct');
         const hasAccountParam = urlParams.has('account');
+        const hasSessionToken = !!sessionStorage.getItem('authToken');
+        const isSessionActive = sessionStorage.getItem('isLoggedInSession') === 'true';
 
-        // Authenticated ONLY if they brought live credentials back from the redirect handshake
-        return hasUrlTokens || tokenFound || hasAccountParam;
+        // Evaluate true if they just returned with tokens OR have an active session established
+        const isAuthed = hasUrlTokens || tokenFound || hasAccountParam || hasSessionToken || isSessionActive;
+
+        if (isAuthed) {
+            sessionStorage.setItem('isLoggedInSession', 'true');
+        }
+
+        return isAuthed;
     });
 
     // ==========================================
-    // 2. INITIALIZE API & IMMEDIATELY CLEAN URL
+    // API INITIALIZATION & URL CLEANUP
     // ==========================================
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        let tokenFound = false;
-
-        for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem(key, value);
-                tokenFound = true;
-            }
-        }
-
-        // Clean tokens out of the address bar instantly so the URL looks pristine
-        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-
-        const timeoutId = setTimeout(() => {
-            if (!api_base_initialized.current) {
-                setIsApiInitialized(true);
-            }
-        }, 1500);
-
         const initializeApi = async () => {
             if (!api_base_initialized.current) {
                 try {
@@ -129,18 +116,25 @@ const AppRoot = () => {
                     console.error('API initialization failed:', error);
                 } finally {
                     setIsApiInitialized(true);
-                    clearTimeout(timeoutId);
                 }
             }
         };
 
         if (isAuthenticated) {
             initializeApi();
+
+            // Allow the workspace 2 seconds to stabilize before wiping tokens from the URL bar
+            const stripTimer = setTimeout(() => {
+                const search = window.location.search;
+                if (search.includes('token') || search.includes('acct')) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }, 2000);
+
+            return () => clearTimeout(stripTimer);
         } else {
             setIsApiInitialized(true);
         }
-
-        return () => clearTimeout(timeoutId);
     }, [isAuthenticated]);
 
     // Login Handler for Deriv OAuth
@@ -172,14 +166,13 @@ const AppRoot = () => {
     // ==========================================
     const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
 
-    // Intercept incoming OAuth return flows to prevent landing page flash
     if (hasTokensInUrl) {
         if (!store || !is_api_initialized) {
             return <AppRootLoader />;
         }
     }
 
-    // If genuinely not authenticated (no active redirect tokens): play preloader, then render LandingPage
+    // Fresh open: if not authenticated, show landing page
     if (!isAuthenticated) {
         if (!isPreloaded) {
             return (
@@ -198,7 +191,7 @@ const AppRoot = () => {
         );
     }
 
-    // If authenticated via active redirect tokens but still initializing workspace store/API
+    // Authenticated session view
     if (!store || !is_api_initialized) {
         return <AppRootLoader />;
     }
