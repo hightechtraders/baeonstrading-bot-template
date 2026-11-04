@@ -60,9 +60,8 @@ const AppRoot = () => {
     // Wipe cached token when the tab/browser is fully closed so reopening requires a fresh login
     useEffect(() => {
         const handleTabClose = () => {
-            // Optional: Uncomment if you want closing the tab to always require re-logging in
-            // localStorage.removeItem('authToken');
-            // localStorage.removeItem('active_loginid');
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('active_loginid');
         };
         window.addEventListener('beforeunload', handleTabClose);
         return () => window.removeEventListener('beforeunload', handleTabClose);
