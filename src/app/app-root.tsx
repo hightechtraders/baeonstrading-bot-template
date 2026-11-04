@@ -47,17 +47,18 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // Track whether the initial 5-second preloader phase has finished for unauthenticated users
+    // Track whether the initial preloader phase has finished
     const [isPreloaded, setIsPreloaded] = useState(false);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             setIsPreloaded(true);
-        }, 5000); // 5 seconds preloader duration
+        }, 3000); // 3 seconds preloader duration
         return () => clearTimeout(timer);
     }, []);
 
-    // 1. Stable authentication check using sessionStorage
+    // 1. STRICT OAUTH RETURN CHECK: Only authenticate if tokens are actively present in the URL right now.
+    // This ensures visiting the raw link ALWAYS lands you on the Landing Page first.
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const urlParams = new URLSearchParams(search);
@@ -76,20 +77,11 @@ const AppRoot = () => {
             }
         }
 
-        const hasAuthToken = !!sessionStorage.getItem('authToken');
-        const hasAccountParam = urlParams.has('account');
         const hasUrlTokens = search.includes('token') || search.includes('acct');
-
-        const isAuthed = hasAuthToken || hasAccountParam || hasUrlTokens || tokenFound;
-        
-        if (isAuthed) {
-            sessionStorage.setItem('isLoggedInSession', 'true');
-        }
-
-        return isAuthed || sessionStorage.getItem('isLoggedInSession') === 'true';
+        return hasUrlTokens || tokenFound;
     });
 
-    // 2. Initialize API and wait for full mount before clearing URL parameters
+    // 2. Initialize API and clean URL parameters after mounting
     useEffect(() => {
         const timeoutId = setTimeout(() => {
             if (!api_base_initialized.current) {
@@ -114,14 +106,13 @@ const AppRoot = () => {
         if (isAuthenticated) {
             initializeApi();
 
-            // 5-SECOND POST-MOUNT DELAY: Wait 5 full seconds after the workspace mounts and initializes 
-            // before wiping sensitive tokens out of the URL bar. This guarantees zero race conditions.
+            // Wait 3 seconds after entering the workspace to cleanly wipe tokens from the address bar
             const stripTimer = setTimeout(() => {
                 const search = window.location.search;
                 if (search.includes('token') || search.includes('acct')) {
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }
-            }, 5000);
+            }, 3000);
 
             return () => clearTimeout(stripTimer);
         } else {
@@ -131,48 +122,30 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, [isAuthenticated]);
 
-    // Twin-button handler for Login
+    // Login Handler -> Sends user to Deriv OAuth
     const handleLogin = () => {
-        const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
-        
-        if (originalLoginBtn) {
-            originalLoginBtn.click();
-        } else {
-            const appId = '1089'; 
-            const redirectUrl = encodeURIComponent(window.location.origin + '/');
-            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
-        }
+        const appId = '1089'; 
+        const redirectUrl = encodeURIComponent(window.location.origin + '/');
+        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
     };
 
-    // Twin-button handler for Signup
+    // Signup Handler
     const handleSignup = () => {
-        const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
-        
-        if (originalSignupBtn) {
-            originalSignupBtn.click();
-        } else {
-            window.open('https://home.deriv.com/dashboard', '_blank');
-        }
+        window.open('https://home.deriv.com/dashboard', '_blank');
     };
 
+    // ==========================================
     // RENDER GUARDS
-    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
+    // ==========================================
 
-    // Intercept incoming OAuth return flows to prevent landing page flash
-    if (hasTokensInUrl) {
-        if (!store || !is_api_initialized) {
-            return <AppRootLoader />;
-        }
-    }
-
-    // If genuinely not authenticated: play 5s preloader first, then render LandingPage
+    // If the user is NOT authenticated (opened raw link without return tokens), show Landing Page
     if (!isAuthenticated) {
         if (!isPreloaded) {
             return (
                 <TradingPreloader 
                     appName="TraderScore" 
                     subtitle="TraderScore Trading Workspace" 
-                    minLoadingTime={5000} 
+                    minLoadingTime={3000} 
                 />
             );
         }
@@ -184,11 +157,12 @@ const AppRoot = () => {
         );
     }
 
-    // If authenticated but still initializing workspace store/API
+    // If authenticated (just returned from Deriv) but API or store is still loading, show loader
     if (!store || !is_api_initialized) {
         return <AppRootLoader />;
     }
 
+    // Fully authenticated and ready workspace view
     return (
         <Suspense fallback={<AppRootLoader />}>
             <ErrorBoundary root_store={store}>
