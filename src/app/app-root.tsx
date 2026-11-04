@@ -57,30 +57,37 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // 1. Authentication check: Captures incoming OAuth tokens, saves them, and authenticates
+    // 1. ZERO-TRUST SESSION SECURITY CHECK
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const urlParams = new URLSearchParams(search);
         let tokenFound = false;
 
+        // Capture incoming OAuth tokens from Deriv redirect and store them in sessionStorage
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem(key, value);
+                sessionStorage.setItem(key, value);
                 tokenFound = true;
                 if (key.includes('token1') || key === 'token') {
-                    localStorage.setItem('authToken', value);
+                    sessionStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
-                    localStorage.setItem('active_loginid', value);
+                    sessionStorage.setItem('active_loginid', value);
                 }
             }
         }
 
-        const hasAuthToken = !!localStorage.getItem('authToken');
+        const sessionToken = sessionStorage.getItem('authToken');
         const hasAccountParam = urlParams.has('account');
         const hasUrlTokens = search.includes('token') || search.includes('acct');
 
-        return hasAuthToken || hasAccountParam || hasUrlTokens || tokenFound;
+        // STRICT GATE: If there is no session token and no incoming redirect tokens, access is denied.
+        if (!sessionToken && !hasAccountParam && !hasUrlTokens && !tokenFound) {
+            sessionStorage.clear();
+            return false;
+        }
+
+        return true;
     });
 
     // 2. Initialize API and instantly strip sensitive tokens from URL history via replaceState
@@ -156,7 +163,7 @@ const AppRoot = () => {
         }
     }
 
-    // If genuinely not authenticated: play 5s preloader first, then render LandingPage
+    // ZERO-TRUST RENDER GUARD: If not authenticated, user must view preloader and LandingPage. No exceptions.
     if (!isAuthenticated) {
         if (!isPreloaded) {
             return (
