@@ -57,50 +57,54 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // 1. Synchronously capture and persist tokens on initial load
+    // Wipe cached token when the tab/browser is fully closed so reopening requires a fresh login
+    useEffect(() => {
+        const handleTabClose = () => {
+            // Optional: Uncomment if you want closing the tab to always require re-logging in
+            // localStorage.removeItem('authToken');
+            // localStorage.removeItem('active_loginid');
+        };
+        window.addEventListener('beforeunload', handleTabClose);
+        return () => window.removeEventListener('beforeunload', handleTabClose);
+    }, []);
+
+    // 1. Your original strict authentication check using localStorage
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
-        const urlParams = new URLSearchParams(search);
-        let foundValidToken = false;
+        const hasAuthToken = !!localStorage.getItem('authToken');
+        const hasAccountParam = new URLSearchParams(search).has('account');
+        const hasUrlTokens = search.includes('token') || search.includes('acct');
 
+        const urlParams = new URLSearchParams(search);
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
-                sessionStorage.setItem(key, value);
-                
-                if (key === 'token' || key === 'token1' || key.includes('token1') || key.includes('token')) {
-                    sessionStorage.setItem('authToken', value);
-                    foundValidToken = true;
+                localStorage.setItem(key, value);
+                if (key.includes('token1') || key === 'token') {
+                    localStorage.setItem('authToken', value);
                 }
-                if (key === 'acct' || key === 'acct1' || key === 'account' || key.includes('acct1')) {
-                    sessionStorage.setItem('active_loginid', value);
+                if (key.startsWith('acct1') || key === 'acct') {
+                    localStorage.setItem('active_loginid', value);
                 }
             }
         }
 
-        const existingSessionToken = sessionStorage.getItem('authToken');
-        const hasAccountParam = urlParams.has('account') || urlParams.has('acct1');
-        const hasUrlTokens = search.includes('token') || search.includes('acct');
-
-        return !!existingSessionToken || foundValidToken || hasAccountParam || hasUrlTokens;
+        // True ONLY if a real auth token exists or active redirect params are present
+        return hasAuthToken || hasAccountParam || hasUrlTokens;
     });
 
-    // 2. Initialize API and clean URL parameters safely once on mount
+    // 2. Initialize API and clean URL parameters once on mount
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
 
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
-                sessionStorage.setItem(key, value);
-                if (key === 'token' || key === 'token1' || key.includes('token1') || key.includes('token')) {
-                    sessionStorage.setItem('authToken', value);
-                }
+                localStorage.setItem(key, value);
                 tokenFound = true;
             }
         }
 
-        // If tokens were present in URL, clean the URL cleanly after storing them securely in session
-        if (tokenFound) {
+        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -131,9 +135,9 @@ const AppRoot = () => {
         }
 
         return () => clearTimeout(timeoutId);
-    }, [isAuthenticated]);
+    }, []);
 
-    // Twin-button handler for Login
+    // Twin-button handler for Login (Clean redirect without premature session flags)
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
@@ -157,37 +161,47 @@ const AppRoot = () => {
         }
     };
 
-    // RENDER GUARDS: If authenticated, lock render to loader until API base is fully ready
-    if (isAuthenticated) {
+    // RENDER GUARDS
+    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
+
+    // Intercept incoming OAuth return flows to prevent landing page flash
+    if (hasTokensInUrl) {
         if (!store || !is_api_initialized) {
             return <AppRootLoader />;
         }
-
-        return (
-            <Suspense fallback={<AppRootLoader />}>
-                <ErrorBoundary root_store={store}>
-                    <ErrorComponentWrapper />
-                    <AppContent />
-                </ErrorBoundary>
-            </Suspense>
-        );
     }
 
     // If genuinely not authenticated: play 5s preloader first, then render LandingPage
-    if (!isPreloaded) {
+    if (!isAuthenticated) {
+        if (!isPreloaded) {
+            return (
+                <TradingPreloader 
+                    appName="TraderScore" 
+                    subtitle="TraderScore Trading Workspace" 
+                    minLoadingTime={5000} 
+                />
+            );
+        }
+
         return (
-            <TradingPreloader 
-                appName="TraderScore" 
-                subtitle="TraderScore Trading Workspace" 
-                minLoadingTime={5000} 
-            />
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
+                <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
+            </div>
         );
     }
 
+    // If authenticated but still initializing workspace store/API
+    if (!store || !is_api_initialized) {
+        return <AppRootLoader />;
+    }
+
     return (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
-            <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
-        </div>
+        <Suspense fallback={<AppRootLoader />}>
+            <ErrorBoundary root_store={store}>
+                <ErrorComponentWrapper />
+                <AppContent />
+            </ErrorBoundary>
+        </Suspense>
     );
 };
 
