@@ -57,12 +57,17 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // Wipe cached token as soon as the tab/browser is fully closed so reopening requires a fresh login
+    // SAFE TAB-CLOSE WIPE: Only wipe tokens when genuinely closing the tab, NOT during OAuth redirects
     useEffect(() => {
         const handleTabClose = () => {
+            const search = window.location.search;
+            const isReceivingOAuth = search.includes('token') || search.includes('acct');
+
+            // If we are currently handling an OAuth redirect return, DO NOT wipe storage!
+            if (isReceivingOAuth) return;
+
             localStorage.removeItem('authToken');
             localStorage.removeItem('active_loginid');
-            // Clear any other dynamic token keys stored during OAuth
             for (let i = localStorage.length - 1; i >= 0; i--) {
                 const key = localStorage.key(i);
                 if (key && (key.includes('token') || key.startsWith('acct'))) {
@@ -217,4 +222,4 @@ const AppRoot = () => {
     );
 };
 
-export default AppRoot;
+exports default AppRoot; // (or export default AppRoot)
