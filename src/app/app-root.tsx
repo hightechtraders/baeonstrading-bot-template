@@ -57,56 +57,42 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // 1. Robust session check using a persistent session flag + token checks
+    // 1. Strict authentication check using localStorage
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
-        const urlParams = new URLSearchParams(search);
-        let foundNewToken = false;
+        const hasAuthToken = !!localStorage.getItem('authToken');
+        const hasAccountParam = new URLSearchParams(search).has('account');
+        const hasUrlTokens = search.includes('token') || search.includes('acct');
 
+        const urlParams = new URLSearchParams(search);
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
-                sessionStorage.setItem(key, value);
+                localStorage.setItem(key, value);
                 if (key.includes('token1') || key === 'token') {
-                    sessionStorage.setItem('authToken', value);
-                    foundNewToken = true;
+                    localStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
-                    sessionStorage.setItem('active_loginid', value);
+                    localStorage.setItem('active_loginid', value);
                 }
             }
         }
 
-        const hasActiveFlag = sessionStorage.getItem('is_logged_in') === 'true';
-        const hasSessionToken = !!sessionStorage.getItem('authToken');
-        const hasAccountParam = urlParams.has('account') || urlParams.has('acct1');
-        const hasUrlTokens = search.includes('token') || search.includes('acct');
-
-        const isAuth = hasActiveFlag || hasSessionToken || foundNewToken || hasAccountParam || hasUrlTokens;
-        
-        if (isAuth) {
-            sessionStorage.setItem('is_logged_in', 'true');
-        }
-
-        return isAuth;
+        return hasAuthToken || hasAccountParam || hasUrlTokens;
     });
 
-    // 2. Initialize API and clean URL parameters safely once on mount
+    // 2. Initialize API, validate token against Deriv, and clean URL parameters
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
 
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
-                sessionStorage.setItem(key, value);
-                if (key.includes('token1') || key === 'token') {
-                    sessionStorage.setItem('authToken', value);
-                }
+                localStorage.setItem(key, value);
                 tokenFound = true;
             }
         }
 
-        if (tokenFound) {
-            sessionStorage.setItem('is_logged_in', 'true');
+        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -120,6 +106,24 @@ const AppRoot = () => {
             if (!api_base_initialized.current) {
                 try {
                     await api_base.init();
+                    
+                    // ANTI-SLIP CHECK: Verify if the stored token is actually authorized by Deriv
+                    const token = localStorage.getItem('authToken');
+                    if (token && api_base.api) {
+                        try {
+                            const authorizeResponse = await api_base.api.authorize(token);
+                            if (authorizeResponse.error) {
+                                // Token is invalid or expired! Purge it and reload to landing page.
+                                localStorage.removeItem('authToken');
+                                localStorage.removeItem('active_loginid');
+                                window.location.href = '/';
+                                return;
+                            }
+                        } catch (authError) {
+                            console.error('Token authorization check failed:', authError);
+                        }
+                    }
+
                     api_base_initialized.current = true;
                 } catch (error) {
                     console.error('API initialization failed:', error);
@@ -163,41 +167,44 @@ const AppRoot = () => {
         }
     };
 
-    // ==========================================
-    // BULLETPROOF RENDER GUARDS
-    // ==========================================
+    // RENDER GUARDS
+    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
 
-    // If authenticated, priority #1 is loading the workspace. Show preloader until store & API are ready.
-    if (isAuthenticated) {
+    if (hasTokensInUrl) {
         if (!store || !is_api_initialized) {
             return <AppRootLoader />;
         }
+    }
+
+    if (!isAuthenticated) {
+        if (!isPreloaded) {
+            return (
+                <TradingPreloader 
+                    appName="TraderScore" 
+                    subtitle="TraderScore Trading Workspace" 
+                    minLoadingTime={5000} 
+                />
+            );
+        }
 
         return (
-            <Suspense fallback={<AppRootLoader />}>
-                <ErrorBoundary root_store={store}>
-                    <ErrorComponentWrapper />
-                    <AppContent />
-                </ErrorBoundary>
-            </Suspense>
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
+                <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
+            </div>
         );
     }
 
-    // If genuinely unauthenticated: play 5s preloader first, then render LandingPage
-    if (!isPreloaded) {
-        return (
-            <TradingPreloader 
-                appName="TraderScore" 
-                subtitle="TraderScore Trading Workspace" 
-                minLoadingTime={5000} 
-            />
-        );
+    if (!store || !is_api_initialized) {
+        return <AppRootLoader />;
     }
 
     return (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
-            <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
-        </div>
+        <Suspense fallback={<AppRootLoader />}>
+            <ErrorBoundary root_store={store}>
+                <ErrorComponentWrapper />
+                <AppContent />
+            </ErrorBoundary>
+        </Suspense>
     );
 };
 
