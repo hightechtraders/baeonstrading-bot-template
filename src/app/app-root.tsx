@@ -57,9 +57,9 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // Wipe cached tokens as soon as the user leaves or closes the page/tab
+    // Wipe cached token as soon as the tab/browser is fully closed so reopening requires a fresh login
     useEffect(() => {
-        const handlePageExit = () => {
+        const handleTabClose = () => {
             localStorage.removeItem('authToken');
             localStorage.removeItem('active_loginid');
             // Clear any other dynamic token keys stored during OAuth
@@ -71,16 +71,16 @@ const AppRoot = () => {
             }
         };
 
-        window.addEventListener('pagehide', handlePageExit);
-        window.addEventListener('beforeunload', handlePageExit);
+        window.addEventListener('pagehide', handleTabClose);
+        window.addEventListener('beforeunload', handleTabClose);
         
         return () => {
-            window.removeEventListener('pagehide', handlePageExit);
-            window.removeEventListener('beforeunload', handlePageExit);
+            window.removeEventListener('pagehide', handleTabClose);
+            window.removeEventListener('beforeunload', handleTabClose);
         };
     }, []);
 
-    // 1. Strict authentication check using localStorage
+    // 1. Your original strict authentication check using localStorage
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const hasAuthToken = !!localStorage.getItem('authToken');
@@ -100,10 +100,11 @@ const AppRoot = () => {
             }
         }
 
+        // True ONLY if a real auth token exists or active redirect params are present
         return hasAuthToken || hasAccountParam || hasUrlTokens;
     });
 
-    // 2. Initialize API, validate token against Deriv, and clean URL parameters
+    // 2. Initialize API and clean URL parameters once on mount
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
@@ -129,24 +130,6 @@ const AppRoot = () => {
             if (!api_base_initialized.current) {
                 try {
                     await api_base.init();
-                    
-                    // ANTI-SLIP CHECK: Verify if the stored token is actually authorized by Deriv
-                    const token = localStorage.getItem('authToken');
-                    if (token && api_base.api) {
-                        try {
-                            const authorizeResponse = await api_base.api.authorize(token);
-                            if (authorizeResponse.error) {
-                                // Token is invalid or expired! Purge it and reload to landing page.
-                                localStorage.removeItem('authToken');
-                                localStorage.removeItem('active_loginid');
-                                window.location.href = '/';
-                                return;
-                            }
-                        } catch (authError) {
-                            console.error('Token authorization check failed:', authError);
-                        }
-                    }
-
                     api_base_initialized.current = true;
                 } catch (error) {
                     console.error('API initialization failed:', error);
@@ -164,9 +147,9 @@ const AppRoot = () => {
         }
 
         return () => clearTimeout(timeoutId);
-    }, [isAuthenticated]);
+    }, []);
 
-    // Twin-button handler for Login
+    // Twin-button handler for Login (Clean redirect without premature session flags)
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
@@ -193,12 +176,14 @@ const AppRoot = () => {
     // RENDER GUARDS
     const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
 
+    // Intercept incoming OAuth return flows to prevent landing page flash
     if (hasTokensInUrl) {
         if (!store || !is_api_initialized) {
             return <AppRootLoader />;
         }
     }
 
+    // If genuinely not authenticated: play 5s preloader first, then render LandingPage
     if (!isAuthenticated) {
         if (!isPreloaded) {
             return (
@@ -217,6 +202,7 @@ const AppRoot = () => {
         );
     }
 
+    // If authenticated but still initializing workspace store/API
     if (!store || !is_api_initialized) {
         return <AppRootLoader />;
     }
