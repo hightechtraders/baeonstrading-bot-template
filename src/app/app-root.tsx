@@ -57,28 +57,35 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // 1. Strict session-only authentication check (resets when tab/browser closes)
+    // 1. Robust session-only authentication check handling Deriv's token1/acct1 parameters
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
-        const hasAuthToken = !!sessionStorage.getItem('authToken');
-        const hasAccountParam = new URLSearchParams(search).has('account');
-        const hasUrlTokens = search.includes('token') || search.includes('acct');
-
         const urlParams = new URLSearchParams(search);
+        let foundValidToken = false;
+
+        // Parse all incoming URL query parameters from Deriv OAuth redirect
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 sessionStorage.setItem(key, value);
-                if (key.includes('token1') || key === 'token') {
+                
+                // Capture main or primary token variant
+                if (key === 'token' || key === 'token1' || key.includes('token1')) {
                     sessionStorage.setItem('authToken', value);
+                    foundValidToken = true;
                 }
-                if (key.startsWith('acct1') || key === 'acct') {
+                // Capture active account ID variant
+                if (key === 'acct' || key === 'acct1' || key === 'account' || key.includes('acct1')) {
                     sessionStorage.setItem('active_loginid', value);
                 }
             }
         }
 
-        // True ONLY if an active session token exists or fresh redirect params are present
-        return hasAuthToken || hasAccountParam || hasUrlTokens;
+        // Fallback: Check if token was already stored in session from a previous step within this tab
+        const existingSessionToken = sessionStorage.getItem('authToken');
+        const hasAccountParam = urlParams.has('account') || urlParams.has('acct1');
+        const hasUrlTokens = search.includes('token') || search.includes('acct');
+
+        return !!existingSessionToken || foundValidToken || hasAccountParam || hasUrlTokens;
     });
 
     // 2. Initialize API and clean URL parameters once on mount
@@ -89,6 +96,9 @@ const AppRoot = () => {
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 sessionStorage.setItem(key, value);
+                if (key === 'token' || key === 'token1' || key.includes('token1')) {
+                    sessionStorage.setItem('authToken', value);
+                }
                 tokenFound = true;
             }
         }
@@ -126,7 +136,7 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Twin-button handler for Login (Clean redirect without premature session flags)
+    // Twin-button handler for Login
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
@@ -154,7 +164,7 @@ const AppRoot = () => {
     const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
 
     // Intercept incoming OAuth return flows to prevent landing page flash
-    if (hasTokensInUrl) {
+    if (hasTokensInUrl || isAuthenticated) {
         if (!store || !is_api_initialized) {
             return <AppRootLoader />;
         }
@@ -177,11 +187,6 @@ const AppRoot = () => {
                 <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
             </div>
         );
-    }
-
-    // If authenticated but still initializing workspace store/API
-    if (!store || !is_api_initialized) {
-        return <AppRootLoader />;
     }
 
     return (
