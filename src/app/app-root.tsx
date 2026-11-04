@@ -57,7 +57,7 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // 1. Strict authentication check & immediate URL token capture
+    // 1. Authentication check: Captures incoming OAuth tokens, saves them, and authenticates
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const urlParams = new URLSearchParams(search);
@@ -78,9 +78,9 @@ const AppRoot = () => {
 
         const hasAuthToken = !!localStorage.getItem('authToken');
         const hasAccountParam = urlParams.has('account');
+        const hasUrlTokens = search.includes('token') || search.includes('acct');
 
-        // True if valid token exists or we just captured tokens from the redirect
-        return hasAuthToken || hasAccountParam || tokenFound;
+        return hasAuthToken || hasAccountParam || hasUrlTokens || tokenFound;
     });
 
     // 2. Initialize API and instantly strip sensitive tokens from URL history via replaceState
