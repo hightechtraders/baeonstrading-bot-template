@@ -70,9 +70,6 @@ const AppRoot = () => {
     // ==========================================
     // 1. FRESH OAUTH CAPTURE & AUTHENTICATION CHECK
     // ==========================================
-    // We check the incoming URL query parameters actively. If tokens are present (meaning they just 
-    // redirected back from Deriv), we capture them into localStorage and authenticate. 
-    // If NO tokens are in the URL, we ignore old cache and force them through the landing page.
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const urlParams = new URLSearchParams(search);
@@ -82,7 +79,7 @@ const AppRoot = () => {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
                 tokenFound = true;
-                if (key.includes('token1'] || key === 'token') {
+                if (key.includes('token1') || key === 'token') { // <--- FIXED: changed '[' to '('
                     localStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
