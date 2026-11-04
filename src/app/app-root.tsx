@@ -67,7 +67,7 @@ const AppRoot = () => {
             if (key.includes('token') || key.startsWith('acct')) {
                 sessionStorage.setItem(key, value);
                 tokenFound = true;
-                if (key.includes('token1'] || key === 'token') {
+                if (key.includes('token1') || key === 'token') { // <-- Fixed typo here: changed '[' to '('
                     sessionStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
