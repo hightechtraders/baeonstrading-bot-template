@@ -67,16 +67,41 @@ export default function App() {
     const { isProcessing, isValid, params, error, cleanupURL } = useOAuthCallback();
     useAccountSwitching();
 
-    // Force permanent dark mode on mobile devices, light mode on laptops
+    // Force permanent dark mode & full brightness explicitly on mobile devices only
     useEffect(() => {
+        const brightnessStyle = document.createElement('style');
+        brightnessStyle.id = 'mobile-brightness-override';
+
         const handleThemeByDevice = () => {
             const isMobile = window.innerWidth <= 768; // Standard mobile threshold
             if (isMobile) {
                 document.body.classList.add('theme--dark');
                 document.body.classList.remove('theme--light');
+
+                // Apply full brightness / prevent fading strictly on mobile
+                brightnessStyle.innerHTML = `
+                    @media screen and (max-width: 768px) {
+                        html, body, #root {
+                            filter: brightness(1) !important;
+                            backdrop-filter: none !important;
+                        }
+                        button:disabled, input:disabled, [class*="disabled"] {
+                            opacity: 0.95 !important;
+                            filter: brightness(1) !important;
+                        }
+                    }
+                `;
+                if (!document.head.contains(brightnessStyle)) {
+                    document.head.appendChild(brightnessStyle);
+                }
             } else {
                 document.body.classList.add('theme--light');
                 document.body.classList.remove('theme--dark');
+
+                // Remove brightness override on desktop/laptop
+                if (document.head.contains(brightnessStyle)) {
+                    brightnessStyle.remove();
+                }
             }
         };
 
@@ -85,7 +110,12 @@ export default function App() {
 
         // Handle if user resizes window between mobile and desktop views
         window.addEventListener('resize', handleThemeByDevice);
-        return () => window.removeEventListener('resize', handleThemeByDevice);
+        return () => {
+            window.removeEventListener('resize', handleThemeByDevice);
+            if (document.head.contains(brightnessStyle)) {
+                brightnessStyle.remove();
+            }
+        };
     }, []);
 
     // Automatically capture and store tokens when Deriv redirects back
