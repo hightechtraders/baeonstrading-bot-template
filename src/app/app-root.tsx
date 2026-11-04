@@ -60,25 +60,26 @@ const AppRoot = () => {
     // Wipe cached token when the tab/browser is fully closed so reopening requires a fresh login
     useEffect(() => {
         const handleTabClose = () => {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('active_loginid');
+            // Optional: Uncomment if you want closing the tab to always require re-logging in
+            // localStorage.removeItem('authToken');
+            // localStorage.removeItem('active_loginid');
         };
         window.addEventListener('beforeunload', handleTabClose);
         return () => window.removeEventListener('beforeunload', handleTabClose);
     }, []);
 
-    // 1. Authentication check supporting tokens, accounts, AND oauth codes
+    // 1. Your original strict authentication check using localStorage
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const hasAuthToken = !!localStorage.getItem('authToken');
         const hasAccountParam = new URLSearchParams(search).has('account');
-        const hasUrlTokens = search.includes('token') || search.includes('acct') || search.includes('code');
+        const hasUrlTokens = search.includes('token') || search.includes('acct');
 
         const urlParams = new URLSearchParams(search);
         for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct') || key === 'code') {
+            if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
-                if (key.includes('token1') || key === 'token' || key === 'code') {
+                if (key.includes('token1') || key === 'token') {
                     localStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
@@ -87,7 +88,7 @@ const AppRoot = () => {
             }
         }
 
-        // True if a real auth token/code exists or active redirect params are present
+        // True ONLY if a real auth token exists or active redirect params are present
         return hasAuthToken || hasAccountParam || hasUrlTokens;
     });
 
@@ -97,13 +98,13 @@ const AppRoot = () => {
         let tokenFound = false;
 
         for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct') || key === 'code') {
+            if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
                 tokenFound = true;
             }
         }
 
-        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct') || window.location.search.includes('code')) {
+        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -136,7 +137,7 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Twin-button handler for Login
+    // Twin-button handler for Login (Clean redirect without premature session flags)
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
@@ -160,8 +161,8 @@ const AppRoot = () => {
         }
     };
 
-    // RENDER GUARDS (Including code check)
-    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct') || window.location.search.includes('code');
+    // RENDER GUARDS
+    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
 
     // Intercept incoming OAuth return flows to prevent landing page flash
     if (hasTokensInUrl) {
