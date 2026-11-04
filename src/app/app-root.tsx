@@ -57,7 +57,7 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // 1. Immediately capture incoming URL tokens into sessionStorage on mount
+    // 1. Robust session check using a persistent session flag + token checks
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const urlParams = new URLSearchParams(search);
@@ -76,11 +76,18 @@ const AppRoot = () => {
             }
         }
 
-        const hasExistingSessionToken = !!sessionStorage.getItem('authToken');
+        const hasActiveFlag = sessionStorage.getItem('is_logged_in') === 'true';
+        const hasSessionToken = !!sessionStorage.getItem('authToken');
         const hasAccountParam = urlParams.has('account') || urlParams.has('acct1');
         const hasUrlTokens = search.includes('token') || search.includes('acct');
 
-        return hasExistingSessionToken || foundNewToken || hasAccountParam || hasUrlTokens;
+        const isAuth = hasActiveFlag || hasSessionToken || foundNewToken || hasAccountParam || hasUrlTokens;
+        
+        if (isAuth) {
+            sessionStorage.setItem('is_logged_in', 'true');
+        }
+
+        return isAuth;
     });
 
     // 2. Initialize API and clean URL parameters safely once on mount
@@ -98,8 +105,8 @@ const AppRoot = () => {
             }
         }
 
-        // Clean URL params after capturing them securely in sessionStorage
         if (tokenFound) {
+            sessionStorage.setItem('is_logged_in', 'true');
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
