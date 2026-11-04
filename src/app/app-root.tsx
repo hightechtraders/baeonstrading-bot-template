@@ -57,19 +57,18 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // 1. Strict session-only authentication check (resets when tab/browser closes)
+    // 1. Immediately capture incoming URL tokens into sessionStorage on mount
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
-        const hasAuthToken = !!sessionStorage.getItem('authToken');
-        const hasAccountParam = new URLSearchParams(search).has('account');
-        const hasUrlTokens = search.includes('token') || search.includes('acct');
-
         const urlParams = new URLSearchParams(search);
+        let foundNewToken = false;
+
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 sessionStorage.setItem(key, value);
                 if (key.includes('token1') || key === 'token') {
                     sessionStorage.setItem('authToken', value);
+                    foundNewToken = true;
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
                     sessionStorage.setItem('active_loginid', value);
@@ -77,11 +76,14 @@ const AppRoot = () => {
             }
         }
 
-        // True ONLY if an active session token exists or fresh redirect params are present
-        return hasAuthToken || hasAccountParam || hasUrlTokens;
+        const hasExistingSessionToken = !!sessionStorage.getItem('authToken');
+        const hasAccountParam = urlParams.has('account') || urlParams.has('acct1');
+        const hasUrlTokens = search.includes('token') || search.includes('acct');
+
+        return hasExistingSessionToken || foundNewToken || hasAccountParam || hasUrlTokens;
     });
 
-    // 2. Initialize API and clean URL parameters once on mount
+    // 2. Initialize API and clean URL parameters safely once on mount
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
@@ -89,11 +91,15 @@ const AppRoot = () => {
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 sessionStorage.setItem(key, value);
+                if (key.includes('token1') || key === 'token') {
+                    sessionStorage.setItem('authToken', value);
+                }
                 tokenFound = true;
             }
         }
 
-        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
+        // Clean URL params after capturing them securely in sessionStorage
+        if (tokenFound) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -124,9 +130,9 @@ const AppRoot = () => {
         }
 
         return () => clearTimeout(timeoutId);
-    }, []);
+    }, [isAuthenticated]);
 
-    // Twin-button handler for Login (Clean redirect without premature session flags)
+    // Twin-button handler for Login
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
@@ -150,47 +156,41 @@ const AppRoot = () => {
         }
     };
 
-    // RENDER GUARDS
-    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
+    // ==========================================
+    // BULLETPROOF RENDER GUARDS
+    // ==========================================
 
-    // Intercept incoming OAuth return flows to prevent landing page flash
-    if (hasTokensInUrl) {
+    // If authenticated, priority #1 is loading the workspace. Show preloader until store & API are ready.
+    if (isAuthenticated) {
         if (!store || !is_api_initialized) {
             return <AppRootLoader />;
         }
-    }
-
-    // If genuinely not authenticated: play 5s preloader first, then render LandingPage
-    if (!isAuthenticated) {
-        if (!isPreloaded) {
-            return (
-                <TradingPreloader 
-                    appName="TraderScore" 
-                    subtitle="TraderScore Trading Workspace" 
-                    minLoadingTime={5000} 
-                />
-            );
-        }
 
         return (
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
-                <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
-            </div>
+            <Suspense fallback={<AppRootLoader />}>
+                <ErrorBoundary root_store={store}>
+                    <ErrorComponentWrapper />
+                    <AppContent />
+                </ErrorBoundary>
+            </Suspense>
         );
     }
 
-    // If authenticated but still initializing workspace store/API
-    if (!store || !is_api_initialized) {
-        return <AppRootLoader />;
+    // If genuinely unauthenticated: play 5s preloader first, then render LandingPage
+    if (!isPreloaded) {
+        return (
+            <TradingPreloader 
+                appName="TraderScore" 
+                subtitle="TraderScore Trading Workspace" 
+                minLoadingTime={5000} 
+            />
+        );
     }
 
     return (
-        <Suspense fallback={<AppRootLoader />}>
-            <ErrorBoundary root_store={store}>
-                <ErrorComponentWrapper />
-                <AppContent />
-            </ErrorBoundary>
-        </Suspense>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
+            <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
+        </div>
     );
 };
 
