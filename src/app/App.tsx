@@ -67,6 +67,27 @@ export default function App() {
     const { isProcessing, isValid, params, error, cleanupURL } = useOAuthCallback();
     useAccountSwitching();
 
+    // Force permanent dark mode on mobile devices, light mode on laptops
+    useEffect(() => {
+        const handleThemeByDevice = () => {
+            const isMobile = window.innerWidth <= 768; // Standard mobile threshold
+            if (isMobile) {
+                document.body.classList.add('theme--dark');
+                document.body.classList.remove('theme--light');
+            } else {
+                document.body.classList.add('theme--light');
+                document.body.classList.remove('theme--dark');
+            }
+        };
+
+        // Run on mount
+        handleThemeByDevice();
+
+        // Optional: handle if user resizes window between mobile and desktop views
+        window.addEventListener('resize', handleThemeByDevice);
+        return () => window.removeEventListener('resize', handleThemeByDevice);
+    }, []);
+
     // Automatically capture and store tokens when Deriv redirects back
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
