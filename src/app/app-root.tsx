@@ -57,33 +57,7 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // Wipe cached tokens when the tab/browser is fully closed so reopening requires a fresh login
-    useEffect(() => {
-        const handleTabClose = () => {
-            const search = window.location.search;
-            // Do not clear if we are actively processing tokens
-            if (search.includes('token') || search.includes('acct')) return;
-
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('active_loginid');
-            for (let i = localStorage.length - 1; i >= 0; i--) {
-                const key = localStorage.key(i);
-                if (key && (key.includes('token') || key.startsWith('acct'))) {
-                    localStorage.removeItem(key);
-                }
-            }
-        };
-
-        window.addEventListener('pagehide', handleTabClose);
-        window.addEventListener('beforeunload', handleTabClose);
-        
-        return () => {
-            window.removeEventListener('pagehide', handleTabClose);
-            window.removeEventListener('beforeunload', handleTabClose);
-        };
-    }, []);
-
-    // 1. Strict authentication check using localStorage with token capture
+    // 1. Strict authentication check using sessionStorage (automatically wipes when tab is closed)
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const urlParams = new URLSearchParams(search);
@@ -91,18 +65,18 @@ const AppRoot = () => {
 
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem(key, value);
+                sessionStorage.setItem(key, value);
                 tokenFound = true;
-                if (key.includes('token1') || key === 'token') {
-                    localStorage.setItem('authToken', value);
+                if (key.includes('token1'] || key === 'token') {
+                    sessionStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
-                    localStorage.setItem('active_loginid', value);
+                    sessionStorage.setItem('active_loginid', value);
                 }
             }
         }
 
-        const hasAuthToken = !!localStorage.getItem('authToken');
+        const hasAuthToken = !!sessionStorage.getItem('authToken');
         const hasAccountParam = urlParams.has('account');
         const hasUrlTokens = search.includes('token') || search.includes('acct');
 
