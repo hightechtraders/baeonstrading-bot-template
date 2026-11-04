@@ -83,7 +83,7 @@ export default function App() {
         // Run on mount
         handleThemeByDevice();
 
-        // Optional: handle if user resizes window between mobile and desktop views
+        // Handle if user resizes window between mobile and desktop views
         window.addEventListener('resize', handleThemeByDevice);
         return () => window.removeEventListener('resize', handleThemeByDevice);
     }, []);
