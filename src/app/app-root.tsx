@@ -79,7 +79,7 @@ const AppRoot = () => {
             if (key.includes('token') || key.startsWith('acct')) {
                 sessionStorage.setItem(key, value);
                 tokenFound = true;
-                if (key.includes('token1') || key === 'token') {
+                if (key.includes('token1'] || key === 'token') {
                     sessionStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
@@ -104,7 +104,7 @@ const AppRoot = () => {
     });
 
     // ==========================================
-    // API INITIALIZATION & URL CLEANUP
+    // API INITIALIZATION
     // ==========================================
     useEffect(() => {
         const initializeApi = async () => {
@@ -122,23 +122,32 @@ const AppRoot = () => {
 
         if (isAuthenticated) {
             initializeApi();
-
-            // Allow the workspace 2 seconds to stabilize before wiping tokens from the URL bar
-            const stripTimer = setTimeout(() => {
-                const search = window.location.search;
-                if (search.includes('token') || search.includes('acct')) {
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                }
-            }, 2000);
-
-            return () => clearTimeout(stripTimer);
         } else {
             setIsApiInitialized(true);
         }
     }, [isAuthenticated]);
 
+    // ==========================================
+    // URL CLEANUP (Starts counting ONLY when you are inside the workspace)
+    // ==========================================
+    useEffect(() => {
+        if (isAuthenticated && store && is_api_initialized) {
+            // Wait 3 seconds AFTER the workspace is fully visible before wiping tokens from the URL bar
+            const stripTimer = setTimeout(() => {
+                const search = window.location.search;
+                if (search.includes('token') || search.includes('acct')) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }, 3000);
+
+            return () => clearTimeout(stripTimer);
+        }
+    }, [isAuthenticated, store, is_api_initialized]);
+
     // Login Handler for Deriv OAuth
     const handleLogin = () => {
+        sessionStorage.setItem('clicked_login', 'true');
+
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
         if (originalLoginBtn) {
