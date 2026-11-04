@@ -222,4 +222,4 @@ const AppRoot = () => {
     );
 };
 
-exports default AppRoot; // (or export default AppRoot)
+export default AppRoot;
