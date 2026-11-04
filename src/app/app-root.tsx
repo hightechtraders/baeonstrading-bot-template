@@ -57,49 +57,60 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // 1. ZERO-TRUST SESSION SECURITY CHECK
+    // Wipe cached tokens when the tab/browser is fully closed so reopening requires a fresh login
+    useEffect(() => {
+        const handleTabClose = () => {
+            const search = window.location.search;
+            // Do not clear if we are actively processing tokens
+            if (search.includes('token') || search.includes('acct')) return;
+
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('active_loginid');
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && (key.includes('token') || key.startsWith('acct'))) {
+                    localStorage.removeItem(key);
+                }
+            }
+        };
+
+        window.addEventListener('pagehide', handleTabClose);
+        window.addEventListener('beforeunload', handleTabClose);
+        
+        return () => {
+            window.removeEventListener('pagehide', handleTabClose);
+            window.removeEventListener('beforeunload', handleTabClose);
+        };
+    }, []);
+
+    // 1. Strict authentication check using localStorage with token capture
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const urlParams = new URLSearchParams(search);
         let tokenFound = false;
 
-        // Capture incoming OAuth tokens from Deriv redirect and store them in sessionStorage
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
-                sessionStorage.setItem(key, value);
+                localStorage.setItem(key, value);
                 tokenFound = true;
                 if (key.includes('token1') || key === 'token') {
-                    sessionStorage.setItem('authToken', value);
+                    localStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
-                    sessionStorage.setItem('active_loginid', value);
+                    localStorage.setItem('active_loginid', value);
                 }
             }
         }
 
-        const sessionToken = sessionStorage.getItem('authToken');
+        const hasAuthToken = !!localStorage.getItem('authToken');
         const hasAccountParam = urlParams.has('account');
         const hasUrlTokens = search.includes('token') || search.includes('acct');
 
-        // STRICT GATE: If there is no session token and no incoming redirect tokens, access is denied.
-        if (!sessionToken && !hasAccountParam && !hasUrlTokens && !tokenFound) {
-            sessionStorage.clear();
-            return false;
-        }
-
-        return true;
+        return hasAuthToken || hasAccountParam || hasUrlTokens || tokenFound;
     });
 
-    // 2. Initialize API and instantly strip sensitive tokens from URL history via replaceState
+    // 2. Initialize API and use a timed delay to cleanly strip URL parameters AFTER mounting
     useEffect(() => {
-        const search = window.location.search;
-        const hasUrlTokens = search.includes('token') || search.includes('acct');
-
-        if (hasUrlTokens) {
-            // Clean the URL bar immediately so sensitive tokens don't linger in history/address bar
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-
         const timeoutId = setTimeout(() => {
             if (!api_base_initialized.current) {
                 setIsApiInitialized(true);
@@ -122,6 +133,17 @@ const AppRoot = () => {
 
         if (isAuthenticated) {
             initializeApi();
+
+            // TIME-BASED URL STRIP: Wait 2 seconds for the workspace to fully render 
+            // and stabilize before wiping sensitive tokens from the browser address bar.
+            const stripTimer = setTimeout(() => {
+                const search = window.location.search;
+                if (search.includes('token') || search.includes('acct')) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }, 2000);
+
+            return () => clearTimeout(stripTimer);
         } else {
             setIsApiInitialized(true);
         }
@@ -163,7 +185,7 @@ const AppRoot = () => {
         }
     }
 
-    // ZERO-TRUST RENDER GUARD: If not authenticated, user must view preloader and LandingPage. No exceptions.
+    // If genuinely not authenticated: play 5s preloader first, then render LandingPage
     if (!isAuthenticated) {
         if (!isPreloaded) {
             return (
