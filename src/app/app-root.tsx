@@ -47,18 +47,32 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // Track whether the initial preloader phase has finished
+    // Track whether the initial 5-second preloader phase has finished for unauthenticated users
     const [isPreloaded, setIsPreloaded] = useState(false);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             setIsPreloaded(true);
-        }, 3000); // 3 seconds preloader duration
+        }, 5000); // 5 seconds preloader duration
         return () => clearTimeout(timer);
     }, []);
 
-    // 1. STRICT OAUTH RETURN CHECK: Only authenticate if tokens are actively present in the URL right now.
-    // This ensures visiting the raw link ALWAYS lands you on the Landing Page first.
+    // Wipe cached token when the tab/browser is fully closed so reopening requires a fresh landing page entry
+    useEffect(() => {
+        const handleTabClose = () => {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('active_loginid');
+        };
+        window.addEventListener('beforeunload', handleTabClose);
+        return () => window.removeEventListener('beforeunload', handleTabClose);
+    }, []);
+
+    // ==========================================
+    // 1. FRESH OAUTH CAPTURE & AUTHENTICATION CHECK
+    // ==========================================
+    // We check the incoming URL query parameters actively. If tokens are present (meaning they just 
+    // redirected back from Deriv), we capture them into localStorage and authenticate. 
+    // If NO tokens are in the URL, we ignore old cache and force them through the landing page.
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
         const urlParams = new URLSearchParams(search);
@@ -66,23 +80,43 @@ const AppRoot = () => {
 
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
-                sessionStorage.setItem(key, value);
+                localStorage.setItem(key, value);
                 tokenFound = true;
-                if (key.includes('token1') || key === 'token') {
-                    sessionStorage.setItem('authToken', value);
+                if (key.includes('token1'] || key === 'token') {
+                    localStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
-                    sessionStorage.setItem('active_loginid', value);
+                    localStorage.setItem('active_loginid', value);
                 }
             }
         }
 
         const hasUrlTokens = search.includes('token') || search.includes('acct');
-        return hasUrlTokens || tokenFound;
+        const hasAccountParam = urlParams.has('account');
+
+        // Authenticated ONLY if they brought live credentials back from the redirect handshake
+        return hasUrlTokens || tokenFound || hasAccountParam;
     });
 
-    // 2. Initialize API and clean URL parameters after mounting
+    // ==========================================
+    // 2. INITIALIZE API & IMMEDIATELY CLEAN URL
+    // ==========================================
     useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        let tokenFound = false;
+
+        for (const [key, value] of urlParams.entries()) {
+            if (key.includes('token') || key.startsWith('acct')) {
+                localStorage.setItem(key, value);
+                tokenFound = true;
+            }
+        }
+
+        // Clean tokens out of the address bar instantly so the URL looks pristine
+        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
         const timeoutId = setTimeout(() => {
             if (!api_base_initialized.current) {
                 setIsApiInitialized(true);
@@ -105,16 +139,6 @@ const AppRoot = () => {
 
         if (isAuthenticated) {
             initializeApi();
-
-            // Wait 3 seconds after entering the workspace to cleanly wipe tokens from the address bar
-            const stripTimer = setTimeout(() => {
-                const search = window.location.search;
-                if (search.includes('token') || search.includes('acct')) {
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                }
-            }, 3000);
-
-            return () => clearTimeout(stripTimer);
         } else {
             setIsApiInitialized(true);
         }
@@ -122,30 +146,50 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, [isAuthenticated]);
 
-    // Login Handler -> Sends user to Deriv OAuth
+    // Login Handler for Deriv OAuth
     const handleLogin = () => {
-        const appId = '1089'; 
-        const redirectUrl = encodeURIComponent(window.location.origin + '/');
-        window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
+        const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
+        
+        if (originalLoginBtn) {
+            originalLoginBtn.click();
+        } else {
+            const appId = '1089'; 
+            const redirectUrl = encodeURIComponent(window.location.origin + '/');
+            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
+        }
     };
 
     // Signup Handler
     const handleSignup = () => {
-        window.open('https://home.deriv.com/dashboard', '_blank');
+        const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
+        
+        if (originalSignupBtn) {
+            originalSignupBtn.click();
+        } else {
+            window.open('https://home.deriv.com/dashboard', '_blank');
+        }
     };
 
     // ==========================================
     // RENDER GUARDS
     // ==========================================
+    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
 
-    // If the user is NOT authenticated (opened raw link without return tokens), show Landing Page
+    // Intercept incoming OAuth return flows to prevent landing page flash
+    if (hasTokensInUrl) {
+        if (!store || !is_api_initialized) {
+            return <AppRootLoader />;
+        }
+    }
+
+    // If genuinely not authenticated (no active redirect tokens): play preloader, then render LandingPage
     if (!isAuthenticated) {
         if (!isPreloaded) {
             return (
                 <TradingPreloader 
                     appName="TraderScore" 
                     subtitle="TraderScore Trading Workspace" 
-                    minLoadingTime={3000} 
+                    minLoadingTime={5000} 
                 />
             );
         }
@@ -157,12 +201,11 @@ const AppRoot = () => {
         );
     }
 
-    // If authenticated (just returned from Deriv) but API or store is still loading, show loader
+    // If authenticated via active redirect tokens but still initializing workspace store/API
     if (!store || !is_api_initialized) {
         return <AppRootLoader />;
     }
 
-    // Fully authenticated and ready workspace view
     return (
         <Suspense fallback={<AppRootLoader />}>
             <ErrorBoundary root_store={store}>
