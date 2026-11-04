@@ -57,6 +57,29 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
+    // Wipe cached tokens as soon as the user leaves or closes the page/tab
+    useEffect(() => {
+        const handlePageExit = () => {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('active_loginid');
+            // Clear any other dynamic token keys stored during OAuth
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && (key.includes('token') || key.startsWith('acct'))) {
+                    localStorage.removeItem(key);
+                }
+            }
+        };
+
+        window.addEventListener('pagehide', handlePageExit);
+        window.addEventListener('beforeunload', handlePageExit);
+        
+        return () => {
+            window.removeEventListener('pagehide', handlePageExit);
+            window.removeEventListener('beforeunload', handlePageExit);
+        };
+    }, []);
+
     // 1. Strict authentication check using localStorage
     const [isAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
