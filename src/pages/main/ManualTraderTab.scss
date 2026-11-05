@@ -24,7 +24,7 @@
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        gap: 20px; // Slightly increased for better spacing
+        gap: 24px;
         box-sizing: border-box;
         padding-bottom: 3rem;
         position: relative;
@@ -36,14 +36,12 @@
         }
     }
 
-    /* Harmonized Market Dropdown Bar */
+    /* Clean Market Dropdown Bar with Faint Emerald Border */
     .manual-market-dropdown-bar {
-        background: rgba(var(--general-section-1-rgb, 20, 25, 35), 0.75);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
+        background: transparent;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        border-radius: 10px;
         position: relative;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
         width: fit-content;
         min-width: 280px;
         box-sizing: border-box;
@@ -80,7 +78,6 @@
                         font-weight: 900;
                         font-size: 0.95rem;
                         margin-left: 4px;
-                        text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
                     }
                 }
 
@@ -104,8 +101,7 @@
             top: calc(100% + 6px);
             left: 0;
             right: 0;
-            background: rgba(18, 24, 38, 0.95);
-            backdrop-filter: blur(16px);
+            background: var(--general-section-1);
             border: 1px solid rgba(16, 185, 129, 0.3);
             border-radius: 12px;
             box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
@@ -137,6 +133,7 @@
         }
     }
 
+    /* Transparent Digit Stats Grid */
     .digit-stats-grid {
         background: transparent !important;
         border: none !important;
@@ -149,7 +146,7 @@
     .digit-stats-grid__inner {
         display: grid;
         grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
-        gap: 10px !important;
+        gap: 12px !important;
         width: 100%;
         align-items: center;
         justify-content: center;
@@ -166,34 +163,27 @@
         align-items: center;
         justify-content: center;
         position: relative;
-        padding: 10px 4px 14px 4px !important;
-        background: rgba(25, 32, 48, 0.6) !important;
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        padding: 8px 4px 12px 4px !important;
+        background: transparent !important;
+        border: 1px solid transparent !important;
         border-radius: 12px;
         cursor: pointer;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.2s ease;
         user-select: none;
         width: 100%;
         box-sizing: border-box;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 
         &:hover {
-            transform: translateY(-3px);
-            background: rgba(35, 45, 68, 0.8) !important;
-            border-color: rgba(255, 255, 255, 0.18) !important;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px);
+            border-color: rgba(16, 185, 129, 0.25) !important;
         }
 
         &--selected {
-            border-color: rgba(99, 102, 241, 0.8) !important;
-            background: rgba(99, 102, 241, 0.12) !important;
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.35);
+            border-color: rgba(16, 185, 129, 0.4) !important;
+            background: rgba(16, 185, 129, 0.05) !important;
 
             .manual-gauge-circle {
-                border: 2.5px solid #818cf8 !important;
-                background: rgba(99, 102, 241, 0.2);
-                box-shadow: 0 0 10px rgba(129, 140, 248, 0.4);
+                border: 2px solid #10b981 !important;
             }
         }
     }
@@ -208,10 +198,10 @@
         width: 100%;
 
         .manual-digit-label {
-            font-size: 12px;
-            font-weight: 800;
+            font-size: 13px;
+            font-weight: 900;
             margin-bottom: 4px;
-            color: var(--text-prominent);
+            color: #ffffff;
             letter-spacing: 0.5px;
         }
 
@@ -220,8 +210,8 @@
             width: 52px;
             height: 52px;
             border-radius: 50%;
-            border: 2px solid rgba(255, 255, 255, 0.08);
-            background: rgba(0, 0, 0, 0.25);
+            border: 2px solid rgba(16, 185, 129, 0.15); // Faint emerald track ring
+            background: transparent;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -254,7 +244,7 @@
                 pointer-events: none;
                 font-size: 11px;
                 font-weight: 900;
-                color: #f3f4f6;
+                color: #ffffff;
 
                 @include mobile-or-tablet-screen {
                     font-size: 8px;
@@ -275,114 +265,27 @@
         pointer-events: none;
 
         span {
-            color: #f43f5e;
+            color: #10b981;
             font-size: 9px;
             font-weight: 900;
             line-height: 1;
-            text-shadow: 0 0 6px rgba(244, 63, 94, 0.6);
         }
     }
 
-    /* Contract Type Dropdown Bar */
-    .manual-contract-dropdown-bar {
-        background: rgba(25, 32, 48, 0.6);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        position: relative;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-        width: 100%;
-        box-sizing: border-box;
-        z-index: 50;
-
-        .contract-dropdown-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 18px;
-            cursor: pointer;
-            user-select: none;
-
-            .contract-dropdown-title-group {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-
-                .contract-type-icon {
-                    font-size: 1rem;
-                }
-
-                .contract-dropdown-label {
-                    font-size: 0.9rem;
-                    font-weight: 800;
-                    color: var(--text-prominent);
-                }
-            }
-
-            .contract-chevron {
-                font-size: 1.1rem;
-                font-weight: 900;
-                color: var(--text-prominent);
-                transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-
-                &.open {
-                    transform: rotate(90deg);
-                }
-            }
-        }
-
-        .contract-dropdown-options {
-            position: absolute;
-            top: calc(100% + 6px);
-            left: 0;
-            right: 0;
-            background: rgba(18, 24, 38, 0.95);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            border-radius: 12px;
-            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-            z-index: 50;
-            overflow: hidden;
-
-            .contract-option-item {
-                padding: 12px 18px;
-                font-size: 0.85rem;
-                font-weight: 700;
-                color: var(--text-prominent);
-                cursor: pointer;
-                transition: all 0.2s ease;
-                border: none !important;
-
-                &:hover {
-                    background: rgba(16, 185, 129, 0.15);
-                    color: #10b981;
-                }
-
-                &.active {
-                    background: rgba(16, 185, 129, 0.25);
-                    color: #10b981;
-                    font-weight: 900;
-                }
-            }
-        }
-    }
-
-    /* Controls Card - Harmonized Glassmorphism */
+    /* Controls Section with Faint Emerald Borders */
     .manual-trader-controls-card {
-        background: rgba(25, 32, 48, 0.6);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        padding: 18px 22px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        background: transparent;
+        border: none;
+        padding: 0;
+        box-shadow: none;
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 16px;
         width: 100%;
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            padding: 12px 14px;
+            padding: 0;
             gap: 10px;
         }
     }
@@ -421,20 +324,15 @@
     .manual-trader-target-box,
     .manual-trader-duration-box {
         width: 100%;
-        background: rgba(15, 20, 30, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: transparent;
+        border: 1px solid rgba(16, 185, 129, 0.2); // Faint emerald border
         color: var(--text-prominent);
         padding: 12px 16px;
         border-radius: 10px;
         font-size: 0.95rem;
-        font-weight: 700;
+        font-weight: 800;
         box-sizing: border-box;
-        transition: border-color 0.2s ease;
-
-        &:focus {
-            outline: none;
-            border-color: rgba(99, 102, 241, 0.6);
-        }
+        text-align: center;
 
         @include mobile-or-tablet-screen {
             padding: 8px 12px;
@@ -443,17 +341,11 @@
     }
 
     .manual-trader-target-box {
-        border-color: rgba(99, 102, 241, 0.4);
-        background: rgba(99, 102, 241, 0.08);
-        color: #a5b4fc;
-        font-weight: 900;
-        text-align: center;
-        text-shadow: 0 0 10px rgba(165, 180, 252, 0.3);
+        border-color: rgba(16, 185, 129, 0.3);
+        color: #34d399;
     }
 
     .manual-trader-duration-box {
-        text-align: center;
-        border-color: rgba(255, 255, 255, 0.08);
         font-size: 0.9rem;
 
         @include mobile-or-tablet-screen {
@@ -462,19 +354,13 @@
     }
 
     .manual-trader-stake-container {
-        background: rgba(15, 20, 30, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: transparent;
+        border: 1px solid rgba(16, 185, 129, 0.2); // Faint emerald border
         border-radius: 10px;
         padding: 8px 16px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        transition: border-color 0.2s ease;
-
-        &:focus-within {
-            border-color: rgba(99, 102, 241, 0.6);
-            box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
-        }
 
         @include mobile-or-tablet-screen {
             padding: 6px 12px;
@@ -501,7 +387,7 @@
 
     .manual-trader-input {
         background: transparent;
-        color: var(--text-prominent);
+        color: #ffffff;
         font-weight: 900;
         font-size: 1.1rem;
         border: none;
@@ -518,10 +404,10 @@
         font-size: 0.75rem;
         font-weight: 900;
         color: var(--text-prominent);
-        background: rgba(25, 32, 48, 0.8);
+        background: transparent;
         padding: 6px 12px;
         border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.2); // Faint emerald border
 
         @include mobile-or-tablet-screen {
             font-size: 0.6rem;
@@ -529,7 +415,7 @@
         }
     }
 
-    /* Purchase Buttons Action Zone - Enhanced Glow and Hierarchy */
+    /* Purchase Action Buttons */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr !important;
@@ -556,56 +442,33 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-
-        &::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(rgba(255, 255, 255, 0.15), transparent);
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-
-        &:hover {
-            transform: translateY(-2px);
-            &::after {
-                opacity: 1;
-            }
-        }
-
-        &:active {
-            transform: translateY(1px);
-        }
+        transition: all 0.2s ease;
 
         @include mobile-or-tablet-screen {
             padding: 10px 8px !important;
         }
 
         &--over {
-            background: linear-gradient(135deg, #059669 0%, #047857 100%);
-            box-shadow: 0 6px 20px rgba(5, 150, 105, 0.4);
+            background: #059669;
+            box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
 
             &:hover {
-                box-shadow: 0 8px 25px rgba(5, 150, 105, 0.6);
+                background: #047857;
             }
         }
 
         &--under {
-            background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
-            box-shadow: 0 6px 20px rgba(225, 29, 72, 0.4);
+            background: #e11d48;
+            box-shadow: 0 4px 14px rgba(225, 29, 72, 0.3);
 
             &:hover {
-                box-shadow: 0 8px 25px rgba(225, 29, 72, 0.6);
+                background: #be123c;
             }
         }
 
         .manual-trader-btn-label {
             font-size: 0.7rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
             opacity: 0.85;
 
             @include mobile-or-tablet-screen {
@@ -617,7 +480,6 @@
             font-size: 1.1rem;
             font-weight: 900;
             margin-top: 3px;
-            letter-spacing: 0.5px;
 
             @include mobile-or-tablet-screen {
                 font-size: 0.78rem !important;
@@ -628,10 +490,9 @@
             margin-top: 4px;
             font-size: 0.68rem;
             font-weight: 800;
-            background: rgba(0, 0, 0, 0.25);
+            background: rgba(0, 0, 0, 0.2);
             padding: 3px 10px;
             border-radius: 6px;
-            backdrop-filter: blur(4px);
 
             @include mobile-or-tablet-screen {
                 font-size: 0.48rem !important;
