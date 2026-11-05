@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ScannerBridge } from '../../Aiscanner/scannerBridge';
 import './ManualTraderTab.scss';
 
@@ -93,6 +93,12 @@ export default function ManualTraderTab() {
   const [cursorPosition, setCursorPosition] = useState<number>(4);
   const [scannerStatus, setScannerStatus] = useState<string>('Scanning live tick momentum...');
 
+  // Use a ref to always hold the current targetDigit, preventing stale closure conflicts in intervals
+  const targetDigitRef = useRef(targetDigit);
+  useEffect(() => {
+    targetDigitRef.current = targetDigit;
+  }, [targetDigit]);
+
   const [digitStats, setDigitStats] = useState([
     { digit: 0, percent: 9.2, trend: 'neutral' },
     { digit: 1, percent: 12.6, trend: 'high' },
@@ -106,7 +112,7 @@ export default function ManualTraderTab() {
     { digit: 9, percent: 10.3, trend: 'neutral' }
   ]);
 
-  // Simulation Loop - Stable dependency array prevents click stuttering
+  // Simulation Loop using ref to stay completely synced with instant taps
   useEffect(() => {
     const scannerInterval = setInterval(() => {
       const weightedScannerPool = [4, 1, 8, 6, 2, 0, 9, 3, 5, 7];
@@ -127,11 +133,13 @@ export default function ManualTraderTab() {
           return { ...item, percent: simulatedPercent };
         });
 
+        const activeTarget = targetDigitRef.current;
+
         return updatedValues.map((item, idx) => {
           let trend = 'neutral';
           if (idx === highIndex) trend = 'high';
           if (idx === lowIndex) trend = 'low';
-          if (item.digit === targetDigit) trend = 'selected';
+          if (item.digit === activeTarget) trend = 'selected';
 
           return {
             ...item,
@@ -151,7 +159,7 @@ export default function ManualTraderTab() {
     }, 2500);
 
     return () => clearInterval(scannerInterval);
-  }, [selectedSymbol]); // targetDigit removed from dependencies for instant click reaction
+  }, [selectedSymbol]);
 
   return (
     <div className="manual-trader-tab-container">
@@ -213,8 +221,9 @@ export default function ManualTraderTab() {
                 <div 
                   key={item.digit} 
                   onClick={() => {
-                    // Instant state update for immediate UI response and color release
+                    // Instant state update and clean trend sync
                     setTargetDigit(item.digit);
+                    targetDigitRef.current = item.digit; // Keep ref instantly in sync
                     setCursorPosition(item.digit);
                     setDigitStats(prev => 
                       prev.map(stat => ({
