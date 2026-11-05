@@ -210,7 +210,7 @@
             width: 52px;
             height: 52px;
             border-radius: 50%;
-            border: 2px solid rgba(16, 185, 129, 0.15); // Faint emerald track ring
+            border: 2px solid rgba(16, 185, 129, 0.15);
             background: transparent;
             display: flex;
             align-items: center;
@@ -325,7 +325,7 @@
     .manual-trader-duration-box {
         width: 100%;
         background: transparent;
-        border: 1px solid rgba(16, 185, 129, 0.2); // Faint emerald border
+        border: 1px solid rgba(16, 185, 129, 0.2);
         color: var(--text-prominent);
         padding: 12px 16px;
         border-radius: 10px;
@@ -354,13 +354,14 @@
     }
 
     .manual-trader-stake-container {
-        background: transparent;
-        border: 1px solid rgba(16, 185, 129, 0.2); // Faint emerald border
+        background: rgba(15, 20, 30, 0.4); // Subtle backdrop to keep text legible
+        border: 1px solid rgba(16, 185, 129, 0.3); // Clearer faint emerald border
         border-radius: 10px;
         padding: 8px 16px;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        min-height: 48px;
 
         @include mobile-or-tablet-screen {
             padding: 6px 12px;
@@ -371,6 +372,7 @@
         display: flex;
         flex-direction: column;
         flex: 1;
+        justify-content: center;
     }
 
     .manual-trader-stake-title {
@@ -385,35 +387,41 @@
         }
     }
 
+    /* Fixed Stake Input: Fully Opaque, Solid White, and Always Visible */
     .manual-trader-input {
         background: transparent !important;
         color: #ffffff !important;
         -webkit-text-fill-color: #ffffff !important;
         font-weight: 900 !important;
-        font-size: 1.1rem !important;
+        font-size: 1.15rem !important;
         border: none !important;
         outline: none !important;
         width: 100% !important;
         margin-top: 2px !important;
+        padding: 0 !important;
         opacity: 1 !important;
+        visibility: visible !important;
+        display: block !important;
+        box-shadow: none !important;
 
         &::placeholder {
-            color: rgba(255, 255, 255, 0.6) !important;
+            color: rgba(255, 255, 255, 0.7) !important;
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.7) !important;
         }
 
         @include mobile-or-tablet-screen {
-            font-size: 0.9rem !important;
+            font-size: 0.95rem !important;
         }
     }
 
     .manual-trader-currency-badge {
         font-size: 0.75rem;
         font-weight: 900;
-        color: var(--text-prominent);
-        background: transparent;
+        color: #34d399;
+        background: rgba(16, 185, 129, 0.1);
         padding: 6px 12px;
         border-radius: 8px;
-        border: 1px solid rgba(16, 185, 129, 0.2); // Faint emerald border
+        border: 1px solid rgba(16, 185, 129, 0.3);
 
         @include mobile-or-tablet-screen {
             font-size: 0.6rem;
