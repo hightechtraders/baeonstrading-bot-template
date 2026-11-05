@@ -4,6 +4,7 @@
 .manual-trader-tab-container {
     width: 100% !important;
     height: 100% !important;
+    min-height: 100vh !important; /* Full vertical coverage on laptops */
     display: flex !important;
     flex-direction: column !important;
     box-sizing: border-box !important;
@@ -24,15 +25,19 @@
         margin: 0 auto;
         display: flex;
         flex-direction: column;
+        justify-content: space-between; /* Fills laptop height evenly without bottom gaps */
+        flex: 1;
         gap: 16px;
         box-sizing: border-box;
-        padding-bottom: 3rem;
+        padding-bottom: 1rem;
         position: relative;
         z-index: 1;
 
         @include mobile-or-tablet-screen {
             gap: 8px;
             padding-bottom: 120px !important;
+            justify-content: flex-start;
+            flex: unset;
         }
     }
 
@@ -165,7 +170,7 @@
         align-items: center;
         justify-content: center;
         position: relative;
-        min-height: 85px; /* Locks cell height so vertical shifting is impossible */
+        min-height: 85px; 
         padding: 6px 4px 14px 4px !important;
         background: transparent !important;
         border: 1px solid transparent !important;
@@ -209,6 +214,7 @@
             font-weight: 800;
             margin-bottom: 2px;
             color: var(--text-prominent);
+            font-variant-numeric: tabular-nums;
         }
 
         .manual-gauge-circle {
@@ -240,6 +246,7 @@
                 }
             }
 
+            /* Tabular-nums prevents micro-shaking on percentage updates */
             .manual-gauge-value {
                 position: absolute;
                 inset: 0;
@@ -250,6 +257,7 @@
                 font-size: 10px;
                 font-weight: 800;
                 color: var(--text-prominent);
+                font-variant-numeric: tabular-nums;
 
                 @include mobile-or-tablet-screen {
                     font-size: 8px;
@@ -401,6 +409,7 @@
         outline: none;
         width: 100%;
         margin-top: 1px;
+        font-variant-numeric: tabular-nums;
 
         @include mobile-or-tablet-screen {
             font-size: 0.85rem;
