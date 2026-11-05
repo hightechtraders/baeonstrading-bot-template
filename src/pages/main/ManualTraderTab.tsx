@@ -106,7 +106,7 @@ export default function ManualTraderTab() {
     { digit: 9, percent: 10.3, trend: 'neutral' }
   ]);
 
-  // Simulation Loop
+  // Simulation Loop - Stable dependency array prevents click stuttering
   useEffect(() => {
     const scannerInterval = setInterval(() => {
       const weightedScannerPool = [4, 1, 8, 6, 2, 0, 9, 3, 5, 7];
@@ -151,7 +151,7 @@ export default function ManualTraderTab() {
     }, 2500);
 
     return () => clearInterval(scannerInterval);
-  }, [selectedSymbol, targetDigit]);
+  }, [selectedSymbol]); // targetDigit removed from dependencies for instant click reaction
 
   return (
     <div className="manual-trader-tab-container">
@@ -213,8 +213,15 @@ export default function ManualTraderTab() {
                 <div 
                   key={item.digit} 
                   onClick={() => {
+                    // Instant state update for immediate UI response and color release
                     setTargetDigit(item.digit);
                     setCursorPosition(item.digit);
+                    setDigitStats(prev => 
+                      prev.map(stat => ({
+                        ...stat,
+                        trend: stat.digit === item.digit ? 'selected' : (stat.trend === 'selected' ? 'neutral' : stat.trend)
+                      }))
+                    );
                   }}
                   className={`digit-gauge-card ${cardModifier}`}
                 >
