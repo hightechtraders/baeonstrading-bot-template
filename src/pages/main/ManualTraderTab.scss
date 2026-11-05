@@ -158,24 +158,30 @@
         }
     }
 
+    /* Locked Card Dimensions to Prevent Row Shaking */
     .digit-gauge-card {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         position: relative;
-        padding: 8px 4px 12px 4px !important;
+        min-height: 85px; /* Locks cell height so vertical shifting is impossible */
+        padding: 6px 4px 14px 4px !important;
         background: transparent !important;
         border: 1px solid transparent !important;
         border-radius: 10px;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: border-color 0.2s ease;
         user-select: none;
         width: 100%;
         box-sizing: border-box;
 
+        @include mobile-or-tablet-screen {
+            min-height: 68px;
+            padding: 4px 2px 12px 2px !important;
+        }
+
         &:hover {
-            transform: translateY(-2px);
             border-color: rgba(16, 185, 129, 0.25) !important;
         }
 
@@ -252,6 +258,7 @@
         }
     }
 
+    /* Fixed Height Slot for the Cursor Arrow to eliminate layout jumps */
     .digit-cursor-arrow {
         position: absolute;
         bottom: 2px;
@@ -262,6 +269,7 @@
         align-items: center;
         animation: bounceCursor 0.8s infinite alternate;
         pointer-events: none;
+        height: 10px;
 
         span {
             color: #10b981;
