@@ -386,17 +386,23 @@
     }
 
     .manual-trader-input {
-        background: transparent;
-        color: #ffffff;
-        font-weight: 900;
-        font-size: 1.1rem;
-        border: none;
-        outline: none;
-        width: 100%;
-        margin-top: 2px;
+        background: transparent !important;
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+        font-weight: 900 !important;
+        font-size: 1.1rem !important;
+        border: none !important;
+        outline: none !important;
+        width: 100% !important;
+        margin-top: 2px !important;
+        opacity: 1 !important;
+
+        &::placeholder {
+            color: rgba(255, 255, 255, 0.6) !important;
+        }
 
         @include mobile-or-tablet-screen {
-            font-size: 0.9rem;
+            font-size: 0.9rem !important;
         }
     }
 
