@@ -93,7 +93,6 @@ export default function ManualTraderTab() {
   const [cursorPosition, setCursorPosition] = useState<number>(4);
   const [scannerStatus, setScannerStatus] = useState<string>('Scanning live tick momentum...');
 
-  // Use a ref to always hold the current targetDigit, preventing stale closure conflicts in intervals
   const targetDigitRef = useRef(targetDigit);
   useEffect(() => {
     targetDigitRef.current = targetDigit;
@@ -112,7 +111,7 @@ export default function ManualTraderTab() {
     { digit: 9, percent: 10.3, trend: 'neutral' }
   ]);
 
-  // Simulation Loop using ref to stay completely synced with instant taps
+  // Simulation Loop
   useEffect(() => {
     const scannerInterval = setInterval(() => {
       const weightedScannerPool = [4, 1, 8, 6, 2, 0, 9, 3, 5, 7];
@@ -221,9 +220,8 @@ export default function ManualTraderTab() {
                 <div 
                   key={item.digit} 
                   onClick={() => {
-                    // Instant state update and clean trend sync
                     setTargetDigit(item.digit);
-                    targetDigitRef.current = item.digit; // Keep ref instantly in sync
+                    targetDigitRef.current = item.digit;
                     setCursorPosition(item.digit);
                     setDigitStats(prev => 
                       prev.map(stat => ({
