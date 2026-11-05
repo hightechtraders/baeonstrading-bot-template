@@ -3,21 +3,19 @@
 
 .manual-trader-tab-container {
     width: 100% !important;
-    height: 100vh !important; /* Strict single-viewport height lock */
-    max-height: 100vh !important;
+    height: 100% !important;
     display: flex !important;
     flex-direction: column !important;
     box-sizing: border-box !important;
-    padding: 1rem 2rem !important;
+    padding: 1.25rem 2rem !important;
     background: var(--general-main-1) !important;
-    overflow: hidden !important; /* Prevents any page scrolling */
+    overflow-y: auto !important;
     position: relative;
 
     @include mobile-or-tablet-screen {
-        padding: 6px !important;
-        height: 100vh !important;
-        max-height: 100vh !important;
-        overflow: hidden !important;
+        padding: 8px !important;
+        height: 100% !important;
+        overflow-y: auto !important;
     }
 
     .manual-trader-wrapper {
@@ -26,18 +24,15 @@
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        justify-content: space-between; /* Evenly distributes elements from top to bottom */
-        flex: 1;
-        gap: 12px;
+        gap: 16px;
         box-sizing: border-box;
-        padding-bottom: 0 !important;
-        height: 100%;
+        padding-bottom: 1rem;
         position: relative;
         z-index: 1;
 
         @include mobile-or-tablet-screen {
-            gap: 6px;
-            padding-bottom: 0 !important;
+            gap: 8px;
+            padding-bottom: 16px !important;
         }
     }
 
@@ -59,7 +54,7 @@
         .market-dropdown-header {
             display: flex;
             align-items: center;
-            padding: 6px 12px;
+            padding: 8px 14px;
             cursor: pointer;
             user-select: none;
 
@@ -70,24 +65,24 @@
                 width: 100%;
 
                 .market-type-icon {
-                    font-size: 0.85rem;
+                    font-size: 0.9rem;
                 }
 
                 .market-dropdown-label {
-                    font-size: 0.78rem;
+                    font-size: 0.8rem;
                     font-weight: 700;
                     color: var(--text-general);
 
                     .banner-highlight {
                         color: #10b981;
                         font-weight: 900;
-                        font-size: 0.85rem;
+                        font-size: 0.9rem;
                         margin-left: 4px;
                     }
                 }
 
                 .market-chevron {
-                    font-size: 1rem;
+                    font-size: 1.1rem;
                     font-weight: 900;
                     color: var(--text-prominent);
                     transition: transform 0.2s ease;
@@ -112,12 +107,12 @@
             border-radius: 10px;
             box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
             z-index: 999;
-            max-height: 180px;
+            max-height: 200px;
             overflow-y: auto;
 
             .market-option-item {
-                padding: 8px 14px;
-                font-size: 0.8rem;
+                padding: 10px 16px;
+                font-size: 0.85rem;
                 font-weight: 700;
                 color: var(--text-prominent);
                 cursor: pointer;
@@ -152,14 +147,14 @@
     .digit-stats-grid__inner {
         display: grid;
         grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
-        gap: 10px !important;
+        gap: 12px !important;
         width: 100%;
         align-items: center;
         justify-content: center;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-            gap: 4px !important; 
+            gap: 6px !important; 
         }
     }
 
@@ -170,11 +165,11 @@
         align-items: center;
         justify-content: center;
         position: relative;
-        min-height: 75px; 
-        padding: 4px 2px 12px 2px !important;
+        min-height: 85px; 
+        padding: 6px 4px 14px 4px !important;
         background: transparent !important;
         border: 1px solid transparent !important;
-        border-radius: 8px;
+        border-radius: 10px;
         cursor: pointer;
         transition: border-color 0.2s ease;
         user-select: none;
@@ -182,8 +177,8 @@
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            min-height: 58px;
-            padding: 2px 1px 10px 1px !important;
+            min-height: 64px;
+            padding: 4px 2px 12px 2px !important;
         }
 
         &:hover {
@@ -205,12 +200,12 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 0;
+        padding: 2px;
         user-select: none;
         width: 100%;
 
         .manual-digit-label {
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 800;
             margin-bottom: 2px;
             color: var(--text-prominent);
@@ -219,8 +214,8 @@
 
         .manual-gauge-circle {
             position: relative;
-            width: 42px;
-            height: 42px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
             border: 2px solid rgba(16, 185, 129, 0.15);
             background: transparent;
@@ -229,8 +224,8 @@
             justify-content: center;
 
             @include mobile-or-tablet-screen {
-                width: 30px;
-                height: 30px;
+                width: 34px;
+                height: 34px;
             }
 
             svg {
@@ -254,13 +249,13 @@
                 align-items: center;
                 justify-content: center;
                 pointer-events: none;
-                font-size: 9px;
+                font-size: 10px;
                 font-weight: 800;
                 color: var(--text-prominent);
                 font-variant-numeric: tabular-nums;
 
                 @include mobile-or-tablet-screen {
-                    font-size: 7px;
+                    font-size: 8px;
                 }
             }
         }
@@ -277,11 +272,11 @@
         align-items: center;
         animation: bounceCursor 0.8s infinite alternate;
         pointer-events: none;
-        height: 8px;
+        height: 10px;
 
         span {
             color: #10b981;
-            font-size: 7px;
+            font-size: 8px;
             font-weight: 900;
             line-height: 1;
         }
@@ -295,24 +290,24 @@
         box-shadow: none;
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 12px;
         width: 100%;
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
             padding: 0;
-            gap: 4px;
+            gap: 6px;
         }
     }
 
     .manual-trader-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 12px;
+        gap: 14px;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr;
-            gap: 4px;
+            gap: 6px;
         }
 
         &--align {
@@ -321,16 +316,16 @@
     }
 
     .manual-trader-label {
-        font-size: 0.62rem;
+        font-size: 0.68rem;
         color: var(--text-general);
         display: block;
         text-transform: uppercase;
         font-weight: 800;
-        margin-bottom: 2px;
+        margin-bottom: 4px;
 
         @include mobile-or-tablet-screen {
-            font-size: 0.5rem;
-            margin-bottom: 1px;
+            font-size: 0.55rem;
+            margin-bottom: 2px;
         }
     }
 
@@ -341,15 +336,15 @@
         background: transparent;
         border: 1px solid rgba(16, 185, 129, 0.2);
         color: var(--text-prominent);
-        padding: 8px 12px;
+        padding: 10px 14px;
         border-radius: 8px;
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         font-weight: 700;
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            padding: 4px 8px;
-            font-size: 0.7rem;
+            padding: 6px 10px;
+            font-size: 0.75rem;
         }
     }
 
@@ -362,10 +357,10 @@
 
     .manual-trader-duration-box {
         text-align: center;
-        font-size: 0.8rem;
+        font-size: 0.85rem;
 
         @include mobile-or-tablet-screen {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
         }
     }
 
@@ -373,13 +368,13 @@
         background: var(--general-main-1);
         border: 1px solid rgba(16, 185, 129, 0.2);
         border-radius: 8px;
-        padding: 4px 12px;
+        padding: 6px 14px;
         display: flex;
         align-items: center;
         justify-content: space-between;
 
         @include mobile-or-tablet-screen {
-            padding: 2px 8px;
+            padding: 4px 10px;
         }
     }
 
@@ -390,13 +385,13 @@
     }
 
     .manual-trader-stake-title {
-        font-size: 0.55rem;
+        font-size: 0.6rem;
         color: var(--text-general);
         text-transform: uppercase;
         font-weight: 800;
 
         @include mobile-or-tablet-screen {
-            font-size: 0.45rem;
+            font-size: 0.5rem;
         }
     }
 
@@ -404,7 +399,7 @@
         background: transparent;
         color: var(--text-prominent);
         font-weight: 900;
-        font-size: 0.95rem;
+        font-size: 1rem;
         border: none;
         outline: none;
         width: 100%;
@@ -412,22 +407,22 @@
         font-variant-numeric: tabular-nums;
 
         @include mobile-or-tablet-screen {
-            font-size: 0.78rem;
+            font-size: 0.8rem;
         }
     }
 
     .manual-trader-currency-badge {
-        font-size: 0.62rem;
+        font-size: 0.68rem;
         font-weight: 900;
         color: var(--text-prominent);
         background: transparent;
-        padding: 3px 8px;
+        padding: 4px 10px;
         border-radius: 6px;
         border: 1px solid rgba(16, 185, 129, 0.2);
 
         @include mobile-or-tablet-screen {
-            font-size: 0.5rem;
-            padding: 2px 5px;
+            font-size: 0.55rem;
+            padding: 2px 6px;
         }
     }
 
@@ -437,19 +432,19 @@
         grid-template-columns: 1fr 1fr !important;
         gap: 24px !important; 
         max-width: 800px !important; 
-        margin: 0 auto;
+        margin: 10px auto 0 auto;
         width: 100%;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr 1fr !important;
-            gap: 6px !important;
+            gap: 8px !important;
             max-width: 100% !important;
         }
     }
 
     .manual-trader-btn {
         border: none;
-        padding: 10px 16px;
+        padding: 12px 18px;
         border-radius: 10px;
         color: #fff;
         font-weight: 900;
@@ -461,7 +456,7 @@
         transition: all 0.2s ease;
 
         @include mobile-or-tablet-screen {
-            padding: 6px 4px !important;
+            padding: 8px 6px !important;
         }
 
         &--over {
@@ -483,36 +478,36 @@
         }
 
         .manual-trader-btn-label {
-            font-size: 0.62rem;
+            font-size: 0.68rem;
             text-transform: uppercase;
             opacity: 0.9;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.48rem !important;
+                font-size: 0.5rem !important;
             }
         }
 
         .manual-trader-btn-main {
-            font-size: 0.9rem;
+            font-size: 1rem;
             font-weight: 900;
-            margin-top: 1px;
+            margin-top: 2px;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.65rem !important;
+                font-size: 0.7rem !important;
             }
         }
 
         .manual-trader-btn-payout {
-            margin-top: 1px;
-            font-size: 0.58rem;
+            margin-top: 2px;
+            font-size: 0.62rem;
             font-weight: 700;
             background: rgba(0, 0, 0, 0.2);
-            padding: 1px 6px;
+            padding: 2px 8px;
             border-radius: 4px;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.4rem !important;
-                padding: 1px 3px;
+                font-size: 0.42rem !important;
+                padding: 1px 4px;
             }
         }
     }
@@ -527,5 +522,5 @@
 
 @keyframes bounceCursor {
     0% { transform: translateX(-50%) translateY(0); }
-    100% { transform: translateX(-50%) translateY(-3px); }
+    100% { transform: translateX(-50%) translateY(-4px); }
 }
