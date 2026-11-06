@@ -1,6 +1,4 @@
-// ==========================================
-// FILE: src/app/app-root.tsx
-// ==========================================
+// ========================================== // FILE: src/app/app-root.tsx // ==========================================
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import ErrorBoundary from '@/components/error-component/error-boundary';
@@ -43,42 +41,28 @@ const ErrorComponentWrapper = observer(() => {
 });
 
 const AppRoot = () => {
-    const store = useStore();
+    // Safely attempt to grab store, handle potential undefined initial state safely
+    let store;
+    try {
+        store = useStore();
+    } catch (e) {
+        store = null;
+    }
+
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
-
-    // Track whether the initial 5-second preloader phase has finished for unauthenticated users
     const [isPreloaded, setIsPreloaded] = useState(false);
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setIsPreloaded(true);
-        }, 5000); // 5 seconds preloader duration
-        return () => clearTimeout(timer);
-    }, []);
-
-    // Wipe cached token when the tab/browser is fully closed so reopening requires a fresh login
-    useEffect(() => {
-        const handleTabClose = () => {
-            // Optional: Uncomment if you want closing the tab to always require re-logging in
-            // localStorage.removeItem('authToken');
-            // localStorage.removeItem('active_loginid');
-        };
-        window.addEventListener('beforeunload', handleTabClose);
-        return () => window.removeEventListener('beforeunload', handleTabClose);
-    }, []);
-
-    // 1. Your original strict authentication check using localStorage
-    const [isAuthenticated] = useState<boolean>(() => {
+    // Track authentication state cleanly with a state hook derived safely on mount
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
         const search = window.location.search;
-        const hasAuthToken = !!localStorage.getItem('authToken');
-        const hasAccountParam = new URLSearchParams(search).has('account');
-        const hasUrlTokens = search.includes('token') || search.includes('acct');
-
         const urlParams = new URLSearchParams(search);
+        
+        let foundToken = false;
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem(key, value);
+                foundToken = true;
                 if (key.includes('token1') || key === 'token') {
                     localStorage.setItem('authToken', value);
                 }
@@ -88,11 +72,26 @@ const AppRoot = () => {
             }
         }
 
-        // True ONLY if a real auth token exists or active redirect params are present
+        const hasAuthToken = !!localStorage.getItem('authToken');
+        const hasAccountParam = urlParams.has('account');
+        const hasUrlTokens = search.includes('token') || search.includes('acct') || foundToken;
+
         return hasAuthToken || hasAccountParam || hasUrlTokens;
     });
 
-    // 2. Initialize API and clean URL parameters once on mount
+    // Handle 5-second preloader duration for unauthenticated users
+    useEffect(() => {
+        if (!isAuthenticated) {
+            const timer = setTimeout(() => {
+                setIsPreloaded(true);
+            }, 5000);
+            return () => clearTimeout(timer);
+        } else {
+            setIsPreloaded(true);
+        }
+    }, [isAuthenticated]);
+
+    // Initialize API and clean URL search tokens once on mount
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
@@ -121,6 +120,9 @@ const AppRoot = () => {
                     api_base_initialized.current = true;
                 } catch (error) {
                     console.error('API initialization failed:', error);
+                    // Fallback: if API fails critically, clear bad token and force landing page
+                    localStorage.removeItem('authToken');
+                    setIsAuthenticated(false);
                 } finally {
                     setIsApiInitialized(true);
                     clearTimeout(timeoutId);
@@ -135,9 +137,9 @@ const AppRoot = () => {
         }
 
         return () => clearTimeout(timeoutId);
-    }, []);
+    }, [isAuthenticated]);
 
-    // Twin-button handler for Login (Clean redirect without premature session flags)
+    // Twin-button handlers
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
@@ -150,7 +152,6 @@ const AppRoot = () => {
         }
     };
 
-    // Twin-button handler for Signup
     const handleSignup = () => {
         const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
         
@@ -161,17 +162,15 @@ const AppRoot = () => {
         }
     };
 
-    // RENDER GUARDS
-    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
+    // ================= RENDER GUARDS ================= //
 
-    // Intercept incoming OAuth return flows to prevent landing page flash
-    if (hasTokensInUrl) {
-        if (!store || !is_api_initialized) {
-            return <AppRootLoader />;
-        }
+    // 1. If incoming OAuth return tokens exist in URL, show loader immediately to prevent flash
+    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
+    if (hasTokensInUrl || (!is_api_initialized && isAuthenticated)) {
+        return <AppRootLoader />;
     }
 
-    // If genuinely not authenticated: play 5s preloader first, then render LandingPage
+    // 2. If genuinely not authenticated, strictly enforce the 5s preloader then show LandingPage
     if (!isAuthenticated) {
         if (!isPreloaded) {
             return (
@@ -190,11 +189,12 @@ const AppRoot = () => {
         );
     }
 
-    // If authenticated but still initializing workspace store/API
+    // 3. If authenticated but store/API is still booting up, show loader
     if (!store || !is_api_initialized) {
         return <AppRootLoader />;
     }
 
+    // 4. Safe to render workspace app content
     return (
         <Suspense fallback={<AppRootLoader />}>
             <ErrorBoundary root_store={store}>
