@@ -12,10 +12,29 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) => {
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [greeting, setGreeting] = useState('WELCOME, TRADER');
 
     // Typing effect state with uppercase text and a 5-second hold before looping
     const fullSubtitleText = "AN INSTITUTIONAL-GRADE AUTOMATED TRADING PLATFORM. DEPLOY CUSTOM BLOCKLY STRATEGIES, RUN REAL-TIME MULTI-ASSET AI SCANNERS, AND MANAGE LIVE TICKS WITH SUB-MILLISECOND EXECUTION.";
     const [typedSubtitle, setTypedSubtitle] = useState('');
+
+    // Compute dynamic time-based greeting
+    useEffect(() => {
+        const updateGreeting = () => {
+            const hour = new Date().getHours();
+            if (hour < 12) {
+                setGreeting("GOOD MORNING, TRADER");
+            } else if (hour < 17) {
+                setGreeting("GOOD AFTERNOON, TRADER");
+            } else {
+                setGreeting("GOOD EVENING, TRADER");
+            }
+        };
+
+        updateGreeting();
+        const timer = setInterval(updateGreeting, 60000); // Check every minute
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         let currentIndex = 0;
@@ -29,7 +48,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                     setTypedSubtitle(fullSubtitleText.slice(0, currentIndex));
                     currentIndex++;
                 } else {
-                    // Reached the end, hold for 5 seconds before clearing and restarting
                     isDeleting = true;
                     setTimeout(() => {
                         isDeleting = false;
@@ -110,10 +128,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
 
             <main className="landing-hero">
                 <div className="hero-badge">
-                    <span>NEXT-GEN AI TRADING WORKSPACE · DERIV API</span>
+                    <span>👋 {greeting} · DERIV API</span>
                 </div>
                 
-                {/* Main Headline (Automatically uppercased and enlarged via SCSS) */}
+                {/* Main Headline */}
                 <h1 className="hero-title glowing-title">
                     Stop trading manually.<br />
                     <span className="highlight-text">Let TraderScore.pro do the heavy lifting.</span>
