@@ -1121,3 +1121,30 @@
         }
     }
 }
+
+/* ==========================================
+   FIX GLOBAL STAKE MULTIPLIER RANGE TRACK
+   ========================================== */
+#id-copy-trading input[type="range"],
+.free-bots-container input[type="range"],
+input[type="range"] {
+    accent-color: #00a86b !important;
+
+    &::-webkit-slider-runnable-track {
+        background: rgba(0, 168, 107, 0.35) !important;
+        height: 5px !important;
+        border-radius: 3px !important;
+    }
+
+    &::-moz-range-track {
+        background: rgba(0, 168, 107, 0.35) !important;
+        height: 5px !important;
+        border-radius: 3px !important;
+    }
+
+    &::-webkit-slider-thumb {
+        background: #00a86b !important;
+        border: 2px solid #ffffff !important;
+        box-shadow: 0 0 10px rgba(0, 168, 107, 0.5) !important;
+    }
+}
