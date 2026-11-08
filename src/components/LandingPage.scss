@@ -218,11 +218,39 @@
             }
         }
 
+        /* --- STABLE SUBTYPE WRAPPER FIX --- */
+        .subtitle-container {
+            position: relative;
+            display: inline-block;
+            max-width: 680px;
+            margin: 0 auto 24px auto;
+            text-align: center;
+            width: 100%;
+        }
+
+        .subtitle-placeholder {
+            visibility: hidden;
+            pointer-events: none;
+            display: block;
+            color: #94a3b8;
+            font-size: 1.2rem;
+            line-height: 1.5;
+            font-family: monospace;
+        }
+
+        .subtitle-animated {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            margin: 0;
+        }
+        /* ---------------------------------- */
+
         .hero-subtitle {
             color: #94a3b8;
             font-size: 1.05rem;
             line-height: 1.5;
-            margin-bottom: 24px;
             max-width: 680px;
             margin-left: auto;
             margin-right: auto;
