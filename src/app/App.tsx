@@ -1,7 +1,7 @@
 // ==========================================
 // FILE: src/app/App.tsx
 // ==========================================
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import React from 'react';
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } from 'react-router-dom';
 import LocalStorageSyncWrapper from '@/components/localStorage-sync-wrapper';
@@ -27,50 +27,34 @@ const LanguageHandler = ({ children }: { children: React.ReactNode }) => {
     return <>{children}</>;
 };
 
-const router = createBrowserRouter(
-    createRoutesFromElements(
-        <Route
-            path='/'
-            element={
-                <Suspense
-                    fallback={
-                        <TradingPreloader 
-                            appName="TraderScore" 
-                            subtitle="TraderScore Trading Workspace" 
-                            minLoadingTime={10000} 
-                        />
-                    }
-                >
-                    <TranslationProvider defaultLang='EN' i18nInstance={i18nInstance}>
-                        <LanguageHandler>
-                            <StoreProvider>
-                                <LocalStorageSyncWrapper>
-                                    <RoutePromptDialog />
-                                    <CoreStoreProvider>
-                                        <Layout />
-                                    </CoreStoreProvider>
-                                </LocalStorageSyncWrapper>
-                            </StoreProvider>
-                        </LanguageHandler>
-                    </TranslationProvider>
-                </Suspense>
-            }
-        >
-            <Route index element={<AppRoot />} />
-        </Route>
-    )
-);
-
 export default function App() {
     useScannerFeed();
-
     const { isProcessing, isValid, params, error, cleanupURL } = useOAuthCallback();
     useAccountSwitching();
+
+    // 1. Immediately evaluate authentication status synchronously on mount to prevent layout flash
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+        const search = window.location.search;
+        const urlParams = new URLSearchParams(search);
+        
+        let foundToken = false;
+        for (const [key, value] of urlParams.entries()) {
+            if (key.includes('token') || key.startsWith('acct')) {
+                localStorage.setItem(key, value);
+                foundToken = true;
+                if (key.includes('token1') || key === 'token') {
+                    localStorage.setItem('authToken', value);
+                }
+            }
+        }
+
+        return !!localStorage.getItem('authToken') || urlParams.has('account') || foundToken;
+    });
 
     // Force permanent dark mode on mobile devices, light mode on laptops
     useEffect(() => {
         const handleThemeByDevice = () => {
-            const isMobile = window.innerWidth <= 768; // Standard mobile threshold
+            const isMobile = window.innerWidth <= 768;
             if (isMobile) {
                 document.body.classList.add('theme--dark');
                 document.body.classList.remove('theme--light');
@@ -80,10 +64,7 @@ export default function App() {
             }
         };
 
-        // Run on mount
         handleThemeByDevice();
-
-        // Handle if user resizes window between mobile and desktop views
         window.addEventListener('resize', handleThemeByDevice);
         return () => window.removeEventListener('resize', handleThemeByDevice);
     }, []);
@@ -91,10 +72,17 @@ export default function App() {
     // Automatically capture and store tokens when Deriv redirects back
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
+        let tokenFound = false;
+
         for (const [key, value] of urlParams.entries()) {
             if (key.includes('token') || key.startsWith('acct')) {
                 localStorage.setItem('authToken', value);
+                tokenFound = true;
             }
+        }
+
+        if (tokenFound) {
+            setIsAuthenticated(true);
         }
 
         if (!isProcessing && isValid && params.code) {
@@ -102,8 +90,9 @@ export default function App() {
                 .then(response => {
                     if (response.access_token) {
                         localStorage.setItem('authToken', response.access_token);
+                        setIsAuthenticated(true);
                         cleanupURL();
-                        window.location.href = '/'; // Refresh clean state
+                        window.location.href = '/'; 
                     } else if (response.error) {
                         cleanupURL();
                     }
@@ -114,6 +103,42 @@ export default function App() {
         }
     }, [isProcessing, isValid, params.code, error, cleanupURL]);
 
-    // Router handles everything cleanly now
+    // 2. Define router dynamically or let AppRoot handle the LandingPage view directly
+    // This guarantees that if the user is not authenticated, the full heavyweight Layout providers 
+    // don't even mount, letting AppRoot show the LandingPage immediately on the first attempt.
+    const router = createBrowserRouter(
+        createRoutesFromElements(
+            <Route
+                path='/'
+                element={
+                    <Suspense
+                        fallback={
+                            <TradingPreloader 
+                                appName="TraderScore" 
+                                subtitle="TraderScore Trading Workspace" 
+                                minLoadingTime={10000} 
+                            />
+                        }
+                    >
+                        <TranslationProvider defaultLang='EN' i18nInstance={i18nInstance}>
+                            <LanguageHandler>
+                                <StoreProvider>
+                                    <LocalStorageSyncWrapper>
+                                        <RoutePromptDialog />
+                                        <CoreStoreProvider>
+                                            {isAuthenticated ? <Layout /> : <AppRoot />}
+                                        </CoreStoreProvider>
+                                    </LocalStorageSyncWrapper>
+                                </StoreProvider>
+                            </LanguageHandler>
+                        </TranslationProvider>
+                    </Suspense>
+                }
+            >
+                <Route index element={<AppRoot />} />
+            </Route>
+        )
+    );
+
     return <RouterProvider router={router} />;
 }
