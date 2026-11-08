@@ -1,4 +1,6 @@
-// ========================================== // FILE: src/app/app-root.tsx // ==========================================
+// ==========================================
+// FILE: src/app/app-root.tsx
+// ==========================================
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import ErrorBoundary from '@/components/error-component/error-boundary';
@@ -6,7 +8,6 @@ import ErrorComponent from '@/components/error-component/error-component';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
 import { TradingPreloader } from '@/components/trading-preloader/TradingPreloader';
-import { LandingPage } from '@/components/LandingPage';
 import './app-root.scss';
 
 const AppContent = lazy(() => import('./app-content'));
@@ -41,7 +42,6 @@ const ErrorComponentWrapper = observer(() => {
 });
 
 const AppRoot = () => {
-    // Safely attempt to grab store, handle potential undefined initial state safely
     let store;
     try {
         store = useStore();
@@ -51,68 +51,9 @@ const AppRoot = () => {
 
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
-    const [isPreloaded, setIsPreloaded] = useState(false);
 
-    // Track authentication state cleanly with a state hook derived safely on mount
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-        const search = window.location.search;
-        const urlParams = new URLSearchParams(search);
-        
-        let foundToken = false;
-        for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem(key, value);
-                foundToken = true;
-                if (key.includes('token1') || key === 'token') {
-                    localStorage.setItem('authToken', value);
-                }
-                if (key.startsWith('acct1') || key === 'acct') {
-                    localStorage.setItem('active_loginid', value);
-                }
-            }
-        }
-
-        const hasAuthToken = !!localStorage.getItem('authToken');
-        const hasAccountParam = urlParams.has('account');
-        const hasUrlTokens = search.includes('token') || search.includes('acct') || foundToken;
-
-        return hasAuthToken || hasAccountParam || hasUrlTokens;
-    });
-
-    // Handle 5-second preloader duration for unauthenticated users
+    // Initialize API on mount for the authenticated workspace
     useEffect(() => {
-        if (!isAuthenticated) {
-            const timer = setTimeout(() => {
-                setIsPreloaded(true);
-            }, 5000);
-            return () => clearTimeout(timer);
-        } else {
-            setIsPreloaded(true);
-        }
-    }, [isAuthenticated]);
-
-    // Initialize API and clean URL search tokens once on mount
-    useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        let tokenFound = false;
-
-        for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem(key, value);
-                tokenFound = true;
-            }
-        }
-
-        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-
-        const timeoutId = setTimeout(() => {
-            if (!api_base_initialized.current) {
-                setIsApiInitialized(true);
-            }
-        }, 1500);
-
         const initializeApi = async () => {
             if (!api_base_initialized.current) {
                 try {
@@ -120,81 +61,23 @@ const AppRoot = () => {
                     api_base_initialized.current = true;
                 } catch (error) {
                     console.error('API initialization failed:', error);
-                    // Fallback: if API fails critically, clear bad token and force landing page
                     localStorage.removeItem('authToken');
-                    setIsAuthenticated(false);
+                    window.location.href = '/'; // Force back to landing page if auth fails
                 } finally {
                     setIsApiInitialized(true);
-                    clearTimeout(timeoutId);
                 }
             }
         };
 
-        if (isAuthenticated) {
-            initializeApi();
-        } else {
-            setIsApiInitialized(true);
-        }
+        initializeApi();
+    }, []);
 
-        return () => clearTimeout(timeoutId);
-    }, [isAuthenticated]);
-
-    // Twin-button handlers
-    const handleLogin = () => {
-        const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
-        
-        if (originalLoginBtn) {
-            originalLoginBtn.click();
-        } else {
-            const appId = '1089'; 
-            const redirectUrl = encodeURIComponent(window.location.origin + '/');
-            window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
-        }
-    };
-
-    const handleSignup = () => {
-        const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
-        
-        if (originalSignupBtn) {
-            originalSignupBtn.click();
-        } else {
-            window.open('https://home.deriv.com/dashboard', '_blank');
-        }
-    };
-
-    // ================= RENDER GUARDS ================= //
-
-    // 1. If incoming OAuth return tokens exist in URL, show loader immediately to prevent flash
-    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
-    if (hasTokensInUrl || (!is_api_initialized && isAuthenticated)) {
-        return <AppRootLoader />;
-    }
-
-    // 2. If genuinely not authenticated, strictly enforce the 5s preloader then show LandingPage
-    if (!isAuthenticated) {
-        if (!isPreloaded) {
-            return (
-                <TradingPreloader 
-                    appName="TraderScore" 
-                    subtitle="TraderScore Trading Workspace" 
-                    minLoadingTime={5000} 
-                />
-            );
-        }
-
-        return (
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
-                <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
-            </div>
-        );
-    }
-
-    // 3. If authenticated but store/API is still booting up, show loader
+    // If store or API is still initializing, show preloader
     if (!store || !is_api_initialized) {
         return <AppRootLoader />;
     }
 
-    // 4. Safe to render workspace app content
+    // Render the actual trading workspace app content
     return (
         <Suspense fallback={<AppRootLoader />}>
             <ErrorBoundary root_store={store}>
