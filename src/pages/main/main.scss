@@ -1123,28 +1123,39 @@
 }
 
 /* ==========================================
-   FIX GLOBAL STAKE MULTIPLIER RANGE TRACK
+   FIX GLOBAL STAKE MULTIPLIER RANGE TRACK & THUMB LAYOUT
    ========================================== */
 #id-copy-trading input[type="range"],
 .free-bots-container input[type="range"],
 input[type="range"] {
+    display: block !important;
+    width: 100% !important;
+    background: transparent !important;
     accent-color: #00a86b !important;
+    margin: 8px 0 !important;
 
     &::-webkit-slider-runnable-track {
-        background: rgba(0, 168, 107, 0.35) !important;
-        height: 5px !important;
-        border-radius: 3px !important;
+        background: rgba(0, 168, 107, 0.3) !important;
+        height: 6px !important;
+        border-radius: 4px !important;
+        width: 100% !important;
     }
 
     &::-moz-range-track {
-        background: rgba(0, 168, 107, 0.35) !important;
-        height: 5px !important;
-        border-radius: 3px !important;
+        background: rgba(0, 168, 107, 0.3) !important;
+        height: 6px !important;
+        border-radius: 4px !important;
+        width: 100% !important;
     }
 
     &::-webkit-slider-thumb {
         background: #00a86b !important;
         border: 2px solid #ffffff !important;
+        width: 18px !important;
+        height: 18px !important;
+        border-radius: 50% !important;
+        margin-top: -6px !important; // Centers the thumb vertically on the 6px track line
         box-shadow: 0 0 10px rgba(0, 168, 107, 0.5) !important;
+        cursor: pointer !important;
     }
 }
