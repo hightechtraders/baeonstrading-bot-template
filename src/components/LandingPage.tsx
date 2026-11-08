@@ -119,11 +119,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                     <span className="highlight-text">Let TraderScore.pro do the heavy lifting.</span>
                 </h1>
 
-                {/* Subtitle with typing effect */}
-                <p className="hero-subtitle hero-subtitle-larger">
-                    {typedSubtitle}
-                    <span className="typing-cursor">_</span>
-                </p>
+                {/* Stable Subtitle Wrapper with Typing Effect */}
+                <div className="subtitle-container">
+                    <span className="subtitle-placeholder">{fullSubtitleText}</span>
+                    <p className="hero-subtitle hero-subtitle-larger subtitle-animated">
+                        {typedSubtitle}
+                        <span className="typing-cursor">_</span>
+                    </p>
+                </div>
 
                 <div className="hero-actions">
                     <button className="btn-primary" onClick={onLogin}>
