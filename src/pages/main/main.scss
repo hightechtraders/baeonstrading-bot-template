@@ -89,12 +89,15 @@
 
             // Active tab indicator underline color & accurate positioning fix
             &__active-line {
-                background-color: #00805a !important; 
+                background-color: #00a86b !important; 
                 transition: transform 0.2s ease, width 0.2s ease;
-                height: 0.3rem !important;
+                height: 0.35rem !important;
                 border-radius: 0.2rem;
                 position: absolute;
                 bottom: 0;
+                left: 0;
+                display: block !important;
+                visibility: visible !important;
             }
 
             // Active tab indicator highlight
