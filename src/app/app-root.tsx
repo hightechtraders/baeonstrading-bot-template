@@ -42,6 +42,38 @@ const ErrorComponentWrapper = observer(() => {
     );
 });
 
+// Helper function to safely scrape OAuth parameters from search or hash fragments
+const getOAuthSessionStatus = () => {
+    if (typeof window === 'undefined') return { isValid: false, hasUrlTokens: false };
+
+    const searchString = window.location.search;
+    const hashString = window.location.hash.replace('#', '?');
+    const combinedParams = new URLSearchParams(`${searchString}&${hashString}`);
+
+    let foundValidToken = false;
+    for (const [key, value] of combinedParams.entries()) {
+        if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
+            sessionStorage.setItem(key, value);
+            foundValidToken = true;
+            if (key.includes('token1'] || key === 'token' || key.includes('token')) {
+                sessionStorage.setItem('authToken', value);
+            }
+            if (key.startsWith('acct1') || key === 'acct') {
+                sessionStorage.setItem('active_loginid', value);
+            }
+        }
+    }
+
+    const authToken = sessionStorage.getItem('authToken');
+    const hasValidAuthToken = !!authToken && authToken !== 'undefined' && authToken !== 'null' && authToken.length > 5;
+    const hasAccountParam = combinedParams.has('account') || combinedParams.has('acct');
+
+    return {
+        isValid: hasValidAuthToken || hasAccountParam || foundValidToken,
+        hasUrlTokens: foundValidToken || searchString.includes('token') || hashString.includes('token') || searchString.includes('acct')
+    };
+};
+
 const AppRoot = () => {
     let store;
     try {
@@ -56,43 +88,16 @@ const AppRoot = () => {
     const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
     const [isPreloaded, setIsPreloaded] = useState<boolean>(false);
 
-    // Track strictly positive session tokens using sessionStorage with Hash + Query support
+    // Track strictly positive session tokens using sessionStorage
     const [hasValidSession, setHasValidSession] = useState<boolean>(() => {
-        if (typeof window === 'undefined') return false;
-
-        const searchString = window.location.search;
-        const hashString = window.location.hash.replace('#', '?');
-        const combinedParams = new URLSearchParams(`${searchString}&${hashString}`);
-        
-        let foundValidToken = false;
-        for (const [key, value] of combinedParams.entries()) {
-            if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
-                sessionStorage.setItem(key, value);
-                foundValidToken = true;
-                if (key.includes('token1') || key === 'token') {
-                    sessionStorage.setItem('authToken', value);
-                }
-                if (key.startsWith('acct1') || key === 'acct') {
-                    sessionStorage.setItem('active_loginid', value);
-                }
-            }
-        }
-
-        const authToken = sessionStorage.getItem('authToken');
-        const hasValidAuthToken = !!authToken && authToken !== 'undefined' && authToken !== 'null' && authToken.length > 5;
-        const hasAccountParam = combinedParams.has('account') || combinedParams.has('acct');
-
-        const isAuthorized = hasValidAuthToken || hasAccountParam || foundValidToken;
-
-        // ================= SESSION STORAGE QUARANTINE ================= //
-        if (!isAuthorized) {
+        const session = getOAuthSessionStatus();
+        if (!session.isValid) {
             sessionStorage.removeItem('authToken');
             sessionStorage.removeItem('active_loginid');
             localStorage.removeItem('authToken');
             localStorage.removeItem('active_loginid');
         }
-
-        return isAuthorized;
+        return session.isValid;
     });
     
     const [is_api_initialized, setIsApiInitialized] = useState(false);
@@ -105,23 +110,18 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // Validate API and session asynchronously on mount with a 3-second URL preservation buffer
+    // Validate API and session asynchronously on mount
     useEffect(() => {
-        const searchString = window.location.search;
-        const hashString = window.location.hash.replace('#', '?');
-        const combinedParams = new URLSearchParams(`${searchString}&${hashString}`);
-        let tokenFound = false;
-
-        for (const [key, value] of combinedParams.entries()) {
-            if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
-                sessionStorage.setItem(key, value);
-                tokenFound = true;
-            }
-        }
+        const session = getOAuthSessionStatus();
 
         const verifyAndInitialize = async () => {
             try {
-                if (hasValidSession) {
+                if (session.isValid) {
+                    // Clean URL parameters immediately after capturing so they don't loop
+                    if (session.hasUrlTokens) {
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    }
+
                     await api_base.init();
                     api_base_initialized.current = true;
                 }
@@ -131,20 +131,11 @@ const AppRoot = () => {
                 sessionStorage.removeItem('active_loginid');
                 setHasValidSession(false);
             } finally {
-                // ================= 3-SECOND BUFFER DELAY ================= //
-                // Hold off on clearing the URL parameters for 3 full seconds 
-                // so your session storage captures them securely before the URL bar wipes clean.
-                if (tokenFound || window.location.search.includes('token') || window.location.hash.includes('token') || window.location.search.includes('acct')) {
-                    setTimeout(() => {
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                    }, 3000); // 3000ms delay
-                }
-
                 setIsApiInitialized(true);
             }
         };
 
-        if (hasValidSession) {
+        if (session.isValid) {
             verifyAndInitialize();
         } else {
             setIsApiInitialized(true);
