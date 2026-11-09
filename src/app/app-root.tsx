@@ -52,19 +52,20 @@ const AppRoot = () => {
 
     const api_base_initialized = useRef(false);
     
-    // ================= ARCHITECTURAL AUTH GATES ================= //
+    // ================= ARCHITECTURAL COMBO GATES ================= //
+    // 1. Strict auth loading gate defaults to true to show preloader on root mount
     const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+    const [isPreloaded, setIsPreloaded] = useState<boolean>(false);
 
-    // Synchronously evaluate session and clear half-baked/interrupted tokens
-    const [hasSession, setHasSession] = useState<boolean>(() => {
+    // 2. Track strictly positive session tokens
+    const [hasValidSession, setHasValidSession] = useState<boolean>(() => {
         if (typeof window === 'undefined') return false;
         const search = window.location.search;
         const urlParams = new URLSearchParams(search);
         
         let foundValidToken = false;
         for (const [key, value] of urlParams.entries()) {
-            // Only capture valid tokens/accounts, ignore empty or stray fragments
-            if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 3) {
+            if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
                 localStorage.setItem(key, value);
                 foundValidToken = true;
                 if (key.includes('token1') || key === 'token') {
@@ -79,41 +80,27 @@ const AppRoot = () => {
         const authToken = localStorage.getItem('authToken');
         const hasValidAuthToken = !!authToken && authToken !== 'undefined' && authToken !== 'null' && authToken.length > 5;
         const hasAccountParam = urlParams.has('account') || urlParams.has('acct');
-        const hasUrlTokens = search.includes('token') || search.includes('acct') || foundValidToken;
 
-        const finalSessionState = hasValidAuthToken || hasAccountParam || hasUrlTokens;
-
-        // If no valid session exists, actively wipe stale/half-written fragments to prevent false positives on reload
-        if (!finalSessionState) {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('active_loginid');
-        }
-
-        return finalSessionState;
+        return hasValidAuthToken || hasAccountParam || foundValidToken;
     });
     
     const [is_api_initialized, setIsApiInitialized] = useState(false);
-    const [isPreloaded, setIsPreloaded] = useState(false);
 
-    // Unauthenticated preloader timer
+    // Handle the mandatory minimum preloader duration (e.g. 5 seconds for smooth branding/loading experience)
     useEffect(() => {
-        if (!hasSession) {
-            const timer = setTimeout(() => {
-                setIsPreloaded(true);
-            }, 5000);
-            return () => clearTimeout(timer);
-        } else {
+        const timer = setTimeout(() => {
             setIsPreloaded(true);
-        }
-    }, [hasSession]);
+        }, 5000);
+        return () => clearTimeout(timer);
+    }, []);
 
-    // Initialize API, clean URL search tokens, and manage the strict auth loading gate
+    // Validate API and session asynchronously on mount in parallel with the preloader timer
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
 
         for (const [key, value] of urlParams.entries()) {
-            if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 3) {
+            if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
                 localStorage.setItem(key, value);
                 tokenFound = true;
             }
@@ -123,40 +110,37 @@ const AppRoot = () => {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        const timeoutId = setTimeout(() => {
-            if (!api_base_initialized.current) {
-                setIsApiInitialized(true);
-                setIsAuthLoading(false);
-            }
-        }, 2000);
-
-        const initializeApi = async () => {
-            if (!api_base_initialized.current) {
-                try {
+        const verifyAndInitialize = async () => {
+            try {
+                if (hasValidSession) {
                     await api_base.init();
                     api_base_initialized.current = true;
-                } catch (error) {
-                    console.error('API initialization failed:', error);
-                    localStorage.removeItem('authToken');
-                    localStorage.removeItem('active_loginid');
-                    setHasSession(false);
-                } finally {
-                    setIsApiInitialized(true);
-                    setIsAuthLoading(false);
-                    clearTimeout(timeoutId);
                 }
+            } catch (error) {
+                console.error('Session/API initialization failed:', error);
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('active_loginid');
+                setHasValidSession(false);
+            } finally {
+                setIsApiInitialized(true);
             }
         };
 
-        if (hasSession) {
-            initializeApi();
+        if (hasValidSession) {
+            verifyAndInitialize();
         } else {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('active_loginid');
             setIsApiInitialized(true);
+        }
+    }, [hasValidSession]);
+
+    // Lift the auth loading gate ONLY when both the preloader timer has elapsed AND the API/session checks are complete
+    useEffect(() => {
+        if (isPreloaded && is_api_initialized) {
             setIsAuthLoading(false);
         }
-
-        return () => clearTimeout(timeoutId);
-    }, [hasSession]);
+    }, [isPreloaded, is_api_initialized]);
 
     // Twin-button handlers
     const handleLogin = () => {
@@ -183,26 +167,19 @@ const AppRoot = () => {
 
     // ================= RENDER GUARDS ================= //
 
+    // 1. Root Default: Play the preloader seamlessly while background validation executes
     if (isAuthLoading) {
-        return <AppRootLoader />;
+        return (
+            <TradingPreloader 
+                appName="TraderScore" 
+                subtitle="TraderScore Trading Workspace" 
+                minLoadingTime={5000} 
+            />
+        );
     }
 
-    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
-    if (hasTokensInUrl || (!is_api_initialized && hasSession)) {
-        return <AppRootLoader />;
-    }
-
-    if (!hasSession) {
-        if (!isPreloaded) {
-            return (
-                <TradingPreloader 
-                    appName="TraderScore" 
-                    subtitle="TraderScore Trading Workspace" 
-                    minLoadingTime={5000} 
-                />
-            );
-        }
-
+    // 2. If no valid session exists after preloader clears, lock onto the Landing Page
+    if (!hasValidSession) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
                 <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
@@ -210,10 +187,12 @@ const AppRoot = () => {
         );
     }
 
-    if (!store || !is_api_initialized) {
+    // 3. Fallback loader if store is initializing
+    if (!store) {
         return <AppRootLoader />;
     }
 
+    // 4. Fully authenticated workspace content
     return (
         <Suspense fallback={<AppRootLoader />}>
             <ErrorBoundary root_store={store}>
