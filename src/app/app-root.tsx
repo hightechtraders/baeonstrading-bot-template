@@ -43,7 +43,6 @@ const ErrorComponentWrapper = observer(() => {
 });
 
 const AppRoot = () => {
-    // Safely attempt to grab store, handle potential undefined initial state safely
     let store;
     try {
         store = useStore();
@@ -54,20 +53,20 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     
     // ================= ARCHITECTURAL AUTH GATES ================= //
-    // 1. Strict auth loading gate: Default to true to prevent premature rendering race conditions
     const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
 
-    // Synchronously evaluate session and tokens on initial mount initializer function
+    // Synchronously evaluate session and clear half-baked/interrupted tokens
     const [hasSession, setHasSession] = useState<boolean>(() => {
         if (typeof window === 'undefined') return false;
         const search = window.location.search;
         const urlParams = new URLSearchParams(search);
         
-        let foundToken = false;
+        let foundValidToken = false;
         for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
+            // Only capture valid tokens/accounts, ignore empty or stray fragments
+            if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 3) {
                 localStorage.setItem(key, value);
-                foundToken = true;
+                foundValidToken = true;
                 if (key.includes('token1') || key === 'token') {
                     localStorage.setItem('authToken', value);
                 }
@@ -77,11 +76,20 @@ const AppRoot = () => {
             }
         }
 
-        const hasAuthToken = !!localStorage.getItem('authToken');
+        const authToken = localStorage.getItem('authToken');
+        const hasValidAuthToken = !!authToken && authToken !== 'undefined' && authToken !== 'null' && authToken.length > 5;
         const hasAccountParam = urlParams.has('account') || urlParams.has('acct');
-        const hasUrlTokens = search.includes('token') || search.includes('acct') || foundToken;
+        const hasUrlTokens = search.includes('token') || search.includes('acct') || foundValidToken;
 
-        return hasAuthToken || hasAccountParam || hasUrlTokens;
+        const finalSessionState = hasValidAuthToken || hasAccountParam || hasUrlTokens;
+
+        // If no valid session exists, actively wipe stale/half-written fragments to prevent false positives on reload
+        if (!finalSessionState) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('active_loginid');
+        }
+
+        return finalSessionState;
     });
     
     const [is_api_initialized, setIsApiInitialized] = useState(false);
@@ -105,7 +113,7 @@ const AppRoot = () => {
         let tokenFound = false;
 
         for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
+            if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 3) {
                 localStorage.setItem(key, value);
                 tokenFound = true;
             }
@@ -118,7 +126,7 @@ const AppRoot = () => {
         const timeoutId = setTimeout(() => {
             if (!api_base_initialized.current) {
                 setIsApiInitialized(true);
-                setIsAuthLoading(false); // Release gate on fallback timeout
+                setIsAuthLoading(false);
             }
         }, 2000);
 
@@ -130,10 +138,11 @@ const AppRoot = () => {
                 } catch (error) {
                     console.error('API initialization failed:', error);
                     localStorage.removeItem('authToken');
+                    localStorage.removeItem('active_loginid');
                     setHasSession(false);
                 } finally {
                     setIsApiInitialized(true);
-                    setIsAuthLoading(false); // Release auth loading gate only after API initialization finishes
+                    setIsAuthLoading(false);
                     clearTimeout(timeoutId);
                 }
             }
@@ -143,7 +152,7 @@ const AppRoot = () => {
             initializeApi();
         } else {
             setIsApiInitialized(true);
-            setIsAuthLoading(false); // Release gate immediately if unauthenticated
+            setIsAuthLoading(false);
         }
 
         return () => clearTimeout(timeoutId);
@@ -174,18 +183,15 @@ const AppRoot = () => {
 
     // ================= RENDER GUARDS ================= //
 
-    // 1. Strict Auth Loading Gate: Block all workspace mounting until session and API initialization are fully settled
     if (isAuthLoading) {
         return <AppRootLoader />;
     }
 
-    // 2. If incoming OAuth return tokens exist in URL, show loader immediately to prevent flash
     const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
     if (hasTokensInUrl || (!is_api_initialized && hasSession)) {
         return <AppRootLoader />;
     }
 
-    // 3. If genuinely not authenticated, strictly enforce the landing page view
     if (!hasSession) {
         if (!isPreloaded) {
             return (
@@ -204,12 +210,10 @@ const AppRoot = () => {
         );
     }
 
-    // 4. If authenticated but store/API is still booting up, show loader
     if (!store || !is_api_initialized) {
         return <AppRootLoader />;
     }
 
-    // 5. Safe to render workspace app content for authenticated users
     return (
         <Suspense fallback={<AppRootLoader />}>
             <ErrorBoundary root_store={store}>
