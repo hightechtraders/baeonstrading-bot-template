@@ -1,4 +1,6 @@
-// ========================================== // FILE: src/app/app-root.tsx // ==========================================
+// ==========================================
+// FILE: src/app/app-root.tsx
+// ==========================================
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import ErrorBoundary from '@/components/error-component/error-boundary';
@@ -50,11 +52,17 @@ const AppRoot = () => {
     }
 
     const api_base_initialized = useRef(false);
+    
+    // ================= ARCHITECTURAL AUTH GATES ================= //
+    // 1. Strict auth loading gate: Default to true to prevent premature rendering race conditions
+    const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+    const [hasSession, setHasSession] = useState<boolean>(false);
+    
     const [is_api_initialized, setIsApiInitialized] = useState(false);
     const [isPreloaded, setIsPreloaded] = useState(false);
 
-    // Track authentication state cleanly with a state hook derived safely on mount
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    // Evaluate session and tokens securely on mount before unlocking the gate
+    useEffect(() => {
         const search = window.location.search;
         const urlParams = new URLSearchParams(search);
         
@@ -76,23 +84,25 @@ const AppRoot = () => {
         const hasAccountParam = urlParams.has('account');
         const hasUrlTokens = search.includes('token') || search.includes('acct') || foundToken;
 
-        return hasAuthToken || hasAccountParam || hasUrlTokens;
-    });
+        const authenticatedResult = hasAuthToken || hasAccountParam || hasUrlTokens;
+        setHasSession(authenticatedResult);
 
-    // Handle 5-second preloader duration for unauthenticated users
-    useEffect(() => {
-        if (!isAuthenticated) {
+        // If unauthenticated, ensure preloader timer runs safely
+        if (!authenticatedResult) {
             const timer = setTimeout(() => {
                 setIsPreloaded(true);
             }, 5000);
+            setIsAuthLoading(false);
             return () => clearTimeout(timer);
         } else {
             setIsPreloaded(true);
         }
-    }, [isAuthenticated]);
+    }, []);
 
-    // Initialize API and clean URL search tokens once on mount
+    // Initialize API and clean URL search tokens once session status is known
     useEffect(() => {
+        if (isAuthLoading) return; // Wait until auth loading gate clears
+
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
 
@@ -120,24 +130,25 @@ const AppRoot = () => {
                     api_base_initialized.current = true;
                 } catch (error) {
                     console.error('API initialization failed:', error);
-                    // Fallback: if API fails critically, clear bad token and force landing page
                     localStorage.removeItem('authToken');
-                    setIsAuthenticated(false);
+                    setHasSession(false);
                 } finally {
                     setIsApiInitialized(true);
+                    setIsAuthLoading(false);
                     clearTimeout(timeoutId);
                 }
             }
         };
 
-        if (isAuthenticated) {
+        if (hasSession) {
             initializeApi();
         } else {
             setIsApiInitialized(true);
+            setIsAuthLoading(false);
         }
 
         return () => clearTimeout(timeoutId);
-    }, [isAuthenticated]);
+    }, [hasSession, isAuthLoading]);
 
     // Twin-button handlers
     const handleLogin = () => {
@@ -164,14 +175,19 @@ const AppRoot = () => {
 
     // ================= RENDER GUARDS ================= //
 
-    // 1. If incoming OAuth return tokens exist in URL, show loader immediately to prevent flash
-    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
-    if (hasTokensInUrl || (!is_api_initialized && isAuthenticated)) {
+    // 1. Strict Auth Loading Gate: Block workspace mounting while validating session state
+    if (isAuthLoading) {
         return <AppRootLoader />;
     }
 
-    // 2. If genuinely not authenticated, strictly enforce the 5s preloader then show LandingPage
-    if (!isAuthenticated) {
+    // 2. If incoming OAuth return tokens exist in URL, show loader immediately to prevent flash
+    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
+    if (hasTokensInUrl || (!is_api_initialized && hasSession)) {
+        return <AppRootLoader />;
+    }
+
+    // 3. If genuinely not authenticated, strictly enforce the landing page view
+    if (!hasSession) {
         if (!isPreloaded) {
             return (
                 <TradingPreloader 
@@ -189,12 +205,12 @@ const AppRoot = () => {
         );
     }
 
-    // 3. If authenticated but store/API is still booting up, show loader
+    // 4. If authenticated but store/API is still booting up, show loader
     if (!store || !is_api_initialized) {
         return <AppRootLoader />;
     }
 
-    // 4. Safe to render workspace app content
+    // 5. Safe to render workspace app content for authenticated users
     return (
         <Suspense fallback={<AppRootLoader />}>
             <ErrorBoundary root_store={store}>
