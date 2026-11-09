@@ -42,9 +42,9 @@ const ErrorComponentWrapper = observer(() => {
     );
 });
 
-// ================= 1. STRICT AUTHENTICATION GATE ================= //
-const getAuthenticationStatus = () => {
-    if (typeof window === 'undefined') return { isAuthenticated: false, hasTokensInUrl: false };
+// Helper to grab and lock OAuth tokens immediately from URL or session storage
+const getImmediateSession = () => {
+    if (typeof window === 'undefined') return { isAuthenticated: false, hasUrlTokens: false };
 
     const searchString = window.location.search;
     const hashString = window.location.hash.replace('#', '?');
@@ -64,21 +64,13 @@ const getAuthenticationStatus = () => {
         }
     }
 
-    // (a) Persistent token check
     const authToken = sessionStorage.getItem('authToken');
     const hasAuthToken = !!authToken && authToken !== 'undefined' && authToken !== 'null' && authToken.length > 5;
-
-    // (b) Active account query parameter check (e.g., account=USD or acct)
     const hasAccountParam = combinedParams.has('account') || combinedParams.has('acct') || combinedParams.has('acct1');
-
-    // (c) Incoming OAuth handshake detection via search/hash
     const hasUrlTokens = foundValidToken || searchString.includes('token') || hashString.includes('token') || searchString.includes('acct');
 
-    // (d) Final Rule: Resolves to true only if genuine auth tokens or active parameters are present
-    const isAuthenticated = hasAuthToken || hasAccountParam || foundValidToken;
-
     return {
-        isAuthenticated,
+        isAuthenticated: hasAuthToken || hasAccountParam || foundValidToken,
         hasUrlTokens
     };
 };
@@ -93,41 +85,33 @@ const AppRoot = () => {
 
     const api_base_initialized = useRef(false);
 
-    // ================= 2. THE 5-SECOND PRELOADER LOGIC ================= //
-    const [isPreloaded, setIsPreloaded] = useState<boolean>(false);
+    // Initial check right on mount
+    const initialSession = getImmediateSession();
+
+    const [isPreloaded, setIsPreloaded] = useState<boolean>(initialSession.isAuthenticated); // Skip 5s preloader if already logged in!
     const [isApiInitialized, setIsApiInitialized] = useState<boolean>(false);
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(initialSession.isAuthenticated);
 
-    // Persistent evaluation based on actual credentials & active URL parameters
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-        const status = getAuthenticationStatus();
-        if (!status.isAuthenticated) {
-            sessionStorage.removeItem('authToken');
-            sessionStorage.removeItem('active_loginid');
-        }
-        return status.isAuthenticated;
-    });
-
-    // Run the 5-second preloader timer
+    // If NOT authenticated, run the 5s preloader for the landing page experience
     useEffect(() => {
+        if (initialSession.isAuthenticated) {
+            setIsPreloaded(true);
+            return;
+        }
         const timer = setTimeout(() => {
             setIsPreloaded(true);
         }, 5000);
         return () => clearTimeout(timer);
-    }, []);
+    }, [initialSession.isAuthenticated]);
 
-    // ================= 3. CLEAN OAUTH INTERCEPTION & WORKSPACE ENTRY ================= //
+    // Initialize API background connection
     useEffect(() => {
-        const status = getAuthenticationStatus();
-
         const initializeApp = async () => {
             try {
-                if (status.isAuthenticated) {
-                    // Preventing flashes & cleaning the URL: 
-                    // Strip sensitive tokens out of the browser bar for cleanliness & security once captured
-                    if (status.hasUrlTokens) {
+                if (initialSession.isAuthenticated) {
+                    if (initialSession.hasUrlTokens) {
                         window.history.replaceState({}, document.title, window.location.pathname);
                     }
-
                     await api_base.init();
                     api_base_initialized.current = true;
                 }
@@ -142,12 +126,10 @@ const AppRoot = () => {
         };
 
         initializeApp();
-    }, []);
+    }, [initialSession.isAuthenticated, initialSession.hasUrlTokens]);
 
-    // Twin-button handlers for login/signup actions on the Landing Page
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
-        
         if (originalLoginBtn) {
             originalLoginBtn.click();
         } else {
@@ -159,7 +141,6 @@ const AppRoot = () => {
 
     const handleSignup = () => {
         const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
-        
         if (originalSignupBtn) {
             originalSignupBtn.click();
         } else {
@@ -167,20 +148,17 @@ const AppRoot = () => {
         }
     };
 
-    // ================= RENDER GUARDS & ENFORCEMENT ================= //
-
-    // Rule 2: If preloader hasn't finished OR API/Auth checks are still running, display Trading Preloader (Prevents flashing)
+    // Render Guards
     if (!isPreloaded || !isApiInitialized) {
         return (
             <TradingPreloader 
                 appName="TraderScore" 
                 subtitle="TraderScore Trading Workspace" 
-                minLoadingTime={5000} 
+                minLoadingTime={1200} 
             />
         );
     }
 
-    // Rule 1 & 2: Once the 5s timer completes, if not authenticated, land on the Landing Page
     if (!isAuthenticated) {
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
@@ -189,12 +167,10 @@ const AppRoot = () => {
         );
     }
 
-    // Rule 3: Fallback loader if store is initializing post-auth
     if (!store) {
         return <AppRootLoader />;
     }
 
-    // Fully authenticated workspace entry point
     return (
         <Suspense fallback={<AppRootLoader />}>
             <ErrorBoundary root_store={store}>
