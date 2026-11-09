@@ -53,11 +53,10 @@ const AppRoot = () => {
     const api_base_initialized = useRef(false);
     
     // ================= ARCHITECTURAL COMBO GATES ================= //
-    // 1. Strict auth loading gate defaults to true to show preloader on root mount
     const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
     const [isPreloaded, setIsPreloaded] = useState<boolean>(false);
 
-    // 2. Track strictly positive session tokens
+    // Track strictly positive session tokens with hard cache clearing for unauthenticated loads
     const [hasValidSession, setHasValidSession] = useState<boolean>(() => {
         if (typeof window === 'undefined') return false;
         const search = window.location.search;
@@ -81,12 +80,27 @@ const AppRoot = () => {
         const hasValidAuthToken = !!authToken && authToken !== 'undefined' && authToken !== 'null' && authToken.length > 5;
         const hasAccountParam = urlParams.has('account') || urlParams.has('acct');
 
-        return hasValidAuthToken || hasAccountParam || foundValidToken;
+        const isAuthorized = hasValidAuthToken || hasAccountParam || foundValidToken;
+
+        // ================= HARD CACHE CLEARING GUARD ================= //
+        // If the user is visiting fresh without active OAuth tokens, aggressively purge
+        // any lingering cached keys to guarantee a clean landing page launch.
+        if (!isAuthorized) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('active_loginid');
+            Object.keys(localStorage).forEach(key => {
+                if (key.includes('token') || key.startsWith('acct') || key.includes('oauth')) {
+                    localStorage.removeItem(key);
+                }
+            });
+        }
+
+        return isAuthorized;
     });
     
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // Handle the mandatory minimum preloader duration (e.g. 5 seconds for smooth branding/loading experience)
+    // Handle the mandatory minimum preloader duration (5 seconds)
     useEffect(() => {
         const timer = setTimeout(() => {
             setIsPreloaded(true);
