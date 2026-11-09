@@ -56,7 +56,7 @@ const AppRoot = () => {
     const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
     const [isPreloaded, setIsPreloaded] = useState<boolean>(false);
 
-    // Track strictly positive session tokens with hard cache clearing for unauthenticated loads
+    // Track strictly positive session tokens using sessionStorage (wipes when tab/browser closes)
     const [hasValidSession, setHasValidSession] = useState<boolean>(() => {
         if (typeof window === 'undefined') return false;
         const search = window.location.search;
@@ -65,34 +65,31 @@ const AppRoot = () => {
         let foundValidToken = false;
         for (const [key, value] of urlParams.entries()) {
             if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
-                localStorage.setItem(key, value);
+                sessionStorage.setItem(key, value);
                 foundValidToken = true;
                 if (key.includes('token1') || key === 'token') {
-                    localStorage.setItem('authToken', value);
+                    sessionStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
-                    localStorage.setItem('active_loginid', value);
+                    sessionStorage.setItem('active_loginid', value);
                 }
             }
         }
 
-        const authToken = localStorage.getItem('authToken');
+        const authToken = sessionStorage.getItem('authToken');
         const hasValidAuthToken = !!authToken && authToken !== 'undefined' && authToken !== 'null' && authToken.length > 5;
         const hasAccountParam = urlParams.has('account') || urlParams.has('acct');
 
         const isAuthorized = hasValidAuthToken || hasAccountParam || foundValidToken;
 
-        // ================= HARD CACHE CLEARING GUARD ================= //
-        // If the user is visiting fresh without active OAuth tokens, aggressively purge
-        // any lingering cached keys to guarantee a clean landing page launch.
+        // ================= SESSION STORAGE QUARANTINE ================= //
+        // If no active OAuth parameters are in the URL, strictly ensure session storage is clean
         if (!isAuthorized) {
+            sessionStorage.removeItem('authToken');
+            sessionStorage.removeItem('active_loginid');
+            // Also clean up any legacy localStorage tokens if they were previously saved there
             localStorage.removeItem('authToken');
             localStorage.removeItem('active_loginid');
-            Object.keys(localStorage).forEach(key => {
-                if (key.includes('token') || key.startsWith('acct') || key.includes('oauth')) {
-                    localStorage.removeItem(key);
-                }
-            });
         }
 
         return isAuthorized;
@@ -115,7 +112,7 @@ const AppRoot = () => {
 
         for (const [key, value] of urlParams.entries()) {
             if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
-                localStorage.setItem(key, value);
+                sessionStorage.setItem(key, value);
                 tokenFound = true;
             }
         }
@@ -132,8 +129,8 @@ const AppRoot = () => {
                 }
             } catch (error) {
                 console.error('Session/API initialization failed:', error);
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('active_loginid');
+                sessionStorage.removeItem('authToken');
+                sessionStorage.removeItem('active_loginid');
                 setHasValidSession(false);
             } finally {
                 setIsApiInitialized(true);
@@ -143,8 +140,8 @@ const AppRoot = () => {
         if (hasValidSession) {
             verifyAndInitialize();
         } else {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('active_loginid');
+            sessionStorage.removeItem('authToken');
+            sessionStorage.removeItem('active_loginid');
             setIsApiInitialized(true);
         }
     }, [hasValidSession]);
