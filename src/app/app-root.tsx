@@ -55,7 +55,6 @@ const getOAuthSessionStatus = () => {
         if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
             sessionStorage.setItem(key, value);
             foundValidToken = true;
-            // Fixed typo from closing square bracket to parenthesis
             if (key.includes('token1') || key === 'token' || key.includes('token')) {
                 sessionStorage.setItem('authToken', value);
             }
@@ -132,6 +131,7 @@ const AppRoot = () => {
                 sessionStorage.removeItem('active_loginid');
                 setHasValidSession(false);
             } finally {
+                // Guaranteed to execute, unlocking the preloader check
                 setIsApiInitialized(true);
             }
         };
@@ -141,7 +141,7 @@ const AppRoot = () => {
         } else {
             setIsApiInitialized(true);
         }
-    }, [hasValidSession]);
+    }, []);
 
     // Lift the auth loading gate ONLY when both the preloader timer has elapsed AND the API/session checks are complete
     useEffect(() => {
