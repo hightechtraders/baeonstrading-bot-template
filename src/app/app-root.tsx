@@ -56,13 +56,10 @@ const AppRoot = () => {
     // ================= ARCHITECTURAL AUTH GATES ================= //
     // 1. Strict auth loading gate: Default to true to prevent premature rendering race conditions
     const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
-    const [hasSession, setHasSession] = useState<boolean>(false);
-    
-    const [is_api_initialized, setIsApiInitialized] = useState(false);
-    const [isPreloaded, setIsPreloaded] = useState(false);
 
-    // Evaluate session and tokens securely on mount before unlocking the gate
-    useEffect(() => {
+    // Synchronously evaluate session and tokens on initial mount initializer function
+    const [hasSession, setHasSession] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
         const search = window.location.search;
         const urlParams = new URLSearchParams(search);
         
@@ -81,28 +78,29 @@ const AppRoot = () => {
         }
 
         const hasAuthToken = !!localStorage.getItem('authToken');
-        const hasAccountParam = urlParams.has('account');
+        const hasAccountParam = urlParams.has('account') || urlParams.has('acct');
         const hasUrlTokens = search.includes('token') || search.includes('acct') || foundToken;
 
-        const authenticatedResult = hasAuthToken || hasAccountParam || hasUrlTokens;
-        setHasSession(authenticatedResult);
+        return hasAuthToken || hasAccountParam || hasUrlTokens;
+    });
+    
+    const [is_api_initialized, setIsApiInitialized] = useState(false);
+    const [isPreloaded, setIsPreloaded] = useState(false);
 
-        // If unauthenticated, ensure preloader timer runs safely
-        if (!authenticatedResult) {
+    // Unauthenticated preloader timer
+    useEffect(() => {
+        if (!hasSession) {
             const timer = setTimeout(() => {
                 setIsPreloaded(true);
             }, 5000);
-            setIsAuthLoading(false);
             return () => clearTimeout(timer);
         } else {
             setIsPreloaded(true);
         }
-    }, []);
+    }, [hasSession]);
 
-    // Initialize API and clean URL search tokens once session status is known
+    // Initialize API, clean URL search tokens, and manage the strict auth loading gate
     useEffect(() => {
-        if (isAuthLoading) return; // Wait until auth loading gate clears
-
         const urlParams = new URLSearchParams(window.location.search);
         let tokenFound = false;
 
@@ -120,8 +118,9 @@ const AppRoot = () => {
         const timeoutId = setTimeout(() => {
             if (!api_base_initialized.current) {
                 setIsApiInitialized(true);
+                setIsAuthLoading(false); // Release gate on fallback timeout
             }
-        }, 1500);
+        }, 2000);
 
         const initializeApi = async () => {
             if (!api_base_initialized.current) {
@@ -134,7 +133,7 @@ const AppRoot = () => {
                     setHasSession(false);
                 } finally {
                     setIsApiInitialized(true);
-                    setIsAuthLoading(false);
+                    setIsAuthLoading(false); // Release auth loading gate only after API initialization finishes
                     clearTimeout(timeoutId);
                 }
             }
@@ -144,11 +143,11 @@ const AppRoot = () => {
             initializeApi();
         } else {
             setIsApiInitialized(true);
-            setIsAuthLoading(false);
+            setIsAuthLoading(false); // Release gate immediately if unauthenticated
         }
 
         return () => clearTimeout(timeoutId);
-    }, [hasSession, isAuthLoading]);
+    }, [hasSession]);
 
     // Twin-button handlers
     const handleLogin = () => {
@@ -175,7 +174,7 @@ const AppRoot = () => {
 
     // ================= RENDER GUARDS ================= //
 
-    // 1. Strict Auth Loading Gate: Block workspace mounting while validating session state
+    // 1. Strict Auth Loading Gate: Block all workspace mounting until session and API initialization are fully settled
     if (isAuthLoading) {
         return <AppRootLoader />;
     }
