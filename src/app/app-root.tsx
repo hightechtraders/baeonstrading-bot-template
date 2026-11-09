@@ -56,14 +56,16 @@ const AppRoot = () => {
     const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
     const [isPreloaded, setIsPreloaded] = useState<boolean>(false);
 
-    // Track strictly positive session tokens using sessionStorage (wipes when tab/browser closes)
+    // Track strictly positive session tokens using sessionStorage with Hash + Query support
     const [hasValidSession, setHasValidSession] = useState<boolean>(() => {
         if (typeof window === 'undefined') return false;
-        const search = window.location.search;
-        const urlParams = new URLSearchParams(search);
+
+        const searchString = window.location.search;
+        const hashString = window.location.hash.replace('#', '?');
+        const combinedParams = new URLSearchParams(`${searchString}&${hashString}`);
         
         let foundValidToken = false;
-        for (const [key, value] of urlParams.entries()) {
+        for (const [key, value] of combinedParams.entries()) {
             if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
                 sessionStorage.setItem(key, value);
                 foundValidToken = true;
@@ -78,16 +80,15 @@ const AppRoot = () => {
 
         const authToken = sessionStorage.getItem('authToken');
         const hasValidAuthToken = !!authToken && authToken !== 'undefined' && authToken !== 'null' && authToken.length > 5;
-        const hasAccountParam = urlParams.has('account') || urlParams.has('acct');
+        const hasAccountParam = combinedParams.has('account') || combinedParams.has('acct');
 
         const isAuthorized = hasValidAuthToken || hasAccountParam || foundValidToken;
 
         // ================= SESSION STORAGE QUARANTINE ================= //
-        // If no active OAuth parameters are in the URL, strictly ensure session storage is clean
+        // If no active OAuth parameters are in URL or active session, keep storage clean
         if (!isAuthorized) {
             sessionStorage.removeItem('authToken');
             sessionStorage.removeItem('active_loginid');
-            // Also clean up any legacy localStorage tokens if they were previously saved there
             localStorage.removeItem('authToken');
             localStorage.removeItem('active_loginid');
         }
@@ -107,17 +108,20 @@ const AppRoot = () => {
 
     // Validate API and session asynchronously on mount in parallel with the preloader timer
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
+        const searchString = window.location.search;
+        const hashString = window.location.hash.replace('#', '?');
+        const combinedParams = new URLSearchParams(`${searchString}&${hashString}`);
         let tokenFound = false;
 
-        for (const [key, value] of urlParams.entries()) {
+        for (const [key, value] of combinedParams.entries()) {
             if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
                 sessionStorage.setItem(key, value);
                 tokenFound = true;
             }
         }
 
-        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
+        // Clean up URL search query and hash parameters so tokens are never exposed in the URL bar
+        if (tokenFound || window.location.search.includes('token') || window.location.hash.includes('token')) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -140,8 +144,6 @@ const AppRoot = () => {
         if (hasValidSession) {
             verifyAndInitialize();
         } else {
-            sessionStorage.removeItem('authToken');
-            sessionStorage.removeItem('active_loginid');
             setIsApiInitialized(true);
         }
     }, [hasValidSession]);
