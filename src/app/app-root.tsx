@@ -55,7 +55,8 @@ const getOAuthSessionStatus = () => {
         if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
             sessionStorage.setItem(key, value);
             foundValidToken = true;
-            if (key.includes('token1'] || key === 'token' || key.includes('token')) {
+            // Fixed typo from closing square bracket to parenthesis
+            if (key.includes('token1') || key === 'token' || key.includes('token')) {
                 sessionStorage.setItem('authToken', value);
             }
             if (key.startsWith('acct1') || key === 'acct') {
