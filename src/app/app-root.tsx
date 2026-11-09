@@ -85,7 +85,6 @@ const AppRoot = () => {
         const isAuthorized = hasValidAuthToken || hasAccountParam || foundValidToken;
 
         // ================= SESSION STORAGE QUARANTINE ================= //
-        // If no active OAuth parameters are in URL or active session, keep storage clean
         if (!isAuthorized) {
             sessionStorage.removeItem('authToken');
             sessionStorage.removeItem('active_loginid');
@@ -106,7 +105,7 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // Validate API and session asynchronously on mount in parallel with the preloader timer
+    // Validate API and session asynchronously on mount with a 3-second URL preservation buffer
     useEffect(() => {
         const searchString = window.location.search;
         const hashString = window.location.hash.replace('#', '?');
@@ -118,11 +117,6 @@ const AppRoot = () => {
                 sessionStorage.setItem(key, value);
                 tokenFound = true;
             }
-        }
-
-        // Clean up URL search query and hash parameters so tokens are never exposed in the URL bar
-        if (tokenFound || window.location.search.includes('token') || window.location.hash.includes('token')) {
-            window.history.replaceState({}, document.title, window.location.pathname);
         }
 
         const verifyAndInitialize = async () => {
@@ -137,6 +131,15 @@ const AppRoot = () => {
                 sessionStorage.removeItem('active_loginid');
                 setHasValidSession(false);
             } finally {
+                // ================= 3-SECOND BUFFER DELAY ================= //
+                // Hold off on clearing the URL parameters for 3 full seconds 
+                // so your session storage captures them securely before the URL bar wipes clean.
+                if (tokenFound || window.location.search.includes('token') || window.location.hash.includes('token') || window.location.search.includes('acct')) {
+                    setTimeout(() => {
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    }, 3000); // 3000ms delay
+                }
+
                 setIsApiInitialized(true);
             }
         };
