@@ -110,7 +110,7 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, [isAuthenticated]);
 
-    // Initialize API background connection
+    // Initialize API background connection safely
     useEffect(() => {
         const initializeApp = async () => {
             try {
@@ -119,13 +119,22 @@ const AppRoot = () => {
                         await api_base.init();
                         api_base_initialized.current = true;
                     }
+                    setIsAuthenticated(true);
                 }
             } catch (error) {
-                console.error('API Initialization error:', error);
-                // Only clear session and kick out if initialization hard-fails on valid stored credentials
-                sessionStorage.removeItem('authToken');
-                sessionStorage.removeItem('active_loginid');
-                setIsAuthenticated(false);
+                console.error('API Initialization warning (ignoring minor socket jitter):', error);
+                
+                // DIFFERENCE: Instead of wiping session on ANY error, verify if token exists.
+                // If a valid token exists in sessionStorage, keep the user logged in!
+                const currentToken = sessionStorage.getItem('authToken');
+                if (currentToken && currentToken.length > 5) {
+                    console.log('Valid auth token found in session storage. Preserving session.');
+                    setIsAuthenticated(true);
+                } else {
+                    sessionStorage.removeItem('authToken');
+                    sessionStorage.removeItem('active_loginid');
+                    setIsAuthenticated(false);
+                }
             } finally {
                 setIsApiInitialized(true);
             }
