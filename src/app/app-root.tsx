@@ -42,120 +42,118 @@ const ErrorComponentWrapper = observer(() => {
     );
 });
 
-// Immediate synchronous check and URL token capture
-const checkAndCaptureSession = () => {
-    if (typeof window === 'undefined') return false;
-
-    const searchString = window.location.search;
-    const hashString = window.location.hash.replace('#', '?');
-    const combinedParams = new URLSearchParams(`${searchString}&${hashString}`);
-
-    let foundToken = false;
-
-    for (const [key, value] of combinedParams.entries()) {
-        if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
-            sessionStorage.setItem(key, value);
-            foundToken = true;
-            if (key.includes('token1') || key === 'token' || key.includes('token')) {
-                sessionStorage.setItem('authToken', value);
-            }
-            if (key.startsWith('acct1') || key === 'acct') {
-                sessionStorage.setItem('active_loginid', value);
-            }
-        }
-    }
-
-    const authToken = sessionStorage.getItem('authToken');
-    const hasAuthToken = !!authToken && authToken !== 'undefined' && authToken !== 'null' && authToken.length > 5;
-    const hasAccountParam = combinedParams.has('account') || combinedParams.has('acct') || combinedParams.has('acct1');
-
-    return hasAuthToken || hasAccountParam || foundToken;
-};
-
 const AppRoot = () => {
-    let store;
-    try {
-        store = useStore();
-    } catch (e) {
-        store = null;
-    }
-
+    const store = useStore();
     const api_base_initialized = useRef(false);
+    const [is_api_initialized, setIsApiInitialized] = useState(false);
 
-    // Capture session state instantly right on first evaluation
-    const hasActiveSession = checkAndCaptureSession();
+    // Track whether the initial 5-second preloader phase has finished for unauthenticated users
+    const [isPreloaded, setIsPreloaded] = useState(false);
 
-    const [isPreloaded, setIsPreloaded] = useState<boolean>(hasActiveSession);
-    const [isApiInitialized, setIsApiInitialized] = useState<boolean>(false);
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(hasActiveSession);
-
-    // Clean URL query parameters safely *after* tokens are secured in session storage
     useEffect(() => {
-        const searchString = window.location.search;
-        const hashString = window.location.hash;
-        if (hasActiveSession && (searchString.includes('token') || hashString.includes('token') || searchString.includes('acct'))) {
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-    }, [hasActiveSession]);
-
-    // Preloader timer for unauthenticated users landing page experience
-    useEffect(() => {
-        if (isAuthenticated) {
-            setIsPreloaded(true);
-            return;
-        }
         const timer = setTimeout(() => {
             setIsPreloaded(true);
-        }, 5000);
+        }, 5000); // 5 seconds preloader duration
         return () => clearTimeout(timer);
-    }, [isAuthenticated]);
+    }, []);
 
-    // Initialize API background connection safely
+    // Wipe cached token when the tab/browser is fully closed so reopening requires a fresh login
     useEffect(() => {
-        const initializeApp = async () => {
-            try {
-                if (hasActiveSession) {
-                    if (!api_base_initialized.current) {
-                        await api_base.init();
-                        api_base_initialized.current = true;
-                    }
-                    setIsAuthenticated(true);
+        const handleTabClose = () => {
+            // Optional: Uncomment if you want closing the tab to always require re-logging in
+            // localStorage.removeItem('authToken');
+            // localStorage.removeItem('active_loginid');
+        };
+        window.addEventListener('beforeunload', handleTabClose);
+        return () => window.removeEventListener('beforeunload', handleTabClose);
+    }, []);
+
+    // 1. Your original strict authentication check using localStorage
+    const [isAuthenticated] = useState<boolean>(() => {
+        const search = window.location.search;
+        const hasAuthToken = !!localStorage.getItem('authToken');
+        const hasAccountParam = new URLSearchParams(search).has('account');
+        const hasUrlTokens = search.includes('token') || search.includes('acct');
+
+        const urlParams = new URLSearchParams(search);
+        for (const [key, value] of urlParams.entries()) {
+            if (key.includes('token') || key.startsWith('acct')) {
+                localStorage.setItem(key, value);
+                if (key.includes('token1') || key === 'token') {
+                    localStorage.setItem('authToken', value);
                 }
-            } catch (error) {
-                console.error('API Initialization warning (ignoring minor socket jitter):', error);
-                
-                // DIFFERENCE: Instead of wiping session on ANY error, verify if token exists.
-                // If a valid token exists in sessionStorage, keep the user logged in!
-                const currentToken = sessionStorage.getItem('authToken');
-                if (currentToken && currentToken.length > 5) {
-                    console.log('Valid auth token found in session storage. Preserving session.');
-                    setIsAuthenticated(true);
-                } else {
-                    sessionStorage.removeItem('authToken');
-                    sessionStorage.removeItem('active_loginid');
-                    setIsAuthenticated(false);
+                if (key.startsWith('acct1') || key === 'acct') {
+                    localStorage.setItem('active_loginid', value);
                 }
-            } finally {
+            }
+        }
+
+        // True ONLY if a real auth token exists or active redirect params are present
+        return hasAuthToken || hasAccountParam || hasUrlTokens;
+    });
+
+    // 2. Initialize API and clean URL parameters once on mount
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        let tokenFound = false;
+
+        for (const [key, value] of urlParams.entries()) {
+            if (key.includes('token') || key.startsWith('acct')) {
+                localStorage.setItem(key, value);
+                tokenFound = true;
+            }
+        }
+
+        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        const timeoutId = setTimeout(() => {
+            if (!api_base_initialized.current) {
                 setIsApiInitialized(true);
+            }
+        }, 1500);
+
+        const initializeApi = async () => {
+            if (!api_base_initialized.current) {
+                try {
+                    await api_base.init();
+                    api_base_initialized.current = true;
+                } catch (error) {
+                    console.error('API initialization failed:', error);
+                } finally {
+                    setIsApiInitialized(true);
+                    clearTimeout(timeoutId);
+                }
             }
         };
 
-        initializeApp();
-    }, [hasActiveSession]);
+        if (isAuthenticated) {
+            initializeApi();
+        } else {
+            setIsApiInitialized(true);
+        }
 
+        return () => clearTimeout(timeoutId);
+    }, []);
+
+    // Twin-button handler for Login (Clean redirect without premature session flags)
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
+        
         if (originalLoginBtn) {
             originalLoginBtn.click();
         } else {
             const appId = '1089'; 
-            const redirectUrl = encodeURIComponent(window.location.origin + window.location.pathname);
+            const redirectUrl = encodeURIComponent(window.location.origin + '/');
             window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
         }
     };
 
+    // Twin-button handler for Signup
     const handleSignup = () => {
         const originalSignupBtn = document.querySelector('.signup-btn, [class*="signup"], [class*="register"]') as HTMLButtonElement;
+        
         if (originalSignupBtn) {
             originalSignupBtn.click();
         } else {
@@ -163,18 +161,28 @@ const AppRoot = () => {
         }
     };
 
-    // Render Guards
-    if (!isPreloaded || !isApiInitialized) {
-        return (
-            <TradingPreloader 
-                appName="TraderScore" 
-                subtitle="TraderScore Trading Workspace" 
-                minLoadingTime={1200} 
-            />
-        );
+    // RENDER GUARDS
+    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
+
+    // Intercept incoming OAuth return flows to prevent landing page flash
+    if (hasTokensInUrl) {
+        if (!store || !is_api_initialized) {
+            return <AppRootLoader />;
+        }
     }
 
+    // If genuinely not authenticated: play 5s preloader first, then render LandingPage
     if (!isAuthenticated) {
+        if (!isPreloaded) {
+            return (
+                <TradingPreloader 
+                    appName="TraderScore" 
+                    subtitle="TraderScore Trading Workspace" 
+                    minLoadingTime={5000} 
+                />
+            );
+        }
+
         return (
             <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 99999, backgroundColor: '#0b0e14', overflowY: 'auto' }}>
                 <LandingPage onLogin={handleLogin} onSignup={handleSignup} />
@@ -182,7 +190,8 @@ const AppRoot = () => {
         );
     }
 
-    if (!store) {
+    // If authenticated but still initializing workspace store/API
+    if (!store || !is_api_initialized) {
         return <AppRootLoader />;
     }
 
