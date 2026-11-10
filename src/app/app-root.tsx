@@ -1,6 +1,4 @@
-// ==========================================
-// FILE: src/app/app-root.tsx
-// ==========================================
+// ========================================== // FILE: src/app/app-root.tsx // ==========================================
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import ErrorBoundary from '@/components/error-component/error-boundary';
@@ -42,8 +40,8 @@ const ErrorComponentWrapper = observer(() => {
     );
 });
 
-// Helper to grab and lock OAuth tokens immediately from URL or session storage
-const getImmediateSession = () => {
+// Robust session extractor & locker
+const getPersistentSession = () => {
     if (typeof window === 'undefined') return { isAuthenticated: false, hasUrlTokens: false };
 
     const searchString = window.location.search;
@@ -67,11 +65,10 @@ const getImmediateSession = () => {
     const authToken = sessionStorage.getItem('authToken');
     const hasAuthToken = !!authToken && authToken !== 'undefined' && authToken !== 'null' && authToken.length > 5;
     const hasAccountParam = combinedParams.has('account') || combinedParams.has('acct') || combinedParams.has('acct1');
-    const hasUrlTokens = foundValidToken || searchString.includes('token') || hashString.includes('token') || searchString.includes('acct');
 
     return {
         isAuthenticated: hasAuthToken || hasAccountParam || foundValidToken,
-        hasUrlTokens
+        hasUrlTokens: foundValidToken || searchString.includes('token') || hashString.includes('token') || searchString.includes('acct')
     };
 };
 
@@ -85,16 +82,16 @@ const AppRoot = () => {
 
     const api_base_initialized = useRef(false);
 
-    // Initial check right on mount
-    const initialSession = getImmediateSession();
+    // Evaluate session state reactively
+    const initialSession = getPersistentSession();
 
-    const [isPreloaded, setIsPreloaded] = useState<boolean>(initialSession.isAuthenticated); // Skip 5s preloader if already logged in!
+    const [isPreloaded, setIsPreloaded] = useState<boolean>(initialSession.isAuthenticated);
     const [isApiInitialized, setIsApiInitialized] = useState<boolean>(false);
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(initialSession.isAuthenticated);
 
-    // If NOT authenticated, run the 5s preloader for the landing page experience
+    // Preloader timer for unauthenticated users landing page experience
     useEffect(() => {
-        if (initialSession.isAuthenticated) {
+        if (isAuthenticated) {
             setIsPreloaded(true);
             return;
         }
@@ -102,18 +99,22 @@ const AppRoot = () => {
             setIsPreloaded(true);
         }, 5000);
         return () => clearTimeout(timer);
-    }, [initialSession.isAuthenticated]);
+    }, [isAuthenticated]);
 
-    // Initialize API background connection
+    // Initialize API background connection & handle token cleanup safely
     useEffect(() => {
         const initializeApp = async () => {
             try {
                 if (initialSession.isAuthenticated) {
                     if (initialSession.hasUrlTokens) {
+                        // Clean URL params so they don't get re-parsed or trigger duplicate states
                         window.history.replaceState({}, document.title, window.location.pathname);
                     }
-                    await api_base.init();
-                    api_base_initialized.current = true;
+                    if (!api_base_initialized.current) {
+                        await api_base.init();
+                        api_base_initialized.current = true;
+                    }
+                    setIsAuthenticated(true);
                 }
             } catch (error) {
                 console.error('API Initialization error:', error);
@@ -134,7 +135,7 @@ const AppRoot = () => {
             originalLoginBtn.click();
         } else {
             const appId = '1089'; 
-            const redirectUrl = encodeURIComponent(window.location.origin + '/');
+            const redirectUrl = encodeURIComponent(window.location.origin + window.location.pathname);
             window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
         }
     };
