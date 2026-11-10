@@ -1,4 +1,6 @@
-// ========================================== // FILE: src/app/app-root.tsx // ==========================================
+// ==========================================
+// FILE: src/app/app-root.tsx
+// ==========================================
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import ErrorBoundary from '@/components/error-component/error-boundary';
@@ -40,19 +42,20 @@ const ErrorComponentWrapper = observer(() => {
     );
 });
 
-// Robust session extractor & locker
-const getPersistentSession = () => {
-    if (typeof window === 'undefined') return { isAuthenticated: false, hasUrlTokens: false };
+// Immediate synchronous check and URL token capture
+const checkAndCaptureSession = () => {
+    if (typeof window === 'undefined') return false;
 
     const searchString = window.location.search;
     const hashString = window.location.hash.replace('#', '?');
     const combinedParams = new URLSearchParams(`${searchString}&${hashString}`);
 
-    let foundValidToken = false;
+    let foundToken = false;
+
     for (const [key, value] of combinedParams.entries()) {
         if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
             sessionStorage.setItem(key, value);
-            foundValidToken = true;
+            foundToken = true;
             if (key.includes('token1') || key === 'token' || key.includes('token')) {
                 sessionStorage.setItem('authToken', value);
             }
@@ -66,10 +69,7 @@ const getPersistentSession = () => {
     const hasAuthToken = !!authToken && authToken !== 'undefined' && authToken !== 'null' && authToken.length > 5;
     const hasAccountParam = combinedParams.has('account') || combinedParams.has('acct') || combinedParams.has('acct1');
 
-    return {
-        isAuthenticated: hasAuthToken || hasAccountParam || foundValidToken,
-        hasUrlTokens: foundValidToken || searchString.includes('token') || hashString.includes('token') || searchString.includes('acct')
-    };
+    return hasAuthToken || hasAccountParam || foundToken;
 };
 
 const AppRoot = () => {
@@ -82,12 +82,21 @@ const AppRoot = () => {
 
     const api_base_initialized = useRef(false);
 
-    // Evaluate session state reactively
-    const initialSession = getPersistentSession();
+    // Capture session state instantly right on first evaluation
+    const hasActiveSession = checkAndCaptureSession();
 
-    const [isPreloaded, setIsPreloaded] = useState<boolean>(initialSession.isAuthenticated);
+    const [isPreloaded, setIsPreloaded] = useState<boolean>(hasActiveSession);
     const [isApiInitialized, setIsApiInitialized] = useState<boolean>(false);
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(initialSession.isAuthenticated);
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(hasActiveSession);
+
+    // Clean URL query parameters safely *after* tokens are secured in session storage
+    useEffect(() => {
+        const searchString = window.location.search;
+        const hashString = window.location.hash;
+        if (hasActiveSession && (searchString.includes('token') || hashString.includes('token') || searchString.includes('acct'))) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, [hasActiveSession]);
 
     // Preloader timer for unauthenticated users landing page experience
     useEffect(() => {
@@ -101,23 +110,19 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, [isAuthenticated]);
 
-    // Initialize API background connection & handle token cleanup safely
+    // Initialize API background connection
     useEffect(() => {
         const initializeApp = async () => {
             try {
-                if (initialSession.isAuthenticated) {
-                    if (initialSession.hasUrlTokens) {
-                        // Clean URL params so they don't get re-parsed or trigger duplicate states
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                    }
+                if (hasActiveSession) {
                     if (!api_base_initialized.current) {
                         await api_base.init();
                         api_base_initialized.current = true;
                     }
-                    setIsAuthenticated(true);
                 }
             } catch (error) {
                 console.error('API Initialization error:', error);
+                // Only clear session and kick out if initialization hard-fails on valid stored credentials
                 sessionStorage.removeItem('authToken');
                 sessionStorage.removeItem('active_loginid');
                 setIsAuthenticated(false);
@@ -127,7 +132,7 @@ const AppRoot = () => {
         };
 
         initializeApp();
-    }, [initialSession.isAuthenticated, initialSession.hasUrlTokens]);
+    }, [hasActiveSession]);
 
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
