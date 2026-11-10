@@ -43,7 +43,13 @@ const ErrorComponentWrapper = observer(() => {
 });
 
 const AppRoot = () => {
-    const store = useStore();
+    let store;
+    try {
+        store = useStore();
+    } catch (e) {
+        store = null;
+    }
+
     const api_base_initialized = useRef(false);
     const [is_api_initialized, setIsApiInitialized] = useState(false);
 
@@ -57,29 +63,23 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // Wipe cached token when the tab/browser is fully closed so reopening requires a fresh login
-    useEffect(() => {
-        const handleTabClose = () => {
-            // Optional: Uncomment if you want closing the tab to always require re-logging in
-            // localStorage.removeItem('authToken');
-            // localStorage.removeItem('active_loginid');
-        };
-        window.addEventListener('beforeunload', handleTabClose);
-        return () => window.removeEventListener('beforeunload', handleTabClose);
-    }, []);
-
-    // 1. Your original strict authentication check using localStorage
+    // 1. Authentication check capturing tokens from BOTH search and hash parameters
     const [isAuthenticated] = useState<boolean>(() => {
-        const search = window.location.search;
-        const hasAuthToken = !!localStorage.getItem('authToken');
-        const hasAccountParam = new URLSearchParams(search).has('account');
-        const hasUrlTokens = search.includes('token') || search.includes('acct');
+        if (typeof window === 'undefined') return false;
 
-        const urlParams = new URLSearchParams(search);
-        for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
+        const searchString = window.location.search;
+        const hashString = window.location.hash.replace('#', '?');
+        const combinedParams = new URLSearchParams(`${searchString}&${hashString}`);
+
+        const hasAuthToken = !!localStorage.getItem('authToken');
+        const hasAccountParam = combinedParams.has('account') || combinedParams.has('acct') || combinedParams.has('acct1');
+        
+        let foundToken = false;
+        for (const [key, value] of combinedParams.entries()) {
+            if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
                 localStorage.setItem(key, value);
-                if (key.includes('token1') || key === 'token') {
+                foundToken = true;
+                if (key.includes('token1') || key === 'token' || key.includes('token')) {
                     localStorage.setItem('authToken', value);
                 }
                 if (key.startsWith('acct1') || key === 'acct') {
@@ -88,23 +88,26 @@ const AppRoot = () => {
             }
         }
 
-        // True ONLY if a real auth token exists or active redirect params are present
+        const hasUrlTokens = foundToken || searchString.includes('token') || hashString.includes('token') || searchString.includes('acct');
+
         return hasAuthToken || hasAccountParam || hasUrlTokens;
     });
 
-    // 2. Initialize API and clean URL parameters once on mount
+    // 2. Initialize API and clean URL parameters once on mount (checking both search and hash)
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        let tokenFound = false;
+        const searchString = window.location.search;
+        const hashString = window.location.hash.replace('#', '?');
+        const combinedParams = new URLSearchParams(`${searchString}&${hashString}`);
 
-        for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
+        let tokenFound = false;
+        for (const [key, value] of combinedParams.entries()) {
+            if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
                 localStorage.setItem(key, value);
                 tokenFound = true;
             }
         }
 
-        if (tokenFound || window.location.search.includes('token') || window.location.search.includes('acct')) {
+        if (tokenFound || searchString.includes('token') || hashString.includes('token') || searchString.includes('acct')) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -135,9 +138,9 @@ const AppRoot = () => {
         }
 
         return () => clearTimeout(timeoutId);
-    }, []);
+    }, [isAuthenticated]);
 
-    // Twin-button handler for Login (Clean redirect without premature session flags)
+    // Twin-button handler for Login
     const handleLogin = () => {
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
@@ -145,7 +148,7 @@ const AppRoot = () => {
             originalLoginBtn.click();
         } else {
             const appId = '1089'; 
-            const redirectUrl = encodeURIComponent(window.location.origin + '/');
+            const redirectUrl = encodeURIComponent(window.location.origin + window.location.pathname);
             window.location.href = `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&brand=deriv&l=EN&redirect_uri=${redirectUrl}`;
         }
     };
@@ -162,7 +165,9 @@ const AppRoot = () => {
     };
 
     // RENDER GUARDS
-    const hasTokensInUrl = window.location.search.includes('token') || window.location.search.includes('acct');
+    const searchString = typeof window !== 'undefined' ? window.location.search : '';
+    const hashString = typeof window !== 'undefined' ? window.location.hash : '';
+    const hasTokensInUrl = searchString.includes('token') || searchString.includes('acct') || hashString.includes('token') || hashString.includes('acct');
 
     // Intercept incoming OAuth return flows to prevent landing page flash
     if (hasTokensInUrl) {
