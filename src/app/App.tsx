@@ -88,13 +88,29 @@ export default function App() {
         return () => window.removeEventListener('resize', handleThemeByDevice);
     }, []);
 
-    // Automatically capture and store tokens when Deriv redirects back
+    // Automatically capture and store tokens from BOTH search and hash parameters when Deriv redirects back
     useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        for (const [key, value] of urlParams.entries()) {
-            if (key.includes('token') || key.startsWith('acct')) {
-                localStorage.setItem('authToken', value);
+        const searchString = window.location.search;
+        const hashString = window.location.hash.replace('#', '?');
+        const combinedParams = new URLSearchParams(`${searchString}&${hashString}`);
+
+        let tokenFound = false;
+
+        for (const [key, value] of combinedParams.entries()) {
+            if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
+                localStorage.setItem(key, value);
+                tokenFound = true;
+                if (key.includes('token1') || key === 'token' || key.includes('token')) {
+                    localStorage.setItem('authToken', value);
+                }
+                if (key.startsWith('acct1') || key === 'acct') {
+                    localStorage.setItem('active_loginid', value);
+                }
             }
+        }
+
+        if (tokenFound) {
+            cleanupURL();
         }
 
         if (!isProcessing && isValid && params.code) {
