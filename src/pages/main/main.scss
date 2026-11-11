@@ -85,7 +85,7 @@
             position: relative;
             display: flex;
             flex-direction: column;
-            height: 100%;
+%height: 100%;
 
             // Active tab indicator underline color & accurate positioning fix
             &__active-line {
@@ -112,7 +112,7 @@
                 }
             }
 
-            // Unified pale green background container set to flat 77.5% width
+            // Unified pale green background container set to 77% width on desktop, 100% on mobile/tablet
             &__list {
                 background: rgba(0, 168, 107, 0.06); 
                 border: 1.5px solid rgba(0, 168, 107, 0.25); 
@@ -120,7 +120,7 @@
                 justify-content: space-between; 
                 align-items: center;
                 gap: 1rem; 
-                width: 77.5%; 
+                width: 77%; // Desktop width set to exactly 77%
                 max-width: 100%;
                 border-radius: 1.2rem;
                 padding: 0.4rem 1.2rem;
@@ -134,7 +134,7 @@
                     justify-content: flex-start;
                     align-items: center;
                     gap: 0.8rem; 
-                    width: 100%;
+                    width: 100%; // Mobile & Tablet width set to 100%
                     max-width: 100vw;
                     overflow-x: auto !important;
                     overflow-y: hidden;
@@ -850,9 +850,7 @@
 }
 
 .dbot-tour-blink {
-    animation: blink 1.25s infinite;
-    animation: blink 1.25s ease-in infinite;
-    animation: blink 1.25s ease-in infinite;
+    animation: blink 1.25s infinite ease-in;
     border-radius: $BORDER-RADIUS * 12.5;
     height: 2.5rem !important;
     width: 2.5rem !important;
