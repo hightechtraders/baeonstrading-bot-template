@@ -430,13 +430,27 @@ const AppWrapper = observer(() => {
         (tab_index: number) => {
             setActiveTab(tab_index);
 
-            // Programmatically center active tab smoothly on both mobile and desktop
+            // Bulletproof container-aware smooth centering for mobile & desktop
             const el_id = TAB_IDS[tab_index];
             if (el_id) {
                 const el_tab = document.getElementById(el_id);
-                setTimeout(() => {
-                    el_tab?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                }, 10);
+                const container = el_tab?.parentElement; // The scrollable __list container
+
+                if (el_tab && container) {
+                    setTimeout(() => {
+                        const containerWidth = container.clientWidth;
+                        const tabLeft = el_tab.offsetLeft;
+                        const tabWidth = el_tab.clientWidth;
+                        
+                        // Calculate precise scroll left target to center the tab perfectly
+                        const targetScrollLeft = tabLeft - (containerWidth / 2) + (tabWidth / 2);
+
+                        container.scrollTo({
+                            left: Math.max(0, targetScrollLeft),
+                            behavior: 'smooth'
+                        });
+                    }, 10);
+                }
             }
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
