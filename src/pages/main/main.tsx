@@ -382,7 +382,7 @@ const AppWrapper = observer(() => {
         }
         if (init_render.current) {
             setActiveTab(Number(active_hash_tab));
-            if (!isDesktop) handleTabChange(Number(active_hash_tab));
+            handleTabChange(Number(active_hash_tab));
             init_render.current = false;
         } else {
             const currentSearch = window.location.search;
@@ -430,19 +430,17 @@ const AppWrapper = observer(() => {
         (tab_index: number) => {
             setActiveTab(tab_index);
 
-            // Only run programmatic scrollIntoView on desktop. On mobile, let CSS handling take over.
-            if (isDesktop) {
-                const el_id = TAB_IDS[tab_index];
-                if (el_id) {
-                    const el_tab = document.getElementById(el_id);
-                    setTimeout(() => {
-                        el_tab?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-                    }, 10);
-                }
+            // Programmatically center active tab smoothly on both mobile and desktop
+            const el_id = TAB_IDS[tab_index];
+            if (el_id) {
+                const el_tab = document.getElementById(el_id);
+                setTimeout(() => {
+                    el_tab?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }, 10);
             }
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [active_tab, isDesktop]
+        [active_tab]
     );
 
     const handleLoginGeneration = async () => {
