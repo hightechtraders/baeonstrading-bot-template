@@ -10,7 +10,7 @@ import { useStore } from '@/hooks/useStore';
 import { TradingPreloader } from '@/components/trading-preloader/TradingPreloader';
 import { LandingPage } from '@/components/LandingPage';
 import './app-root.scss';
-
+ 
 const AppContent = lazy(() => import('./app-content'));
 
 const AppRootLoader = () => {
