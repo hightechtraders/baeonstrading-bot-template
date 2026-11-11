@@ -146,11 +146,12 @@
                     white-space: nowrap;
                     -webkit-overflow-scrolling: touch;
                     box-sizing: border-box;
-                    padding: 0.6rem 1rem;
+                    padding: 0.6rem 1.2rem;
                     border-radius: 0;
                     border-left: none;
                     border-right: none;
-                    scroll-snap-type: x mandatory; // Forces smooth snapping behavior for mobile tabs
+                    scroll-behavior: smooth;
+                    scroll-padding-inline: 1.6rem; // Gives padding space so scrolled active tabs don't stick to the edges
 
                     &::-webkit-scrollbar {
                         display: none; 
@@ -247,7 +248,6 @@
                     max-width: none !important;
                     padding: 0 1.2rem;
                     white-space: nowrap;
-                    scroll-snap-align: center; // Snaps active tab to the center of the mobile screen
                 }
 
                 &:not(.dc-tabs__active) {
