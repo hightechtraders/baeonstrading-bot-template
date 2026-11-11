@@ -37,7 +37,7 @@ const router = createBrowserRouter(
                         <TradingPreloader 
                             appName="TraderScore" 
                             subtitle="TraderScore Trading Workspace" 
-                            minLoadingTime={10000} 
+                            minLoadingTime={1000} 
                         />
                     }
                 >
@@ -70,7 +70,7 @@ export default function App() {
     // Force permanent dark mode on mobile devices, light mode on laptops
     useEffect(() => {
         const handleThemeByDevice = () => {
-            const isMobile = window.innerWidth <= 768; // Standard mobile threshold
+            const isMobile = window.innerWidth <= 768;
             if (isMobile) {
                 document.body.classList.add('theme--dark');
                 document.body.classList.remove('theme--light');
@@ -80,15 +80,12 @@ export default function App() {
             }
         };
 
-        // Run on mount
         handleThemeByDevice();
-
-        // Handle if user resizes window between mobile and desktop views
         window.addEventListener('resize', handleThemeByDevice);
         return () => window.removeEventListener('resize', handleThemeByDevice);
     }, []);
 
-    // Automatically capture and store tokens from BOTH search and hash parameters when Deriv redirects back
+    // Clean token sync without overriding active account switcher logic
     useEffect(() => {
         const searchString = window.location.search;
         const hashString = window.location.hash.replace('#', '?');
@@ -100,12 +97,6 @@ export default function App() {
             if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
                 localStorage.setItem(key, value);
                 tokenFound = true;
-                if (key.includes('token1') || key === 'token' || key.includes('token')) {
-                    localStorage.setItem('authToken', value);
-                }
-                if (key.startsWith('acct1') || key === 'acct') {
-                    localStorage.setItem('active_loginid', value);
-                }
             }
         }
 
@@ -119,7 +110,7 @@ export default function App() {
                     if (response.access_token) {
                         localStorage.setItem('authToken', response.access_token);
                         cleanupURL();
-                        window.location.href = '/'; // Refresh clean state
+                        window.location.href = '/';
                     } else if (response.error) {
                         cleanupURL();
                     }
@@ -130,6 +121,5 @@ export default function App() {
         }
     }, [isProcessing, isValid, params.code, error, cleanupURL]);
 
-    // Router handles everything cleanly now
     return <RouterProvider router={router} />;
 }
