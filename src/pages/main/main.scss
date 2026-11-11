@@ -98,8 +98,9 @@
                 display: block !important;
                 visibility: visible !important;
 
+                // Completely hide the active underline on mobile & tablets to eliminate JS positioning bugs
                 @include mobile-or-tablet-screen {
-                    bottom: -2px; 
+                    display: none !important;
                 }
             }
 
@@ -131,7 +132,7 @@
                 overflow-x: auto;
                 box-sizing: border-box;
                 flex-shrink: 0;
-                position: relative; // Crucial anchor for the absolute indicator line
+                position: relative; // Crucial anchor for desktop indicator line
 
                 @include mobile-or-tablet-screen {
                     display: flex;
@@ -240,7 +241,7 @@
                 @include flex-center;
 
                 @include mobile-or-tablet-screen {
-                    flex: 0 0 auto !important; // Restores native auto-sizing so JS coordinates line up with active tabs
+                    flex: 0 0 auto !important; 
                     width: auto !important;
                     max-width: none !important;
                     padding: 0 1.2rem;
