@@ -85,7 +85,7 @@
             position: relative;
             display: flex;
             flex-direction: column;
-%height: 100%;
+            height: 100%; // <--- FIXED HERE
 
             // Active tab indicator underline color & accurate positioning fix
             &__active-line {
