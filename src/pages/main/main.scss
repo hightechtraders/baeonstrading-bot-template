@@ -116,7 +116,7 @@
                 }
             }
 
-            // Unified pale green background container set to 75% width on desktop, 100% on mobile/tablet
+            // Unified pale green background container set to 75% width on desktop, auto on mobile/tablet
             &__list {
                 background: rgba(0, 168, 107, 0.06); 
                 border: 1.5px solid rgba(0, 168, 107, 0.25); 
@@ -139,8 +139,8 @@
                     justify-content: flex-start; 
                     align-items: center;
                     gap: 0.8rem; 
-                    width: 100%; // Mobile & Tablet width set to 100%
-                    max-width: 100vw;
+                    width: auto !important; // <--- FIXED: Auto width prevents forced stretching and drifting
+                    max-width: none !important; // <--- Removes max-width constraint on mobile overflow track
                     overflow-x: auto !important; 
                     overflow-y: hidden;
                     white-space: nowrap;
@@ -151,7 +151,7 @@
                     border-left: none;
                     border-right: none;
                     scroll-behavior: smooth;
-                    scroll-padding-inline: 1.6rem; // Gives padding space so scrolled active tabs don't stick to the edges
+                    scroll-padding-inline: 1.6rem;
 
                     &::-webkit-scrollbar {
                         display: none; 
