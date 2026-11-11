@@ -104,15 +104,16 @@
                 }
             }
 
-            // Active tab indicator highlight
+            // Strict active tab styling highlight ensuring no double-marking
             &__active {
                 background: rgba(0, 168, 107, 0.15) !important;
                 color: #00a86b !important; 
-                font-weight: 700;
+                font-weight: 700 !important;
                 border-radius: 0.8rem;
 
                 svg {
                     fill: #00a86b !important;
+                    opacity: 1 !important;
                 }
             }
 
@@ -139,8 +140,8 @@
                     justify-content: flex-start; 
                     align-items: center;
                     gap: 0.8rem; 
-                    width: auto !important; // <--- FIXED: Auto width prevents forced stretching and drifting
-                    max-width: none !important; // <--- Removes max-width constraint on mobile overflow track
+                    width: auto !important; 
+                    max-width: none !important; 
                     overflow-x: auto !important; 
                     overflow-y: hidden;
                     white-space: nowrap;
@@ -151,7 +152,7 @@
                     border-left: none;
                     border-right: none;
                     scroll-behavior: smooth;
-                    scroll-padding-inline: 1.6rem;
+                    scroll-padding-inline: 50%; // Perfectly centers scrolled active tab
 
                     &::-webkit-scrollbar {
                         display: none; 
@@ -250,12 +251,15 @@
                     white-space: nowrap;
                 }
 
+                // Strict enforcement: non-active items must never inherit active styling or linger green
                 &:not(.dc-tabs__active) {
                     color: var(--text-prominent) !important;
+                    background: transparent !important;
+                    font-weight: 400 !important;
 
                     svg {
                         fill: var(--text-prominent) !important;
-                        opacity: 0.8;
+                        opacity: 0.8 !important;
                     }
 
                     &:hover {
@@ -265,7 +269,7 @@
 
                         svg {
                             fill: #00a86b !important;
-                            opacity: 1;
+                            opacity: 1 !important;
                         }
                     }
                 }
