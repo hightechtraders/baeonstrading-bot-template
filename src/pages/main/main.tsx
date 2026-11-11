@@ -430,16 +430,19 @@ const AppWrapper = observer(() => {
         (tab_index: number) => {
             setActiveTab(tab_index);
 
-            const el_id = TAB_IDS[tab_index];
-            if (el_id) {
-                const el_tab = document.getElementById(el_id);
-                setTimeout(() => {
-                    el_tab?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-                }, 10);
+            // Only run programmatic scrollIntoView on desktop. On mobile, let CSS handling take over.
+            if (isDesktop) {
+                const el_id = TAB_IDS[tab_index];
+                if (el_id) {
+                    const el_tab = document.getElementById(el_id);
+                    setTimeout(() => {
+                        el_tab?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+                    }, 10);
+                }
             }
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [active_tab]
+        [active_tab, isDesktop]
     );
 
     const handleLoginGeneration = async () => {
