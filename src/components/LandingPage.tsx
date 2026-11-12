@@ -8,26 +8,35 @@ import './LandingPage.scss';
 interface LandingPageProps {
     onLogin: () => void;
     onSignup: () => void;
-    userName?: string; // Optional user name prop passed down from app state
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup, userName }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) => {
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [userName, setUserName] = useState<string>('');
     const [greeting, setGreeting] = useState('WELCOME, TRADER');
+    const [isPromptOpen, setIsPromptOpen] = useState(false);
+    const [tempNameInput, setTempNameInput] = useState('');
 
     // Typing effect state with uppercase text and a 5-second hold before looping
     const fullSubtitleText = "AN INSTITUTIONAL-GRADE AUTOMATED TRADING PLATFORM. DEPLOY CUSTOM BLOCKLY STRATEGIES, RUN REAL-TIME MULTI-ASSET AI SCANNERS, AND MANAGE LIVE TICKS WITH SUB-MILLISECOND EXECUTION.";
     const [typedSubtitle, setTypedSubtitle] = useState('');
 
-    // Compute dynamic time-based greeting ensuring user name is persistently remembered
+    // 1. Check localStorage on initial load
+    useEffect(() => {
+        const savedName = localStorage.getItem('trader_name');
+        if (savedName) {
+            setUserName(savedName);
+        } else {
+            // If no name exists anywhere, optionally prompt them or leave default
+            // You can trigger the modal prompt here if desired, or let them click the greeting
+        }
+    }, []);
+
+    // 2. Compute dynamic time-based greeting whenever userName changes
     useEffect(() => {
         const updateGreeting = () => {
             const hour = new Date().getHours();
-            
-            // Check prop first, then check persistent localStorage, else fallback to 'TRADER'
-            const storedName = localStorage.getItem('trader_name');
-            const activeName = userName || storedName;
-            const displayName = activeName ? activeName.trim().toUpperCase() : 'TRADER';
+            const displayName = userName ? userName.trim().toUpperCase() : 'TRADER';
 
             if (hour < 12) {
                 setGreeting(`GOOD MORNING, ${displayName}`);
@@ -46,8 +55,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup, use
     useEffect(() => {
         let currentIndex = 0;
         let isDeleting = false;
-        const typingSpeed = 45; // Smooth, relaxed speed
-        const pauseBeforeRestart = 5000; // Exactly 5 seconds hold time
+        const typingSpeed = 45; 
+        const pauseBeforeRestart = 5000; 
 
         const interval = setInterval(() => {
             if (!isDeleting) {
@@ -75,6 +84,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup, use
         });
     };
 
+    // Save user-submitted name permanently
+    const handleSaveName = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (tempNameInput.trim()) {
+            const cleanName = tempNameInput.trim();
+            localStorage.setItem('trader_name', cleanName);
+            setUserName(cleanName);
+            setIsPromptOpen(false);
+        }
+    };
+
     return (
         <div className="landing-container" onMouseMove={handleMouseMove}>
             {/* 🌟 Live Simulated Background Chart */}
@@ -86,10 +106,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup, use
                 style={{ left: `${mousePos.x}px`, top: `${mousePos.y}px` }}
             ></div>
 
-            {/* Sticky Endless Market Ticker Bar with 15 Expanded Indices */}
+            {/* Sticky Endless Market Ticker Bar */}
             <div className="market-ticker-bar">
                 <div className="ticker-track">
-                    {/* Primary Ticker Set */}
                     <span className="ticker-item"><span className="symbol">R_100</span> <span className="up">+1.42%</span></span>
                     <span className="ticker-item"><span className="symbol">Volatility 75 (1s)</span> <span className="up">+0.89%</span></span>
                     <span className="ticker-item"><span className="symbol">Volatility 100 (1s)</span> <span className="up">+2.15%</span></span>
@@ -102,7 +121,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup, use
                     <span className="ticker-item"><span className="symbol">Range Break 200</span> <span className="up">+0.45%</span></span>
                     <span className="ticker-item"><span className="symbol">Step Index</span> <span className="up">+0.55%</span></span>
                     
-                    {/* Exact Duplicate Set for Seamless -50% Infinite Loop */}
+                    {/* Duplicate Set for Loop */}
                     <span className="ticker-item"><span className="symbol">R_100</span> <span className="up">+1.42%</span></span>
                     <span className="ticker-item"><span className="symbol">Volatility 75 (1s)</span> <span className="up">+0.89%</span></span>
                     <span className="ticker-item"><span className="symbol">Volatility 100 (1s)</span> <span className="up">+2.15%</span></span>
@@ -134,8 +153,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup, use
             </header>
 
             <main className="landing-hero">
-                <div className="hero-badge">
-                    <span>👋 {greeting} · DERIV API</span>
+                {/* Clicking badge lets user set or update their name if they are visiting for the first time */}
+                <div 
+                    className="hero-badge" 
+                    onClick={() => setIsPromptOpen(true)} 
+                    style={{ cursor: 'pointer' }}
+                    title="Click to personalize name"
+                >
+                    <span>👋 {greeting} · DERIV API (Tap to edit)</span>
                 </div>
                 
                 {/* Main Headline */}
@@ -144,7 +169,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup, use
                     <span className="highlight-text">Let TraderScore.pro do the heavy lifting.</span>
                 </h1>
 
-                {/* Stable Subtitle Wrapper with Typing Effect */}
+                {/* Subtitle Wrapper with Typing Effect */}
                 <div className="subtitle-container">
                     <span className="subtitle-placeholder">{fullSubtitleText}</span>
                     <p className="hero-subtitle hero-subtitle-larger subtitle-animated">
@@ -164,7 +189,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup, use
                     </button>
                 </div>
 
-                {/* Glassmorphism Tech-Trust Strip */}
+                {/* Tech-Trust Strip */}
                 <div className="tech-trust-strip">
                     <span>🔒 OAuth 2.0 Secure</span>
                     <span>⚡ WebSocket v2</span>
@@ -175,6 +200,39 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup, use
                     <span>⚡ Secure OAuth 2.0 Authorization · Instant Setup</span>
                 </div>
             </main>
+
+            {/* Optional lightweight modal prompt if they want to enter their name */}
+            {isPromptOpen && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                    background: 'rgba(3, 7, 18, 0.85)', zIndex: 1000, display: 'flex',
+                    alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <form onSubmit={handleSaveName} style={{
+                        background: '#0f172a', border: '1px solid rgba(16, 185, 129, 0.3)',
+                        padding: '24px', borderRadius: '12px', textAlign: 'center', maxWidth: '320px', width: '90%'
+                    }}>
+                        <h3 style={{ color: '#f8fafc', marginBottom: '12px', fontSize: '1rem' }}>Enter Your Name</h3>
+                        <input 
+                            type="text" 
+                            placeholder="e.g. John Doe"
+                            value={tempNameInput}
+                            onChange={(e) => setTempNameInput(e.target.value)}
+                            style={{
+                                width: '100%', padding: '10px', background: '#030712', border: '1px solid #334155',
+                                color: '#fff', borderRadius: '6px', marginBottom: '16px', boxSizing: 'border-box'
+                            }}
+                            autoFocus
+                        />
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button type="submit" className="btn-primary" style={{ flex: 1, padding: '8px' }}>Save</button>
+                            <button type="button" onClick={() => setIsPromptOpen(false)} style={{
+                                flex: 1, background: 'transparent', border: '1px solid #475569', color: '#94a3b8', borderRadius: '8px', cursor: 'pointer'
+                            }}>Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            )}
 
             <section className="features-grid">
                 <div className="feature-card">
