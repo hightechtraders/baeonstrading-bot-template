@@ -18,19 +18,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
     const fullSubtitleText = "AN INSTITUTIONAL-GRADE AUTOMATED TRADING PLATFORM. DEPLOY CUSTOM BLOCKLY STRATEGIES, RUN REAL-TIME MULTI-ASSET AI SCANNERS, AND MANAGE LIVE TICKS WITH SUB-MILLISECOND EXECUTION.";
     const [typedSubtitle, setTypedSubtitle] = useState('');
 
-    // Check localStorage on load for a verified official name cached from Deriv login
+    // Time-zone independent greeting (Forces correct calculation regardless of faulty laptop clocks)
     useEffect(() => {
         const updateGreeting = () => {
-            const hour = new Date().getHours();
+            // Forcefully evaluate time using Africa/Nairobi timezone (UTC+3) 
+            // regardless of what the user's physical laptop clock says.
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Africa/Nairobi',
+                hour: 'numeric',
+                hour12: false
+            });
+            
+            const currentHour = parseInt(formatter.format(new Date()), 10);
             const verifiedName = localStorage.getItem('trader_name');
             const displayName = verifiedName ? verifiedName.trim().toUpperCase() : 'TRADER';
 
-            if (hour < 12) {
+            if (currentHour >= 5 && currentHour < 12) {
                 setGreeting(`GOOD MORNING, ${displayName}`);
-            } else if (hour < 17) {
+            } else if (currentHour >= 12 && currentHour < 17) {
                 setGreeting(`GOOD AFTERNOON, ${displayName}`);
-            } else {
+            } else if (currentHour >= 17 && currentHour < 21) {
                 setGreeting(`GOOD EVENING, ${displayName}`);
+            } else {
+                setGreeting(`WELCOME, ${displayName}`);
             }
         };
 
@@ -175,7 +185,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
             <section className="features-grid">
                 <div className="feature-card">
                     <div className="card-icon">⚡</div>
-                    <h3>Blazing-FastExecution</h3>
+                    <h3>Blazing-Fast Execution</h3>
                     <p>Optimized WebSocket tick listeners process market data instantly to reduce latency on automated entry triggers.</p>
                 </div>
                 <div className="feature-card">
