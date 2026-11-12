@@ -199,13 +199,13 @@ export default function ManualTraderTab() {
           )}
         </div>
 
-        {/* Live Scanner Status Banner */}
-        <div style={{ background: 'rgba(0, 168, 107, 0.08)', border: '1px solid rgba(0, 168, 107, 0.25)', padding: '10px 16px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00a86b', display: 'inline-block', boxShadow: '0 0 8px #00a86b' }} />
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-prominent)' }}>AI Engine: {scannerStatus}</span>
+        {/* Live Scanner Status Banner with Stabilized Height */}
+        <div className="manual-status-banner">
+          <div className="manual-status-content">
+            <span className="manual-status-pulse" />
+            <span className="manual-status-text">AI Engine: {scannerStatus}</span>
           </div>
-          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#00a86b', background: 'rgba(0,168,107,0.15)', padding: '2px 8px', borderRadius: '4px' }}>LIVE FEED</span>
+          <span className="manual-status-badge">LIVE FEED</span>
         </div>
 
         {/* 10-Digit Dynamic Gauge Grid */}
