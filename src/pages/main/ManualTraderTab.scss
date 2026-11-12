@@ -137,6 +137,73 @@
         }
     }
 
+    /* Stabilized Live Scanner Status Banner to Prevent Layout Reflow */
+    .manual-status-banner {
+        background: rgba(0, 168, 107, 0.08);
+        border: 1px solid rgba(0, 168, 107, 0.25);
+        padding: 10px 16px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 48px; /* Locked height guarantees space for 2 text lines without shaking */
+        box-sizing: border-box;
+
+        @include mobile-or-tablet-screen {
+            min-height: 52px;
+            padding: 8px 12px;
+        }
+
+        .manual-status-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            padding-right: 8px;
+        }
+
+        .manual-status-pulse {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00a86b;
+            display: inline-block;
+            box-shadow: 0 0 8px #00a86b;
+            flex-shrink: 0;
+        }
+
+        .manual-status-text {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-prominent);
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+
+            @include mobile-or-tablet-screen {
+                font-size: 0.78rem;
+            }
+        }
+
+        .manual-status-badge {
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: #00a86b;
+            background: rgba(0, 168, 107, 0.15);
+            padding: 2px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            flex-shrink: 0;
+
+            @include mobile-or-tablet-screen {
+                font-size: 0.68rem;
+                padding: 2px 6px;
+            }
+        }
+    }
+
     /* Transparent Digit Stats Grid */
     .digit-stats-grid {
         background: transparent !important;
