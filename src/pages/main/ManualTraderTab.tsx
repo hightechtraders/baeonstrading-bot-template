@@ -329,7 +329,7 @@ export default function ManualTraderTab() {
           </button>
         </div>
 
-v      </div>
+      </div>
     </div>
   );
 }
