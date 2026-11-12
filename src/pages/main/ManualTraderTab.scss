@@ -353,34 +353,34 @@
         }
     }
 
-    /* Unified Professional Single Card Container */
+    /* Unified Professional Single Card Container with Increased Label Sizes */
     .manual-unified-config-card {
         background: rgba(16, 185, 129, 0.03);
         border: 1px solid rgba(16, 185, 129, 0.2);
         border-radius: 12px;
-        padding: 16px 20px;
+        padding: 18px 22px;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 18px;
         width: 100%;
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            padding: 12px 14px;
-            gap: 12px;
+            padding: 14px 16px;
+            gap: 14px;
         }
 
         .config-grid-row {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            padding-bottom: 14px;
+            gap: 16px;
+            padding-bottom: 16px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 
             @include mobile-or-tablet-screen {
                 grid-template-columns: repeat(3, 1fr);
                 gap: 8px;
-                padding-bottom: 10px;
+                padding-bottom: 12px;
             }
 
             .config-item {
@@ -390,29 +390,29 @@
                 text-align: center;
 
                 .config-label {
-                    font-size: 0.62rem;
+                    font-size: 0.78rem; // Increased from 0.62rem for clear desktop visibility
                     text-transform: uppercase;
                     color: var(--text-general);
                     font-weight: 800;
-                    margin-bottom: 4px;
+                    margin-bottom: 6px;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.52rem;
+                        font-size: 0.6rem;
                     }
                 }
 
                 .config-value {
-                    font-size: 0.88rem;
+                    font-size: 1.05rem; // Increased for prominence
                     font-weight: 900;
                     color: var(--text-prominent);
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.75rem;
+                        font-size: 0.85rem;
                     }
 
                     &.highlight-digit {
                         color: #34d399;
-                        font-size: 1rem;
+                        font-size: 1.2rem;
                     }
                 }
             }
@@ -427,13 +427,17 @@
                 display: flex;
                 flex-direction: column;
                 width: 100%;
-                gap: 6px;
+                gap: 8px;
 
                 .config-label {
-                    font-size: 0.62rem;
+                    font-size: 0.78rem; // Increased from 0.62rem
                     text-transform: uppercase;
                     color: var(--text-general);
                     font-weight: 800;
+
+                    @include mobile-or-tablet-screen {
+                        font-size: 0.6rem;
+                    }
                 }
 
                 .config-input-wrapper {
@@ -442,30 +446,30 @@
                     background: var(--general-main-1);
                     border: 1px solid rgba(16, 185, 129, 0.3);
                     border-radius: 8px;
-                    padding: 6px 14px;
+                    padding: 8px 14px;
                     box-sizing: border-box;
 
                     @include mobile-or-tablet-screen {
-                        padding: 4px 10px;
+                        padding: 6px 10px;
                     }
 
                     .manual-trader-input {
                         background: transparent;
                         color: var(--text-prominent);
                         font-weight: 900;
-                        font-size: 1.1rem;
+                        font-size: 1.15rem;
                         border: none;
                         outline: none;
                         width: 100%;
                         font-variant-numeric: tabular-nums;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.9rem;
+                            font-size: 0.95rem;
                         }
                     }
 
                     .currency-tag {
-                        font-size: 0.7rem;
+                        font-size: 0.75rem;
                         font-weight: 900;
                         color: #10b981;
                         background: rgba(16, 185, 129, 0.12);
