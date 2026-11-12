@@ -96,6 +96,12 @@ export default function ManualTraderTab() {
     return saved !== null ? parseInt(saved, 10) : 4;
   });
 
+  // Initialize contractDuration from localStorage (persists across tab switches)
+  const [contractDuration, setContractDuration] = useState<number>(() => {
+    const savedDuration = localStorage.getItem('trader_contract_duration');
+    return savedDuration !== null ? parseInt(savedDuration, 10) : 1;
+  });
+
   const [manualStake, setManualStake] = useState<string>('500.00');
   const [cursorPosition, setCursorPosition] = useState<number>(4);
   const [scannerStatus, setScannerStatus] = useState<string>('Scanning live tick momentum...');
@@ -107,6 +113,11 @@ export default function ManualTraderTab() {
     targetDigitRef.current = targetDigit;
     localStorage.setItem('trader_target_digit', targetDigit.toString());
   }, [targetDigit]);
+
+  // Keep localStorage synchronized whenever contractDuration changes
+  useEffect(() => {
+    localStorage.setItem('trader_contract_duration', contractDuration.toString());
+  }, [contractDuration]);
 
   const [digitStats, setDigitStats] = useState(() => {
     const savedDigit = localStorage.getItem('trader_target_digit');
@@ -265,7 +276,7 @@ export default function ManualTraderTab() {
           </div>
         </div>
 
-        {/* Unified Professional Parameter Card */}
+        {/* Unified Professional Parameter Card with - / + Stepper */}
         <div className="manual-unified-config-card">
           <div className="config-grid-row">
             <div className="config-item">
@@ -278,7 +289,23 @@ export default function ManualTraderTab() {
             </div>
             <div className="config-item">
               <span className="config-label">Duration</span>
-              <span className="config-value">1 Tick</span>
+              <div className="config-stepper-control">
+                <button 
+                  className="stepper-btn" 
+                  onClick={() => setContractDuration(prev => Math.max(1, prev - 1))}
+                  title="Decrease Ticks"
+                >
+                  −
+                </button>
+                <span className="config-value">{contractDuration} {contractDuration === 1 ? 'Tick' : 'Ticks'}</span>
+                <button 
+                  className="stepper-btn" 
+                  onClick={() => setContractDuration(prev => Math.min(10, prev + 1))}
+                  title="Increase Ticks"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
 
@@ -303,13 +330,13 @@ export default function ManualTraderTab() {
           <button 
             onClick={() => {
               ScannerBridge.executeDirectTrade(
-                { strategyName: `Manual Over ${targetDigit}`, symbol: symbolCode },
-                { symbol: symbolCode, contractType: 'DIGITOVER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
+                { strategyName: `Manual Over ${targetDigit} (${contractDuration} Ticks)`, symbol: symbolCode },
+                { symbol: symbolCode, contractType: 'DIGITOVER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: contractDuration, durationUnit: 't' }
               );
             }}
             className="manual-trader-btn manual-trader-btn--over"
           >
-            <span className="manual-trader-btn-label">Purchase Over</span>
+            <span className="manual-trader-btn-label">Purchase Over ({contractDuration} Ticks)</span>
             <span className="manual-trader-btn-main">OVER {targetDigit}</span>
             <span className="manual-trader-btn-payout">Payout: +3,514.41 USD</span>
           </button>
@@ -317,13 +344,13 @@ export default function ManualTraderTab() {
           <button 
             onClick={() => {
               ScannerBridge.executeDirectTrade(
-                { strategyName: `Manual Under ${targetDigit}`, symbol: symbolCode },
-                { symbol: symbolCode, contractType: 'DIGITUNDER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
+                { strategyName: `Manual Under ${targetDigit} (${contractDuration} Ticks)`, symbol: symbolCode },
+                { symbol: symbolCode, contractType: 'DIGITUNDER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: contractDuration, durationUnit: 't' }
               );
             }}
             className="manual-trader-btn manual-trader-btn--under"
           >
-            <span className="manual-trader-btn-label">Purchase Under</span>
+            <span className="manual-trader-btn-label">Purchase Under ({contractDuration} Ticks)</span>
             <span className="manual-trader-btn-main">UNDER {targetDigit}</span>
             <span className="manual-trader-btn-payout">Payout: +593.82 USD</span>
           </button>
