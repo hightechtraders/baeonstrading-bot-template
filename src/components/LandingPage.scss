@@ -10,15 +10,14 @@
     flex-direction: column;
     justify-content: space-between;
     
-    /* Mobile & Tablets: Explicitly override flex and height properties so the page flows naturally and shows the footer */
+    /* Mobile & Tablets: Natural document scroll with pinned sticky ticker */
     @media (max-width: 1024px) {
         display: block !important;
         height: auto !important;
         min-height: auto !important;
         overflow-y: visible !important;
-        justify-content: flex-start !important;
-        padding-bottom: 30px;
-        gap: 10px;
+        padding-bottom: 50px; /* Gives safe breathing room below the footer */
+        gap: 16px;
     }
 
     background: radial-gradient(circle at 50% 10%, #0f172a 0%, #090d16 60%, #030712 100%);
@@ -62,13 +61,13 @@
         position: sticky;
         top: 8px;
         z-index: 100;
-        background: rgba(15, 23, 42, 0.9);
+        background: rgba(15, 23, 42, 0.95);
         backdrop-filter: blur(8px);
         border: 1px solid rgba(16, 185, 129, 0.25);
         border-radius: 8px;
-        padding: 5px 16px;
+        padding: 6px 16px;
         max-width: 1000px;
-        margin: 0 auto 12px auto;
+        margin: 0 auto 16px auto;
         width: 100%;
         overflow: hidden;
         font-family: monospace;
@@ -112,7 +111,7 @@
         justify-content: space-between;
         align-items: center;
         max-width: 1200px;
-        margin: 0 auto 12px auto;
+        margin: 0 auto 16px auto;
         width: 100%;
         padding: 4px 0;
 
@@ -194,7 +193,7 @@
 
     .landing-hero {
         max-width: 820px;
-        margin: 0 auto 16px auto;
+        margin: 0 auto 20px auto;
         text-align: center;
 
         .hero-badge {
@@ -368,7 +367,7 @@
 
     .features-grid {
         max-width: 1050px;
-        margin: 0 auto 12px auto;
+        margin: 0 auto 16px auto;
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
         gap: 10px;
@@ -416,14 +415,17 @@
 
     .landing-footer {
         text-align: center;
-        padding: 12px 16px;
-        margin-top: 8px; /* Sits right beneath Advanced Risk Controls card */
+        padding: 16px;
+        margin-top: 12px;
         border-top: 1px solid rgba(255, 255, 255, 0.08);
         color: #94a3b8;
         font-size: 0.8rem;
         font-family: monospace;
         width: 100%;
         box-sizing: border-box;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
 }
 
