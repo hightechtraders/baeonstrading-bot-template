@@ -8,7 +8,7 @@ import './LandingPage.scss';
 interface LandingPageProps {
     onLogin: () => void;
     onSignup: () => void;
-    userName?: string; // Optional user name captured upon login/signup or profile state
+    userName?: string; // Optional user name prop passed down from app state
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup, userName }) => {
@@ -19,12 +19,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup, use
     const fullSubtitleText = "AN INSTITUTIONAL-GRADE AUTOMATED TRADING PLATFORM. DEPLOY CUSTOM BLOCKLY STRATEGIES, RUN REAL-TIME MULTI-ASSET AI SCANNERS, AND MANAGE LIVE TICKS WITH SUB-MILLISECOND EXECUTION.";
     const [typedSubtitle, setTypedSubtitle] = useState('');
 
-    // Compute dynamic time-based greeting incorporating the user's name if provided
+    // Compute dynamic time-based greeting ensuring user name is persistently remembered
     useEffect(() => {
         const updateGreeting = () => {
             const hour = new Date().getHours();
-            // Fallback to 'TRADER' if no name is provided, otherwise uppercase their name
-            const displayName = userName ? userName.trim().toUpperCase() : 'TRADER';
+            
+            // Check prop first, then check persistent localStorage, else fallback to 'TRADER'
+            const storedName = localStorage.getItem('trader_name');
+            const activeName = userName || storedName;
+            const displayName = activeName ? activeName.trim().toUpperCase() : 'TRADER';
 
             if (hour < 12) {
                 setGreeting(`GOOD MORNING, ${displayName}`);
