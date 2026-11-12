@@ -21,14 +21,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
     const fullSubtitleText = "AN INSTITUTIONAL-GRADE AUTOMATED TRADING PLATFORM. DEPLOY CUSTOM BLOCKLY STRATEGIES, RUN REAL-TIME MULTI-ASSET AI SCANNERS, AND MANAGE LIVE TICKS WITH SUB-MILLISECOND EXECUTION.";
     const [typedSubtitle, setTypedSubtitle] = useState('');
 
-    // 1. Check localStorage on initial load
+    // 1. Check localStorage on initial load; if missing, auto-open the name prompt modal
     useEffect(() => {
         const savedName = localStorage.getItem('trader_name');
         if (savedName) {
             setUserName(savedName);
         } else {
-            // If no name exists anywhere, optionally prompt them or leave default
-            // You can trigger the modal prompt here if desired, or let them click the greeting
+            // Auto-prompt first-time visitors immediately
+            setIsPromptOpen(true);
         }
     }, []);
 
@@ -84,7 +84,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
         });
     };
 
-    // Save user-submitted name permanently
+    // Save user-submitted name permanently and close modal
     const handleSaveName = (e: React.FormEvent) => {
         e.preventDefault();
         if (tempNameInput.trim()) {
@@ -106,9 +106,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                 style={{ left: `${mousePos.x}px`, top: `${mousePos.y}px` }}
             ></div>
 
-            {/* Sticky Endless Market Ticker Bar */}
+            {/* Sticky Endless Market Ticker Bar with 15 Expanded Indices */}
             <div className="market-ticker-bar">
                 <div className="ticker-track">
+                    {/* Primary Ticker Set */}
                     <span className="ticker-item"><span className="symbol">R_100</span> <span className="up">+1.42%</span></span>
                     <span className="ticker-item"><span className="symbol">Volatility 75 (1s)</span> <span className="up">+0.89%</span></span>
                     <span className="ticker-item"><span className="symbol">Volatility 100 (1s)</span> <span className="up">+2.15%</span></span>
@@ -121,7 +122,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                     <span className="ticker-item"><span className="symbol">Range Break 200</span> <span className="up">+0.45%</span></span>
                     <span className="ticker-item"><span className="symbol">Step Index</span> <span className="up">+0.55%</span></span>
                     
-                    {/* Duplicate Set for Loop */}
+                    {/* Exact Duplicate Set for Seamless -50% Infinite Loop */}
                     <span className="ticker-item"><span className="symbol">R_100</span> <span className="up">+1.42%</span></span>
                     <span className="ticker-item"><span className="symbol">Volatility 75 (1s)</span> <span className="up">+0.89%</span></span>
                     <span className="ticker-item"><span className="symbol">Volatility 100 (1s)</span> <span className="up">+2.15%</span></span>
@@ -153,14 +154,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
             </header>
 
             <main className="landing-hero">
-                {/* Clicking badge lets user set or update their name if they are visiting for the first time */}
+                {/* Optional click listener kept here just in case they want to update their name later */}
                 <div 
                     className="hero-badge" 
                     onClick={() => setIsPromptOpen(true)} 
                     style={{ cursor: 'pointer' }}
-                    title="Click to personalize name"
+                    title="Click to update name"
                 >
-                    <span>👋 {greeting} · DERIV API (Tap to edit)</span>
+                    <span>👋 {greeting} · DERIV API</span>
                 </div>
                 
                 {/* Main Headline */}
@@ -169,7 +170,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                     <span className="highlight-text">Let TraderScore.pro do the heavy lifting.</span>
                 </h1>
 
-                {/* Subtitle Wrapper with Typing Effect */}
+                {/* Stable Subtitle Wrapper with Typing Effect */}
                 <div className="subtitle-container">
                     <span className="subtitle-placeholder">{fullSubtitleText}</span>
                     <p className="hero-subtitle hero-subtitle-larger subtitle-animated">
@@ -189,7 +190,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                     </button>
                 </div>
 
-                {/* Tech-Trust Strip */}
+                {/* Glassmorphism Tech-Trust Strip */}
                 <div className="tech-trust-strip">
                     <span>🔒 OAuth 2.0 Secure</span>
                     <span>⚡ WebSocket v2</span>
@@ -201,35 +202,38 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                 </div>
             </main>
 
-            {/* Optional lightweight modal prompt if they want to enter their name */}
+            {/* Automated Welcome Modal Prompt for First-Time Visitors */}
             {isPromptOpen && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-                    background: 'rgba(3, 7, 18, 0.85)', zIndex: 1000, display: 'flex',
-                    alignItems: 'center', justifyContent: 'center'
+                    background: 'rgba(3, 7, 18, 0.9)', zIndex: 1000, display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(5px)'
                 }}>
                     <form onSubmit={handleSaveName} style={{
-                        background: '#0f172a', border: '1px solid rgba(16, 185, 129, 0.3)',
-                        padding: '24px', borderRadius: '12px', textAlign: 'center', maxWidth: '320px', width: '90%'
+                        background: '#0f172a', border: '1px solid rgba(16, 185, 129, 0.4)',
+                        padding: '28px', borderRadius: '12px', textAlign: 'center', maxWidth: '360px', width: '90%',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
                     }}>
-                        <h3 style={{ color: '#f8fafc', marginBottom: '12px', fontSize: '1rem' }}>Enter Your Name</h3>
+                        <h3 style={{ color: '#f8fafc', marginBottom: '8px', fontSize: '1.2rem' }}>Welcome to TraderScore.pro</h3>
+                        <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '20px', fontFamily: 'monospace' }}>
+                            Please enter your name to personalize your professional trading workspace:
+                        </p>
                         <input 
                             type="text" 
-                            placeholder="e.g. John Doe"
+                            placeholder="e.g. Baron Ouma"
                             value={tempNameInput}
                             onChange={(e) => setTempNameInput(e.target.value)}
                             style={{
-                                width: '100%', padding: '10px', background: '#030712', border: '1px solid #334155',
-                                color: '#fff', borderRadius: '6px', marginBottom: '16px', boxSizing: 'border-box'
+                                width: '100%', padding: '12px', background: '#030712', border: '1px solid #334155',
+                                color: '#fff', borderRadius: '6px', marginBottom: '16px', boxSizing: 'border-box',
+                                fontSize: '0.95rem'
                             }}
                             autoFocus
+                            required
                         />
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <button type="submit" className="btn-primary" style={{ flex: 1, padding: '8px' }}>Save</button>
-                            <button type="button" onClick={() => setIsPromptOpen(false)} style={{
-                                flex: 1, background: 'transparent', border: '1px solid #475569', color: '#94a3b8', borderRadius: '8px', cursor: 'pointer'
-                            }}>Cancel</button>
-                        </div>
+                        <button type="submit" className="btn-primary" style={{ width: '100%', padding: '10px' }}>
+                            Enter Workspace
+                        </button>
                     </form>
                 </div>
             )}
