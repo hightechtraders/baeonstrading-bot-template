@@ -16,7 +16,7 @@
     position: relative;
 
     @include mobile-or-tablet-screen {
-        padding: 8px !important;
+        padding: 10px 8px 24px 8px !important;
         height: 100% !important;
         overflow-y: auto !important;
     }
@@ -27,15 +27,15 @@
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 20px;
         box-sizing: border-box;
-        padding-bottom: 1rem;
+        padding-bottom: 2rem;
         position: relative;
         z-index: 1;
 
         @include mobile-or-tablet-screen {
-            gap: 8px;
-            padding-bottom: 16px !important;
+            gap: 12px;
+            padding-bottom: 24px !important;
         }
     }
 
@@ -146,7 +146,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        min-height: 48px; /* Locked height guarantees space for 2 text lines without shaking */
+        min-height: 48px;
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
@@ -224,40 +224,35 @@
 
         @include mobile-or-tablet-screen {
             grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-            gap: 6px !important; 
+            gap: 8px 4px !important; 
         }
     }
 
-    /* Locked Card Dimensions with Reserved Bottom Slot to Prevent Shaking */
+    /* Clean Card Layout: Removed heavy box borders to declutter */
     .digit-gauge-card {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: flex-start;
         position: relative;
-        min-height: 95px; 
-        padding: 6px 4px 18px 4px !important;
+        min-height: 90px; 
+        padding: 4px 2px 16px 2px !important;
         background: transparent !important;
-        border: 1px solid transparent !important;
-        border-radius: 10px;
+        border: none !important; /* Completely removed cluttering borders */
+        border-radius: 8px;
         cursor: pointer;
-        transition: border-color 0.2s ease;
         user-select: none;
         width: 100%;
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            min-height: 74px;
-            padding: 4px 2px 16px 2px !important;
-        }
-
-        &:hover {
-            border-color: rgba(16, 185, 129, 0.25) !important;
+            min-height: 72px;
+            padding: 2px 0 14px 0 !important;
         }
 
         &--selected {
-            border-color: rgba(16, 185, 129, 0.4) !important;
-            background: rgba(16, 185, 129, 0.05) !important;
+            background: rgba(16, 185, 129, 0.04) !important;
+            border-radius: 8px;
 
             .manual-gauge-circle {
                 border: 2px solid #10b981 !important;
@@ -333,7 +328,7 @@
     /* Stable Fixed Slot for the Red Cursor Arrow with Opacity Toggle */
     .digit-cursor-arrow {
         position: absolute;
-        bottom: 4px;
+        bottom: 2px;
         left: 50%;
         transform: translateX(-50%);
         display: flex;
@@ -352,15 +347,15 @@
         }
 
         span {
-            color: #ef4444; /* High-visibility Red */
+            color: #ef4444; 
             font-size: 9px;
             font-weight: 900;
             line-height: 1;
-            filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.6)); /* Red glow for extra focus */
+            filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.6));
         }
     }
 
-    /* Controls Card Section with Faint Emerald Borders */
+    /* Controls Card Section */
     .manual-trader-controls-card {
         background: transparent;
         border: none;
@@ -374,7 +369,7 @@
 
         @include mobile-or-tablet-screen {
             padding: 0;
-            gap: 6px;
+            gap: 8px;
         }
     }
 
@@ -385,7 +380,7 @@
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr;
-            gap: 6px;
+            gap: 8px;
         }
 
         &--align {
@@ -504,18 +499,19 @@
         }
     }
 
-    /* Purchase Buttons Action Zone */
+    /* Pushed Down Purchase Buttons Action Zone with Relaxed Spacing */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr !important;
-        gap: 24px !important; 
+        gap: 20px !important; 
         max-width: 800px !important; 
-        margin: 10px auto 0 auto;
+        margin: 24px auto 12px auto !important; /* Added vertical breathing room */
         width: 100%;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr 1fr !important;
-            gap: 8px !important;
+            gap: 10px !important;
+            margin: 16px auto 8px auto !important;
             max-width: 100% !important;
         }
     }
@@ -534,7 +530,7 @@
         transition: all 0.2s ease;
 
         @include mobile-or-tablet-screen {
-            padding: 8px 6px !important;
+            padding: 10px 8px !important;
         }
 
         &--over {
