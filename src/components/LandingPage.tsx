@@ -8,9 +8,10 @@ import './LandingPage.scss';
 interface LandingPageProps {
     onLogin: () => void;
     onSignup: () => void;
+    userName?: string; // Optional user name captured upon login/signup or profile state
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup, userName }) => {
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [greeting, setGreeting] = useState('WELCOME, TRADER');
 
@@ -18,23 +19,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
     const fullSubtitleText = "AN INSTITUTIONAL-GRADE AUTOMATED TRADING PLATFORM. DEPLOY CUSTOM BLOCKLY STRATEGIES, RUN REAL-TIME MULTI-ASSET AI SCANNERS, AND MANAGE LIVE TICKS WITH SUB-MILLISECOND EXECUTION.";
     const [typedSubtitle, setTypedSubtitle] = useState('');
 
-    // Compute dynamic time-based greeting
+    // Compute dynamic time-based greeting incorporating the user's name if provided
     useEffect(() => {
         const updateGreeting = () => {
             const hour = new Date().getHours();
+            // Fallback to 'TRADER' if no name is provided, otherwise uppercase their name
+            const displayName = userName ? userName.trim().toUpperCase() : 'TRADER';
+
             if (hour < 12) {
-                setGreeting("GOOD MORNING, TRADER");
+                setGreeting(`GOOD MORNING, ${displayName}`);
             } else if (hour < 17) {
-                setGreeting("GOOD AFTERNOON, TRADER");
+                setGreeting(`GOOD AFTERNOON, ${displayName}`);
             } else {
-                setGreeting("GOOD EVENING, TRADER");
+                setGreeting(`GOOD EVENING, ${displayName}`);
             }
         };
 
         updateGreeting();
         const timer = setInterval(updateGreeting, 60000); // Check every minute
         return () => clearInterval(timer);
-    }, []);
+    }, [userName]);
 
     useEffect(() => {
         let currentIndex = 0;
