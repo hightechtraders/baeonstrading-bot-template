@@ -154,7 +154,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
             </header>
 
             <main className="landing-hero">
-                {/* Optional click listener kept here just in case they want to update their name later */}
+                {/* Clicking badge allows updating the name anytime */}
                 <div 
                     className="hero-badge" 
                     onClick={() => setIsPromptOpen(true)} 
@@ -202,36 +202,74 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                 </div>
             </main>
 
-            {/* Automated Welcome Modal Prompt for First-Time Visitors */}
+            {/* Automated Welcome Modal Prompt Styled with Emerald Green Aesthetics */}
             {isPromptOpen && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
                     background: 'rgba(3, 7, 18, 0.9)', zIndex: 1000, display: 'flex',
-                    alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(5px)'
+                    alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)'
                 }}>
                     <form onSubmit={handleSaveName} style={{
-                        background: '#0f172a', border: '1px solid rgba(16, 185, 129, 0.4)',
-                        padding: '28px', borderRadius: '12px', textAlign: 'center', maxWidth: '360px', width: '90%',
-                        boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                        background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.95) 0%, rgba(3, 7, 18, 0.98) 100%)',
+                        border: '1px solid rgba(16, 185, 129, 0.4)',
+                        boxShadow: '0 0 25px rgba(16, 185, 129, 0.15)',
+                        padding: '28px', borderRadius: '12px', textAlign: 'center', maxWidth: '360px', width: '90%'
                     }}>
-                        <h3 style={{ color: '#f8fafc', marginBottom: '8px', fontSize: '1.2rem' }}>Welcome to TraderScore.pro</h3>
-                        <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '20px', fontFamily: 'monospace' }}>
+                        <h3 style={{ 
+                            color: '#f8fafc', 
+                            marginBottom: '8px', 
+                            fontSize: '1.2rem',
+                            letterSpacing: '-0.01em'
+                        }}>
+                            Welcome to <span style={{ color: '#34d399' }}>TraderScore.pro</span>
+                        </h3>
+                        
+                        <p style={{ 
+                            color: '#94a3b8', 
+                            fontSize: '0.85rem', 
+                            marginBottom: '20px', 
+                            fontFamily: 'monospace',
+                            lineHeight: '1.4'
+                        }}>
                             Please enter your name to personalize your professional trading workspace:
                         </p>
+
                         <input 
                             type="text" 
                             placeholder="e.g. Baron Ouma"
                             value={tempNameInput}
                             onChange={(e) => setTempNameInput(e.target.value)}
                             style={{
-                                width: '100%', padding: '12px', background: '#030712', border: '1px solid #334155',
-                                color: '#fff', borderRadius: '6px', marginBottom: '16px', boxSizing: 'border-box',
-                                fontSize: '0.95rem'
+                                width: '100%', 
+                                padding: '12px', 
+                                background: '#030712', 
+                                border: '1px solid rgba(16, 185, 129, 0.3)',
+                                color: '#f1f5f9', 
+                                borderRadius: '8px', 
+                                marginBottom: '16px', 
+                                boxSizing: 'border-box',
+                                fontSize: '0.95rem',
+                                outline: 'none',
+                                textAlign: 'center',
+                                fontFamily: 'inherit'
                             }}
                             autoFocus
                             required
                         />
-                        <button type="submit" className="btn-primary" style={{ width: '100%', padding: '10px' }}>
+
+                        <button type="submit" style={{
+                            width: '100%',
+                            padding: '12px',
+                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            fontSize: '0.9rem',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 20px rgba(16, 185, 129, 0.35)',
+                            transition: 'all 0.2s ease'
+                        }}>
                             Enter Workspace
                         </button>
                     </form>
