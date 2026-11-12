@@ -90,28 +90,44 @@ export default function ManualTraderTab() {
     { name: 'Volatility 100 (1s) Index', code: '1HZ100V' },
   ];
 
-  const [targetDigit, setTargetDigit] = useState<number>(4);
+  // Initialize targetDigit from localStorage (persists across tab switches)
+  const [targetDigit, setTargetDigit] = useState<number>(() => {
+    const saved = localStorage.getItem('trader_target_digit');
+    return saved !== null ? parseInt(saved, 10) : 4;
+  });
+
   const [manualStake, setManualStake] = useState<string>('500.00');
   const [cursorPosition, setCursorPosition] = useState<number>(4);
   const [scannerStatus, setScannerStatus] = useState<string>('Scanning live tick momentum...');
 
   const targetDigitRef = useRef(targetDigit);
+  
+  // Keep localStorage and ref synchronized whenever targetDigit changes
   useEffect(() => {
     targetDigitRef.current = targetDigit;
+    localStorage.setItem('trader_target_digit', targetDigit.toString());
   }, [targetDigit]);
 
-  const [digitStats, setDigitStats] = useState([
-    { digit: 0, percent: 9.2, trend: 'neutral' },
-    { digit: 1, percent: 12.6, trend: 'high' },
-    { digit: 2, percent: 9.9, trend: 'neutral' },
-    { digit: 3, percent: 10.1, trend: 'neutral' },
-    { digit: 4, percent: 11.4, trend: 'selected' },
-    { digit: 5, percent: 8.5, trend: 'neutral' },
-    { digit: 6, percent: 10.5, trend: 'neutral' },
-    { digit: 7, percent: 9.4, trend: 'neutral' },
-    { digit: 8, percent: 7.7, trend: 'low' },
-    { digit: 9, percent: 10.3, trend: 'neutral' }
-  ]);
+  const [digitStats, setDigitStats] = useState(() => {
+    const savedDigit = localStorage.getItem('trader_target_digit');
+    const initialTarget = savedDigit !== null ? parseInt(savedDigit, 10) : 4;
+
+    return [
+      { digit: 0, percent: 9.2, trend: 'neutral' },
+      { digit: 1, percent: 12.6, trend: 'high' },
+      { digit: 2, percent: 9.9, trend: 'neutral' },
+      { digit: 3, percent: 10.1, trend: 'neutral' },
+      { digit: 4, percent: 11.4, trend: initialTarget === 4 ? 'selected' : 'neutral' },
+      { digit: 5, percent: 8.5, trend: 'neutral' },
+      { digit: 6, percent: 10.5, trend: 'neutral' },
+      { digit: 7, percent: 9.4, trend: 'neutral' },
+      { digit: 8, percent: 7.7, trend: 'low' },
+      { digit: 9, percent: 10.3, trend: 'neutral' }
+    ].map(item => ({
+      ...item,
+      trend: item.digit === initialTarget ? 'selected' : item.trend
+    }));
+  });
 
   // Simulation Loop
   useEffect(() => {
@@ -224,7 +240,6 @@ export default function ManualTraderTab() {
                   onClick={() => {
                     setTargetDigit(item.digit);
                     targetDigitRef.current = item.digit;
-                    setCursorPosition(item.digit);
                     setDigitStats(prev => 
                       prev.map(stat => ({
                         ...stat,
@@ -303,7 +318,7 @@ export default function ManualTraderTab() {
             onClick={() => {
               ScannerBridge.executeDirectTrade(
                 { strategyName: `Manual Under ${targetDigit}`, symbol: symbolCode },
-                { symbol: symbolCode, contractType: 'DIGITOVER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
+                { symbol: symbolCode, contractType: 'DIGITUNDER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
               );
             }}
             className="manual-trader-btn manual-trader-btn--under"
@@ -314,7 +329,7 @@ export default function ManualTraderTab() {
           </button>
         </div>
 
-      </div>
+v      </div>
     </div>
   );
 }
