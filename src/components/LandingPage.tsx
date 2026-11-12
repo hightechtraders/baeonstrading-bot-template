@@ -236,7 +236,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
 
                         <input 
                             type="text" 
-                            placeholder="e.g. Baron Ouma"
+                            placeholder="e.g. Alexander Vance"
                             value={tempNameInput}
                             onChange={(e) => setTempNameInput(e.target.value)}
                             style={{
