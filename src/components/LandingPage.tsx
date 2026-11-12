@@ -18,7 +18,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
     const fullSubtitleText = "AN INSTITUTIONAL-GRADE AUTOMATED TRADING PLATFORM. DEPLOY CUSTOM BLOCKLY STRATEGIES, RUN REAL-TIME MULTI-ASSET AI SCANNERS, AND MANAGE LIVE TICKS WITH SUB-MILLISECOND EXECUTION.";
     const [typedSubtitle, setTypedSubtitle] = useState('');
 
-    // Fetch True Network Time via CORS-friendly time service (ignoring local laptop clock)
+    // Bulletproof Multi-Layer Network Time Sync (Fully independent of device clock)
     useEffect(() => {
         const calculateGreetingFromHour = (currentHour: number) => {
             const verifiedName = localStorage.getItem('trader_name');
@@ -36,8 +36,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
         };
 
         const fetchTrueEATTime = async () => {
+            // Layer 1: TimeAPI.io for Nairobi
             try {
-                // Use a reliable CORS-open time endpoint (TimeAPI.io) for Nairobi (UTC+3)
                 const response = await fetch('https://www.timeapi.io/api/Time/current/zone?timeZone=Africa/Nairobi');
                 const data = await response.json();
                 
@@ -46,13 +46,39 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                     return;
                 }
             } catch (error) {
-                console.warn('Network time fetch failed, falling back to international standard UTC+3 offset calculation.');
+                console.warn('Primary time API failed, trying secondary fallback...');
             }
 
-            // Fallback: Compute UTC time + 3 hours offset directly
-            const now = new Date();
-            const fallbackHour = (now.getUTCHours() + 3) % 24;
-            calculateGreetingFromHour(fallbackHour);
+            // Layer 2: World Time API (Alternative endpoint)
+            try {
+                const response2 = await fetch('https://worldtimeapi.org/api/timezone/Africa/Nairobi');
+                const data2 = await response2.json();
+                
+                if (data2 && data2.datetime) {
+                    const timeString = data2.datetime.split('T')[1];
+                    const hour = parseInt(timeString.substring(0, 2), 10);
+                    calculateGreetingFromHour(hour);
+                    return;
+                }
+            } catch (error2) {
+                console.warn('Secondary time API failed, using server header fallback...');
+            }
+
+            // Layer 3: Server HTTP Date Header Fallback (Bypasses device clock entirely)
+            try {
+                const headResponse = await fetch(window.location.href, { method: 'HEAD' });
+                const serverDateHeader = headResponse.headers.get('Date');
+                
+                if (serverDateHeader) {
+                    const serverDate = new Date(serverDateHeader);
+                    const serverUtcHour = serverDate.getUTCHours();
+                    const eatHour = (serverUtcHour + 3) % 24; // Convert UTC to East Africa Time (UTC+3)
+                    calculateGreetingFromHour(eatHour);
+                    return;
+                }
+            } catch (headerError) {
+                console.warn('Server header time extraction failed.');
+            }
         };
 
         fetchTrueEATTime();
