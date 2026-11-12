@@ -18,13 +18,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
     const fullSubtitleText = "AN INSTITUTIONAL-GRADE AUTOMATED TRADING PLATFORM. DEPLOY CUSTOM BLOCKLY STRATEGIES, RUN REAL-TIME MULTI-ASSET AI SCANNERS, AND MANAGE LIVE TICKS WITH SUB-MILLISECOND EXECUTION.";
     const [typedSubtitle, setTypedSubtitle] = useState('');
 
-    // Bulletproof Time Calculation (Ignores incorrect device clock settings by using UTC+3 offset)
+    // Fetch True Network Time (Africa/Nairobi / UTC+3) ignoring local device clock
     useEffect(() => {
-        const updateGreeting = () => {
-            const now = new Date();
-            // Get precise UTC hour and add 3 hours for East Africa Time (UTC+3)
-            const currentHour = (now.getUTCHours() + 3) % 24;
-            
+        const calculateGreetingFromHour = (currentHour: number) => {
             const verifiedName = localStorage.getItem('trader_name');
             const displayName = verifiedName ? verifiedName.trim().toUpperCase() : 'TRADER';
 
@@ -39,8 +35,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
             }
         };
 
-        updateGreeting();
-        const timer = setInterval(updateGreeting, 60000); // Check every minute
+        const fetchTrueEATTime = async () => {
+            try {
+                // Query World Time API for official Nairobi time, bypassing device clock entirely
+                const response = await fetch('https://worldtimeapi.org/api/timezone/Africa/Nairobi');
+                const data = await response.json();
+                
+                if (data && data.datetime) {
+                    // Extract exact hour string from ISO datetime string (e.g., "2026-11-12T14:35:00+03:00")
+                    const timeString = data.datetime.split('T')[1];
+                    const hour = parseInt(timeString.substring(0, 2), 10);
+                    calculateGreetingFromHour(hour);
+                    return;
+                }
+            } catch (error) {
+                // Fallback if offline: use UTC time + 3 hours offset
+                const now = new Date();
+                const fallbackHour = (now.getUTCHours() + 3) % 24;
+                calculateGreetingFromHour(fallbackHour);
+            }
+        };
+
+        fetchTrueEATTime();
+        // Re-verify network time every 10 minutes
+        const timer = setInterval(fetchTrueEATTime, 600000); 
         return () => clearInterval(timer);
     }, []);
 
@@ -146,7 +164,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                 </h1>
 
                 {/* Stable Subtitle Wrapper with Typing Effect */}
-                <div className="subtitle-container">
                     <span className="subtitle-placeholder">{fullSubtitleText}</span>
                     <p className="hero-subtitle hero-subtitle-larger subtitle-animated">
                         {typedSubtitle}
