@@ -10,13 +10,13 @@
     flex-direction: column;
     justify-content: space-between;
     
-    /* Mobile & Tablets: Turn off desktop flex clamping to allow natural fluid scroll */
+    /* Mobile & Tablets: Natural document flow allowing full scroll to footer */
     @media (max-width: 1024px) {
         display: block;
-        height: auto !important;
-        min-height: 100dvh;
+        height: auto;
+        min-height: auto;
         overflow-y: visible;
-        padding-bottom: 80px; /* Generous bottom padding so footer sits nicely above phone OS bars */
+        padding-bottom: 40px;
     }
 
     background: radial-gradient(circle at 50% 10%, #0f172a 0%, #090d16 60%, #030712 100%);
@@ -28,11 +28,11 @@
 
     &::before {
         content: '';
-        position: fixed; /* Fixed position prevents mobile background grid clipping */
+        position: absolute; /* Changed from fixed to absolute so it flows with document height */
         top: 0;
         left: 0;
-        width: 100vw;
-        height: 100vh;
+        width: 100%;
+        height: 100%;
         background-image: linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
                           linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
         background-size: 32px 32px;
@@ -42,7 +42,7 @@
 
     > * {
         position: relative;
-        z-index: 2; /* Forces all content layers cleanly above the background grid */
+        z-index: 2;
     }
 
     .mouse-glow {
@@ -415,7 +415,7 @@
     .landing-footer {
         text-align: center;
         padding: 24px 16px;
-        margin-top: 32px;
+        margin-top: 24px;
         border-top: 1px solid rgba(255, 255, 255, 0.08);
         color: #94a3b8;
         font-size: 0.85rem;
