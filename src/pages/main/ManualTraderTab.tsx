@@ -1,3 +1,6 @@
+// ==========================================
+// FILE: src/pages/main/ManualTraderTab.tsx
+// ==========================================
 import React, { useState, useEffect, useRef } from 'react';
 import { ScannerBridge } from '../../Aiscanner/scannerBridge';
 import './ManualTraderTab.scss';
@@ -239,11 +242,10 @@ export default function ManualTraderTab() {
                     trendMode={isSelected ? 'selected' : item.trend}
                   />
 
-                  {isCursorHere && (
-                    <div className="digit-cursor-arrow">
-                      <span>▲</span>
-                    </div>
-                  )}
+                  {/* Permanently rendered slot controlled via opacity to prevent layout jumping/shaking */}
+                  <div className={`digit-cursor-arrow ${isCursorHere ? 'active' : ''}`}>
+                    <span>▲</span>
+                  </div>
                 </div>
               );
             })}
