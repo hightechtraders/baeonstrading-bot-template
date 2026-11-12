@@ -164,6 +164,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                 </h1>
 
                 {/* Stable Subtitle Wrapper with Typing Effect */}
+                <div className="subtitle-container">
                     <span className="subtitle-placeholder">{fullSubtitleText}</span>
                     <p className="hero-subtitle hero-subtitle-larger subtitle-animated">
                         {typedSubtitle}
