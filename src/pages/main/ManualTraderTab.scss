@@ -353,7 +353,7 @@
         }
     }
 
-    /* Unified Professional Single Card Container with Increased Label Sizes */
+    /* Unified Professional Single Card Container with Spacious Stepper Layout */
     .manual-unified-config-card {
         background: rgba(16, 185, 129, 0.03);
         border: 1px solid rgba(16, 185, 129, 0.2);
@@ -366,20 +366,21 @@
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            padding: 14px 16px;
+            padding: 14px 12px;
             gap: 14px;
         }
 
         .config-grid-row {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
+            /* Allocated more relative column weight (1.4fr) to Duration to prevent cramping */
+            grid-template-columns: 0.8fr 0.8fr 1.4fr;
+            gap: 12px;
             padding-bottom: 16px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 
             @include mobile-or-tablet-screen {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 8px;
+                grid-template-columns: 0.8fr 0.8fr 1.4fr;
+                gap: 6px;
                 padding-bottom: 12px;
             }
 
@@ -390,29 +391,83 @@
                 text-align: center;
 
                 .config-label {
-                    font-size: 0.78rem; // Increased from 0.62rem for clear desktop visibility
+                    font-size: 0.75rem;
                     text-transform: uppercase;
                     color: var(--text-general);
                     font-weight: 800;
                     margin-bottom: 6px;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.6rem;
+                        font-size: 0.55rem;
                     }
                 }
 
                 .config-value {
-                    font-size: 1.05rem; // Increased for prominence
+                    font-size: 1.05rem;
                     font-weight: 900;
                     color: var(--text-prominent);
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.85rem;
+                        font-size: 0.78rem;
                     }
 
                     &.highlight-digit {
                         color: #34d399;
                         font-size: 1.2rem;
+                    }
+                }
+
+                /* Spacious, clean stepper control layout */
+                .config-stepper-control {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                    width: 100%;
+
+                    @include mobile-or-tablet-screen {
+                        gap: 3px;
+                    }
+
+                    .stepper-btn {
+                        background: rgba(16, 185, 129, 0.15);
+                        border: 1px solid rgba(16, 185, 129, 0.4);
+                        color: #34d399;
+                        width: 26px;
+                        height: 26px;
+                        border-radius: 6px;
+                        font-weight: 900;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 0.95rem;
+                        transition: background 0.2s ease, transform 0.1s ease;
+                        flex-shrink: 0;
+
+                        @include mobile-or-tablet-screen {
+                            width: 22px;
+                            height: 22px;
+                            font-size: 0.78rem;
+                            border-radius: 4px;
+                        }
+
+                        &:hover {
+                            background: rgba(16, 185, 129, 0.3);
+                        }
+
+                        &:active {
+                            transform: scale(0.92);
+                        }
+                    }
+
+                    .config-value {
+                        white-space: nowrap;
+                        font-size: 0.9rem;
+
+                        @include mobile-or-tablet-screen {
+                            font-size: 0.7rem;
+                        }
                     }
                 }
             }
@@ -430,7 +485,7 @@
                 gap: 8px;
 
                 .config-label {
-                    font-size: 0.78rem; // Increased from 0.62rem
+                    font-size: 0.78rem;
                     text-transform: uppercase;
                     color: var(--text-general);
                     font-weight: 800;
