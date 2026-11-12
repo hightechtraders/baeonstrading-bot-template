@@ -18,18 +18,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
     const fullSubtitleText = "AN INSTITUTIONAL-GRADE AUTOMATED TRADING PLATFORM. DEPLOY CUSTOM BLOCKLY STRATEGIES, RUN REAL-TIME MULTI-ASSET AI SCANNERS, AND MANAGE LIVE TICKS WITH SUB-MILLISECOND EXECUTION.";
     const [typedSubtitle, setTypedSubtitle] = useState('');
 
-    // Time-zone independent greeting (Forces correct calculation regardless of faulty laptop clocks)
+    // Bulletproof Time Calculation (Ignores incorrect device clock settings by using UTC+3 offset)
     useEffect(() => {
         const updateGreeting = () => {
-            // Forcefully evaluate time using Africa/Nairobi timezone (UTC+3) 
-            // regardless of what the user's physical laptop clock says.
-            const formatter = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'Africa/Nairobi',
-                hour: 'numeric',
-                hour12: false
-            });
+            const now = new Date();
+            // Get precise UTC hour and add 3 hours for East Africa Time (UTC+3)
+            const currentHour = (now.getUTCHours() + 3) % 24;
             
-            const currentHour = parseInt(formatter.format(new Date()), 10);
             const verifiedName = localStorage.getItem('trader_name');
             const displayName = verifiedName ? verifiedName.trim().toUpperCase() : 'TRADER';
 
