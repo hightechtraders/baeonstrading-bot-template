@@ -6,7 +6,6 @@ import { ScannerBridge } from '../../Aiscanner/scannerBridge';
 import './ManualTraderTab.scss';
 
 function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
-  // High-resolution SVG scale for razor-sharp rendering
   const circleRadius = 36;
   const lineThickness = 6;
   const pathCircumference = 2 * Math.PI * circleRadius;
@@ -199,7 +198,7 @@ export default function ManualTraderTab() {
           )}
         </div>
 
-        {/* Live Scanner Status Banner with Stabilized Height */}
+        {/* Live Scanner Status Banner */}
         <div className="manual-status-banner">
           <div className="manual-status-content">
             <span className="manual-status-pulse" />
@@ -242,7 +241,6 @@ export default function ManualTraderTab() {
                     trendMode={isSelected ? 'selected' : item.trend}
                   />
 
-                  {/* Permanently rendered slot controlled via opacity to prevent layout jumping/shaking */}
                   <div className={`digit-cursor-arrow ${isCursorHere ? 'active' : ''}`}>
                     <span>▲</span>
                   </div>
@@ -252,47 +250,40 @@ export default function ManualTraderTab() {
           </div>
         </div>
 
-        {/* Terminal-Grade Controls Card */}
-        <div className="manual-trader-controls-card">
-          <div className="manual-trader-row">
-            <div>
-              <label className="manual-trader-label">Trade Logic Blueprint</label>
-              <div className="manual-trader-target-box">
-                Over/Under
-              </div>
+        {/* Unified Professional Parameter Card */}
+        <div className="manual-unified-config-card">
+          <div className="config-grid-row">
+            <div className="config-item">
+              <span className="config-label">Blueprint</span>
+              <span className="config-value">Over / Under</span>
             </div>
-            <div>
-              <label className="manual-trader-label">Prediction Target</label>
-              <div className="manual-trader-target-box">
-                Digit: {targetDigit}
-              </div>
+            <div className="config-item">
+              <span className="config-label">Target Digit</span>
+              <span className="config-value highlight-digit">{targetDigit}</span>
+            </div>
+            <div className="config-item">
+              <span className="config-label">Duration</span>
+              <span className="config-value">1 Tick</span>
             </div>
           </div>
 
-          <div className="manual-trader-row manual-trader-row--align">
-            <div>
-              <label className="manual-trader-label">Contract Duration</label>
-              <div className="manual-trader-duration-box">
-                1 Tick Execution
-              </div>
-            </div>
-
-            <div className="manual-trader-stake-container">
-              <div className="manual-trader-stake-inner">
-                <span className="manual-trader-stake-title">Risk Capital Allocation</span>
+          <div className="config-stake-row">
+            <div className="config-stake-info">
+              <span className="config-label">Risk Capital Allocation</span>
+              <div className="config-input-wrapper">
                 <input 
                   type='text' 
                   value={manualStake}
                   onChange={(e) => setManualStake(e.target.value)}
                   className="manual-trader-input"
                 />
+                <span className="currency-tag">USD</span>
               </div>
-              <span className="manual-trader-currency-badge">USD STAKE</span>
             </div>
           </div>
         </div>
 
-        {/* Well-Separated Purchase Buttons Action Zone */}
+        {/* Well-Spaced Purchase Buttons Action Zone */}
         <div className="manual-trader-buttons-grid">
           <button 
             onClick={() => {
@@ -312,7 +303,7 @@ export default function ManualTraderTab() {
             onClick={() => {
               ScannerBridge.executeDirectTrade(
                 { strategyName: `Manual Under ${targetDigit}`, symbol: symbolCode },
-                { symbol: symbolCode, contractType: 'DIGITUNDER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
+                { symbol: symbolCode, contractType: 'DIGITOVER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: 1, durationUnit: 't' }
               );
             }}
             className="manual-trader-btn manual-trader-btn--under"
