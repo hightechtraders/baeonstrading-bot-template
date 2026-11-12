@@ -2,15 +2,19 @@
 // FILE: src/components/LandingPage.scss
 // ==========================================
 .landing-container {
-    /* Responsive height behavior: locked single viewport on desktop, scrollable on mobile/tablet */
+    /* Desktop: Locked single viewport */
     min-height: 100vh;
     height: 100vh;
     overflow-y: auto;
-
+    
+    /* Mobile & Tablets: Fluid natural document height allowing full scroll */
     @media (max-width: 1024px) {
         height: auto;
-        min-height: 100vh;
+        min-height: 100dvh;
         overflow-y: visible;
+        justify-content: flex-start;
+        gap: 24px;
+        padding-bottom: 40px; /* Ensures clearance above mobile bottom bars */
     }
 
     background: radial-gradient(circle at 50% 10%, #0f172a 0%, #090d16 60%, #030712 100%);
@@ -210,7 +214,6 @@
         }
 
         .hero-title {
-            /* Adjusted clamp so title scales smoothly without overlapping */
             font-size: clamp(2.2rem, 4.2vw, 3.8rem);
             font-weight: 800;
             line-height: 1.12;
@@ -229,7 +232,6 @@
             }
         }
 
-        /* --- STABLE SUBTITLE WRAPPER FIX --- */
         .subtitle-container {
             position: relative;
             display: inline-block;
@@ -256,7 +258,6 @@
             width: 100%;
             margin: 0;
         }
-        /* ---------------------------------- */
 
         .hero-subtitle {
             color: #94a3b8;
@@ -414,12 +415,10 @@
 
     .landing-footer {
         text-align: center;
-        padding: 8px 0;
+        padding: 16px 0;
+        margin-top: 16px;
         border-top: 1px solid rgba(255, 255, 255, 0.08);
         color: #94a3b8;
-        font-size: 0.9rem;
-        font-family: monospace;
-        letter-spacing: 0.5px;
     }
 }
 
