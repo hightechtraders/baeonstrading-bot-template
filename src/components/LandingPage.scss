@@ -10,13 +10,14 @@
     flex-direction: column;
     justify-content: space-between;
     
-    /* Mobile & Tablets: Natural document scroll with pinned sticky ticker */
+    /* Mobile & Tablets: Natural scroll, padded top to accommodate the fixed ticker */
     @media (max-width: 1024px) {
         display: block !important;
         height: auto !important;
         min-height: auto !important;
         overflow-y: visible !important;
-        padding-bottom: 50px; /* Gives safe breathing room below the footer */
+        padding-top: 55px !important; /* Pushes content down so fixed ticker doesn't overlap header */
+        padding-bottom: 50px;
         gap: 16px;
     }
 
@@ -72,6 +73,20 @@
         overflow: hidden;
         font-family: monospace;
         font-size: 0.75rem;
+
+        /* Mobile Override: Locks ticker to the absolute top of the screen viewport */
+        @media (max-width: 1024px) {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            margin: 0 !important;
+            width: 100vw !important;
+            border-radius: 0 !important;
+            border-left: none !important;
+            border-right: none !important;
+            border-top: none !important;
+        }
 
         .ticker-track {
             display: inline-flex;
