@@ -12,31 +12,18 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) => {
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-    const [userName, setUserName] = useState<string>('');
     const [greeting, setGreeting] = useState('WELCOME, TRADER');
-    const [isPromptOpen, setIsPromptOpen] = useState(false);
-    const [tempNameInput, setTempNameInput] = useState('');
 
     // Typing effect state with uppercase text and a 5-second hold before looping
     const fullSubtitleText = "AN INSTITUTIONAL-GRADE AUTOMATED TRADING PLATFORM. DEPLOY CUSTOM BLOCKLY STRATEGIES, RUN REAL-TIME MULTI-ASSET AI SCANNERS, AND MANAGE LIVE TICKS WITH SUB-MILLISECOND EXECUTION.";
     const [typedSubtitle, setTypedSubtitle] = useState('');
 
-    // 1. Check localStorage on initial load; if missing, auto-open the name prompt modal
-    useEffect(() => {
-        const savedName = localStorage.getItem('trader_name');
-        if (savedName) {
-            setUserName(savedName);
-        } else {
-            // Auto-prompt first-time visitors immediately
-            setIsPromptOpen(true);
-        }
-    }, []);
-
-    // 2. Compute dynamic time-based greeting whenever userName changes
+    // Check localStorage on load for a verified official name cached from Deriv login
     useEffect(() => {
         const updateGreeting = () => {
             const hour = new Date().getHours();
-            const displayName = userName ? userName.trim().toUpperCase() : 'TRADER';
+            const verifiedName = localStorage.getItem('trader_name');
+            const displayName = verifiedName ? verifiedName.trim().toUpperCase() : 'TRADER';
 
             if (hour < 12) {
                 setGreeting(`GOOD MORNING, ${displayName}`);
@@ -50,7 +37,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
         updateGreeting();
         const timer = setInterval(updateGreeting, 60000); // Check every minute
         return () => clearInterval(timer);
-    }, [userName]);
+    }, []);
 
     useEffect(() => {
         let currentIndex = 0;
@@ -82,17 +69,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
             x: e.clientX - rect.left,
             y: e.clientY - rect.top,
         });
-    };
-
-    // Save user-submitted name permanently and close modal
-    const handleSaveName = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (tempNameInput.trim()) {
-            const cleanName = tempNameInput.trim();
-            localStorage.setItem('trader_name', cleanName);
-            setUserName(cleanName);
-            setIsPromptOpen(false);
-        }
     };
 
     return (
@@ -154,13 +130,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
             </header>
 
             <main className="landing-hero">
-                {/* Clicking badge allows updating the name anytime */}
-                <div 
-                    className="hero-badge" 
-                    onClick={() => setIsPromptOpen(true)} 
-                    style={{ cursor: 'pointer' }}
-                    title="Click to update name"
-                >
+                <div className="hero-badge">
                     <span>👋 {greeting} · DERIV API</span>
                 </div>
                 
@@ -202,84 +172,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
                 </div>
             </main>
 
-            {/* Automated Welcome Modal Prompt Styled with Emerald Green Aesthetics */}
-            {isPromptOpen && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-                    background: 'rgba(3, 7, 18, 0.9)', zIndex: 1000, display: 'flex',
-                    alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)'
-                }}>
-                    <form onSubmit={handleSaveName} style={{
-                        background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.95) 0%, rgba(3, 7, 18, 0.98) 100%)',
-                        border: '1px solid rgba(16, 185, 129, 0.4)',
-                        boxShadow: '0 0 25px rgba(16, 185, 129, 0.15)',
-                        padding: '28px', borderRadius: '12px', textAlign: 'center', maxWidth: '360px', width: '90%'
-                    }}>
-                        <h3 style={{ 
-                            color: '#f8fafc', 
-                            marginBottom: '8px', 
-                            fontSize: '1.2rem',
-                            letterSpacing: '-0.01em'
-                        }}>
-                            Welcome to <span style={{ color: '#34d399' }}>TraderScore.pro</span>
-                        </h3>
-                        
-                        <p style={{ 
-                            color: '#94a3b8', 
-                            fontSize: '0.85rem', 
-                            marginBottom: '20px', 
-                            fontFamily: 'monospace',
-                            lineHeight: '1.4'
-                        }}>
-                            Please enter your name to personalize your professional trading workspace:
-                        </p>
-
-                        <input 
-                            type="text" 
-                            placeholder="e.g. Alexander Vance"
-                            value={tempNameInput}
-                            onChange={(e) => setTempNameInput(e.target.value)}
-                            style={{
-                                width: '100%', 
-                                padding: '12px', 
-                                background: '#030712', 
-                                border: '1px solid rgba(16, 185, 129, 0.3)',
-                                color: '#f1f5f9', 
-                                borderRadius: '8px', 
-                                marginBottom: '16px', 
-                                boxSizing: 'border-box',
-                                fontSize: '0.95rem',
-                                outline: 'none',
-                                textAlign: 'center',
-                                fontFamily: 'inherit'
-                            }}
-                            autoFocus
-                            required
-                        />
-
-                        <button type="submit" style={{
-                            width: '100%',
-                            padding: '12px',
-                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                            color: '#ffffff',
-                            border: 'none',
-                            borderRadius: '8px',
-                            fontWeight: 600,
-                            fontSize: '0.9rem',
-                            cursor: 'pointer',
-                            boxShadow: '0 4px 20px rgba(16, 185, 129, 0.35)',
-                            transition: 'all 0.2s ease'
-                        }}>
-                            Enter Workspace
-                        </button>
-                    </form>
-                </div>
-            )}
-
             <section className="features-grid">
                 <div className="feature-card">
                     <div className="card-icon">⚡</div>
-                    <h3>Blazing-Fast Execution</h3>
+                    <h3>Blazing-FastExecution</h3>
                     <p>Optimized WebSocket tick listeners process market data instantly to reduce latency on automated entry triggers.</p>
                 </div>
                 <div className="feature-card">
