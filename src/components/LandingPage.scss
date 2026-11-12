@@ -14,7 +14,7 @@
         overflow-y: visible;
         justify-content: flex-start;
         gap: 24px;
-        padding-bottom: 40px; /* Ensures clearance above mobile bottom bars */
+        padding-bottom: 60px; /* Ensures clearance above mobile bottom bars */
     }
 
     background: radial-gradient(circle at 50% 10%, #0f172a 0%, #090d16 60%, #030712 100%);
@@ -306,7 +306,7 @@
                 align-items: center;
                 justify-content: center;
                 gap: 8px;
-                transition: all 0.2s ease;
+                transition: all 0.25s ease;
 
                 &:active {
                     transform: scale(0.98);
