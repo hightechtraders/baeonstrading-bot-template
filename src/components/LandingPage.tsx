@@ -18,7 +18,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
     const fullSubtitleText = "AN INSTITUTIONAL-GRADE AUTOMATED TRADING PLATFORM. DEPLOY CUSTOM BLOCKLY STRATEGIES, RUN REAL-TIME MULTI-ASSET AI SCANNERS, AND MANAGE LIVE TICKS WITH SUB-MILLISECOND EXECUTION.";
     const [typedSubtitle, setTypedSubtitle] = useState('');
 
-    // Fetch True Network Time (Africa/Nairobi / UTC+3) ignoring local device clock
+    // Fetch True Network Time via CORS-friendly time service (ignoring local laptop clock)
     useEffect(() => {
         const calculateGreetingFromHour = (currentHour: number) => {
             const verifiedName = localStorage.getItem('trader_name');
@@ -37,23 +37,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
 
         const fetchTrueEATTime = async () => {
             try {
-                // Query World Time API for official Nairobi time, bypassing device clock entirely
-                const response = await fetch('https://worldtimeapi.org/api/timezone/Africa/Nairobi');
+                // Use a reliable CORS-open time endpoint (TimeAPI.io) for Nairobi (UTC+3)
+                const response = await fetch('https://www.timeapi.io/api/Time/current/zone?timeZone=Africa/Nairobi');
                 const data = await response.json();
                 
-                if (data && data.datetime) {
-                    // Extract exact hour string from ISO datetime string (e.g., "2026-11-12T14:35:00+03:00")
-                    const timeString = data.datetime.split('T')[1];
-                    const hour = parseInt(timeString.substring(0, 2), 10);
-                    calculateGreetingFromHour(hour);
+                if (data && typeof data.hour === 'number') {
+                    calculateGreetingFromHour(data.hour);
                     return;
                 }
             } catch (error) {
-                // Fallback if offline: use UTC time + 3 hours offset
-                const now = new Date();
-                const fallbackHour = (now.getUTCHours() + 3) % 24;
-                calculateGreetingFromHour(fallbackHour);
+                console.warn('Network time fetch failed, falling back to international standard UTC+3 offset calculation.');
             }
+
+            // Fallback: Compute UTC time + 3 hours offset directly
+            const now = new Date();
+            const fallbackHour = (now.getUTCHours() + 3) % 24;
+            calculateGreetingFromHour(fallbackHour);
         };
 
         fetchTrueEATTime();
