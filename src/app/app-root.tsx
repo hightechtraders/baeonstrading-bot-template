@@ -63,7 +63,7 @@ const AppRoot = () => {
         return () => clearTimeout(timer);
     }, []);
 
-    // 1. Authentication check capturing tokens from BOTH search and hash parameters
+    // 1. Strict Gate: Only consider authenticated if the user actively clicked login or returned via OAuth redirect callback in the current session
     const [isAuthenticated] = useState<boolean>(() => {
         if (typeof window === 'undefined') return false;
 
@@ -71,10 +71,9 @@ const AppRoot = () => {
         const hashString = window.location.hash.replace('#', '?');
         const combinedParams = new URLSearchParams(`${searchString}&${hashString}`);
 
-        const hasAuthToken = !!localStorage.getItem('authToken');
         const hasAccountParam = combinedParams.has('account') || combinedParams.has('acct') || combinedParams.has('acct1');
-        
         let foundToken = false;
+        
         for (const [key, value] of combinedParams.entries()) {
             if ((key.includes('token') || key.startsWith('acct')) && value && value.length > 5) {
                 localStorage.setItem(key, value);
@@ -90,10 +89,19 @@ const AppRoot = () => {
 
         const hasUrlTokens = foundToken || searchString.includes('token') || hashString.includes('token') || searchString.includes('acct');
 
-        return hasAuthToken || hasAccountParam || hasUrlTokens;
+        // Only authenticate if tokens are explicitly present in the URL right now (meaning an OAuth callback just happened)
+        // OR if an active login session flag was set during this exact browsing session.
+        const activeSessionFlag = sessionStorage.getItem('active_workspace_session') === 'true';
+
+        if (hasAccountParam || hasUrlTokens) {
+            sessionStorage.setItem('active_workspace_session', 'true');
+            return true;
+        }
+
+        return activeSessionFlag && !!localStorage.getItem('authToken');
     });
 
-    // 2. Initialize API and clean URL parameters once on mount (checking both search and hash)
+    // 2. Initialize API and clean URL parameters once on mount
     useEffect(() => {
         const searchString = window.location.search;
         const hashString = window.location.hash.replace('#', '?');
@@ -140,8 +148,10 @@ const AppRoot = () => {
         return () => clearTimeout(timeoutId);
     }, [isAuthenticated]);
 
-    // Twin-button handler for Login
+    // Twin-button handler for Login: Sets active session flag before redirecting to Deriv OAuth
     const handleLogin = () => {
+        sessionStorage.setItem('active_workspace_session', 'true');
+        
         const originalLoginBtn = document.querySelector('.auth-actions button, .btn-login, [class*="login"]') as HTMLButtonElement;
         
         if (originalLoginBtn) {
