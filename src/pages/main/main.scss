@@ -1078,6 +1078,61 @@ joyride-content {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
 
+    // FORCED STYLING FOR GLOBAL STAKE MULTIPLIER RANGE INPUT TRACK & THUMB
+    input[type='range'] {
+        -webkit-appearance: none !important;
+        appearance: none !important;
+        width: 100% !important;
+        height: 10px !important;
+        background: rgba(0, 168, 107, 0.25) !important;
+        border: 1.5px solid rgba(0, 168, 107, 0.5) !important;
+        border-radius: 6px !important;
+        outline: none !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        display: block !important;
+
+        &::-webkit-slider-runnable-track {
+            width: 100% !important;
+            height: 10px !important;
+            background: rgba(0, 168, 107, 0.25) !important;
+            border-radius: 6px !important;
+            border: 1.5px solid rgba(0, 168, 107, 0.5) !important;
+        }
+
+        &::-webkit-slider-thumb {
+            -webkit-appearance: none !important;
+            appearance: none !important;
+            width: 22px !important;
+            height: 22px !important;
+            border-radius: 50% !important;
+            background: #00a86b !important;
+            cursor: pointer !important;
+            box-shadow: 0 0 12px rgba(0, 168, 107, 0.8) !important;
+            margin-top: -7px !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        &::-moz-range-track {
+            width: 100% !important;
+            height: 10px !important;
+            background: rgba(0, 168, 107, 0.25) !important;
+            border-radius: 6px !important;
+            border: 1.5px solid rgba(0, 168, 107, 0.5) !important;
+        }
+
+        &::-moz-range-thumb {
+            width: 22px !important;
+            height: 22px !important;
+            border-radius: 50% !important;
+            background: #00a86b !important;
+            cursor: pointer !important;
+            border: none !important;
+            box-shadow: 0 0 12px rgba(0, 168, 107, 0.8) !important;
+        }
+    }
+
     // DIRECTLY targeting the Master Trader Cards inside Copy Trading to shrink height & prevent clipping
     .free-bots-card {
         max-height: 392px !important;
