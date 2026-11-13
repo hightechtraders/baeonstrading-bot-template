@@ -41,10 +41,10 @@
     box-sizing: border-box;
 
     @include mobile-or-tablet-screen {
-        height: 100% !important;
+        height: auto !important;
         min-height: 100vh;
         padding: 0;
-        overflow-y: auto !important;
+        overflow-y: visible !important;
         -webkit-overflow-scrolling: touch;
     }
 
@@ -189,7 +189,7 @@
                     height: auto !important; 
                     overflow-y: visible !important; 
                     -webkit-overflow-scrolling: touch;
-                    padding-bottom: 6rem;
+                    padding-bottom: 8rem;
 
                     &--no-result {
                         @include flex-center;
@@ -942,6 +942,11 @@ joyride-content {
         box-shadow: 0 0.6rem 1.6rem rgba(0, 168, 107, 0.15);
     }
 
+    .range-slider,
+    .dc-slider {
+        width: 100% !important;
+    }
+
     .free-bots-header {
         display: flex;
         justify-content: space-between;
@@ -1068,68 +1073,69 @@ joyride-content {
    ========================================== */
 
 #id-copy-trading {
-    padding: 0.5rem 1rem 8rem 1rem; // Extra bottom padding so mobile scroll reaches the absolute last card
+    padding: 0.5rem 1rem 12rem 1rem !important; // Massive bottom clearance so mobile view scrolls completely past the final card
     width: 100%;
     max-width: 1400px;
     margin: 0 auto;
     background: var(--general-main-1);
     box-sizing: border-box;
-    overflow-y: auto !important;
+    overflow-y: visible !important;
     -webkit-overflow-scrolling: touch;
 
-    // Fix for visible global stake multiplier range input track and thumb
-    input[type='range'] {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 100%;
-        height: 8px;
-        background: rgba(0, 168, 107, 0.2);
-        border: 1px solid rgba(0, 168, 107, 0.4);
-        border-radius: 4px;
-        outline: none;
-        cursor: pointer;
+    // Forcefully force range sliders inside copy trading to render a visible track and thumb
+    input[type='range'],
+    .dc-slider__track,
+    .range-slider__track {
+        -webkit-appearance: none !important;
+        appearance: none !important;
+        width: 100% !important;
+        height: 10px !important;
+        background: rgba(0, 168, 107, 0.25) !important;
+        border: 1.5px solid rgba(0, 168, 107, 0.5) !important;
+        border-radius: 6px !important;
+        outline: none !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        display: block !important;
 
         &::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 8px;
-            background: rgba(0, 168, 107, 0.2);
-            border-radius: 4px;
-            border: 1px solid rgba(0, 168, 107, 0.4);
+            width: 100% !important;
+            height: 10px !important;
+            background: rgba(0, 168, 107, 0.25) !important;
+            border-radius: 6px !important;
+            border: 1.5px solid rgba(0, 168, 107, 0.5) !important;
         }
 
         &::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #00a86b;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(0, 168, 107, 0.6);
-            margin-top: -6px;
-            transition: transform 0.1s ease;
-
-            &:hover {
-                transform: scale(1.15);
-            }
+            -webkit-appearance: none !important;
+            appearance: none !important;
+            width: 22px !important;
+            height: 22px !important;
+            border-radius: 50% !important;
+            background: #00a86b !important;
+            cursor: pointer !important;
+            box-shadow: 0 0 12px rgba(0, 168, 107, 0.8) !important;
+            margin-top: -7px !important;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
 
         &::-moz-range-track {
-            width: 100%;
-            height: 8px;
-            background: rgba(0, 168, 107, 0.2);
-            border-radius: 4px;
-            border: 1px solid rgba(0, 168, 107, 0.4);
+            width: 100% !important;
+            height: 10px !important;
+            background: rgba(0, 168, 107, 0.25) !important;
+            border-radius: 6px !important;
+            border: 1.5px solid rgba(0, 168, 107, 0.5) !important;
         }
 
         &::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #00a86b;
-            cursor: pointer;
-            border: none;
-            box-shadow: 0 0 10px rgba(0, 168, 107, 0.6);
+            width: 22px !important;
+            height: 22px !important;
+            border-radius: 50% !important;
+            background: #00a86b !important;
+            cursor: pointer !important;
+            border: none !important;
+            box-shadow: 0 0 12px rgba(0, 168, 107, 0.8) !important;
         }
     }
 
@@ -1162,21 +1168,12 @@ joyride-content {
     }
 }
 
-// Completely hide any unintended floating tooltips/cursors/indicators on touch/mobile view
+// Eliminate mobile tab pointer lines, tooltips, and lingering floaters
 @include mobile-or-tablet-screen {
-    #id-copy-trading, 
-    .dc-tabs__active-line {
-        cursor: default !important;
-        
-        * {
-            pointer-events: auto;
-        }
-    }
-
-    // Hide unwanted trailing indicator pseudo-elements or pointer artifacts near active tabs
-    .dc-tabs__item {
-        &::after, &::before {
-            display: none !important;
-        }
+    .dc-tabs__active-line,
+    .__floater__arrow,
+    .rc-tooltip-arrow {
+        display: none !important;
+        visibility: hidden !important;
     }
 }
