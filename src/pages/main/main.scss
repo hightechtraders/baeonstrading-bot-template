@@ -1063,14 +1063,16 @@
 }
 
 /* ==========================================
-   COPY TRADING TAB - PROPORTIONALLY REDUCED & OPTIMIZED
+   COPY TRADING TAB - PULLED UP & PROPORTIONALLY OPTIMIZED
    ========================================== */
 
 #id-copy-trading {
-    padding: 0.8rem 1.2rem;
+    padding: 0.4rem 1.2rem 0.8rem 1.2rem; // Tighter top padding
+    margin-top: -0.6rem;                  // Pulls the content block up into the white space
     width: 100%;
     max-width: 1400px;
-    margin: 0 auto;
+    margin-left: auto;
+    margin-right: auto;
     min-height: 100%;
     background: var(--general-main-1);
     box-sizing: border-box; 
@@ -1081,6 +1083,7 @@
 
     @include mobile-or-tablet-screen {
         padding: 0.8rem; 
+        margin-top: 0;
         padding-bottom: 7rem;
     }
 
