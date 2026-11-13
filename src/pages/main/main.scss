@@ -1063,12 +1063,12 @@
 }
 
 /* ==========================================
-   COPY TRADING TAB - PULLED UP & PROPORTIONALLY OPTIMIZED
+   COPY TRADING TAB - PULLED UP & REDUCED ANOTHER 10%
    ========================================== */
 
 #id-copy-trading {
-    padding: 0.4rem 1.2rem 0.8rem 1.2rem; // Tighter top padding
-    margin-top: -0.6rem;                  // Pulls the content block up into the white space
+    padding: 0.2rem 1rem 0.6rem 1rem;    // Further reduced top/bottom padding
+    margin-top: -1.2rem;                 // Lifted higher up to completely clear top white space
     width: 100%;
     max-width: 1400px;
     margin-left: auto;
@@ -1088,15 +1088,15 @@
     }
 
     h3 {
-        font-size: 1.3rem !important;
+        font-size: 1.15rem !important;
         color: var(--text-prominent) !important;
-        margin-bottom: 0.15rem !important;
+        margin-bottom: 0.1rem !important;
     }
 
     p {
         color: var(--text-prominent) !important;
         opacity: 1 !important;
-        font-size: 0.85rem !important;
+        font-size: 0.8rem !important;
     }
 
     span, label {
@@ -1104,11 +1104,11 @@
         opacity: 1 !important;
     }
 
-    // Proportionally Scaled Grid
+    // Grid further optimized for 10% smaller footprints
     .free-bots-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); 
-        gap: 0.75rem;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); 
+        gap: 0.65rem;
         width: 100%;
         box-sizing: border-box;
 
@@ -1117,17 +1117,17 @@
         }
     }
 
-    // Proportionally Scaled Card Constraints
+    // Card dimensions reduced by another 10%
     .free-bots-card {
         background: var(--general-section-1); 
         border: 1.5px solid rgba(0, 168, 107, 0.35); 
-        border-radius: 0.85rem;
-        padding: 0.75rem 0.95rem;
-        box-shadow: 0 0.25rem 0.8rem rgba(0, 0, 0, 0.05);
+        border-radius: 0.75rem;
+        padding: 0.65rem 0.85rem;
+        box-shadow: 0 0.2rem 0.6rem rgba(0, 0, 0, 0.05);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        gap: 0.55rem;
+        gap: 0.45rem;
         box-sizing: border-box; 
         width: 100%;
         max-width: 100%;
@@ -1139,7 +1139,7 @@
         &:hover {
             transform: translateY(-2px);
             border-color: #00a86b; 
-            box-shadow: 0 0.4rem 1.2rem rgba(0, 168, 107, 0.12);
+            box-shadow: 0 0.35rem 1rem rgba(0, 168, 107, 0.12);
         }
 
         .free-bots-header {
@@ -1147,54 +1147,54 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 0.4rem;
+            gap: 0.3rem;
 
             .strategy-tag {
-                font-size: 0.8rem;
+                font-size: 0.72rem;
                 font-weight: 700;
                 color: #00a86b;
                 letter-spacing: 0.5px;
             }
 
             .confidence-badge {
-                font-size: 0.8rem;
+                font-size: 0.72rem;
                 font-weight: 700;
-                padding: 0.15rem 0.4rem;
-                border-radius: 0.4rem;
+                padding: 0.1rem 0.35rem;
+                border-radius: 0.35rem;
             }
         }
 
         .free-bots-body {
             display: flex;
             flex-direction: column;
-            gap: 0.3rem;
+            gap: 0.25rem;
             width: 100%;
 
             .strategy-title {
-                font-size: 1.05rem;
+                font-size: 0.95rem;
                 font-weight: 700;
                 color: var(--text-prominent); 
                 margin: 0;
-                line-height: 1.15;
+                line-height: 1.1;
             }
 
             .strategy-description {
-                font-size: 0.85rem !important;
+                font-size: 0.78rem !important;
                 color: var(--text-prominent) !important;
                 opacity: 0.95 !important;
-                line-height: 1.25;
-                margin: 0.05rem 0;
+                line-height: 1.2;
+                margin: 0.04rem 0;
             }
         }
 
         .free-bots-btn {
             width: 100%;
-            height: 2.6rem;
+            height: 2.3rem;
             background: #00a86b; 
             color: #ffffff; 
             border: 1px solid rgba(0, 168, 107, 0.3);
-            border-radius: 0.5rem;
-            font-size: 0.95rem;
+            border-radius: 0.45rem;
+            font-size: 0.85rem;
             font-weight: 700;
             cursor: pointer;
             display: flex;
@@ -1214,9 +1214,9 @@
         }
     }
 
-    // Scaled Form Controls & Inputs
+    // Form Controls & Inputs scaled accordingly
     label {
-        font-size: 0.9rem !important;
+        font-size: 0.8rem !important;
         font-weight: 600;
         color: var(--text-prominent) !important;
     }
@@ -1224,12 +1224,12 @@
     input[type='number'],
     input[type='text'],
     select {
-        font-size: 0.95rem !important;
+        font-size: 0.85rem !important;
         background: var(--general-section-1) !important;
         border: 1.5px solid rgba(0, 168, 107, 0.35) !important;
         color: var(--text-prominent) !important;
-        border-radius: 5px !important;
-        padding: 4px 8px !important;
+        border-radius: 4px !important;
+        padding: 3px 7px !important;
         outline: none !important;
         cursor: text !important;
 
@@ -1239,24 +1239,24 @@
         }
     }
 
-    // Scaled Range Slider Track & Thumb
+    // Range Slider scaled
     input[type="range"] {
         display: block !important;
         width: 100% !important;
         background: transparent !important;
         accent-color: #00a86b !important;
-        margin: 4px 0 !important;
+        margin: 3px 0 !important;
 
         &::-webkit-slider-runnable-track {
             background: rgba(0, 168, 107, 0.3) !important;
-            height: 4px !important;
+            height: 3.5px !important;
             border-radius: 3px !important;
             width: 100% !important;
         }
 
         &::-moz-range-track {
             background: rgba(0, 168, 107, 0.3) !important;
-            height: 4px !important;
+            height: 3.5px !important;
             border-radius: 3px !important;
             width: 100% !important;
         }
@@ -1264,11 +1264,11 @@
         &::-webkit-slider-thumb {
             background: #00a86b !important;
             border: 2px solid #ffffff !important;
-            width: 13px !important;
-            height: 13px !important;
+            width: 12px !important;
+            height: 12px !important;
             border-radius: 50% !important;
-            margin-top: -4.5px !important; 
-            box-shadow: 0 0 6px rgba(0, 168, 107, 0.5) !important;
+            margin-top: -4px !important; 
+            box-shadow: 0 0 5px rgba(0, 168, 107, 0.5) !important;
             cursor: pointer !important;
         }
     }
