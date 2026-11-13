@@ -695,7 +695,7 @@ const AppWrapper = observer(() => {
                                                                 padding: '0.6rem 0.8rem', 
                                                                 display: 'flex', 
                                                                 flexDirection: 'column', 
-                                                                justify-content: 'space-between', 
+                                                                justifyContent: 'space-between', 
                                                                 gap: '0.3rem', 
                                                                 boxSizing: 'border-box',
                                                                 maxHeight: '200px', 
@@ -900,4 +900,4 @@ const AppWrapper = observer(() => {
 
 AppWrapper.displayName = 'AppWrapper';
 
-export default AppWrapper;
+exports default AppWrapper;
