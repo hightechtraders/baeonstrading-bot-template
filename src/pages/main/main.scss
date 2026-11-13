@@ -1063,16 +1063,14 @@
 }
 
 /* ==========================================
-   COPY TRADING TAB - PULLED UP & REDUCED ANOTHER 10%
+   COPY TRADING TAB - LAPTOP VIEWPORT OPTIMIZED
    ========================================== */
 
 #id-copy-trading {
-    padding: 0.2rem 1rem 0.6rem 1rem;    // Further reduced top/bottom padding
-    margin-top: -1.2rem;                 // Lifted higher up to completely clear top white space
+    padding: 1rem 1.6rem;
     width: 100%;
     max-width: 1400px;
-    margin-left: auto;
-    margin-right: auto;
+    margin: 0 auto;
     min-height: 100%;
     background: var(--general-main-1);
     box-sizing: border-box; 
@@ -1083,20 +1081,19 @@
 
     @include mobile-or-tablet-screen {
         padding: 0.8rem; 
-        margin-top: 0;
         padding-bottom: 7rem;
     }
 
     h3 {
-        font-size: 1.15rem !important;
+        font-size: 1.5rem !important;
         color: var(--text-prominent) !important;
-        margin-bottom: 0.1rem !important;
+        margin-bottom: 0.2rem !important;
     }
 
     p {
         color: var(--text-prominent) !important;
         opacity: 1 !important;
-        font-size: 0.8rem !important;
+        font-size: 0.95rem !important;
     }
 
     span, label {
@@ -1104,11 +1101,11 @@
         opacity: 1 !important;
     }
 
-    // Grid further optimized for 10% smaller footprints
+    // Compact Grid for Master Traders on Laptop Viewports
     .free-bots-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); 
-        gap: 0.65rem;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); 
+        gap: 0.9rem;
         width: 100%;
         box-sizing: border-box;
 
@@ -1117,17 +1114,17 @@
         }
     }
 
-    // Card dimensions reduced by another 10%
+    // Compact Card Constraints
     .free-bots-card {
         background: var(--general-section-1); 
         border: 1.5px solid rgba(0, 168, 107, 0.35); 
-        border-radius: 0.75rem;
-        padding: 0.65rem 0.85rem;
-        box-shadow: 0 0.2rem 0.6rem rgba(0, 0, 0, 0.05);
+        border-radius: 1rem;
+        padding: 0.9rem 1.1rem;
+        box-shadow: 0 0.3rem 1rem rgba(0, 0, 0, 0.05);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        gap: 0.45rem;
+        gap: 0.7rem;
         box-sizing: border-box; 
         width: 100%;
         max-width: 100%;
@@ -1139,7 +1136,7 @@
         &:hover {
             transform: translateY(-2px);
             border-color: #00a86b; 
-            box-shadow: 0 0.35rem 1rem rgba(0, 168, 107, 0.12);
+            box-shadow: 0 0.5rem 1.4rem rgba(0, 168, 107, 0.12);
         }
 
         .free-bots-header {
@@ -1147,54 +1144,54 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 0.3rem;
+            gap: 0.5rem;
 
             .strategy-tag {
-                font-size: 0.72rem;
+                font-size: 0.95rem;
                 font-weight: 700;
                 color: #00a86b;
                 letter-spacing: 0.5px;
             }
 
             .confidence-badge {
-                font-size: 0.72rem;
+                font-size: 0.95rem;
                 font-weight: 700;
-                padding: 0.1rem 0.35rem;
-                border-radius: 0.35rem;
+                padding: 0.2rem 0.5rem;
+                border-radius: 0.5rem;
             }
         }
 
         .free-bots-body {
             display: flex;
             flex-direction: column;
-            gap: 0.25rem;
+            gap: 0.35rem;
             width: 100%;
 
             .strategy-title {
-                font-size: 0.95rem;
+                font-size: 1.2rem;
                 font-weight: 700;
                 color: var(--text-prominent); 
                 margin: 0;
-                line-height: 1.1;
+                line-height: 1.2;
             }
 
             .strategy-description {
-                font-size: 0.78rem !important;
+                font-size: 1rem !important;
                 color: var(--text-prominent) !important;
                 opacity: 0.95 !important;
-                line-height: 1.2;
-                margin: 0.04rem 0;
+                line-height: 1.3;
+                margin: 0.1rem 0;
             }
         }
 
         .free-bots-btn {
             width: 100%;
-            height: 2.3rem;
+            height: 3rem;
             background: #00a86b; 
             color: #ffffff; 
             border: 1px solid rgba(0, 168, 107, 0.3);
-            border-radius: 0.45rem;
-            font-size: 0.85rem;
+            border-radius: 0.6rem;
+            font-size: 1.1rem;
             font-weight: 700;
             cursor: pointer;
             display: flex;
@@ -1214,9 +1211,9 @@
         }
     }
 
-    // Form Controls & Inputs scaled accordingly
+    // Form Controls & Inputs Optimization
     label {
-        font-size: 0.8rem !important;
+        font-size: 1.05rem !important;
         font-weight: 600;
         color: var(--text-prominent) !important;
     }
@@ -1224,12 +1221,12 @@
     input[type='number'],
     input[type='text'],
     select {
-        font-size: 0.85rem !important;
+        font-size: 1.1rem !important;
         background: var(--general-section-1) !important;
         border: 1.5px solid rgba(0, 168, 107, 0.35) !important;
         color: var(--text-prominent) !important;
-        border-radius: 4px !important;
-        padding: 3px 7px !important;
+        border-radius: 6px !important;
+        padding: 5px 10px !important;
         outline: none !important;
         cursor: text !important;
 
@@ -1239,36 +1236,36 @@
         }
     }
 
-    // Range Slider scaled
+    // Range Slider Track & Thumb Optimization
     input[type="range"] {
         display: block !important;
         width: 100% !important;
         background: transparent !important;
         accent-color: #00a86b !important;
-        margin: 3px 0 !important;
+        margin: 5px 0 !important;
 
         &::-webkit-slider-runnable-track {
             background: rgba(0, 168, 107, 0.3) !important;
-            height: 3.5px !important;
-            border-radius: 3px !important;
+            height: 5px !important;
+            border-radius: 4px !important;
             width: 100% !important;
         }
 
         &::-moz-range-track {
             background: rgba(0, 168, 107, 0.3) !important;
-            height: 3.5px !important;
-            border-radius: 3px !important;
+            height: 5px !important;
+            border-radius: 4px !important;
             width: 100% !important;
         }
 
         &::-webkit-slider-thumb {
             background: #00a86b !important;
             border: 2px solid #ffffff !important;
-            width: 12px !important;
-            height: 12px !important;
+            width: 15px !important;
+            height: 15px !important;
             border-radius: 50% !important;
-            margin-top: -4px !important; 
-            box-shadow: 0 0 5px rgba(0, 168, 107, 0.5) !important;
+            margin-top: -5px !important; 
+            box-shadow: 0 0 8px rgba(0, 168, 107, 0.5) !important;
             cursor: pointer !important;
         }
     }
