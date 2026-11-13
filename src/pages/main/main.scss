@@ -883,7 +883,7 @@
 }
 
 /* ==========================================
-   FREE BOTS & COPY TRADING TABS - STYLES
+   FREE BOTS TAB - UNTOUCHED & PERFECT
    ========================================== */
 
 .free-bots-container {
@@ -1062,20 +1062,38 @@
     }
 }
 
-/* =========================================================
-   COPY TRADING & FREE BOTS PROFESSIONAL THEME & CONTRAST FIX
-   ========================================================= */
-#id-copy-trading, 
-.free-bots-container {
+/* ==========================================
+   COPY TRADING TAB - LAPTOP VIEWPORT OPTIMIZED
+   ========================================== */
+
+#id-copy-trading {
+    padding: 1rem 1.6rem;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    min-height: 100%;
+    background: var(--general-main-1);
+    box-sizing: border-box; 
+    overflow-y: auto !important;
+    overflow-x: hidden !important; 
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+
+    @include mobile-or-tablet-screen {
+        padding: 0.8rem; 
+        padding-bottom: 7rem;
+    }
+
     h3 {
-        font-size: 1.8rem !important;
+        font-size: 1.5rem !important;
         color: var(--text-prominent) !important;
+        margin-bottom: 0.2rem !important;
     }
 
     p {
         color: var(--text-prominent) !important;
         opacity: 1 !important;
-        font-size: 1rem !important;
+        font-size: 0.95rem !important;
     }
 
     span, label {
@@ -1083,30 +1101,119 @@
         opacity: 1 !important;
     }
 
-    .strategy-description, 
-    .free-bots-body p {
-        font-size: 1.25rem !important;
-        color: var(--text-prominent) !important;
-        opacity: 0.95 !important;
+    // Compact Grid for Master Traders on Laptop Viewports
+    .free-bots-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); 
+        gap: 0.9rem;
+        width: 100%;
+        box-sizing: border-box;
+
+        @include mobile-or-tablet-screen {
+            grid-template-columns: 1fr; 
+        }
     }
 
-    .market-name {
-        font-size: 1.2rem !important;
-        font-weight: 600;
-        opacity: 1 !important;
-        border: 1.5px solid rgba(0, 168, 107, 0.3) !important;
-        background: rgba(0, 168, 107, 0.08) !important;
-        color: var(--text-prominent) !important;
+    // Compact Card Constraints
+    .free-bots-card {
+        background: var(--general-section-1); 
+        border: 1.5px solid rgba(0, 168, 107, 0.35); 
+        border-radius: 1rem;
+        padding: 0.9rem 1.1rem;
+        box-shadow: 0 0.3rem 1rem rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 0.7rem;
+        box-sizing: border-box; 
+        width: 100%;
+        max-width: 100%;
+        word-break: break-word; 
+        overflow: hidden;
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        will-change: transform; 
+
+        &:hover {
+            transform: translateY(-2px);
+            border-color: #00a86b; 
+            box-shadow: 0 0.5rem 1.4rem rgba(0, 168, 107, 0.12);
+        }
+
+        .free-bots-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+
+            .strategy-tag {
+                font-size: 0.95rem;
+                font-weight: 700;
+                color: #00a86b;
+                letter-spacing: 0.5px;
+            }
+
+            .confidence-badge {
+                font-size: 0.95rem;
+                font-weight: 700;
+                padding: 0.2rem 0.5rem;
+                border-radius: 0.5rem;
+            }
+        }
+
+        .free-bots-body {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            width: 100%;
+
+            .strategy-title {
+                font-size: 1.2rem;
+                font-weight: 700;
+                color: var(--text-prominent); 
+                margin: 0;
+                line-height: 1.2;
+            }
+
+            .strategy-description {
+                font-size: 1rem !important;
+                color: var(--text-prominent) !important;
+                opacity: 0.95 !important;
+                line-height: 1.3;
+                margin: 0.1rem 0;
+            }
+        }
+
+        .free-bots-btn {
+            width: 100%;
+            height: 3rem;
+            background: #00a86b; 
+            color: #ffffff; 
+            border: 1px solid rgba(0, 168, 107, 0.3);
+            border-radius: 0.6rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+
+            &:hover {
+                background: #008f5a;
+                border-color: #00a86b;
+            }
+
+            &:active {
+                transform: scale(0.98);
+            }
+        }
     }
 
-    .confidence-badge {
-        font-size: 1.2rem !important;
-        font-weight: 600;
-        opacity: 1 !important;
-    }
-
+    // Form Controls & Inputs Optimization
     label {
-        font-size: 1.2rem !important;
+        font-size: 1.05rem !important;
         font-weight: 600;
         color: var(--text-prominent) !important;
     }
@@ -1114,12 +1221,12 @@
     input[type='number'],
     input[type='text'],
     select {
-        font-size: 1.3rem !important;
+        font-size: 1.1rem !important;
         background: var(--general-section-1) !important;
         border: 1.5px solid rgba(0, 168, 107, 0.35) !important;
         color: var(--text-prominent) !important;
-        border-radius: 8px !important;
-        padding: 8px 12px !important;
+        border-radius: 6px !important;
+        padding: 5px 10px !important;
         outline: none !important;
         cursor: text !important;
 
@@ -1128,42 +1235,38 @@
             box-shadow: 0 0 0 2px rgba(0, 168, 107, 0.2) !important;
         }
     }
-}
 
-/* ==========================================
-   FIX GLOBAL STAKE MULTIPLIER RANGE TRACK & THUMB LAYOUT
-   ========================================== */
-#id-copy-trading input[type="range"],
-.free-bots-container input[type="range"],
-input[type="range"] {
-    display: block !important;
-    width: 100% !important;
-    background: transparent !important;
-    accent-color: #00a86b !important;
-    margin: 8px 0 !important;
-
-    &::-webkit-slider-runnable-track {
-        background: rgba(0, 168, 107, 0.3) !important;
-        height: 6px !important;
-        border-radius: 4px !important;
+    // Range Slider Track & Thumb Optimization
+    input[type="range"] {
+        display: block !important;
         width: 100% !important;
-    }
+        background: transparent !important;
+        accent-color: #00a86b !important;
+        margin: 5px 0 !important;
 
-    &::-moz-range-track {
-        background: rgba(0, 168, 107, 0.3) !important;
-        height: 6px !important;
-        border-radius: 4px !important;
-        width: 100% !important;
-    }
+        &::-webkit-slider-runnable-track {
+            background: rgba(0, 168, 107, 0.3) !important;
+            height: 5px !important;
+            border-radius: 4px !important;
+            width: 100% !important;
+        }
 
-    &::-webkit-slider-thumb {
-        background: #00a86b !important;
-        border: 2px solid #ffffff !important;
-        width: 18px !important;
-        height: 18px !important;
-        border-radius: 50% !important;
-        margin-top: -6px !important; 
-        box-shadow: 0 0 10px rgba(0, 168, 107, 0.5) !important;
-        cursor: pointer !important;
+        &::-moz-range-track {
+            background: rgba(0, 168, 107, 0.3) !important;
+            height: 5px !important;
+            border-radius: 4px !important;
+            width: 100% !important;
+        }
+
+        &::-webkit-slider-thumb {
+            background: #00a86b !important;
+            border: 2px solid #ffffff !important;
+            width: 15px !important;
+            height: 15px !important;
+            border-radius: 50% !important;
+            margin-top: -5px !important; 
+            box-shadow: 0 0 8px rgba(0, 168, 107, 0.5) !important;
+            cursor: pointer !important;
+        }
     }
 }
