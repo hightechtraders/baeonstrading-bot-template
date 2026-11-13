@@ -900,4 +900,4 @@ const AppWrapper = observer(() => {
 
 AppWrapper.displayName = 'AppWrapper';
 
-exports default AppWrapper;
+export default AppWrapper;
