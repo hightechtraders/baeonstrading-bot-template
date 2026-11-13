@@ -680,7 +680,7 @@ const AppWrapper = observer(() => {
                                                 </div>
                                             </div>
 
-                                            {/* Master Traders Production Cards Grid with ~90% Increased Scale */}
+                                            {/* Master Traders Production Cards Grid with Height Updated to 392px */}
                                             <div className='free-bots-grid'>
                                                 {master_traders
                                                     .filter(trader => riskFilter === 'ALL' || trader.risk === riskFilter)
@@ -698,7 +698,7 @@ const AppWrapper = observer(() => {
                                                                 justifyContent: 'space-between', 
                                                                 gap: '0.6rem', 
                                                                 boxSizing: 'border-box',
-                                                                maxHeight: '380px', 
+                                                                maxHeight: '392px', 
                                                                 overflow: 'hidden'
                                                             }}
                                                         >
