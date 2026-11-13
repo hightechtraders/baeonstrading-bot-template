@@ -698,7 +698,7 @@ const AppWrapper = observer(() => {
                                                                 justifyContent: 'space-between', 
                                                                 gap: '0.6rem', 
                                                                 boxSizing: 'border-box',
-                                                                maxHeight: '392px', 
+                                                                maxHeight: '399px', 
                                                                 overflow: 'hidden'
                                                             }}
                                                         >
