@@ -680,38 +680,54 @@ const AppWrapper = observer(() => {
                                                 </div>
                                             </div>
 
-                                            {/* Master Traders Production Cards Grid */}
+                                            {/* Master Traders Production Cards Grid with Strict Height Cap */}
                                             <div className='free-bots-grid'>
                                                 {master_traders
                                                     .filter(trader => riskFilter === 'ALL' || trader.risk === riskFilter)
                                                     .map((trader, index) => (
-                                                        <div className='free-bots-card' key={trader.id} style={{ background: 'var(--general-section-1)', border: '1.5px solid rgba(0, 168, 107, 0.4)', borderRadius: '1.4rem', padding: '20px' }}>
-                                                            <div className='free-bots-header'>
-                                                                <span className='strategy-tag' style={{ fontSize: '0.85rem', fontWeight: 800 }}>MASTER #{index + 1}</span>
-                                                                <span className='confidence-badge' style={{ background: trader.risk === 'Low' ? 'rgba(76, 175, 80, 0.18)' : trader.risk === 'Medium' ? 'rgba(33, 150, 243, 0.18)' : 'rgba(255, 152, 0, 0.18)', color: trader.risk === 'Low' ? '#4caf50' : trader.risk === 'Medium' ? '#2196f3' : '#ff9800', fontSize: '0.85rem', fontWeight: 700, padding: '4px 10px', borderRadius: '6px' }}>
+                                                        <div 
+                                                            className='free-bots-card' 
+                                                            key={trader.id} 
+                                                            style={{ 
+                                                                background: 'var(--general-section-1)', 
+                                                                border: '1.5px solid rgba(0, 168, 107, 0.4)', 
+                                                                borderRadius: '0.5rem', 
+                                                                padding: '0.6rem 0.8rem', 
+                                                                display: 'flex', 
+                                                                flexDirection: 'column', 
+                                                                justify-content: 'space-between', 
+                                                                gap: '0.3rem', 
+                                                                boxSizing: 'border-box',
+                                                                maxHeight: '200px', 
+                                                                overflow: 'hidden'
+                                                            }}
+                                                        >
+                                                            <div className='free-bots-header' style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.1rem' }}>
+                                                                <span className='strategy-tag' style={{ fontSize: '0.5rem', fontWeight: 800 }}>MASTER #{index + 1}</span>
+                                                                <span className='confidence-badge' style={{ background: trader.risk === 'Low' ? 'rgba(76, 175, 80, 0.18)' : trader.risk === 'Medium' ? 'rgba(33, 150, 243, 0.18)' : 'rgba(255, 152, 0, 0.18)', color: trader.risk === 'Low' ? '#4caf50' : trader.risk === 'Medium' ? '#2196f3' : '#ff9800', fontSize: '0.5rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
                                                                     {trader.risk} Risk
                                                                 </span>
                                                             </div>
 
-                                                            <div className='free-bots-body'>
-                                                                <h4 className='strategy-title' style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-prominent)' }}>{trader.name}</h4>
-                                                                <p className='strategy-description' style={{ fontSize: '0.95rem', color: 'var(--text-prominent)', opacity: 0.9, fontWeight: 500 }}>
-                                                                    Created by <strong style={{ color: '#00a86b' }}>{trader.creator}</strong> • {trader.copiersCount} active copiers
+                                                            <div className='free-bots-body' style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                                <h4 className='strategy-title' style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-prominent)', margin: 0, lineHeight: 1.1 }}>{trader.name}</h4>
+                                                                <p className='strategy-description' style={{ fontSize: '0.48rem', color: 'var(--text-prominent)', opacity: 0.9, fontWeight: 500, margin: 0 }}>
+                                                                    Created by <strong style={{ color: '#00a86b' }}>{trader.creator}</strong> • {trader.copiersCount} copiers
                                                                 </p>
                                                                 
-                                                                {/* High-Contrast Production Stat Boxes */}
-                                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '14px' }}>
-                                                                    <div style={{ background: 'rgba(0, 168, 107, 0.08)', border: '1px solid rgba(0, 168, 107, 0.25)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-                                                                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-general)', fontWeight: 600, textTransform: 'uppercase' }}>Win Rate</span>
-                                                                        <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-prominent)' }}>{trader.winRate}</span>
+                                                                {/* Compact High-Contrast Stat Boxes */}
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '4px' }}>
+                                                                    <div style={{ background: 'rgba(0, 168, 107, 0.08)', border: '1px solid rgba(0, 168, 107, 0.25)', padding: '4px 6px', borderRadius: '4px', textAlign: 'center' }}>
+                                                                        <span style={{ display: 'block', fontSize: '0.4rem', color: 'var(--text-general)', fontWeight: 600, textTransform: 'uppercase' }}>Win Rate</span>
+                                                                        <span style={{ fontSize: '0.55rem', fontWeight: 800, color: 'var(--text-prominent)' }}>{trader.winRate}</span>
                                                                     </div>
-                                                                    <div style={{ background: 'rgba(76, 175, 80, 0.1)', border: '1px solid rgba(76, 175, 80, 0.3)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-                                                                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-general)', fontWeight: 600, textTransform: 'uppercase' }}>30D ROI</span>
-                                                                        <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#4caf50' }}>{trader.roi30d}</span>
+                                                                    <div style={{ background: 'rgba(76, 175, 80, 0.1)', border: '1px solid rgba(76, 175, 80, 0.3)', padding: '4px 6px', borderRadius: '4px', textAlign: 'center' }}>
+                                                                        <span style={{ display: 'block', fontSize: '0.4rem', color: 'var(--text-general)', fontWeight: 600, textTransform: 'uppercase' }}>30D ROI</span>
+                                                                        <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#4caf50' }}>{trader.roi30d}</span>
                                                                     </div>
                                                                 </div>
 
-                                                                <div style={{ marginTop: '10px', fontSize: '0.85rem', color: 'var(--text-less-prominent)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                <div style={{ marginTop: '2px', fontSize: '0.48rem', color: 'var(--text-less-prominent)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                                     <span>Primary Asset:</span>
                                                                     <strong style={{ color: 'var(--text-prominent)' }}>{trader.asset}</strong>
                                                                 </div>
@@ -729,7 +745,7 @@ const AppWrapper = observer(() => {
                                                                     setCopySubTab('portfolio');
                                                                 }} 
                                                                 className='free-bots-btn'
-                                                                style={{ marginTop: '1.2rem', background: '#00a86b', color: '#fff', border: 'none', fontWeight: 800, padding: '12px', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                                                                style={{ marginTop: '0.4rem', background: '#00a86b', color: '#fff', border: 'none', fontWeight: 800, padding: '0.4rem', borderRadius: '0.3rem', cursor: 'pointer', fontSize: '0.52rem', transition: 'all 0.2s ease', width: '100%', height: '1.2rem' }}
                                                             >
                                                                 Copy Strategy Now
                                                             </button>
