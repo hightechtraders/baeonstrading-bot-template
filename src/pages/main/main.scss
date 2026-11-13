@@ -1068,13 +1068,14 @@ joyride-content {
    ========================================== */
 
 #id-copy-trading {
-    padding: 0.5rem 1rem 6rem 1rem; // Ensures ample scroll padding at the bottom
+    padding: 0.5rem 1rem 8rem 1rem; // Extra bottom padding so mobile scroll reaches the absolute last card
     width: 100%;
     max-width: 1400px;
     margin: 0 auto;
     background: var(--general-main-1);
     box-sizing: border-box;
     overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
 
     // Fix for visible global stake multiplier range input track and thumb
     input[type='range'] {
@@ -1099,13 +1100,13 @@ joyride-content {
         &::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
             background: #00a86b;
             cursor: pointer;
-            box-shadow: 0 0 8px rgba(0, 168, 107, 0.5);
-            margin-top: -5px;
+            box-shadow: 0 0 10px rgba(0, 168, 107, 0.6);
+            margin-top: -6px;
             transition: transform 0.1s ease;
 
             &:hover {
@@ -1122,20 +1123,20 @@ joyride-content {
         }
 
         &::-moz-range-thumb {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
             background: #00a86b;
             cursor: pointer;
             border: none;
-            box-shadow: 0 0 8px rgba(0, 168, 107, 0.5);
+            box-shadow: 0 0 10px rgba(0, 168, 107, 0.6);
         }
     }
 
     // DIRECTLY targeting the Master Trader Cards inside Copy Trading to shrink height & prevent clipping
     .free-bots-card {
-        max-height: 392px !important; // Strict max height boundary set to 392px
-        padding: 1.1rem 1.3rem !important; // Proportional padding
+        max-height: 392px !important;
+        padding: 1.1rem 1.3rem !important;
         gap: 0.6rem !important;
 
         .free-bots-header {
@@ -1155,8 +1156,27 @@ joyride-content {
         }
 
         .free-bots-btn {
-            height: 2.2rem !important; // Button height perfectly proportioned
+            height: 2.2rem !important;
             font-size: 0.85rem !important;
+        }
+    }
+}
+
+// Completely hide any unintended floating tooltips/cursors/indicators on touch/mobile view
+@include mobile-or-tablet-screen {
+    #id-copy-trading, 
+    .dc-tabs__active-line {
+        cursor: default !important;
+        
+        * {
+            pointer-events: auto;
+        }
+    }
+
+    // Hide unwanted trailing indicator pseudo-elements or pointer artifacts near active tabs
+    .dc-tabs__item {
+        &::after, &::before {
+            display: none !important;
         }
     }
 }
