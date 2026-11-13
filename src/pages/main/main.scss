@@ -85,7 +85,6 @@
             display: flex;
             flex-direction: column;
             height: 100%;
-            overflow: hidden; // LOCKED: Prevents tabs container from expanding past screen
 
             // Active tab indicator underline color & accurate positioning fix
             &__active-line {
@@ -181,8 +180,7 @@
             &__content {
                 background: var(--general-main-1);
                 flex: 1;
-                height: 100%;
-                overflow: hidden !important; // LOCKED: Forces tab content pane to stay inside viewport bounds
+                overflow-y: auto !important; 
                 box-sizing: border-box;
 
                 @include mobile-or-tablet-screen {
@@ -1069,26 +1067,25 @@
    ========================================== */
 
 #id-copy-trading {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    padding: 0.8rem 1.6rem;
+    padding: 0.6rem 1.6rem;
     width: 100%;
     max-width: 1400px;
     margin: 0 auto;
+    min-height: 100%;
     background: var(--general-main-1);
     box-sizing: border-box; 
-    overflow: hidden; // LOCKED: Prevents content from forcing page height expansion
+    overflow-y: auto !important;
+    overflow-x: hidden !important; 
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
 
     @include mobile-or-tablet-screen {
-        height: auto !important;
         padding: 0.8rem; 
         padding-bottom: 7rem;
-        overflow-y: auto !important;
     }
 
     h3 {
-        font-size: 1.3rem !important;
+        font-size: 1.2rem !important;
         color: var(--text-prominent) !important;
         margin-bottom: 0.1rem !important;
     }
@@ -1096,7 +1093,7 @@
     p {
         color: var(--text-prominent) !important;
         opacity: 0.9 !important;
-        font-size: 0.85rem !important;
+        font-size: 0.8rem !important;
         margin-bottom: 0.4rem !important;
     }
 
@@ -1105,48 +1102,38 @@
         opacity: 1 !important;
     }
 
-    // Scrollable Master Trader Cards Grid Area fitted strictly inside remaining viewport height
+    // Compact Grid with reduced sizing for Master Trader Cards
     .free-bots-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); 
-        gap: 0.6rem;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); 
+        gap: 0.5rem;
         width: 100%;
-        flex: 1;
-        overflow-y: auto !important; // Only the cards grid scrolls internally if content exceeds view
-        padding-bottom: 0.4rem;
         box-sizing: border-box;
-
-        &::-webkit-scrollbar {
-            width: 4px;
-        }
-        &::-webkit-scrollbar-thumb {
-            background: rgba(0, 168, 107, 0.2);
-            border-radius: 4px;
-        }
+        margin-bottom: 1rem;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr; 
-            overflow-y: visible !important;
         }
     }
 
-    // Compact Card Constraints
+    // Reduced Master Trader Card Sizes by Half (Compact padding, tighter gaps, shorter button)
     .free-bots-card {
         background: var(--general-section-1); 
         border: 1.5px solid rgba(0, 168, 107, 0.35); 
         border-radius: 0.8rem;
-        padding: 0.6rem 0.9rem;
+        padding: 0.5rem 0.8rem;
         box-shadow: 0 0.2rem 0.6rem rgba(0, 0, 0, 0.04);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        gap: 0.4rem;
+        gap: 0.3rem;
         box-sizing: border-box; 
         width: 100%;
         max-width: 100%;
         word-break: break-word; 
         overflow: hidden;
         transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        will-change: transform; 
 
         &:hover {
             transform: translateY(-2px);
@@ -1162,14 +1149,14 @@
             gap: 0.3rem;
 
             .strategy-tag {
-                font-size: 0.8rem;
+                font-size: 0.75rem;
                 font-weight: 700;
                 color: #00a86b;
                 letter-spacing: 0.5px;
             }
 
             .confidence-badge {
-                font-size: 0.8rem;
+                font-size: 0.75rem;
                 font-weight: 700;
                 padding: 0.1rem 0.3rem;
                 border-radius: 0.4rem;
@@ -1179,34 +1166,34 @@
         .free-bots-body {
             display: flex;
             flex-direction: column;
-            gap: 0.2rem;
+            gap: 0.15rem;
             width: 100%;
 
             .strategy-title {
-                font-size: 1rem;
+                font-size: 0.95rem;
                 font-weight: 700;
                 color: var(--text-prominent); 
                 margin: 0;
-                line-height: 1.15;
+                line-height: 1.1;
             }
 
             .strategy-description {
-                font-size: 0.85rem !important;
+                font-size: 0.75rem !important;
                 color: var(--text-prominent) !important;
                 opacity: 0.9 !important;
-                line-height: 1.2;
+                line-height: 1.15;
                 margin: 0;
             }
         }
 
         .free-bots-btn {
             width: 100%;
-            height: 2.4rem;
+            height: 2rem; // Reduced button height for compact footprint
             background: #00a86b; 
             color: #ffffff; 
             border: 1px solid rgba(0, 168, 107, 0.3);
             border-radius: 0.5rem;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             font-weight: 700;
             cursor: pointer;
             display: flex;
@@ -1219,12 +1206,16 @@
                 background: #008f5a;
                 border-color: #00a86b;
             }
+
+            &:active {
+                transform: scale(0.98);
+            }
         }
     }
 
     // Form Controls & Inputs Optimization
     label {
-        font-size: 0.9rem !important;
+        font-size: 0.85rem !important;
         font-weight: 600;
         color: var(--text-prominent) !important;
     }
@@ -1232,11 +1223,11 @@
     input[type='number'],
     input[type='text'],
     select {
-        font-size: 0.95rem !important;
+        font-size: 0.9rem !important;
         background: var(--general-section-1) !important;
         border: 1.5px solid rgba(0, 168, 107, 0.35) !important;
         color: var(--text-prominent) !important;
-        border-radius: 6px !important;
+        border-radius: 5px !important;
         padding: 3px 8px !important;
         outline: none !important;
 
@@ -1263,10 +1254,10 @@
         &::-webkit-slider-thumb {
             background: #00a86b !important;
             border: 2px solid #ffffff !important;
-            width: 12px !important;
-            height: 12px !important;
+            width: 11px !important;
+            height: 11px !important;
             border-radius: 50% !important;
-            margin-top: -4 px !important; 
+            margin-top: -3.5px !important; 
             cursor: pointer !important;
         }
     }
