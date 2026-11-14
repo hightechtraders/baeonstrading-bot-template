@@ -648,7 +648,7 @@ const AppWrapper = observer(() => {
                                                     <input 
                                                         type='range' min='0.1' max='5.0' step='0.1' value={multiplier} 
                                                         onChange={(e) => setMultiplier(Number(e.target.value))}
-                                                        style={{ width: '100%', accentColor: '#00a86b', cursor: 'pointer' }} 
+                                                        style={{ cursor: 'pointer' }} 
                                                     />
                                                 </div>
                                                 <div style={{ flex: '1', minWidth: '180px' }}>
