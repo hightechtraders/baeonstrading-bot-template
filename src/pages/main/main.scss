@@ -1121,53 +1121,53 @@ joyride-content {
 }
 
 /* ==========================================
-   FIX GLOBAL STAKE MULTIPLIER RANGE TRACK & THUMB LAYOUT (DIRECT TRACK RENDER)
+   FIX GLOBAL STAKE MULTIPLIER RANGE TRACK & THUMB LAYOUT (COMPACT 10px THUMB)
    ========================================== */
 input[type="range"] {
     -webkit-appearance: none !important;
     appearance: none !important;
     display: block !important;
     width: 100% !important;
-    height: 10px !important;
-    background-color: rgba(0, 168, 107, 0.3) !important; // Directly renders the emerald track line
-    border: 1.5px solid rgba(0, 168, 107, 0.5) !important;
-    border-radius: 6px !important;
+    height: 4px !important; // Slim 4px track height
+    background-color: rgba(0, 168, 107, 0.35) !important;
+    border: 1px solid rgba(0, 168, 107, 0.5) !important;
+    border-radius: 9999px !important;
     outline: none !important;
     margin: 14px 0 !important;
     padding: 0 !important;
     cursor: pointer !important;
 
-    /* WebKit Thumb (Chrome, Safari, Edge) */
+    /* WebKit Thumb (Chrome, Safari, Edge) - Scaled down to 10px */
     &::-webkit-slider-thumb {
         -webkit-appearance: none !important;
         appearance: none !important;
-        width: 22px !important;
-        height: 22px !important;
+        width: 10px !important;
+        height: 10px !important;
         border-radius: 50% !important;
         background-color: #00a86b !important;
-        border: 2px solid #ffffff !important;
-        box-shadow: 0 0 12px rgba(0, 168, 107, 0.9) !important;
+        border: 1.5px solid #ffffff !important;
+        box-shadow: 0 0 6px rgba(0, 168, 107, 0.8) !important;
         cursor: pointer !important;
-        margin-top: -6px !important; // Centers the thumb perfectly on the 10px track
+        margin-top: -3px !important; // Perfectly centers the 10px thumb on the 4px track
     }
 
     /* Firefox Track */
     &::-moz-range-track {
         width: 100% !important;
-        height: 10px !important;
-        background-color: rgba(0, 168, 107, 0.3) !important;
-        border: 1.5px solid rgba(0, 168, 107, 0.5) !important;
-        border-radius: 6px !important;
+        height: 4px !important;
+        background-color: rgba(0, 168, 107, 0.35) !important;
+        border: 1px solid rgba(0, 168, 107, 0.5) !important;
+        border-radius: 9999px !important;
     }
 
-    /* Firefox Thumb */
+    /* Firefox Thumb - Scaled down to 10px */
     &::-moz-range-thumb {
-        width: 22px !important;
-        height: 22px !important;
+        width: 10px !important;
+        height: 10px !important;
         border-radius: 50% !important;
         background-color: #00a86b !important;
-        border: 2px solid #ffffff !important;
-        box-shadow: 0 0 12px rgba(0, 168, 107, 0.9) !important;
+        border: 1.5px solid #ffffff !important;
+        box-shadow: 0 0 6px rgba(0, 168, 107, 0.8) !important;
         cursor: pointer !important;
     }
 }
