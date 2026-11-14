@@ -44,7 +44,7 @@
         height: auto !important;
         min-height: 100vh;
         padding: 0;
-        overflow-y: visible !important; // Fixed: allows outer page to scroll on mobile
+        overflow-y: visible !important;
         -webkit-overflow-scrolling: touch;
     }
 
@@ -59,7 +59,7 @@
 
         @include mobile-or-tablet-screen {
             height: auto !important;
-            overflow-y: visible !important; // Fixed: prevents container from clipping scrollable content
+            overflow-y: visible !important;
         }
 
         &.no-scroll {
@@ -86,6 +86,11 @@
             display: flex;
             flex-direction: column;
             height: 100%;
+
+            @include mobile-or-tablet-screen {
+                height: auto !important;
+                overflow: visible !important;
+            }
 
             // Active tab indicator underline color & accurate positioning fix
             &__active-line {
@@ -181,7 +186,7 @@
                     height: auto !important; 
                     overflow-y: visible !important; 
                     -webkit-overflow-scrolling: touch;
-                    padding-bottom: 8rem; // Clears floating mobile bottom panel/buttons completely
+                    padding-bottom: 10rem; // Ample clearance for mobile footer/nav
 
                     &--no-result {
                         @include flex-center;
@@ -884,14 +889,14 @@ joyride-content {
     min-height: 100%;
     background: var(--general-main-1);
     box-sizing: border-box; 
-    overflow-y: visible !important; // Fixed: allows full mobile document flow
+    overflow-y: visible !important; 
     overflow-x: hidden !important; 
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
 
     @include mobile-or-tablet-screen {
         padding: 0.8rem; 
-        padding-bottom: 9rem; // Extra bottom clearance so cards aren't hidden behind mobile navigation
+        padding-bottom: 10rem; 
         height: auto !important;
         min-height: auto !important;
         overflow-y: visible !important;
@@ -1130,11 +1135,11 @@ input[type="range"] {
     -webkit-appearance: none !important;
     appearance: none !important;
     display: block !important;
-    width: 80% !important; // Reduced length by 20%
+    width: 80% !important;
     max-width: 80% !important;
     margin-left: auto !important;
     margin-right: auto !important;
-    height: 4px !important; // Slim 4px track height
+    height: 4px !important;
     background-color: rgba(0, 168, 107, 0.35) !important;
     border: 1px solid rgba(0, 168, 107, 0.5) !important;
     border-radius: 9999px !important;
@@ -1155,7 +1160,7 @@ input[type="range"] {
         border: 1.5px solid #ffffff !important;
         box-shadow: 0 0 6px rgba(0, 168, 107, 0.8) !important;
         cursor: pointer !important;
-        margin-top: -3px !important; // Exactly centers the 10px thumb on the 4px track
+        margin-top: -3px !important;
     }
 
     /* Firefox Track */
@@ -1176,6 +1181,6 @@ input[type="range"] {
         border: 1.5px solid #ffffff !important;
         box-shadow: 0 0 6px rgba(0, 168, 107, 0.8) !important;
         cursor: pointer !important;
-        transform: translateY(-3px) !important; // Centers thumb perfectly on Firefox
+        transform: translateY(-3px) !important;
     }
 }
