@@ -89,6 +89,7 @@
 
             @include mobile-or-tablet-screen {
                 height: auto !important;
+                min-height: unset !important;
                 overflow: visible !important;
             }
 
@@ -184,9 +185,10 @@
                 @include mobile-or-tablet-screen {
                     width: 100%;
                     height: auto !important; 
-                    overflow-y: visible !important; // Fixed: allows smooth document-level scrolling past cards
+                    min-height: unset !important;
+                    overflow-y: visible !important; // Unlocks complete document-level scrolling on mobile
                     -webkit-overflow-scrolling: touch;
-                    padding-bottom: 12rem; // Extra bottom clearance for mobile navigation/footers
+                    padding-bottom: 14rem; // Extra bottom clearance so cards clear mobile browser bars
 
                     &--no-result {
                         @include flex-center;
@@ -896,7 +898,7 @@ joyride-content {
 
     @include mobile-or-tablet-screen {
         padding: 0.8rem; 
-        padding-bottom: 12rem; 
+        padding-bottom: 14rem; 
         height: auto !important;
         min-height: auto !important;
         overflow-y: visible !important;
