@@ -67,6 +67,7 @@
         }
 
         &--active {
+            // css for onboard tour overlay
             &:before {
                 content: '';
                 position: fixed;
@@ -89,33 +90,29 @@
             // Active tab indicator underline color & accurate positioning fix
             &__active-line {
                 background-color: #00a86b !important; 
-                transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: transform 0.25s ease, width 0.25s ease;
                 height: 0.35rem !important;
                 border-radius: 0.2rem;
                 position: absolute;
                 bottom: 0;
+                left: 0;
                 display: block !important;
                 visibility: visible !important;
-
-                @include mobile-or-tablet-screen {
-                    display: none !important;
-                }
             }
 
-            // Strict active tab styling highlight ensuring no double-marking
+            // Active tab indicator highlight
             &__active {
                 background: rgba(0, 168, 107, 0.15) !important;
                 color: #00a86b !important; 
-                font-weight: 700 !important;
+                font-weight: 700;
                 border-radius: 0.8rem;
 
                 svg {
                     fill: #00a86b !important;
-                    opacity: 1 !important;
                 }
             }
 
-            // Unified pale green background container set to 75% width on desktop, auto on mobile/tablet
+            // Unified pale green background container set to flat 77.5% width
             &__list {
                 background: rgba(0, 168, 107, 0.06); 
                 border: 1.5px solid rgba(0, 168, 107, 0.25); 
@@ -123,7 +120,7 @@
                 justify-content: space-between; 
                 align-items: center;
                 gap: 1rem; 
-                width: 72%; // Desktop width set to exactly 72%
+                width: 77.5%; 
                 max-width: 100%;
                 border-radius: 1.2rem;
                 padding: 0.4rem 1.2rem;
@@ -131,16 +128,15 @@
                 overflow-x: auto;
                 box-sizing: border-box;
                 flex-shrink: 0;
-                position: relative; // Crucial anchor for desktop indicator line
 
                 @include mobile-or-tablet-screen {
                     display: flex;
-                    justify-content: flex-start; 
+                    justify-content: flex-start;
                     align-items: center;
                     gap: 0.8rem; 
-                    width: 100% !important; 
-                    max-width: 100vw !important; 
-                    overflow-x: auto !important; 
+                    width: 100%;
+                    max-width: 100vw;
+                    overflow-x: auto !important;
                     overflow-y: hidden;
                     white-space: nowrap;
                     -webkit-overflow-scrolling: touch;
@@ -149,8 +145,6 @@
                     border-radius: 0;
                     border-left: none;
                     border-right: none;
-                    scroll-behavior: smooth;
-                    scroll-snap-type: x mandatory; // Forces smooth snapping for exact mobile centering
 
                     &::-webkit-scrollbar {
                         display: none; 
@@ -181,14 +175,13 @@
                 flex: 1;
                 overflow-y: auto !important; 
                 box-sizing: border-box;
-                padding-bottom: 4rem; // Gives natural bottom spacing for scrollable content
 
                 @include mobile-or-tablet-screen {
                     width: 100%;
                     height: auto !important; 
                     overflow-y: visible !important; 
                     -webkit-overflow-scrolling: touch;
-                    padding-bottom: 6rem;
+                    padding-bottom: 6rem; // Clears floating mobile bottom panel/buttons
 
                     &--no-result {
                         @include flex-center;
@@ -246,21 +239,16 @@
                     flex: 0 0 auto !important; 
                     width: auto !important;
                     max-width: none !important;
-                    padding: 0 1.2rem;
+                    padding: 0 1rem;
                     white-space: nowrap;
-                    scroll-snap-align: center; // Anchors active tab right to the dead center of phone screen
-                    scroll-margin: 50vw;
                 }
 
-                // Strict enforcement: non-active items must never inherit active styling or linger green
                 &:not(.dc-tabs__active) {
                     color: var(--text-prominent) !important;
-                    background: transparent !important;
-                    font-weight: 400 !important;
 
                     svg {
                         fill: var(--text-prominent) !important;
-                        opacity: 0.8 !important;
+                        opacity: 0.8;
                     }
 
                     &:hover {
@@ -270,7 +258,7 @@
 
                         svg {
                             fill: #00a86b !important;
-                            opacity: 1 !important;
+                            opacity: 1;
                         }
                     }
                 }
@@ -862,7 +850,7 @@ joyride-content {
 }
 
 .dbot-tour-blink {
-    animation: blink 1.25s infinite ease-in;
+    animation: blink 1.25s ease-in infinite;
     border-radius: $BORDER-RADIUS * 12.5;
     height: 2.5rem !important;
     width: 2.5rem !important;
@@ -885,7 +873,7 @@ joyride-content {
 }
 
 /* ==========================================
-   FREE BOTS TAB - UNTOUCHED & PERFECT
+   FREE BOTS & COPY TRADING TABS - STYLES
    ========================================== */
 
 .free-bots-container {
@@ -1064,100 +1052,125 @@ joyride-content {
     }
 }
 
+/* =========================================================
+   COPY TRADING & FREE BOTS PROFESSIONAL THEME & CONTRAST FIX
+   ========================================================= */
+#id-copy-trading, 
+.free-bots-container {
+    h3 {
+        font-size: 1.8rem !important;
+        color: var(--text-prominent) !important;
+    }
+
+    p {
+        color: var(--text-prominent) !important;
+        opacity: 1 !important;
+        font-size: 1rem !important;
+    }
+
+    span, label {
+        color: var(--text-prominent);
+        opacity: 1 !important;
+    }
+
+    .strategy-description, 
+    .free-bots-body p {
+        font-size: 1.25rem !important;
+        color: var(--text-prominent) !important;
+        opacity: 0.95 !important;
+    }
+
+    .market-name {
+        font-size: 1.2rem !important;
+        font-weight: 600;
+        opacity: 1 !important;
+        border: 1.5px solid rgba(0, 168, 107, 0.3) !important;
+        background: rgba(0, 168, 107, 0.08) !important;
+        color: var(--text-prominent) !important;
+    }
+
+    .confidence-badge {
+        font-size: 1.2rem !important;
+        font-weight: 600;
+        opacity: 1 !important;
+    }
+
+    label {
+        font-size: 1.2rem !important;
+        font-weight: 600;
+        color: var(--text-prominent) !important;
+    }
+
+    input[type='number'],
+    input[type='text'],
+    select {
+        font-size: 1.3rem !important;
+        background: var(--general-section-1) !important;
+        border: 1.5px solid rgba(0, 168, 107, 0.35) !important;
+        color: var(--text-prominent) !important;
+        border-radius: 8px !important;
+        padding: 8px 12px !important;
+        outline: none !important;
+        cursor: text !important;
+
+        &:focus {
+            border-color: #00a86b !important;
+            box-shadow: 0 0 0 2px rgba(0, 168, 107, 0.2) !important;
+        }
+    }
+}
+
 /* ==========================================
-   COPY TRADING TAB - SCOPED RANGE SLIDER FIX
+   FIX GLOBAL STAKE MULTIPLIER RANGE TRACK & THUMB LAYOUT (SCOPED & CLEAN)
    ========================================== */
-
 #id-copy-trading {
-    padding: 0.5rem 1rem 8rem 1rem;
-    width: 100%;
-    max-width: 1400px;
-    margin: 0 auto;
-    background: var(--general-main-1);
-    box-sizing: border-box;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
-
-    /* STRICTLY SCOPED TO THE MULTIPLIER INPUT ONLY */
-    input[type='range'] {
+    input[type="range"] {
         -webkit-appearance: none !important;
         appearance: none !important;
-        width: 100% !important;
-        height: 10px !important;
-        background: rgba(0, 168, 107, 0.25) !important;
-        border: 1.5px solid rgba(0, 168, 107, 0.5) !important;
-        border-radius: 6px !important;
-        outline: none !important;
-        margin: 10px 0 !important;
-        padding: 0 !important;
-        opacity: 1 !important;
-        visibility: visible !important;
         display: block !important;
+        width: 100% !important;
+        background: transparent !important;
+        outline: none !important;
+        margin: 12px 0 !important;
+        padding: 0 !important;
 
         &::-webkit-slider-runnable-track {
+            background: rgba(0, 168, 107, 0.3) !important;
+            height: 8px !important;
+            border-radius: 4px !important;
             width: 100% !important;
-            height: 10px !important;
-            background: rgba(0, 168, 107, 0.25) !important;
-            border-radius: 6px !important;
-            border: 1.5px solid rgba(0, 168, 107, 0.5) !important;
+            border: 1px solid rgba(0, 168, 107, 0.4) !important;
+        }
+
+        &::-moz-range-track {
+            background: rgba(0, 168, 107, 0.3) !important;
+            height: 8px !important;
+            border-radius: 4px !important;
+            width: 100% !important;
+            border: 1px solid rgba(0, 168, 107, 0.4) !important;
         }
 
         &::-webkit-slider-thumb {
             -webkit-appearance: none !important;
             appearance: none !important;
-            width: 22px !important;
-            height: 22px !important;
-            border-radius: 50% !important;
             background: #00a86b !important;
+            border: 2px solid #ffffff !important;
+            width: 20px !important;
+            height: 20px !important;
+            border-radius: 50% !important;
+            margin-top: -7px !important; // Centers thumb perfectly on the 8px track
+            box-shadow: 0 0 12px rgba(0, 168, 107, 0.7) !important;
             cursor: pointer !important;
-            box-shadow: 0 0 12px rgba(0, 168, 107, 0.8) !important;
-            margin-top: -7px !important;
-        }
-
-        &::-moz-range-track {
-            width: 100% !important;
-            height: 10px !important;
-            background: rgba(0, 168, 107, 0.25) !important;
-            border-radius: 6px !important;
-            border: 1.5px solid rgba(0, 168, 107, 0.5) !important;
         }
 
         &::-moz-range-thumb {
-            width: 22px !important;
-            height: 22px !important;
-            border-radius: 50% !important;
             background: #00a86b !important;
+            border: 2px solid #ffffff !important;
+            width: 20px !important;
+            height: 20px !important;
+            border-radius: 50% !important;
+            box-shadow: 0 0 12px rgba(0, 168, 107, 0.7) !important;
             cursor: pointer !important;
-            border: none !important;
-            box-shadow: 0 0 12px rgba(0, 168, 107, 0.8) !important;
-        }
-    }
-
-    // DIRECTLY targeting the Master Trader Cards inside Copy Trading to shrink height & prevent clipping
-    .free-bots-card {
-        max-height: 392px !important;
-        padding: 1.1rem 1.3rem !important;
-        gap: 0.6rem !important;
-
-        .free-bots-header {
-            margin-bottom: 0.2rem;
-        }
-
-        .free-bots-body {
-            gap: 0.4rem;
-
-            .strategy-title {
-                font-size: 1rem !important;
-            }
-
-            .strategy-description {
-                font-size: 0.8rem !important;
-            }
-        }
-
-        .free-bots-btn {
-            height: 2.2rem !important;
-            font-size: 0.85rem !important;
         }
     }
 }
