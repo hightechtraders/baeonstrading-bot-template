@@ -73,10 +73,6 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
 }
 
 export default function ManualTraderTab() {
-  const [selectedSymbol, setSelectedSymbol] = useState('Volatility 10 (1s) Index');
-  const [symbolCode, setSymbolCode] = useState('1HZ10V');
-  const [isMarketDropdownOpen, setIsMarketDropdownOpen] = useState(false);
-
   const markets = [
     { name: 'Volatility 10 Index', code: 'R_10' },
     { name: 'Volatility 10 (1s) Index', code: '1HZ10V' },
@@ -89,6 +85,18 @@ export default function ManualTraderTab() {
     { name: 'Volatility 100 Index', code: 'R_100' },
     { name: 'Volatility 100 (1s) Index', code: '1HZ100V' },
   ];
+
+  // Initialize selectedSymbol from localStorage (defaults to Volatility 10 (1s) Index)
+  const [selectedSymbol, setSelectedSymbol] = useState<string>(() => {
+    return localStorage.getItem('trader_selected_symbol') || 'Volatility 10 (1s) Index';
+  });
+
+  // Initialize symbolCode from localStorage (defaults to 1HZ10V)
+  const [symbolCode, setSymbolCode] = useState<string>(() => {
+    return localStorage.getItem('trader_symbol_code') || '1HZ10V';
+  });
+
+  const [isMarketDropdownOpen, setIsMarketDropdownOpen] = useState(false);
 
   // Initialize targetDigit from localStorage (persists across tab switches)
   const [targetDigit, setTargetDigit] = useState<number>(() => {
@@ -118,6 +126,12 @@ export default function ManualTraderTab() {
   useEffect(() => {
     localStorage.setItem('trader_contract_duration', contractDuration.toString());
   }, [contractDuration]);
+
+  // Keep localStorage synchronized whenever selectedSymbol or symbolCode changes
+  useEffect(() => {
+    localStorage.setItem('trader_selected_symbol', selectedSymbol);
+    localStorage.setItem('trader_symbol_code', symbolCode);
+  }, [selectedSymbol, symbolCode]);
 
   const [digitStats, setDigitStats] = useState(() => {
     const savedDigit = localStorage.getItem('trader_target_digit');
