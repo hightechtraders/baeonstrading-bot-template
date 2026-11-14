@@ -41,10 +41,10 @@
     box-sizing: border-box;
 
     @include mobile-or-tablet-screen {
-        height: 100% !important;
+        height: auto !important;
         min-height: 100vh;
         padding: 0;
-        overflow-y: auto !important;
+        overflow-y: visible !important; // Fixed: allows outer page to scroll on mobile
         -webkit-overflow-scrolling: touch;
     }
 
@@ -59,7 +59,7 @@
 
         @include mobile-or-tablet-screen {
             height: auto !important;
-            overflow-y: visible !important;
+            overflow-y: visible !important; // Fixed: prevents container from clipping scrollable content
         }
 
         &.no-scroll {
@@ -181,7 +181,7 @@
                     height: auto !important; 
                     overflow-y: visible !important; 
                     -webkit-overflow-scrolling: touch;
-                    padding-bottom: 6rem; // Clears floating mobile bottom panel/buttons
+                    padding-bottom: 8rem; // Clears floating mobile bottom panel/buttons completely
 
                     &--no-result {
                         @include flex-center;
@@ -884,14 +884,17 @@ joyride-content {
     min-height: 100%;
     background: var(--general-main-1);
     box-sizing: border-box; 
-    overflow-y: auto !important;
+    overflow-y: visible !important; // Fixed: allows full mobile document flow
     overflow-x: hidden !important; 
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
 
     @include mobile-or-tablet-screen {
         padding: 0.8rem; 
-        padding-bottom: 7rem;
+        padding-bottom: 9rem; // Extra bottom clearance so cards aren't hidden behind mobile navigation
+        height: auto !important;
+        min-height: auto !important;
+        overflow-y: visible !important;
     }
 }
 
