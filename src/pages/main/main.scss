@@ -1121,7 +1121,7 @@ joyride-content {
 }
 
 /* ==========================================
-   FIX GLOBAL STAKE MULTIPLIER RANGE TRACK & THUMB LAYOUT (COMPACT 10px THUMB)
+   FIX GLOBAL STAKE MULTIPLIER RANGE TRACK & THUMB LAYOUT (PERFECTLY CENTERED 10px THUMB)
    ========================================== */
 input[type="range"] {
     -webkit-appearance: none !important;
@@ -1137,7 +1137,7 @@ input[type="range"] {
     padding: 0 !important;
     cursor: pointer !important;
 
-    /* WebKit Thumb (Chrome, Safari, Edge) - Scaled down to 10px */
+    /* WebKit Thumb (Chrome, Safari, Edge) */
     &::-webkit-slider-thumb {
         -webkit-appearance: none !important;
         appearance: none !important;
@@ -1148,7 +1148,7 @@ input[type="range"] {
         border: 1.5px solid #ffffff !important;
         box-shadow: 0 0 6px rgba(0, 168, 107, 0.8) !important;
         cursor: pointer !important;
-        margin-top: -3px !important; // Perfectly centers the 10px thumb on the 4px track
+        margin-top: -3px !important; // Exactly centers the 10px thumb on the 4px track
     }
 
     /* Firefox Track */
@@ -1160,7 +1160,7 @@ input[type="range"] {
         border-radius: 9999px !important;
     }
 
-    /* Firefox Thumb - Scaled down to 10px */
+    /* Firefox Thumb */
     &::-moz-range-thumb {
         width: 10px !important;
         height: 10px !important;
@@ -1169,5 +1169,6 @@ input[type="range"] {
         border: 1.5px solid #ffffff !important;
         box-shadow: 0 0 6px rgba(0, 168, 107, 0.8) !important;
         cursor: pointer !important;
+        transform: translateY(-3px) !important; // Centers thumb perfectly on Firefox
     }
 }
