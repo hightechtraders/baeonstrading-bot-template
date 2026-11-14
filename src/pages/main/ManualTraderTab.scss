@@ -4,14 +4,6 @@
 @use 'components/shared/styles/constants' as *;
 @use 'components/shared/styles/mixins' as *;
 
-/* --- TEMPORARY DEBUG OVERRIDE TO ISOLATE RED LINE --- */
-.manual-trader-tab-container * {
-    border-top: 2px solid magenta !important;
-    border-bottom: 2px solid cyan !important;
-    box-shadow: none !important;
-}
-/* --------------------------------------------------- */
-
 .manual-trader-tab-container {
     width: 100% !important;
     height: 100% !important;
