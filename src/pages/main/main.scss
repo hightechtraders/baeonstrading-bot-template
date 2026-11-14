@@ -1121,10 +1121,10 @@ joyride-content {
 }
 
 /* ==========================================
-   FIX GLOBAL STAKE MULTIPLIER RANGE TRACK & THUMB LAYOUT (SCOPED & CLEAN)
+   FIX GLOBAL STAKE MULTIPLIER RANGE TRACK & THUMB LAYOUT (SCOPED WITH AMPERSAND)
    ========================================== */
 #id-copy-trading {
-    input[type="range"] {
+    & input[type="range"] {
         -webkit-appearance: none !important;
         appearance: none !important;
         display: block !important;
