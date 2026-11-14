@@ -1065,11 +1065,11 @@ joyride-content {
 }
 
 /* ==========================================
-   COPY TRADING TAB - DIRECT CARD OVERRIDE
+   COPY TRADING TAB - SCOPED RANGE SLIDER FIX
    ========================================== */
 
 #id-copy-trading {
-    padding: 0.5rem 1rem 8rem 1rem; // Extra bottom padding so mobile scroll reaches the absolute last card
+    padding: 0.5rem 1rem 8rem 1rem;
     width: 100%;
     max-width: 1400px;
     margin: 0 auto;
@@ -1078,7 +1078,7 @@ joyride-content {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
 
-    // ROBUST CROSS-BROWSER RANGE SLIDER TRACK & THUMB STYLING FIX
+    /* STRICTLY SCOPED TO THE MULTIPLIER INPUT ONLY */
     input[type='range'] {
         -webkit-appearance: none !important;
         appearance: none !important;
@@ -1158,38 +1158,6 @@ joyride-content {
         .free-bots-btn {
             height: 2.2rem !important;
             font-size: 0.85rem !important;
-        }
-    }
-}
-
-// Completely hide any unintended floating tooltips/cursors/indicators on touch/mobile view
-@include mobile-or-tablet-screen {
-    #id-copy-trading, 
-    .dc-tabs__active-line {
-        cursor: default !important;
-        
-        * {
-            pointer-events: auto;
-        }
-    }
-
-    // Hide unwanted trailing indicator pseudo-elements or pointer artifacts near active tabs
-    .dc-tabs__item {
-        &::after, &::before {
-            display: none !important;
-        }
-    }
-}
-
-/* ==========================================
-   ABSOLUTE KILLSWITCH FOR STRAY FRAMEWORK BORDERS/LINES
-   ========================================== */
-.main__container {
-    .dc-tabs {
-        &__active-line {
-            background-color: #00a86b !important;
-            height: 0.35rem !important;
-            border-radius: 0.2rem;
         }
     }
 }
