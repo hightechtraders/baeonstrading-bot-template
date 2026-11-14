@@ -42,11 +42,11 @@
 
     @include mobile-or-tablet-screen {
         height: auto !important;
-        min-height: 100vh;
-        padding: 0;
+        min-height: 100vh !important;
+        padding: 0 !important;
         overflow: visible !important;
         overflow-y: visible !important;
-        -webkit-overflow-scrolling: touch;
+        display: block !important;
     }
 
     &__container {
@@ -63,6 +63,7 @@
             min-height: 100vh !important;
             overflow: visible !important;
             overflow-y: visible !important;
+            display: block !important;
         }
 
         &.no-scroll {
@@ -94,6 +95,8 @@
                 height: auto !important;
                 min-height: auto !important;
                 overflow: visible !important;
+                overflow-y: visible !important;
+                display: block !important;
             }
 
             // Active tab indicator underline color & accurate positioning fix
