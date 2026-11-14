@@ -1180,3 +1180,16 @@ joyride-content {
         }
     }
 }
+
+/* ==========================================
+   ABSOLUTE KILLSWITCH FOR STRAY FRAMEWORK BORDERS/LINES
+   ========================================== */
+.main__container {
+    .dc-tabs {
+        &__active-line {
+            background-color: #00a86b !important;
+            height: 0.35rem !important;
+            border-radius: 0.2rem;
+        }
+    }
+}
