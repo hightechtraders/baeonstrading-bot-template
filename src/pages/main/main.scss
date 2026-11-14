@@ -1078,7 +1078,7 @@ joyride-content {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
 
-    // FORCED STYLING FOR GLOBAL STAKE MULTIPLIER RANGE INPUT TRACK & THUMB
+    // ROBUST CROSS-BROWSER RANGE SLIDER TRACK & THUMB STYLING FIX
     input[type='range'] {
         -webkit-appearance: none !important;
         appearance: none !important;
@@ -1088,6 +1088,8 @@ joyride-content {
         border: 1.5px solid rgba(0, 168, 107, 0.5) !important;
         border-radius: 6px !important;
         outline: none !important;
+        margin: 10px 0 !important;
+        padding: 0 !important;
         opacity: 1 !important;
         visibility: visible !important;
         display: block !important;
@@ -1110,8 +1112,6 @@ joyride-content {
             cursor: pointer !important;
             box-shadow: 0 0 12px rgba(0, 168, 107, 0.8) !important;
             margin-top: -7px !important;
-            opacity: 1 !important;
-            visibility: visible !important;
         }
 
         &::-moz-range-track {
