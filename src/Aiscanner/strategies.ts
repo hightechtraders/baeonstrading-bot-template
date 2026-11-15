@@ -28,9 +28,9 @@ export const INITIAL_STRATEGIES: Strategy[] = [
         confidence: 50, 
         score: 50,
         direction: 'UP', 
-        recommendedStake: 0.35, 
-        recommendedStopLoss: 4.50, 
-        recommendedTakeProfit: 3.00, 
+        recommendedStake: 1.00,  // 👈 Updated to $1.00 base stake
+        recommendedStopLoss: 15.00, 
+        recommendedTakeProfit: 10.00, 
         contractType: 'CALL',
         status: 'high' 
     },
@@ -43,9 +43,9 @@ export const INITIAL_STRATEGIES: Strategy[] = [
         confidence: 50, 
         score: 50,
         direction: 'DOWN', 
-        recommendedStake: 0.35, 
-        recommendedStopLoss: 4.50, 
-        recommendedTakeProfit: 3.00, 
+        recommendedStake: 1.00,  // 👈 Updated to $1.00 base stake
+        recommendedStopLoss: 15.00, 
+        recommendedTakeProfit: 10.00, 
         contractType: 'PUT',
         status: 'high' 
     },
