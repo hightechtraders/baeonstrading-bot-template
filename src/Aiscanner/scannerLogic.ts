@@ -139,7 +139,7 @@ export class ScannerLogic {
 
         const range = upperBand - lowerBand;
         return range === 0 ? 0.5 : (currentPrice - lowerBand) / range;
-    }
+    } // ✅ Properly closed calculateBollingerBandsPercentB
 
     public processLiveTick(symbol: string, price: number): Strategy[] {
         if (symbol !== 'R_10') {
