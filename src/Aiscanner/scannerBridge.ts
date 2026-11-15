@@ -83,7 +83,7 @@ export class ScannerBridge {
 
     const payload: AIScannerPayload = {
       symbol: 'R_10',
-      stake: options?.stake || 1, // 👈 Cleanly forces $1.00 base stake, ignoring old card overrides
+      stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
@@ -103,7 +103,7 @@ export class ScannerBridge {
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
     
-    const martingaleMultiplier = 2.1; // 👈 2.1 Martingale Multiplier
+    const martingaleMultiplier = 1.4;
     const recoveryStep = payload.recoveryStep;
 
     const applyBlockMutations = () => {
