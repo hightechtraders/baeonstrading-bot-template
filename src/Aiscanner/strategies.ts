@@ -28,7 +28,7 @@ export const INITIAL_STRATEGIES: Strategy[] = [
         confidence: 50, 
         score: 50,
         direction: 'UP', 
-        recommendedStake: 1.00,  // 👈 Updated to $1.00 base stake
+        recommendedStake: 0.5,  // 👈 Updated to $1.00 base stake
         recommendedStopLoss: 15.00, 
         recommendedTakeProfit: 10.00, 
         contractType: 'CALL',
@@ -43,7 +43,7 @@ export const INITIAL_STRATEGIES: Strategy[] = [
         confidence: 50, 
         score: 50,
         direction: 'DOWN', 
-        recommendedStake: 1.00,  // 👈 Updated to $1.00 base stake
+        recommendedStake: 0.5,  // 👈 Updated to $1.00 base stake
         recommendedStopLoss: 15.00, 
         recommendedTakeProfit: 10.00, 
         contractType: 'PUT',
