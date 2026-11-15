@@ -103,7 +103,7 @@ export class ScannerBridge {
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
     
-    const martingaleMultiplier = 1.4;
+    const martingaleMultiplier = 2.1; // 👈 Updated multiplier to 2.1
     const recoveryStep = payload.recoveryStep;
 
     const applyBlockMutations = () => {
