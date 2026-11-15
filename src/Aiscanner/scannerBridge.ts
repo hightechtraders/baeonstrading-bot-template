@@ -83,7 +83,7 @@ export class ScannerBridge {
 
     const payload: AIScannerPayload = {
       symbol: 'R_10',
-      stake: options?.stake || 1, // Base stake set to $1.00
+      stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
       durationUnit: options?.durationUnit || 't',
@@ -103,7 +103,7 @@ export class ScannerBridge {
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
     
-    const martingaleMultiplier = 2.1; // 👈 2.1 Multiplier
+    const martingaleMultiplier = 1.4;
     const recoveryStep = payload.recoveryStep;
 
     const applyBlockMutations = () => {
@@ -160,7 +160,7 @@ export class ScannerBridge {
               }
 
               // 3. Force contract type / purchase block updates
-              if (block.type === 'purchase' || block.type?.includes('purchase' ) || block.type === 'trade_definition_purchase') {
+              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
                   const field = block.getField(name);
@@ -231,7 +231,7 @@ export class ScannerBridge {
           tradetype: 'rise_fall',
           contract_type: storeContractType,
           type: storeType,
-          size: martingaleMultiplier, // 👈 Fixed: now correctly uses 2.1 instead of hardcoded 1.4
+          size: martingaleMultiplier,
           recovery_step: recoveryStep,
           loss: payload.stopLoss,
           stop_loss: payload.stopLoss,
