@@ -222,7 +222,7 @@ export function useManualMultiStream(
               currency,
               duration,
               duration_unit: 't',
-              symbol: activeSymbol,
+              underlying_symbol: activeSymbol,
               barrier: String(targetDigit),
             })
           : null;
@@ -238,7 +238,7 @@ export function useManualMultiStream(
               currency,
               duration,
               duration_unit: 't',
-              symbol: activeSymbol,
+              underlying_symbol: activeSymbol,
               barrier: String(targetDigit),
             })
           : null;
