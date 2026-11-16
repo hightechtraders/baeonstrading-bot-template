@@ -185,7 +185,7 @@ export default function ManualTraderTab() {
     }, durationMs);
   };
 
-  // Robust 2-Step Proposal -> Buy Execution with direct symbol lookup & underlying fallback
+  // Direct 1-Step Deriv Bot Buy Execution with strict code-first market mapping
   const executeManualOrder = async (direction: 'DIGITOVER' | 'DIGITUNDER') => {
     if (isExecuting || !isStakeValid) return;
     if (direction === 'DIGITOVER' && !canBuyOver) return;
@@ -195,9 +195,11 @@ export default function ManualTraderTab() {
     const currency = api_base?.account_info?.currency || 'USD';
     const label = direction === 'DIGITOVER' ? 'OVER' : 'UNDER';
 
-    // Directly match market code or use symbolCode state
-    const matchedMarket = markets.find(m => m.name === selectedSymbol);
-    const activeMarketCode = matchedMarket?.code || symbolCode || 'R_25';
+    // Validate against symbolCode first, then selectedSymbol name
+    const matchedMarket =
+      markets.find(m => m.code === symbolCode) ||
+      markets.find(m => m.name === selectedSymbol);
+    const activeMarketCode = matchedMarket ? matchedMarket.code : 'R_25';
 
     if (!api_base?.api) {
       showTransientFeedback('Execution Error: Deriv WebSocket not connected.');
@@ -205,51 +207,36 @@ export default function ManualTraderTab() {
     }
 
     setIsExecuting(true);
-    setTradeFeedback(`Pricing ${label} ${targetDigit} on ${activeMarketCode}...`);
-try {
-      // Step 1: Request contract proposal ID using strictly 'symbol'
-      const proposalRes = await api_base.api.send({
-        proposal: 1,
-        amount: stakeAmount,
-        basis: 'stake',
-        contract_type: direction,
-        currency,
-        duration: Number(contractDuration),
-        duration_unit: 't',
-        symbol: activeMarketCode,
-        barrier: String(targetDigit),
-      });
-   
-      if (proposalRes?.error) {
-        showTransientFeedback(`Order Rejected: ${proposalRes.error.message}`);
-        return;
-      }
+    setTradeFeedback(`Executing ${label} ${targetDigit} on ${activeMarketCode}...`);
 
-      const proposalId = proposalRes?.proposal?.id;
-      if (!proposalId) {
-        showTransientFeedback('Execution Error: Failed to obtain contract proposal ID.');
-        return;
-      }
-
-      // Step 2: Execute trade using the verified proposal ID
-      setTradeFeedback(`Executing ${label} ${targetDigit}...`);
+    try {
       const buyRes = await api_base.api.send({
-        buy: proposalId,
+        buy: 1,
         price: stakeAmount,
+        parameters: {
+          amount: stakeAmount,
+          basis: 'stake',
+          contract_type: direction,
+          currency,
+          duration: Number(contractDuration),
+          duration_unit: 't',
+          symbol: activeMarketCode,
+          barrier: String(targetDigit),
+        },
       });
 
       if (buyRes?.error) {
-        showTransientFeedback(`Order Rejected: ${buyRes.error.message}`);
+        showTransientFeedback(`Order Rejected [${activeMarketCode}]: ${buyRes.error.message}`);
       } else if (buyRes?.buy) {
         showTransientFeedback(
-          `Executed ${label} ${targetDigit} | ID: ${buyRes.buy.contract_id} | Payout: ${Number(buyRes.buy.payout).toFixed(2)} ${currency}`
+          `Executed ${label} ${targetDigit} (${activeMarketCode}) | ID: ${buyRes.buy.contract_id} | Payout: ${Number(buyRes.buy.payout).toFixed(2)} ${currency}`
         );
       } else {
-        showTransientFeedback(`Order sent for ${label} ${targetDigit}.`);
+        showTransientFeedback(`Order sent for ${label} ${targetDigit} on ${activeMarketCode}.`);
       }
     } catch (err: any) {
       const msg = err?.error?.message || err?.message || 'Order execution failed.';
-      showTransientFeedback(`Execution Error: ${msg}`);
+      showTransientFeedback(`Execution Error [${activeMarketCode}]: ${msg}`);
     } finally {
       setIsExecuting(false);
     }
