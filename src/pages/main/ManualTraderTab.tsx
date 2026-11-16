@@ -560,7 +560,7 @@ export default function ManualTraderTab() {
         {/* Unified Professional Parameter Card */}
         <div className="manual-unified-config-card">
           <div className="config-grid-row">
-            {/* Blueprint Strategy Dropdown (Left-Aligned with High-Visibility Chevron) */}
+            {/* Blueprint Strategy Dropdown (Left-Aligned with Compact Chevron Spacing) */}
             <div
               className="config-item"
               style={{
@@ -569,22 +569,23 @@ export default function ManualTraderTab() {
                 textAlign: 'left',
               }}
             >
-              <span className="config-label" style={{ textAlign: 'left', width: '100%' }}>
+              <span className="config-label" style={{ textAlign: 'left' }}>
                 Blueprint
               </span>
               <div
                 onClick={() => setIsBlueprintDropdownOpen(prev => !prev)}
                 style={{
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between',
+                  justifyContent: 'flex-start',
                   gap: '10px',
                   cursor: 'pointer',
                   padding: '6px 12px',
                   borderRadius: '8px',
                   background: 'rgba(255, 255, 255, 0.06)',
                   border: '1px solid rgba(255, 255, 255, 0.16)',
-                  width: '100%',
+                  width: 'fit-content',
+                  maxWidth: '100%',
                   textAlign: 'left',
                 }}
                 title="Select trading blueprint"
@@ -594,7 +595,7 @@ export default function ManualTraderTab() {
                 </span>
                 <span
                   style={{
-                    fontSize: '1.15rem',
+                    fontSize: '1rem',
                     lineHeight: 1,
                     fontWeight: 900,
                     color: '#10b981',
