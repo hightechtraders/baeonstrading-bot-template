@@ -6,6 +6,13 @@ import { api_base } from '@/external/bot-skeleton/services/api/api-base';
 import { useManualMultiStream, StrategyPreset } from '../../hooks/useManualMultiStream';
 import './ManualTraderTab.scss';
 
+interface TradeToast {
+  id: string;
+  type: 'opened' | 'won' | 'lost' | 'error';
+  title: string;
+  subtitle: string;
+}
+
 function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
   const circleRadius = 36;
   const lineThickness = 6;
@@ -127,8 +134,21 @@ export default function ManualTraderTab() {
   const [autoFireOnSignal, setAutoFireOnSignal] = useState<boolean>(false);
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [tradeFeedback, setTradeFeedback] = useState<string | null>(null);
+  const [tradeToasts, setTradeToasts] = useState<TradeToast[]>([]);
+
   const lastFiredFingerprintRef = useRef<string>('');
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const trackedContractsRef = useRef<
+    Record<number, { side: string; marketName: string; stake: number; currency: string }>
+  >({});
+
+  const pushTradeToast = (toast: Omit<TradeToast, 'id'>, durationMs = 5500) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    setTradeToasts(prev => [...prev.slice(-2), { ...toast, id }]);
+    setTimeout(() => {
+      setTradeToasts(prev => prev.filter(t => t.id !== id));
+    }, durationMs);
+  };
 
   // Persist settings across tab switches
   useEffect(() => {
@@ -155,6 +175,63 @@ export default function ManualTraderTab() {
   useEffect(() => {
     return () => {
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    };
+  }, []);
+
+  // Listen for Deriv contract settlement (proposal_open_contract) for live Win/Loss notifications
+  useEffect(() => {
+    let socket: WebSocket | null = null;
+
+    const onContractMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data?.msg_type === 'proposal_open_contract' && data?.proposal_open_contract) {
+          const poc = data.proposal_open_contract;
+          const contractId = Number(poc.contract_id);
+          const meta = trackedContractsRef.current[contractId];
+
+          if (meta && (poc.is_sold === 1 || poc.status === 'won' || poc.status === 'lost')) {
+            delete trackedContractsRef.current[contractId];
+
+            const profit = Number(poc.profit ?? 0);
+            const isWin = profit > 0 || poc.status === 'won';
+            const formattedPnL = `${profit >= 0 ? '+' : ''}${profit.toFixed(2)} ${meta.currency}`;
+
+            pushTradeToast(
+              {
+                type: isWin ? 'won' : 'lost',
+                title: `Trade closed: ${meta.side} on ${meta.marketName}`,
+                subtitle: `Total profit/loss: ${formattedPnL}`,
+              },
+              6500
+            );
+
+            showTransientFeedback(
+              `Trade Closed (${meta.side} ${meta.marketName}) | Total profit/loss: ${formattedPnL}`,
+              6000
+            );
+
+            if (poc.subscription?.id) {
+              api_base.api?.send({ forget: poc.subscription.id }).catch(() => {});
+            }
+          }
+        }
+      } catch {
+        // Ignore non-JSON frames
+      }
+    };
+
+    const attach = setInterval(() => {
+      if (api_base?.api?.connection && socket !== api_base.api.connection) {
+        if (socket) socket.removeEventListener('message', onContractMessage);
+        socket = api_base.api.connection;
+        socket.addEventListener('message', onContractMessage);
+      }
+    }, 300);
+
+    return () => {
+      clearInterval(attach);
+      if (socket) socket.removeEventListener('message', onContractMessage);
     };
   }, []);
 
@@ -185,7 +262,7 @@ export default function ManualTraderTab() {
     }, durationMs);
   };
 
-  // Verified 2-Step Proposal -> Buy Execution using Deriv's updated underlying_symbol schema
+  // Verified 2-Step Proposal -> Buy Execution with live contract result subscription
   const executeManualOrder = async (direction: 'DIGITOVER' | 'DIGITUNDER') => {
     if (isExecuting || !isStakeValid) return;
     if (direction === 'DIGITOVER' && !canBuyOver) return;
@@ -194,12 +271,14 @@ export default function ManualTraderTab() {
     const stakeAmount = Number(Number(manualStake).toFixed(2));
     const currency = api_base?.account_info?.currency || 'USD';
     const label = direction === 'DIGITOVER' ? 'OVER' : 'UNDER';
+    const sideTitle = direction === 'DIGITOVER' ? 'Over' : 'Under';
 
     // Validate against symbolCode first, then selectedSymbol name
     const matchedMarket =
       markets.find(m => m.code === symbolCode) ||
       markets.find(m => m.name === selectedSymbol);
     const activeMarketCode = matchedMarket ? matchedMarket.code : 'R_25';
+    const activeMarketName = matchedMarket ? matchedMarket.name : selectedSymbol;
 
     if (!api_base?.api) {
       showTransientFeedback('Execution Error: Deriv WebSocket not connected.');
@@ -224,7 +303,6 @@ export default function ManualTraderTab() {
       });
 
       if (proposalRes?.error) {
-        console.error('[ManualTrader] Proposal Rejected:', proposalRes.error);
         const details = proposalRes.error.details ? ` (${JSON.stringify(proposalRes.error.details)})` : '';
         showTransientFeedback(`Order Rejected [${activeMarketCode}]: ${proposalRes.error.message}${details}`);
         return;
@@ -244,18 +322,44 @@ export default function ManualTraderTab() {
       });
 
       if (buyRes?.error) {
-        console.error('[ManualTrader] Buy Rejected:', buyRes.error);
         const details = buyRes.error.details ? ` (${JSON.stringify(buyRes.error.details)})` : '';
         showTransientFeedback(`Order Rejected [${activeMarketCode}]: ${buyRes.error.message}${details}`);
       } else if (buyRes?.buy) {
-        showTransientFeedback(
-          `Executed ${label} ${targetDigit} (${activeMarketCode}) | ID: ${buyRes.buy.contract_id} | Payout: ${Number(buyRes.buy.payout).toFixed(2)} ${currency}`
+        const contractId = Number(buyRes.buy.contract_id);
+
+        // Show "Trade opened" floating toast immediately
+        pushTradeToast(
+          {
+            type: 'opened',
+            title: `Trade opened: ${sideTitle} on ${activeMarketName}`,
+            subtitle: `Stake: ${stakeAmount.toFixed(2)} ${currency}`,
+          },
+          4000
         );
+
+        showTransientFeedback(
+          `Trade opened: ${sideTitle} ${targetDigit} on ${activeMarketName} | Stake: ${stakeAmount.toFixed(2)} ${currency}`
+        );
+
+        // Track and subscribe to proposal_open_contract so settlement Win/Loss toast fires automatically
+        trackedContractsRef.current[contractId] = {
+          side: sideTitle,
+          marketName: activeMarketName,
+          stake: stakeAmount,
+          currency,
+        };
+
+        api_base.api
+          .send({
+            proposal_open_contract: 1,
+            contract_id: contractId,
+            subscribe: 1,
+          })
+          .catch(() => {});
       } else {
         showTransientFeedback(`Order sent for ${label} ${targetDigit} on ${activeMarketCode}.`);
       }
     } catch (err: any) {
-      console.error('[ManualTrader] Raw API Exception:', err);
       const msg = err?.error?.message || err?.message || 'Order execution failed.';
       const details = err?.error?.details ? ` (${JSON.stringify(err.error.details)})` : '';
       showTransientFeedback(`Execution Error [${activeMarketCode}]: ${msg}${details}`);
@@ -311,6 +415,64 @@ export default function ManualTraderTab() {
 
   return (
     <div className="manual-trader-tab-container">
+      {/* Floating Trade Lifecycle Notifications (Trade Opened / Trade Closed P&L) */}
+      {tradeToasts.length > 0 && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '16px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            width: 'min(92vw, 420px)',
+            pointerEvents: 'none',
+          }}
+        >
+          {tradeToasts.map(t => {
+            const accent =
+              t.type === 'won'
+                ? '#10b981'
+                : t.type === 'lost' || t.type === 'error'
+                ? '#f43f5e'
+                : '#38bdf8';
+
+            return (
+              <div
+                key={t.id}
+                style={{
+                  background: 'rgba(15, 23, 42, 0.96)',
+                  border: `1px solid ${accent}`,
+                  borderLeft: `4px solid ${accent}`,
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  boxShadow: '0 10px 28px rgba(0, 0, 0, 0.45)',
+                  color: '#f8fafc',
+                  backdropFilter: 'blur(10px)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: 700 }}>
+                  <span>{t.title}</span>
+                  <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>now</span>
+                </div>
+                <div
+                  style={{
+                    fontSize: '0.78rem',
+                    marginTop: '3px',
+                    fontWeight: 600,
+                    color: t.type === 'won' ? '#34d399' : t.type === 'lost' ? '#fb7185' : '#cbd5e1',
+                  }}
+                >
+                  {t.subtitle}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <div className="manual-trader-wrapper">
         {/* Compact Market Selector Dropdown Bar */}
         <div className="manual-market-dropdown-bar">
@@ -349,10 +511,18 @@ export default function ManualTraderTab() {
           style={
             tradeFeedback
               ? {
-                  background: tradeFeedback.includes('Error') || tradeFeedback.includes('Rejected')
-                    ? 'rgba(244, 63, 94, 0.16)'
-                    : 'rgba(16, 185, 129, 0.2)',
-                  borderColor: tradeFeedback.includes('Error') || tradeFeedback.includes('Rejected') ? '#f43f5e' : '#10b981',
+                  background:
+                    tradeFeedback.includes('Error') ||
+                    tradeFeedback.includes('Rejected') ||
+                    tradeFeedback.includes(':-')
+                      ? 'rgba(244, 63, 94, 0.16)'
+                      : 'rgba(16, 185, 129, 0.2)',
+                  borderColor:
+                    tradeFeedback.includes('Error') ||
+                    tradeFeedback.includes('Rejected') ||
+                    tradeFeedback.includes(':-')
+                      ? '#f43f5e'
+                      : '#10b981',
                 }
               : signal.isReady
               ? {
@@ -367,7 +537,9 @@ export default function ManualTraderTab() {
             <span
               className="manual-status-pulse"
               style={
-                tradeFeedback?.includes('Error') || tradeFeedback?.includes('Rejected')
+                tradeFeedback?.includes('Error') ||
+                tradeFeedback?.includes('Rejected') ||
+                tradeFeedback?.includes(':-')
                   ? { background: '#fb7185', boxShadow: '0 0 10px #fb7185' }
                   : signal.isReady || tradeFeedback
                   ? { background: '#34d399', boxShadow: '0 0 10px #34d399' }
@@ -515,7 +687,7 @@ export default function ManualTraderTab() {
                   className="manual-trader-input"
                   placeholder="1.00"
                 />
-                <span className="currency-tag">USD</span>
+                <span className="currency-tag">{api_base?.account_info?.currency || 'USD'}</span>
               </div>
 
               {stakeError && (
