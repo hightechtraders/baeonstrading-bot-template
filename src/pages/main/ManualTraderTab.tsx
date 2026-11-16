@@ -185,7 +185,7 @@ export default function ManualTraderTab() {
     }, durationMs);
   };
 
-  // Verified 2-Step Proposal -> Buy Execution with strict code-first market mapping & error details
+  // Verified 2-Step Proposal -> Buy Execution using Deriv's updated underlying_symbol schema
   const executeManualOrder = async (direction: 'DIGITOVER' | 'DIGITUNDER') => {
     if (isExecuting || !isStakeValid) return;
     if (direction === 'DIGITOVER' && !canBuyOver) return;
@@ -210,7 +210,7 @@ export default function ManualTraderTab() {
     setTradeFeedback(`Pricing ${label} ${targetDigit} on ${activeMarketCode}...`);
 
     try {
-      // Step 1: Request proposal using the exact structure proven in useManualMultiStream.ts
+      // Step 1: Request proposal using strictly 'underlying_symbol' (Deriv's updated schema)
       const proposalRes = await api_base.api.send({
         proposal: 1,
         amount: stakeAmount,
@@ -219,7 +219,7 @@ export default function ManualTraderTab() {
         currency,
         duration: Number(contractDuration),
         duration_unit: 't',
-        symbol: activeMarketCode,
+        underlying_symbol: activeMarketCode,
         barrier: String(targetDigit),
       });
 
