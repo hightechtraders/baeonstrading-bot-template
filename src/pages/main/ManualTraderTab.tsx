@@ -206,9 +206,8 @@ export default function ManualTraderTab() {
 
     setIsExecuting(true);
     setTradeFeedback(`Pricing ${label} ${targetDigit} on ${activeMarketCode}...`);
-
-    try {
-      // Step 1: Request contract proposal ID providing both symbol and underlying_symbol
+try {
+      // Step 1: Request contract proposal ID using strictly 'symbol'
       const proposalRes = await api_base.api.send({
         proposal: 1,
         amount: stakeAmount,
@@ -218,10 +217,9 @@ export default function ManualTraderTab() {
         duration: Number(contractDuration),
         duration_unit: 't',
         symbol: activeMarketCode,
-        underlying_symbol: activeMarketCode,
         barrier: String(targetDigit),
       });
-
+   
       if (proposalRes?.error) {
         showTransientFeedback(`Order Rejected: ${proposalRes.error.message}`);
         return;
