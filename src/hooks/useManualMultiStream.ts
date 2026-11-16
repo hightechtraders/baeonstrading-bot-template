@@ -83,15 +83,19 @@ export function useManualMultiStream(
   const activeSymbolRef = useRef(activeSymbol);
   activeSymbolRef.current = activeSymbol;
 
-  // Validate stake input strictly
+  // Validate stake input strictly against minimums, zero/empty, and live account balance
   const rawString = String(stakeInput).trim();
   const parsedStake = Number(rawString);
+  const accountBalance = Number(api_base?.account_info?.balance ?? Infinity);
+  const currency = api_base?.account_info?.currency || 'USD';
   let stakeError: string | null = null;
 
-  if (rawString === '' || Number.isNaN(parsedStake)) {
-    stakeError = 'Invalid stake: enter a valid numeric amount.';
+  if (rawString === '' || Number.isNaN(parsedStake) || parsedStake <= 0) {
+    stakeError = 'Stake cannot be 0 or empty.';
   } else if (parsedStake < MIN_STAKE) {
-    stakeError = `Minimum stake is ${MIN_STAKE.toFixed(2)} USD.`;
+    stakeError = `Minimum stake is ${MIN_STAKE.toFixed(2)} ${currency}.`;
+  } else if (parsedStake > accountBalance) {
+    stakeError = `Insufficient balance (${accountBalance.toFixed(2)} ${currency} available).`;
   } else if (parsedStake > 50000) {
     stakeError = 'Maximum stake exceeded (50,000.00 USD).';
   }
@@ -188,7 +192,6 @@ export function useManualMultiStream(
   // 2. Fetch real-time Deriv proposal payouts whenever parameters change
   useEffect(() => {
     let active = true;
-    const currency = api_base?.account_info?.currency || 'USD';
 
     if (!isStakeValid) {
       setPayouts({
@@ -268,7 +271,7 @@ export function useManualMultiStream(
       active = false;
       clearTimeout(debounce);
     };
-  }, [activeSymbol, targetDigit, duration, parsedStake, isStakeValid, isOverWinnable, isUnderWinnable]);
+  }, [activeSymbol, targetDigit, duration, parsedStake, isStakeValid, isOverWinnable, isUnderWinnable, currency]);
 
   // 3. Compute 1,000-tick digit distribution for active market
   const buffer = globalTickBuffers[activeSymbol] || [];
