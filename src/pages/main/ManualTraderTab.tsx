@@ -141,6 +141,8 @@ export default function ManualTraderTab() {
   const [tradeFeedback, setTradeFeedback] = useState<string | null>(null);
   const [tradeToasts, setTradeToasts] = useState<TradeToast[]>([]);
 
+  const blueprintDropdownRef = useRef<HTMLDivElement | null>(null);
+  const marketDropdownRef = useRef<HTMLDivElement | null>(null);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const trackedContractsRef = useRef<
     Record<number, { side: string; marketName: string; stake: number; currency: string }>
@@ -153,6 +155,26 @@ export default function ManualTraderTab() {
       setTradeToasts(prev => prev.filter(t => t.id !== id));
     }, durationMs);
   };
+
+  // Close open dropdowns when clicking or tapping anywhere outside them
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (blueprintDropdownRef.current && !blueprintDropdownRef.current.contains(target)) {
+        setIsBlueprintDropdownOpen(false);
+      }
+      if (marketDropdownRef.current && !marketDropdownRef.current.contains(target)) {
+        setIsMarketDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, []);
 
   // Persist settings across tab switches
   useEffect(() => {
@@ -446,7 +468,7 @@ export default function ManualTraderTab() {
 
       <div className="manual-trader-wrapper">
         {/* Compact Market Selector Dropdown Bar */}
-        <div className="manual-market-dropdown-bar">
+        <div className="manual-market-dropdown-bar" ref={marketDropdownRef}>
           <div className="market-dropdown-header" onClick={() => setIsMarketDropdownOpen(!isMarketDropdownOpen)}>
             <div className="market-dropdown-title-group">
               <span className="market-type-icon">📊</span>
@@ -560,8 +582,9 @@ export default function ManualTraderTab() {
         {/* Unified Professional Parameter Card */}
         <div className="manual-unified-config-card">
           <div className="config-grid-row">
-            {/* Blueprint Strategy Dropdown (Left-Aligned with Compact Chevron Spacing) */}
+            {/* Blueprint Strategy Dropdown (Left-Aligned with Compact Chevron Spacing & Outside-Click Close) */}
             <div
+              ref={blueprintDropdownRef}
               className="config-item"
               style={{
                 position: 'relative',
