@@ -23,6 +23,8 @@ const ALL_MANUAL_SYMBOLS = [
   '1HZ100V',
 ];
 
+const MIN_STAKE = 0.35;
+
 // Global module-level cache so switching tabs or markets keeps all 1,000-tick buffers warm
 const globalTickBuffers: Record<string, number[]> = {};
 const globalPipSizes: Record<string, number> = {};
@@ -33,6 +35,13 @@ let isPoolBootstrapped = false;
 const extractLastDigit = (quote: number, pipSize: number): number => {
   const formatted = Number(quote).toFixed(pipSize);
   return parseInt(formatted.charAt(formatted.length - 1), 10);
+};
+
+// Deterministic instant payout estimate while live Deriv proposal is in flight
+const computeInstantEstimate = (stakeVal: number, winningDigits: number, currency: string): string => {
+  if (winningDigits <= 0 || winningDigits >= 10) return 'Unwinnable (0%)';
+  const estProfit = stakeVal * (9.62 / winningDigits - 1);
+  return `~+${estProfit.toFixed(2)} ${currency}`;
 };
 
 // Single global listener for Manual Trader (runs alongside useScannerFeed without conflict)
@@ -62,7 +71,7 @@ export function useManualMultiStream(
   activeSymbol: string,
   targetDigit: number,
   duration: number,
-  stake: number,
+  stakeInput: string | number,
   preset: StrategyPreset
 ) {
   const [tickVersion, setTickVersion] = useState(0);
@@ -73,6 +82,26 @@ export function useManualMultiStream(
 
   const activeSymbolRef = useRef(activeSymbol);
   activeSymbolRef.current = activeSymbol;
+
+  // Validate stake input strictly
+  const rawString = String(stakeInput).trim();
+  const parsedStake = Number(rawString);
+  let stakeError: string | null = null;
+
+  if (rawString === '' || Number.isNaN(parsedStake)) {
+    stakeError = 'Invalid stake: enter a valid numeric amount.';
+  } else if (parsedStake < MIN_STAKE) {
+    stakeError = `Minimum stake is ${MIN_STAKE.toFixed(2)} USD.`;
+  } else if (parsedStake > 50000) {
+    stakeError = 'Maximum stake exceeded (50,000.00 USD).';
+  }
+
+  const isStakeValid = stakeError === null;
+  const isOverWinnable = targetDigit >= 0 && targetDigit < 9;
+  const isUnderWinnable = targetDigit > 0 && targetDigit <= 9;
+
+  const canBuyOver = isStakeValid && isOverWinnable;
+  const canBuyUnder = isStakeValid && isUnderWinnable;
 
   // 1. Bootstrap 1,000-tick buffers and non-R_10 streams without touching useScannerFeed's R_10 subscription
   useEffect(() => {
@@ -159,61 +188,87 @@ export function useManualMultiStream(
   // 2. Fetch real-time Deriv proposal payouts whenever parameters change
   useEffect(() => {
     let active = true;
-    const validStake = Math.max(0.35, Number(stake) || 1);
+    const currency = api_base?.account_info?.currency || 'USD';
+
+    if (!isStakeValid) {
+      setPayouts({
+        over: isOverWinnable ? 'Invalid Stake' : 'Unwinnable (0%)',
+        under: isUnderWinnable ? 'Invalid Stake' : 'Unwinnable (0%)',
+      });
+      return;
+    }
+
+    // Immediately show deterministic calculation so DOM updates with 0ms latency
+    setPayouts({
+      over: isOverWinnable ? computeInstantEstimate(parsedStake, 9 - targetDigit, currency) : 'Unwinnable (0%)',
+      under: isUnderWinnable ? computeInstantEstimate(parsedStake, targetDigit, currency) : 'Unwinnable (0%)',
+    });
 
     const fetchProposals = async () => {
-      if (!api_base?.api) return;
+      let retries = 0;
+      while (!api_base?.api && retries < 15) {
+        await new Promise(r => setTimeout(r, 200));
+        retries++;
+      }
+      if (!active || !api_base?.api) return;
+
       try {
-        const [overRes, underRes] = await Promise.all([
-          targetDigit < 9
-            ? api_base.api.send({
-                proposal: 1,
-                amount: validStake,
-                basis: 'stake',
-                contract_type: 'DIGITOVER',
-                currency: 'USD',
-                duration,
-                duration_unit: 't',
-                symbol: activeSymbol,
-                barrier: String(targetDigit),
-              })
-            : Promise.resolve(null),
-          targetDigit > 0
-            ? api_base.api.send({
-                proposal: 1,
-                amount: validStake,
-                basis: 'stake',
-                contract_type: 'DIGITUNDER',
-                currency: 'USD',
-                duration,
-                duration_unit: 't',
-                symbol: activeSymbol,
-                barrier: String(targetDigit),
-              })
-            : Promise.resolve(null),
-        ]);
+        const overRes = isOverWinnable
+          ? await api_base.api.send({
+              proposal: 1,
+              amount: parsedStake,
+              basis: 'stake',
+              contract_type: 'DIGITOVER',
+              currency,
+              duration,
+              duration_unit: 't',
+              symbol: activeSymbol,
+              barrier: String(targetDigit),
+            })
+          : null;
+
+        await new Promise(r => setTimeout(r, 60));
+
+        const underRes = isUnderWinnable
+          ? await api_base.api.send({
+              proposal: 1,
+              amount: parsedStake,
+              basis: 'stake',
+              contract_type: 'DIGITUNDER',
+              currency,
+              duration,
+              duration_unit: 't',
+              symbol: activeSymbol,
+              barrier: String(targetDigit),
+            })
+          : null;
 
         if (!active) return;
 
-        const overProfit = overRes?.proposal
-          ? `+${(overRes.proposal.payout - validStake).toFixed(2)} USD`
-          : 'N/A';
-        const underProfit = underRes?.proposal
-          ? `+${(underRes.proposal.payout - validStake).toFixed(2)} USD`
-          : 'N/A';
+        const overProfit = !isOverWinnable
+          ? 'Unwinnable (0%)'
+          : overRes?.proposal
+          ? `+${(Number(overRes.proposal.payout) - parsedStake).toFixed(2)} ${currency}`
+          : computeInstantEstimate(parsedStake, 9 - targetDigit, currency);
+
+        const underProfit = !isUnderWinnable
+          ? 'Unwinnable (0%)'
+          : underRes?.proposal
+          ? `+${(Number(underRes.proposal.payout) - parsedStake).toFixed(2)} ${currency}`
+          : computeInstantEstimate(parsedStake, targetDigit, currency);
 
         setPayouts({ over: overProfit, under: underProfit });
       } catch {
-        if (active) setPayouts({ over: 'Unavailable', under: 'Unavailable' });
+        // Keep instant calculation fallback if proposal call fails
       }
     };
 
-    const debounce = setTimeout(fetchProposals, 250);
+    const debounce = setTimeout(fetchProposals, 200);
     return () => {
       active = false;
       clearTimeout(debounce);
     };
-  }, [activeSymbol, targetDigit, duration, stake]);
+  }, [activeSymbol, targetDigit, duration, parsedStake, isStakeValid, isOverWinnable, isUnderWinnable]);
 
   // 3. Compute 1,000-tick digit distribution for active market
   const buffer = globalTickBuffers[activeSymbol] || [];
@@ -366,6 +421,10 @@ export function useManualMultiStream(
     recentDigits,
     payouts,
     signal: evaluateSignal(),
+    isStakeValid,
+    stakeError,
+    canBuyOver,
+    canBuyUnder,
     allBuffers: globalTickBuffers,
     tickVersion,
   };
