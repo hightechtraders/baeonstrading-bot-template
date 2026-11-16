@@ -13,6 +13,11 @@ interface TradeToast {
   subtitle: string;
 }
 
+const BLUEPRINT_OPTIONS: { id: StrategyPreset; label: string; defaultDigit: number }[] = [
+  { id: 'OVER_2_UNDER_7_RED_CURSOR', label: 'Over 2 / Under 7 (Red Ring)', defaultDigit: 7 },
+  { id: 'OVER_3_UNDER_6_CONSECUTIVE', label: 'Over 3 / Under 6 (2-Tick)', defaultDigit: 3 },
+];
+
 function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
   const circleRadius = 36;
   const lineThickness = 6;
@@ -112,6 +117,7 @@ export default function ManualTraderTab() {
   });
 
   const [isMarketDropdownOpen, setIsMarketDropdownOpen] = useState(false);
+  const [isBlueprintDropdownOpen, setIsBlueprintDropdownOpen] = useState(false);
 
   const [strategyPreset, setStrategyPreset] = useState<StrategyPreset>(() => {
     return (localStorage.getItem('trader_strategy_preset') as StrategyPreset) || 'OVER_2_UNDER_7_RED_CURSOR';
@@ -131,12 +137,10 @@ export default function ManualTraderTab() {
     return localStorage.getItem('trader_manual_stake') || '1.00';
   });
 
-  const [autoFireOnSignal, setAutoFireOnSignal] = useState<boolean>(false);
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [tradeFeedback, setTradeFeedback] = useState<string | null>(null);
   const [tradeToasts, setTradeToasts] = useState<TradeToast[]>([]);
 
-  const lastFiredFingerprintRef = useRef<string>('');
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const trackedContractsRef = useRef<
     Record<number, { side: string; marketName: string; stake: number; currency: string }>
@@ -239,7 +243,6 @@ export default function ManualTraderTab() {
   const {
     digitStats,
     cursorDigit,
-    recentDigits,
     payouts,
     signal,
     isStakeValid,
@@ -368,47 +371,15 @@ export default function ManualTraderTab() {
     }
   };
 
-  // Auto-Fire once per unique signal trigger when enabled and inputs are valid
-  useEffect(() => {
-    if (!autoFireOnSignal || !signal.isReady || !signal.recommendedSide || !isStakeValid || isExecuting) return;
-    if (signal.recommendedSide === 'OVER' && !canBuyOver) return;
-    if (signal.recommendedSide === 'UNDER' && !canBuyUnder) return;
-
-    const fingerprint = `${symbolCode}-${recentDigits.join('')}-${signal.recommendedSide}-${targetDigit}`;
-    if (lastFiredFingerprintRef.current === fingerprint) return;
-    lastFiredFingerprintRef.current = fingerprint;
-
-    const contractType = signal.recommendedSide === 'OVER' ? 'DIGITOVER' : 'DIGITUNDER';
-    executeManualOrder(contractType);
-  }, [
-    autoFireOnSignal,
-    signal.isReady,
-    signal.recommendedSide,
-    recentDigits,
-    symbolCode,
-    targetDigit,
-    isStakeValid,
-    canBuyOver,
-    canBuyUnder,
-    isExecuting,
-  ]);
-
-  const handleTogglePreset = () => {
-    if (strategyPreset === 'OVER_2_UNDER_7_RED_CURSOR') {
-      setStrategyPreset('OVER_3_UNDER_6_CONSECUTIVE');
-      setTargetDigit(3);
-      setContractDuration(1);
-    } else {
-      setStrategyPreset('OVER_2_UNDER_7_RED_CURSOR');
-      setTargetDigit(7);
-      setContractDuration(1);
-    }
+  const handleSelectBlueprint = (option: { id: StrategyPreset; label: string; defaultDigit: number }) => {
+    setStrategyPreset(option.id);
+    setTargetDigit(option.defaultDigit);
+    setContractDuration(1);
+    setIsBlueprintDropdownOpen(false);
   };
 
-  const presetLabel =
-    strategyPreset === 'OVER_2_UNDER_7_RED_CURSOR'
-      ? 'Over 2 / Under 7 (Red Ring)'
-      : 'Over 3 / Under 6 (2-Tick)';
+  const activeBlueprint =
+    BLUEPRINT_OPTIONS.find(b => b.id === strategyPreset) || BLUEPRINT_OPTIONS[0];
 
   const isOverDisabled = !canBuyOver || isExecuting;
   const isUnderDisabled = !canBuyUnder || isExecuting;
@@ -589,37 +560,77 @@ export default function ManualTraderTab() {
         {/* Unified Professional Parameter Card */}
         <div className="manual-unified-config-card">
           <div className="config-grid-row">
-            <div
-              className="config-item"
-              onClick={handleTogglePreset}
-              style={{ cursor: 'pointer' }}
-              title="Click to switch strategy preset"
-            >
-              <span className="config-label">Blueprint ↻</span>
-              <span className="config-value">{presetLabel}</span>
+            {/* Blueprint Strategy Dropdown */}
+            <div className="config-item" style={{ position: 'relative' }}>
+              <span className="config-label">Blueprint</span>
+              <div
+                onClick={() => setIsBlueprintDropdownOpen(prev => !prev)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  padding: '4px 10px',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                }}
+                title="Select trading blueprint"
+              >
+                <span className="config-value">{activeBlueprint.label}</span>
+                <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{isBlueprintDropdownOpen ? '▴' : '▾'}</span>
+              </div>
+
+              {isBlueprintDropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    marginTop: '6px',
+                    minWidth: '230px',
+                    background: 'rgba(15, 23, 42, 0.98)',
+                    border: '1px solid rgba(16, 185, 129, 0.35)',
+                    borderRadius: '10px',
+                    boxShadow: '0 12px 28px rgba(0, 0, 0, 0.45)',
+                    zIndex: 50,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {BLUEPRINT_OPTIONS.map(option => {
+                    const isActive = option.id === strategyPreset;
+                    return (
+                      <div
+                        key={option.id}
+                        onClick={() => handleSelectBlueprint(option)}
+                        style={{
+                          padding: '10px 14px',
+                          fontSize: '0.82rem',
+                          fontWeight: isActive ? 700 : 500,
+                          color: isActive ? '#34d399' : '#e2e8f0',
+                          background: isActive ? 'rgba(16, 185, 129, 0.14)' : 'transparent',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                        }}
+                      >
+                        {option.label}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
+            {/* Target Digit (Selected via Digit Circles above) */}
             <div className="config-item">
               <span className="config-label">Target Digit</span>
-              <div className="config-stepper-control">
-                <button
-                  className="stepper-btn"
-                  onClick={() => setTargetDigit(prev => Math.max(0, prev - 1))}
-                  title="Decrease Target Digit"
-                >
-                  −
-                </button>
-                <span className="config-value highlight-digit">{targetDigit}</span>
-                <button
-                  className="stepper-btn"
-                  onClick={() => setTargetDigit(prev => Math.min(9, prev + 1))}
-                  title="Increase Target Digit"
-                >
-                  +
-                </button>
-              </div>
+              <span className="config-value highlight-digit">{targetDigit}</span>
             </div>
 
+            {/* Duration */}
             <div className="config-item">
               <span className="config-label">Duration</span>
               <div className="config-stepper-control">
@@ -646,28 +657,7 @@ export default function ManualTraderTab() {
 
           <div className="config-stake-row">
             <div className="config-stake-info">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="config-label">Risk Capital Allocation</span>
-                <label
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '0.72rem',
-                    fontWeight: 800,
-                    color: autoFireOnSignal ? '#10b981' : 'var(--text-general)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={autoFireOnSignal}
-                    onChange={e => setAutoFireOnSignal(e.target.checked)}
-                    style={{ accentColor: '#10b981', cursor: 'pointer' }}
-                  />
-                  Auto-Fire on Signal
-                </label>
-              </div>
+              <span className="config-label">Risk Capital Allocation</span>
 
               <div
                 className="config-input-wrapper"
