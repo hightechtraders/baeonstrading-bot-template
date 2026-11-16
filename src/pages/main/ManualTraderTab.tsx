@@ -185,7 +185,7 @@ export default function ManualTraderTab() {
     }, durationMs);
   };
 
-  // 2-Step Proposal -> Buy Execution (Fixed with exact active market code lookup)
+  // 2-Step Proposal -> Buy Execution (Fixed with both symbol and underlying_symbol)
   const executeManualOrder = async (direction: 'DIGITOVER' | 'DIGITUNDER') => {
     if (isExecuting || !isStakeValid) return;
     if (direction === 'DIGITOVER' && !canBuyOver) return;
@@ -195,7 +195,7 @@ export default function ManualTraderTab() {
     const currency = api_base?.account_info?.currency || 'USD';
     const label = direction === 'DIGITOVER' ? 'OVER' : 'UNDER';
 
-    // Look up the exact valid market code matching selectedSymbol
+    // Look up exact valid market code matching selectedSymbol
     const matchedMarket = markets.find(m => m.name === selectedSymbol);
     const activeMarketCode = matchedMarket ? matchedMarket.code : symbolCode;
 
@@ -208,7 +208,7 @@ export default function ManualTraderTab() {
     setTradeFeedback(`Pricing ${label} ${targetDigit} on ${activeMarketCode}...`);
 
     try {
-      // Step 1: Request contract proposal ID from Deriv using correct market code
+      // Step 1: Request contract proposal ID providing both symbol and underlying_symbol
       const proposalRes = await api_base.api.send({
         proposal: 1,
         amount: stakeAmount,
@@ -218,6 +218,7 @@ export default function ManualTraderTab() {
         duration: Number(contractDuration),
         duration_unit: 't',
         symbol: activeMarketCode,
+        underlying_symbol: activeMarketCode,
         barrier: String(targetDigit),
       });
 
