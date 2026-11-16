@@ -185,7 +185,7 @@ export default function ManualTraderTab() {
     }, durationMs);
   };
 
-  // 2-Step Proposal -> Buy Execution (Fixes Input validation failed: parameters error)
+  // 2-Step Proposal -> Buy Execution (Fixed with exact active market code lookup)
   const executeManualOrder = async (direction: 'DIGITOVER' | 'DIGITUNDER') => {
     if (isExecuting || !isStakeValid) return;
     if (direction === 'DIGITOVER' && !canBuyOver) return;
@@ -195,16 +195,20 @@ export default function ManualTraderTab() {
     const currency = api_base?.account_info?.currency || 'USD';
     const label = direction === 'DIGITOVER' ? 'OVER' : 'UNDER';
 
+    // Look up the exact valid market code matching selectedSymbol
+    const matchedMarket = markets.find(m => m.name === selectedSymbol);
+    const activeMarketCode = matchedMarket ? matchedMarket.code : symbolCode;
+
     if (!api_base?.api) {
       showTransientFeedback('Execution Error: Deriv WebSocket not connected.');
       return;
     }
 
     setIsExecuting(true);
-    setTradeFeedback(`Pricing ${label} ${targetDigit} (${stakeAmount.toFixed(2)} ${currency})...`);
+    setTradeFeedback(`Pricing ${label} ${targetDigit} on ${activeMarketCode}...`);
 
     try {
-      // Step 1: Request contract proposal ID from Deriv
+      // Step 1: Request contract proposal ID from Deriv using correct market code
       const proposalRes = await api_base.api.send({
         proposal: 1,
         amount: stakeAmount,
@@ -213,7 +217,7 @@ export default function ManualTraderTab() {
         currency,
         duration: Number(contractDuration),
         duration_unit: 't',
-        symbol: symbolCode,
+        symbol: activeMarketCode,
         barrier: String(targetDigit),
       });
 
@@ -228,7 +232,7 @@ export default function ManualTraderTab() {
         return;
       }
 
-      // Step 2: Execute trade using the proposal ID
+      // Step 2: Execute trade using the verified proposal ID
       setTradeFeedback(`Executing ${label} ${targetDigit}...`);
       const buyRes = await api_base.api.send({
         buy: proposalId,
