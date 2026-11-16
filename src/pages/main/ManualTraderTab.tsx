@@ -2,7 +2,7 @@
 // FILE: src/pages/main/ManualTraderTab.tsx
 // ==========================================
 import React, { useState, useEffect, useRef } from 'react';
-import { ScannerBridge } from '../../Aiscanner/scannerBridge';
+import { api_base } from '@/external/bot-skeleton/services/api/api-base';
 import { useManualMultiStream, StrategyPreset } from '../../hooks/useManualMultiStream';
 import './ManualTraderTab.scss';
 
@@ -125,7 +125,10 @@ export default function ManualTraderTab() {
   });
 
   const [autoFireOnSignal, setAutoFireOnSignal] = useState<boolean>(false);
+  const [isExecuting, setIsExecuting] = useState<boolean>(false);
+  const [tradeFeedback, setTradeFeedback] = useState<string | null>(null);
   const lastFiredFingerprintRef = useRef<string>('');
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Persist settings across tab switches
   useEffect(() => {
@@ -149,6 +152,12 @@ export default function ManualTraderTab() {
     localStorage.setItem('trader_manual_stake', manualStake);
   }, [manualStake]);
 
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    };
+  }, []);
+
   // Connect to real multi-volatility 1,000-tick stream & strategy engine
   const {
     digitStats,
@@ -168,9 +177,68 @@ export default function ManualTraderTab() {
     strategyPreset
   );
 
+  const showTransientFeedback = (message: string, durationMs = 5000) => {
+    setTradeFeedback(message);
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    feedbackTimerRef.current = setTimeout(() => {
+      setTradeFeedback(null);
+    }, durationMs);
+  };
+
+  // Direct Deriv WebSocket Buy Execution
+  const executeManualOrder = async (direction: 'DIGITOVER' | 'DIGITUNDER') => {
+    if (isExecuting || !isStakeValid) return;
+    if (direction === 'DIGITOVER' && !canBuyOver) return;
+    if (direction === 'DIGITUNDER' && !canBuyUnder) return;
+
+    const stakeAmount = Number(manualStake);
+    const currency = api_base?.account_info?.currency || 'USD';
+    const label = direction === 'DIGITOVER' ? 'OVER' : 'UNDER';
+
+    if (!api_base?.api) {
+      showTransientFeedback('Execution Error: Deriv WebSocket not connected.');
+      return;
+    }
+
+    setIsExecuting(true);
+    setTradeFeedback(`Sending ${label} ${targetDigit} (${stakeAmount.toFixed(2)} ${currency})...`);
+
+    try {
+      const response = await api_base.api.send({
+        buy: 1,
+        price: stakeAmount,
+        parameters: {
+          amount: stakeAmount,
+          basis: 'stake',
+          contract_type: direction,
+          currency,
+          duration: contractDuration,
+          duration_unit: 't',
+          symbol: symbolCode,
+          barrier: String(targetDigit),
+        },
+      });
+
+      if (response?.error) {
+        showTransientFeedback(`Order Rejected: ${response.error.message}`);
+      } else if (response?.buy) {
+        showTransientFeedback(
+          `Executed ${label} ${targetDigit} | ID: ${response.buy.contract_id} | Payout: ${Number(response.buy.payout).toFixed(2)} ${currency}`
+        );
+      } else {
+        showTransientFeedback(`Order sent for ${label} ${targetDigit}.`);
+      }
+    } catch (err: any) {
+      const msg = err?.error?.message || err?.message || 'Order execution failed.';
+      showTransientFeedback(`Execution Error: ${msg}`);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
   // Auto-Fire once per unique signal trigger when enabled and inputs are valid
   useEffect(() => {
-    if (!autoFireOnSignal || !signal.isReady || !signal.recommendedSide || !isStakeValid) return;
+    if (!autoFireOnSignal || !signal.isReady || !signal.recommendedSide || !isStakeValid || isExecuting) return;
     if (signal.recommendedSide === 'OVER' && !canBuyOver) return;
     if (signal.recommendedSide === 'UNDER' && !canBuyUnder) return;
 
@@ -179,17 +247,7 @@ export default function ManualTraderTab() {
     lastFiredFingerprintRef.current = fingerprint;
 
     const contractType = signal.recommendedSide === 'OVER' ? 'DIGITOVER' : 'DIGITUNDER';
-    ScannerBridge.executeDirectTrade(
-      { strategyName: `AI ${signal.recommendedSide} ${targetDigit} (${contractDuration} Ticks)`, symbol: symbolCode },
-      {
-        symbol: symbolCode,
-        contractType,
-        barrier: String(targetDigit),
-        stake: Number(manualStake),
-        duration: contractDuration,
-        durationUnit: 't',
-      }
-    );
+    executeManualOrder(contractType);
   }, [
     autoFireOnSignal,
     signal.isReady,
@@ -197,11 +255,10 @@ export default function ManualTraderTab() {
     recentDigits,
     symbolCode,
     targetDigit,
-    manualStake,
-    contractDuration,
     isStakeValid,
     canBuyOver,
     canBuyUnder,
+    isExecuting,
   ]);
 
   const handleTogglePreset = () => {
@@ -220,6 +277,9 @@ export default function ManualTraderTab() {
     strategyPreset === 'OVER_2_UNDER_7_RED_CURSOR'
       ? 'Over 2 / Under 7 (Red Ring)'
       : 'Over 3 / Under 6 (2-Tick)';
+
+  const isOverDisabled = !canBuyOver || isExecuting;
+  const isUnderDisabled = !canBuyUnder || isExecuting;
 
   return (
     <div className="manual-trader-tab-container">
@@ -255,11 +315,18 @@ export default function ManualTraderTab() {
           )}
         </div>
 
-        {/* Live Strategy Signal Status Banner */}
+        {/* Live Strategy Signal & Execution Feedback Banner */}
         <div
           className="manual-status-banner"
           style={
-            signal.isReady
+            tradeFeedback
+              ? {
+                  background: tradeFeedback.includes('Error') || tradeFeedback.includes('Rejected')
+                    ? 'rgba(244, 63, 94, 0.16)'
+                    : 'rgba(16, 185, 129, 0.2)',
+                  borderColor: tradeFeedback.includes('Error') || tradeFeedback.includes('Rejected') ? '#f43f5e' : '#10b981',
+                }
+              : signal.isReady
               ? {
                   background: 'rgba(16, 185, 129, 0.18)',
                   borderColor: '#10b981',
@@ -271,11 +338,19 @@ export default function ManualTraderTab() {
           <div className="manual-status-content">
             <span
               className="manual-status-pulse"
-              style={signal.isReady ? { background: '#34d399', boxShadow: '0 0 10px #34d399' } : undefined}
+              style={
+                tradeFeedback?.includes('Error') || tradeFeedback?.includes('Rejected')
+                  ? { background: '#fb7185', boxShadow: '0 0 10px #fb7185' }
+                  : signal.isReady || tradeFeedback
+                  ? { background: '#34d399', boxShadow: '0 0 10px #34d399' }
+                  : undefined
+              }
             />
-            <span className="manual-status-text">AI Engine: {signal.headline}</span>
+            <span className="manual-status-text">AI Engine: {tradeFeedback || signal.headline}</span>
           </div>
-          <span className="manual-status-badge">{signal.isReady ? 'SIGNAL READY' : 'LIVE FEED'}</span>
+          <span className="manual-status-badge">
+            {isExecuting ? 'EXECUTING...' : signal.isReady ? 'SIGNAL READY' : 'LIVE FEED'}
+          </span>
         </div>
 
         {/* 10-Digit Dynamic Gauge Grid */}
@@ -435,23 +510,10 @@ export default function ManualTraderTab() {
         {/* Well-Spaced Purchase Buttons Action Zone */}
         <div className="manual-trader-buttons-grid">
           <button
-            disabled={!canBuyOver}
-            onClick={() => {
-              if (!canBuyOver) return;
-              ScannerBridge.executeDirectTrade(
-                { strategyName: `Manual Over ${targetDigit} (${contractDuration} Ticks)`, symbol: symbolCode },
-                {
-                  symbol: symbolCode,
-                  contractType: 'DIGITOVER',
-                  barrier: String(targetDigit),
-                  stake: Number(manualStake),
-                  duration: contractDuration,
-                  durationUnit: 't',
-                }
-              );
-            }}
+            disabled={isOverDisabled}
+            onClick={() => executeManualOrder('DIGITOVER')}
             style={
-              !canBuyOver
+              isOverDisabled
                 ? {
                     opacity: 0.4,
                     filter: 'grayscale(100%)',
@@ -473,23 +535,10 @@ export default function ManualTraderTab() {
           </button>
 
           <button
-            disabled={!canBuyUnder}
-            onClick={() => {
-              if (!canBuyUnder) return;
-              ScannerBridge.executeDirectTrade(
-                { strategyName: `Manual Under ${targetDigit} (${contractDuration} Ticks)`, symbol: symbolCode },
-                {
-                  symbol: symbolCode,
-                  contractType: 'DIGITUNDER',
-                  barrier: String(targetDigit),
-                  stake: Number(manualStake),
-                  duration: contractDuration,
-                  durationUnit: 't',
-                }
-              );
-            }}
+            disabled={isUnderDisabled}
+            onClick={() => executeManualOrder('DIGITUNDER')}
             style={
-              !canBuyUnder
+              isUnderDisabled
                 ? {
                     opacity: 0.4,
                     filter: 'grayscale(100%)',
