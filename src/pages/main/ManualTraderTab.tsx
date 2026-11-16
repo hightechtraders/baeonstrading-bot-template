@@ -3,24 +3,25 @@
 // ==========================================
 import React, { useState, useEffect, useRef } from 'react';
 import { ScannerBridge } from '../../Aiscanner/scannerBridge';
+import { useManualMultiStream, StrategyPreset } from '../../hooks/useManualMultiStream';
 import './ManualTraderTab.scss';
 
 function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
   const circleRadius = 36;
   const lineThickness = 6;
   const pathCircumference = 2 * Math.PI * circleRadius;
-  
+
   const operationalScale = 15;
   const scaledValue = Math.min(percentage, operationalScale);
   const strokeOffsetProgress = pathCircumference - (scaledValue / operationalScale) * pathCircumference;
-   
+
   let themeConfig = {
     labelColor: 'var(--text-general)',
     valueColor: 'var(--text-prominent)',
     trackColor: 'rgba(255, 255, 255, 0.1)',
     activeColor: '#64748b',
     background: 'transparent',
-    glow: 'none'
+    glow: 'none',
   };
 
   if (trendMode === 'selected' || isSelected) {
@@ -30,7 +31,7 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
       trackColor: 'rgba(99, 102, 241, 0.2)',
       activeColor: '#6366f1',
       background: 'rgba(99, 102, 241, 0.12)',
-      glow: '0 0 16px rgba(99, 102, 241, 0.35)'
+      glow: '0 0 16px rgba(99, 102, 241, 0.35)',
     };
   } else if (trendMode === 'high') {
     themeConfig = {
@@ -39,7 +40,7 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
       trackColor: 'rgba(16, 185, 129, 0.2)',
       activeColor: '#10b981',
       background: 'rgba(16, 185, 129, 0.08)',
-      glow: '0 0 12px rgba(16, 185, 129, 0.25)'
+      glow: '0 0 12px rgba(16, 185, 129, 0.25)',
     };
   } else if (trendMode === 'low') {
     themeConfig = {
@@ -48,20 +49,28 @@ function ProfessionalDigitGauge({ digit, percentage, isSelected, trendMode }) {
       trackColor: 'rgba(244, 63, 94, 0.2)',
       activeColor: '#f43f5e',
       background: 'rgba(244, 63, 94, 0.08)',
-      glow: '0 0 12px rgba(244, 63, 94, 0.25)'
+      glow: '0 0 12px rgba(244, 63, 94, 0.25)',
     };
   }
 
   return (
     <div className="manual-digit-gauge">
-      <span className="manual-digit-label" style={{ color: themeConfig.labelColor }}>{digit}</span>
+      <span className="manual-digit-label" style={{ color: themeConfig.labelColor }}>
+        {digit}
+      </span>
       <div className="manual-gauge-circle" style={{ background: themeConfig.background, boxShadow: themeConfig.glow }}>
         <svg viewBox="0 0 88 88">
           <circle cx="44" cy="44" r={circleRadius} fill="none" stroke={themeConfig.trackColor} strokeWidth={lineThickness} />
           <circle
-            cx="44" cy="44" r={circleRadius} fill="none"
-            stroke={themeConfig.activeColor} strokeWidth={lineThickness}
-            strokeDasharray={pathCircumference} strokeDashoffset={strokeOffsetProgress} strokeLinecap="round"
+            cx="44"
+            cy="44"
+            r={circleRadius}
+            fill="none"
+            stroke={themeConfig.activeColor}
+            strokeWidth={lineThickness}
+            strokeDasharray={pathCircumference}
+            strokeDashoffset={strokeOffsetProgress}
+            strokeLinecap="round"
           />
         </svg>
         <div className="manual-gauge-value" style={{ color: themeConfig.valueColor }}>
@@ -86,144 +95,127 @@ export default function ManualTraderTab() {
     { name: 'Volatility 100 (1s) Index', code: '1HZ100V' },
   ];
 
-  // Initialize selectedSymbol from localStorage (defaults to Volatility 10 (1s) Index)
+  // Initialize selectedSymbol from localStorage (defaults to Volatility 25 Index for 1-tick strategy clarity)
   const [selectedSymbol, setSelectedSymbol] = useState<string>(() => {
-    return localStorage.getItem('trader_selected_symbol') || 'Volatility 10 (1s) Index';
+    return localStorage.getItem('trader_selected_symbol') || 'Volatility 25 Index';
   });
 
-  // Initialize symbolCode from localStorage (defaults to 1HZ10V)
   const [symbolCode, setSymbolCode] = useState<string>(() => {
-    return localStorage.getItem('trader_symbol_code') || '1HZ10V';
+    return localStorage.getItem('trader_symbol_code') || 'R_25';
   });
 
   const [isMarketDropdownOpen, setIsMarketDropdownOpen] = useState(false);
 
-  // Initialize targetDigit from localStorage (persists across tab switches)
-  const [targetDigit, setTargetDigit] = useState<number>(() => {
-    const saved = localStorage.getItem('trader_target_digit');
-    return saved !== null ? parseInt(saved, 10) : 4;
+  const [strategyPreset, setStrategyPreset] = useState<StrategyPreset>(() => {
+    return (localStorage.getItem('trader_strategy_preset') as StrategyPreset) || 'OVER_2_UNDER_7_RED_CURSOR';
   });
 
-  // Initialize contractDuration from localStorage (persists across tab switches)
+  const [targetDigit, setTargetDigit] = useState<number>(() => {
+    const saved = localStorage.getItem('trader_target_digit');
+    return saved !== null ? parseInt(saved, 10) : 7;
+  });
+
   const [contractDuration, setContractDuration] = useState<number>(() => {
     const savedDuration = localStorage.getItem('trader_contract_duration');
     return savedDuration !== null ? parseInt(savedDuration, 10) : 1;
   });
 
-  const [manualStake, setManualStake] = useState<string>('500.00');
-  const [cursorPosition, setCursorPosition] = useState<number>(4);
-  const [scannerStatus, setScannerStatus] = useState<string>('Scanning live tick momentum...');
+  const [manualStake, setManualStake] = useState<string>(() => {
+    return localStorage.getItem('trader_manual_stake') || '1.00';
+  });
 
-  const targetDigitRef = useRef(targetDigit);
-  
-  // Keep localStorage and ref synchronized whenever targetDigit changes
+  const [autoFireOnSignal, setAutoFireOnSignal] = useState<boolean>(false);
+  const lastFiredFingerprintRef = useRef<string>('');
+
+  // Persist settings across tab switches
   useEffect(() => {
-    targetDigitRef.current = targetDigit;
     localStorage.setItem('trader_target_digit', targetDigit.toString());
   }, [targetDigit]);
 
-  // Keep localStorage synchronized whenever contractDuration changes
   useEffect(() => {
     localStorage.setItem('trader_contract_duration', contractDuration.toString());
   }, [contractDuration]);
 
-  // Keep localStorage synchronized whenever selectedSymbol or symbolCode changes
   useEffect(() => {
     localStorage.setItem('trader_selected_symbol', selectedSymbol);
     localStorage.setItem('trader_symbol_code', symbolCode);
   }, [selectedSymbol, symbolCode]);
 
-  const [digitStats, setDigitStats] = useState(() => {
-    const savedDigit = localStorage.getItem('trader_target_digit');
-    const initialTarget = savedDigit !== null ? parseInt(savedDigit, 10) : 4;
-
-    return [
-      { digit: 0, percent: 9.2, trend: 'neutral' },
-      { digit: 1, percent: 12.6, trend: 'high' },
-      { digit: 2, percent: 9.9, trend: 'neutral' },
-      { digit: 3, percent: 10.1, trend: 'neutral' },
-      { digit: 4, percent: 11.4, trend: initialTarget === 4 ? 'selected' : 'neutral' },
-      { digit: 5, percent: 8.5, trend: 'neutral' },
-      { digit: 6, percent: 10.5, trend: 'neutral' },
-      { digit: 7, percent: 9.4, trend: 'neutral' },
-      { digit: 8, percent: 7.7, trend: 'low' },
-      { digit: 9, percent: 10.3, trend: 'neutral' }
-    ].map(item => ({
-      ...item,
-      trend: item.digit === initialTarget ? 'selected' : item.trend
-    }));
-  });
-
-  // Simulation Loop
   useEffect(() => {
-    const scannerInterval = setInterval(() => {
-      const weightedScannerPool = [4, 1, 8, 6, 2, 0, 9, 3, 5, 7];
-      const nextActiveDigit = weightedScannerPool[Math.floor(Math.random() * weightedScannerPool.length)];
-      
-      setCursorPosition(nextActiveDigit);
+    localStorage.setItem('trader_strategy_preset', strategyPreset);
+  }, [strategyPreset]);
 
-      setDigitStats(currentStats => {
-        let maxVal = -1;
-        let minVal = 999;
-        let highIndex = 0;
-        let lowIndex = 0;
+  useEffect(() => {
+    localStorage.setItem('trader_manual_stake', manualStake);
+  }, [manualStake]);
 
-        const updatedValues = currentStats.map((item, idx) => {
-          const simulatedPercent = +(Math.random() * (12.8 - 7.5) + 7.5).toFixed(1);
-          if (simulatedPercent > maxVal) { maxVal = simulatedPercent; highIndex = idx; }
-          if (simulatedPercent < minVal) { minVal = simulatedPercent; lowIndex = idx; }
-          return { ...item, percent: simulatedPercent };
-        });
+  // Connect to real multi-volatility 1,000-tick stream & strategy engine
+  const { digitStats, cursorDigit, recentDigits, payouts, signal } = useManualMultiStream(
+    symbolCode,
+    targetDigit,
+    contractDuration,
+    Number(manualStake) || 1,
+    strategyPreset
+  );
 
-        const activeTarget = targetDigitRef.current;
+  // Auto-Fire once per unique signal trigger when enabled
+  useEffect(() => {
+    if (!autoFireOnSignal || !signal.isReady || !signal.recommendedSide) return;
 
-        return updatedValues.map((item, idx) => {
-          let trend = 'neutral';
-          if (idx === highIndex) trend = 'high';
-          if (idx === lowIndex) trend = 'low';
-          if (item.digit === activeTarget) trend = 'selected';
+    const fingerprint = `${symbolCode}-${recentDigits.join('')}-${signal.recommendedSide}-${targetDigit}`;
+    if (lastFiredFingerprintRef.current === fingerprint) return;
+    lastFiredFingerprintRef.current = fingerprint;
 
-          return {
-            ...item,
-            trend
-          };
-        });
-      });
+    const contractType = signal.recommendedSide === 'OVER' ? 'DIGITOVER' : 'DIGITUNDER';
+    ScannerBridge.executeDirectTrade(
+      { strategyName: `AI ${signal.recommendedSide} ${targetDigit} (${contractDuration} Ticks)`, symbol: symbolCode },
+      {
+        symbol: symbolCode,
+        contractType,
+        barrier: String(targetDigit),
+        stake: Number(manualStake) || 1,
+        duration: contractDuration,
+        durationUnit: 't',
+      }
+    );
+  }, [autoFireOnSignal, signal.isReady, signal.recommendedSide, recentDigits, symbolCode, targetDigit, manualStake, contractDuration]);
 
-      const statuses = [
-        `Analyzing 1,000 tick sample for ${selectedSymbol}...`,
-        `Momentum spike detected on digit ${nextActiveDigit}. Evaluating variance...`,
-        `Probability threshold met (>89.4%). Ready for execution setup.`,
-        `Scanning parity distribution across synthetic stream...`
-      ];
-      setScannerStatus(statuses[Math.floor(Math.random() * statuses.length)]);
+  const handleTogglePreset = () => {
+    if (strategyPreset === 'OVER_2_UNDER_7_RED_CURSOR') {
+      setStrategyPreset('OVER_3_UNDER_6_CONSECUTIVE');
+      setTargetDigit(3);
+      setContractDuration(1);
+    } else {
+      setStrategyPreset('OVER_2_UNDER_7_RED_CURSOR');
+      setTargetDigit(7);
+      setContractDuration(1);
+    }
+  };
 
-    }, 2500);
-
-    return () => clearInterval(scannerInterval);
-  }, [selectedSymbol]);
+  const presetLabel =
+    strategyPreset === 'OVER_2_UNDER_7_RED_CURSOR'
+      ? 'Over 2 / Under 7 (Red Ring)'
+      : 'Over 3 / Under 6 (2-Tick)';
 
   return (
     <div className="manual-trader-tab-container">
       <div className="manual-trader-wrapper">
-        
         {/* Compact Market Selector Dropdown Bar */}
         <div className="manual-market-dropdown-bar">
-          <div 
-            className="market-dropdown-header"
-            onClick={() => setIsMarketDropdownOpen(!isMarketDropdownOpen)}
-          >
+          <div className="market-dropdown-header" onClick={() => setIsMarketDropdownOpen(!isMarketDropdownOpen)}>
             <div className="market-dropdown-title-group">
               <span className="market-type-icon">📊</span>
-              <span className="market-dropdown-label">Market Mode: <strong className="banner-highlight">{selectedSymbol}</strong></span>
+              <span className="market-dropdown-label">
+                Market Mode: <strong className="banner-highlight">{selectedSymbol}</strong>
+              </span>
               <span className={`market-chevron ${isMarketDropdownOpen ? 'open' : ''}`}>›</span>
             </div>
           </div>
 
           {isMarketDropdownOpen && (
             <div className="market-dropdown-options">
-              {markets.map((m) => (
-                <div 
+              {markets.map(m => (
+                <div
                   key={m.code}
                   className={`market-option-item ${selectedSymbol === m.name ? 'active' : ''}`}
                   onClick={() => {
@@ -239,39 +231,44 @@ export default function ManualTraderTab() {
           )}
         </div>
 
-        {/* Live Scanner Status Banner */}
-        <div className="manual-status-banner">
+        {/* Live Strategy Signal Status Banner */}
+        <div
+          className="manual-status-banner"
+          style={
+            signal.isReady
+              ? {
+                  background: 'rgba(16, 185, 129, 0.18)',
+                  borderColor: '#10b981',
+                  boxShadow: '0 0 16px rgba(16, 185, 129, 0.25)',
+                }
+              : undefined
+          }
+        >
           <div className="manual-status-content">
-            <span className="manual-status-pulse" />
-            <span className="manual-status-text">AI Engine: {scannerStatus}</span>
+            <span
+              className="manual-status-pulse"
+              style={signal.isReady ? { background: '#34d399', boxShadow: '0 0 10px #34d399' } : undefined}
+            />
+            <span className="manual-status-text">AI Engine: {signal.headline}</span>
           </div>
-          <span className="manual-status-badge">LIVE FEED</span>
+          <span className="manual-status-badge">{signal.isReady ? 'SIGNAL READY' : 'LIVE FEED'}</span>
         </div>
 
         {/* 10-Digit Dynamic Gauge Grid */}
         <div className="digit-stats-grid">
           <div className="digit-stats-grid__inner">
-            {digitStats.map((item) => {
+            {digitStats.map(item => {
               const isSelected = targetDigit === item.digit;
-              const isCursorHere = cursorPosition === item.digit;
+              const isCursorHere = cursorDigit === item.digit;
               let cardModifier = '';
               if (isSelected) cardModifier = 'digit-gauge-card--selected';
               else if (item.trend === 'high') cardModifier = 'digit-gauge-card--high';
               else if (item.trend === 'low') cardModifier = 'digit-gauge-card--low';
 
               return (
-                <div 
-                  key={item.digit} 
-                  onClick={() => {
-                    setTargetDigit(item.digit);
-                    targetDigitRef.current = item.digit;
-                    setDigitStats(prev => 
-                      prev.map(stat => ({
-                        ...stat,
-                        trend: stat.digit === item.digit ? 'selected' : (stat.trend === 'selected' ? 'neutral' : stat.trend)
-                      }))
-                    );
-                  }}
+                <div
+                  key={item.digit}
+                  onClick={() => setTargetDigit(item.digit)}
                   className={`digit-gauge-card ${cardModifier}`}
                 >
                   <ProfessionalDigitGauge
@@ -290,30 +287,55 @@ export default function ManualTraderTab() {
           </div>
         </div>
 
-        {/* Unified Professional Parameter Card with - / + Stepper */}
+        {/* Unified Professional Parameter Card */}
         <div className="manual-unified-config-card">
           <div className="config-grid-row">
-            <div className="config-item">
-              <span className="config-label">Blueprint</span>
-              <span className="config-value">Over / Under</span>
+            <div
+              className="config-item"
+              onClick={handleTogglePreset}
+              style={{ cursor: 'pointer' }}
+              title="Click to switch strategy preset"
+            >
+              <span className="config-label">Blueprint ↻</span>
+              <span className="config-value">{presetLabel}</span>
             </div>
+
             <div className="config-item">
               <span className="config-label">Target Digit</span>
-              <span className="config-value highlight-digit">{targetDigit}</span>
+              <div className="config-stepper-control">
+                <button
+                  className="stepper-btn"
+                  onClick={() => setTargetDigit(prev => Math.max(0, prev - 1))}
+                  title="Decrease Target Digit"
+                >
+                  −
+                </button>
+                <span className="config-value highlight-digit">{targetDigit}</span>
+                <button
+                  className="stepper-btn"
+                  onClick={() => setTargetDigit(prev => Math.min(9, prev + 1))}
+                  title="Increase Target Digit"
+                >
+                  +
+                </button>
+              </div>
             </div>
+
             <div className="config-item">
               <span className="config-label">Duration</span>
               <div className="config-stepper-control">
-                <button 
-                  className="stepper-btn" 
+                <button
+                  className="stepper-btn"
                   onClick={() => setContractDuration(prev => Math.max(1, prev - 1))}
                   title="Decrease Ticks"
                 >
                   −
                 </button>
-                <span className="config-value">{contractDuration} {contractDuration === 1 ? 'Tick' : 'Ticks'}</span>
-                <button 
-                  className="stepper-btn" 
+                <span className="config-value">
+                  {contractDuration} {contractDuration === 1 ? 'Tick' : 'Ticks'}
+                </span>
+                <button
+                  className="stepper-btn"
                   onClick={() => setContractDuration(prev => Math.min(10, prev + 1))}
                   title="Increase Ticks"
                 >
@@ -325,12 +347,33 @@ export default function ManualTraderTab() {
 
           <div className="config-stake-row">
             <div className="config-stake-info">
-              <span className="config-label">Risk Capital Allocation</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="config-label">Risk Capital Allocation</span>
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    color: autoFireOnSignal ? '#10b981' : 'var(--text-general)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={autoFireOnSignal}
+                    onChange={e => setAutoFireOnSignal(e.target.checked)}
+                    style={{ accentColor: '#10b981', cursor: 'pointer' }}
+                  />
+                  Auto-Fire on Signal
+                </label>
+              </div>
               <div className="config-input-wrapper">
-                <input 
-                  type='text' 
+                <input
+                  type="text"
                   value={manualStake}
-                  onChange={(e) => setManualStake(e.target.value)}
+                  onChange={e => setManualStake(e.target.value)}
                   className="manual-trader-input"
                 />
                 <span className="currency-tag">USD</span>
@@ -341,35 +384,58 @@ export default function ManualTraderTab() {
 
         {/* Well-Spaced Purchase Buttons Action Zone */}
         <div className="manual-trader-buttons-grid">
-          <button 
+          <button
             onClick={() => {
               ScannerBridge.executeDirectTrade(
                 { strategyName: `Manual Over ${targetDigit} (${contractDuration} Ticks)`, symbol: symbolCode },
-                { symbol: symbolCode, contractType: 'DIGITOVER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: contractDuration, durationUnit: 't' }
+                {
+                  symbol: symbolCode,
+                  contractType: 'DIGITOVER',
+                  barrier: String(targetDigit),
+                  stake: Number(manualStake) || 1,
+                  duration: contractDuration,
+                  durationUnit: 't',
+                }
               );
             }}
+            style={
+              signal.isReady && signal.recommendedSide === 'OVER'
+                ? { outline: '2px solid #34d399', boxShadow: '0 0 22px rgba(16, 185, 129, 0.65)' }
+                : undefined
+            }
             className="manual-trader-btn manual-trader-btn--over"
           >
             <span className="manual-trader-btn-label">Purchase Over ({contractDuration} Ticks)</span>
             <span className="manual-trader-btn-main">OVER {targetDigit}</span>
-            <span className="manual-trader-btn-payout">Payout: +3,514.41 USD</span>
+            <span className="manual-trader-btn-payout">Payout: {payouts.over}</span>
           </button>
 
-          <button 
+          <button
             onClick={() => {
               ScannerBridge.executeDirectTrade(
                 { strategyName: `Manual Under ${targetDigit} (${contractDuration} Ticks)`, symbol: symbolCode },
-                { symbol: symbolCode, contractType: 'DIGITUNDER', barrier: String(targetDigit), stake: Number(manualStake) || 1, duration: contractDuration, durationUnit: 't' }
+                {
+                  symbol: symbolCode,
+                  contractType: 'DIGITUNDER',
+                  barrier: String(targetDigit),
+                  stake: Number(manualStake) || 1,
+                  duration: contractDuration,
+                  durationUnit: 't',
+                }
               );
             }}
+            style={
+              signal.isReady && signal.recommendedSide === 'UNDER'
+                ? { outline: '2px solid #fb7185', boxShadow: '0 0 22px rgba(244, 63, 94, 0.65)' }
+                : undefined
+            }
             className="manual-trader-btn manual-trader-btn--under"
           >
             <span className="manual-trader-btn-label">Purchase Under ({contractDuration} Ticks)</span>
             <span className="manual-trader-btn-main">UNDER {targetDigit}</span>
-            <span className="manual-trader-btn-payout">Payout: +593.82 USD</span>
+            <span className="manual-trader-btn-payout">Payout: {payouts.under}</span>
           </button>
         </div>
-
       </div>
     </div>
   );
