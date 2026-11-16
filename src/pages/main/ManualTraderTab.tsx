@@ -150,17 +150,29 @@ export default function ManualTraderTab() {
   }, [manualStake]);
 
   // Connect to real multi-volatility 1,000-tick stream & strategy engine
-  const { digitStats, cursorDigit, recentDigits, payouts, signal } = useManualMultiStream(
+  const {
+    digitStats,
+    cursorDigit,
+    recentDigits,
+    payouts,
+    signal,
+    isStakeValid,
+    stakeError,
+    canBuyOver,
+    canBuyUnder,
+  } = useManualMultiStream(
     symbolCode,
     targetDigit,
     contractDuration,
-    Number(manualStake) || 1,
+    manualStake,
     strategyPreset
   );
 
-  // Auto-Fire once per unique signal trigger when enabled
+  // Auto-Fire once per unique signal trigger when enabled and inputs are valid
   useEffect(() => {
-    if (!autoFireOnSignal || !signal.isReady || !signal.recommendedSide) return;
+    if (!autoFireOnSignal || !signal.isReady || !signal.recommendedSide || !isStakeValid) return;
+    if (signal.recommendedSide === 'OVER' && !canBuyOver) return;
+    if (signal.recommendedSide === 'UNDER' && !canBuyUnder) return;
 
     const fingerprint = `${symbolCode}-${recentDigits.join('')}-${signal.recommendedSide}-${targetDigit}`;
     if (lastFiredFingerprintRef.current === fingerprint) return;
@@ -173,12 +185,24 @@ export default function ManualTraderTab() {
         symbol: symbolCode,
         contractType,
         barrier: String(targetDigit),
-        stake: Number(manualStake) || 1,
+        stake: Number(manualStake),
         duration: contractDuration,
         durationUnit: 't',
       }
     );
-  }, [autoFireOnSignal, signal.isReady, signal.recommendedSide, recentDigits, symbolCode, targetDigit, manualStake, contractDuration]);
+  }, [
+    autoFireOnSignal,
+    signal.isReady,
+    signal.recommendedSide,
+    recentDigits,
+    symbolCode,
+    targetDigit,
+    manualStake,
+    contractDuration,
+    isStakeValid,
+    canBuyOver,
+    canBuyUnder,
+  ]);
 
   const handleTogglePreset = () => {
     if (strategyPreset === 'OVER_2_UNDER_7_RED_CURSOR') {
@@ -369,15 +393,41 @@ export default function ManualTraderTab() {
                   Auto-Fire on Signal
                 </label>
               </div>
-              <div className="config-input-wrapper">
+
+              <div
+                className="config-input-wrapper"
+                style={
+                  !isStakeValid
+                    ? {
+                        borderColor: '#f43f5e',
+                        boxShadow: '0 0 8px rgba(244, 63, 94, 0.25)',
+                      }
+                    : undefined
+                }
+              >
                 <input
                   type="text"
                   value={manualStake}
                   onChange={e => setManualStake(e.target.value)}
                   className="manual-trader-input"
+                  placeholder="1.00"
                 />
                 <span className="currency-tag">USD</span>
               </div>
+
+              {stakeError && (
+                <span
+                  style={{
+                    color: '#fb7185',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    marginTop: '4px',
+                    display: 'block',
+                  }}
+                >
+                  ⚠️ {stakeError}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -385,22 +435,34 @@ export default function ManualTraderTab() {
         {/* Well-Spaced Purchase Buttons Action Zone */}
         <div className="manual-trader-buttons-grid">
           <button
+            disabled={!canBuyOver}
             onClick={() => {
+              if (!canBuyOver) return;
               ScannerBridge.executeDirectTrade(
                 { strategyName: `Manual Over ${targetDigit} (${contractDuration} Ticks)`, symbol: symbolCode },
                 {
                   symbol: symbolCode,
                   contractType: 'DIGITOVER',
                   barrier: String(targetDigit),
-                  stake: Number(manualStake) || 1,
+                  stake: Number(manualStake),
                   duration: contractDuration,
                   durationUnit: 't',
                 }
               );
             }}
             style={
-              signal.isReady && signal.recommendedSide === 'OVER'
-                ? { outline: '2px solid #34d399', boxShadow: '0 0 22px rgba(16, 185, 129, 0.65)' }
+              !canBuyOver
+                ? {
+                    opacity: 0.4,
+                    filter: 'grayscale(100%)',
+                    cursor: 'not-allowed',
+                    boxShadow: 'none',
+                  }
+                : signal.isReady && signal.recommendedSide === 'OVER'
+                ? {
+                    outline: '2px solid #34d399',
+                    boxShadow: '0 0 22px rgba(16, 185, 129, 0.65)',
+                  }
                 : undefined
             }
             className="manual-trader-btn manual-trader-btn--over"
@@ -411,22 +473,34 @@ export default function ManualTraderTab() {
           </button>
 
           <button
+            disabled={!canBuyUnder}
             onClick={() => {
+              if (!canBuyUnder) return;
               ScannerBridge.executeDirectTrade(
                 { strategyName: `Manual Under ${targetDigit} (${contractDuration} Ticks)`, symbol: symbolCode },
                 {
                   symbol: symbolCode,
                   contractType: 'DIGITUNDER',
                   barrier: String(targetDigit),
-                  stake: Number(manualStake) || 1,
+                  stake: Number(manualStake),
                   duration: contractDuration,
                   durationUnit: 't',
                 }
               );
             }}
             style={
-              signal.isReady && signal.recommendedSide === 'UNDER'
-                ? { outline: '2px solid #fb7185', boxShadow: '0 0 22px rgba(244, 63, 94, 0.65)' }
+              !canBuyUnder
+                ? {
+                    opacity: 0.4,
+                    filter: 'grayscale(100%)',
+                    cursor: 'not-allowed',
+                    boxShadow: 'none',
+                  }
+                : signal.isReady && signal.recommendedSide === 'UNDER'
+                ? {
+                    outline: '2px solid #fb7185',
+                    boxShadow: '0 0 22px rgba(244, 63, 94, 0.65)',
+                  }
                 : undefined
             }
             className="manual-trader-btn manual-trader-btn--under"
