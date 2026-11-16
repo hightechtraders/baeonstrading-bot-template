@@ -185,7 +185,7 @@ export default function ManualTraderTab() {
     }, durationMs);
   };
 
-  // Direct 1-Step Deriv Bot Buy Execution with strict code-first market mapping
+  // Verified 2-Step Proposal -> Buy Execution with strict code-first market mapping & error details
   const executeManualOrder = async (direction: 'DIGITOVER' | 'DIGITUNDER') => {
     if (isExecuting || !isStakeValid) return;
     if (direction === 'DIGITOVER' && !canBuyOver) return;
@@ -207,26 +207,46 @@ export default function ManualTraderTab() {
     }
 
     setIsExecuting(true);
-    setTradeFeedback(`Executing ${label} ${targetDigit} on ${activeMarketCode}...`);
+    setTradeFeedback(`Pricing ${label} ${targetDigit} on ${activeMarketCode}...`);
 
     try {
+      // Step 1: Request proposal using the exact structure proven in useManualMultiStream.ts
+      const proposalRes = await api_base.api.send({
+        proposal: 1,
+        amount: stakeAmount,
+        basis: 'stake',
+        contract_type: direction,
+        currency,
+        duration: Number(contractDuration),
+        duration_unit: 't',
+        symbol: activeMarketCode,
+        barrier: String(targetDigit),
+      });
+
+      if (proposalRes?.error) {
+        console.error('[ManualTrader] Proposal Rejected:', proposalRes.error);
+        const details = proposalRes.error.details ? ` (${JSON.stringify(proposalRes.error.details)})` : '';
+        showTransientFeedback(`Order Rejected [${activeMarketCode}]: ${proposalRes.error.message}${details}`);
+        return;
+      }
+
+      const proposalId = proposalRes?.proposal?.id;
+      if (!proposalId) {
+        showTransientFeedback(`Execution Error [${activeMarketCode}]: No proposal ID returned.`);
+        return;
+      }
+
+      // Step 2: Buy the exact proposal ID
+      setTradeFeedback(`Executing ${label} ${targetDigit} on ${activeMarketCode}...`);
       const buyRes = await api_base.api.send({
-        buy: 1,
+        buy: proposalId,
         price: stakeAmount,
-        parameters: {
-          amount: stakeAmount,
-          basis: 'stake',
-          contract_type: direction,
-          currency,
-          duration: Number(contractDuration),
-          duration_unit: 't',
-          symbol: activeMarketCode,
-          barrier: String(targetDigit),
-        },
       });
 
       if (buyRes?.error) {
-        showTransientFeedback(`Order Rejected [${activeMarketCode}]: ${buyRes.error.message}`);
+        console.error('[ManualTrader] Buy Rejected:', buyRes.error);
+        const details = buyRes.error.details ? ` (${JSON.stringify(buyRes.error.details)})` : '';
+        showTransientFeedback(`Order Rejected [${activeMarketCode}]: ${buyRes.error.message}${details}`);
       } else if (buyRes?.buy) {
         showTransientFeedback(
           `Executed ${label} ${targetDigit} (${activeMarketCode}) | ID: ${buyRes.buy.contract_id} | Payout: ${Number(buyRes.buy.payout).toFixed(2)} ${currency}`
@@ -235,8 +255,10 @@ export default function ManualTraderTab() {
         showTransientFeedback(`Order sent for ${label} ${targetDigit} on ${activeMarketCode}.`);
       }
     } catch (err: any) {
+      console.error('[ManualTrader] Raw API Exception:', err);
       const msg = err?.error?.message || err?.message || 'Order execution failed.';
-      showTransientFeedback(`Execution Error [${activeMarketCode}]: ${msg}`);
+      const details = err?.error?.details ? ` (${JSON.stringify(err.error.details)})` : '';
+      showTransientFeedback(`Execution Error [${activeMarketCode}]: ${msg}${details}`);
     } finally {
       setIsExecuting(false);
     }
