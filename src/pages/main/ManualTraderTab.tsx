@@ -560,26 +560,51 @@ export default function ManualTraderTab() {
         {/* Unified Professional Parameter Card */}
         <div className="manual-unified-config-card">
           <div className="config-grid-row">
-            {/* Blueprint Strategy Dropdown */}
-            <div className="config-item" style={{ position: 'relative' }}>
-              <span className="config-label">Blueprint</span>
+            {/* Blueprint Strategy Dropdown (Left-Aligned with High-Visibility Chevron) */}
+            <div
+              className="config-item"
+              style={{
+                position: 'relative',
+                alignItems: 'flex-start',
+                textAlign: 'left',
+              }}
+            >
+              <span className="config-label" style={{ textAlign: 'left', width: '100%' }}>
+                Blueprint
+              </span>
               <div
                 onClick={() => setIsBlueprintDropdownOpen(prev => !prev)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
+                  justifyContent: 'space-between',
+                  gap: '10px',
                   cursor: 'pointer',
-                  padding: '4px 10px',
+                  padding: '6px 12px',
                   borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.16)',
+                  width: '100%',
+                  textAlign: 'left',
                 }}
                 title="Select trading blueprint"
               >
-                <span className="config-value">{activeBlueprint.label}</span>
-                <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{isBlueprintDropdownOpen ? '▴' : '▾'}</span>
+                <span className="config-value" style={{ textAlign: 'left' }}>
+                  {activeBlueprint.label}
+                </span>
+                <span
+                  style={{
+                    fontSize: '1.15rem',
+                    lineHeight: 1,
+                    fontWeight: 900,
+                    color: '#10b981',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {isBlueprintDropdownOpen ? '▲' : '▼'}
+                </span>
               </div>
 
               {isBlueprintDropdownOpen && (
@@ -587,14 +612,13 @@ export default function ManualTraderTab() {
                   style={{
                     position: 'absolute',
                     top: '100%',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
+                    left: 0,
                     marginTop: '6px',
-                    minWidth: '230px',
+                    minWidth: '245px',
                     background: 'rgba(15, 23, 42, 0.98)',
-                    border: '1px solid rgba(16, 185, 129, 0.35)',
+                    border: '1px solid rgba(16, 185, 129, 0.4)',
                     borderRadius: '10px',
-                    boxShadow: '0 12px 28px rgba(0, 0, 0, 0.45)',
+                    boxShadow: '0 12px 28px rgba(0, 0, 0, 0.5)',
                     zIndex: 50,
                     overflow: 'hidden',
                   }}
@@ -607,10 +631,10 @@ export default function ManualTraderTab() {
                         onClick={() => handleSelectBlueprint(option)}
                         style={{
                           padding: '10px 14px',
-                          fontSize: '0.82rem',
+                          fontSize: '0.84rem',
                           fontWeight: isActive ? 700 : 500,
                           color: isActive ? '#34d399' : '#e2e8f0',
-                          background: isActive ? 'rgba(16, 185, 129, 0.14)' : 'transparent',
+                          background: isActive ? 'rgba(16, 185, 129, 0.16)' : 'transparent',
                           cursor: 'pointer',
                           textAlign: 'left',
                           borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
