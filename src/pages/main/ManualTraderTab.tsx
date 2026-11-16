@@ -185,7 +185,7 @@ export default function ManualTraderTab() {
     }, durationMs);
   };
 
-  // 2-Step Proposal -> Buy Execution (Fixed with both symbol and underlying_symbol)
+  // Robust 2-Step Proposal -> Buy Execution with direct symbol lookup & underlying fallback
   const executeManualOrder = async (direction: 'DIGITOVER' | 'DIGITUNDER') => {
     if (isExecuting || !isStakeValid) return;
     if (direction === 'DIGITOVER' && !canBuyOver) return;
@@ -195,9 +195,9 @@ export default function ManualTraderTab() {
     const currency = api_base?.account_info?.currency || 'USD';
     const label = direction === 'DIGITOVER' ? 'OVER' : 'UNDER';
 
-    // Look up exact valid market code matching selectedSymbol
+    // Directly match market code or use symbolCode state
     const matchedMarket = markets.find(m => m.name === selectedSymbol);
-    const activeMarketCode = matchedMarket ? matchedMarket.code : symbolCode;
+    const activeMarketCode = matchedMarket?.code || symbolCode || 'R_25';
 
     if (!api_base?.api) {
       showTransientFeedback('Execution Error: Deriv WebSocket not connected.');
