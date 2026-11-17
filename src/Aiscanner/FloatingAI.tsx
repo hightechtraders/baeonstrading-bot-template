@@ -299,9 +299,19 @@ export const FloatingAI: React.FC = () => {
     }
   }, [isOpen]);
 
-  const availableMarkets = Array.from(
-    new Set(strategies.map(s => s.market).filter((m): m is string => Boolean(m)))
-  );
+  // Static, predetermined order for all 10 volatility selector pills so they never shift
+  const availableMarkets = [
+    'R_10',
+    '1HZ10V',
+    'R_25',
+    '1HZ25V',
+    'R_50',
+    '1HZ50V',
+    'R_75',
+    '1HZ75V',
+    'R_100',
+    '1HZ100V',
+  ];
 
   const filteredStrategies =
     selectedMarketFilter === 'ALL'
@@ -513,43 +523,41 @@ export const FloatingAI: React.FC = () => {
                     : `Dedicated directional alpha strategies locked to ${selectedMarketFilter}. Click to load and execute.`}
                 </p>
 
-                {availableMarkets.length > 1 && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '6px',
-                      marginBottom: '12px',
-                    }}
-                  >
-                    {['ALL', ...availableMarkets].map(mkt => {
-                      const active = selectedMarketFilter === mkt;
-                      return (
-                        <button
-                          key={mkt}
-                          type="button"
-                          onClick={() => setSelectedMarketFilter(mkt)}
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: '999px',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            border: active
-                              ? '1px solid #10b981'
-                              : '1px solid rgba(255, 255, 255, 0.14)',
-                            background: active
-                              ? 'rgba(16, 185, 129, 0.22)'
-                              : 'rgba(255, 255, 255, 0.04)',
-                            color: active ? '#34d399' : '#cbd5e1',
-                          }}
-                        >
-                          {mkt === 'ALL' ? 'All Volatilities' : mkt}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '6px',
+                    marginBottom: '12px',
+                  }}
+                >
+                  {['ALL', ...availableMarkets].map(mkt => {
+                    const active = selectedMarketFilter === mkt;
+                    return (
+                      <button
+                        key={mkt}
+                        type="button"
+                        onClick={() => setSelectedMarketFilter(mkt)}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '999px',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          border: active
+                            ? '1px solid #10b981'
+                            : '1px solid rgba(255, 255, 255, 0.14)',
+                          background: active
+                            ? 'rgba(16, 185, 129, 0.22)'
+                            : 'rgba(255, 255, 255, 0.04)',
+                          color: active ? '#34d399' : '#cbd5e1',
+                        }}
+                      >
+                        {mkt === 'ALL' ? 'All Volatilities' : mkt}
+                      </button>
+                    );
+                  })}
+                </div>
 
                 <div className="strategy-list">
                   {sortedStrategies.map((strat, idx) => {
