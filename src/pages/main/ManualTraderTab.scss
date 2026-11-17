@@ -369,19 +369,19 @@
 
         @include mobile-or-tablet-screen {
             padding: 10px 12px;
-            gap: 10px;
+            gap: 12px;
         }
 
         .config-grid-row {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            padding-bottom: 10px;
+            gap: 12px;
+            padding-bottom: 12px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
             @include mobile-or-tablet-screen {
-                gap: 8px;
-                padding-bottom: 8px;
+                gap: 10px;
+                padding-bottom: 10px;
             }
 
             .config-item {
@@ -417,21 +417,100 @@
                         font-size: 1.02rem;
                     }
                 }
+            }
 
-                /* Completely Unenclosed, Free-Sitting Stepper Control */
+            /* Blueprint item styling */
+            .config-blueprint-item {
+                position: relative;
+                width: 100%;
+
+                .config-blueprint-selector {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    cursor: pointer;
+                    padding: 8px 12px;
+                    border-radius: 8px;
+                    background: rgba(255, 255, 255, 0.06);
+                    border: 1px solid rgba(255, 255, 255, 0.16);
+                    width: 100%;
+                    box-sizing: border-box;
+                    text-align: left;
+
+                    .config-value {
+                        text-align: left;
+                        flex: 1;
+                    }
+
+                    .blueprint-chevron {
+                        font-size: 0.9rem;
+                        line-height: 1;
+                        font-weight: 900;
+                        color: #10b981;
+                        display: inline-flex;
+                        align-items: center;
+                        flex-shrink: 0;
+                        margin-left: 8px;
+                    }
+                }
+
+                .config-blueprint-dropdown {
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    marginTop: 6px;
+                    background: rgba(15, 23, 42, 0.98);
+                    border: 1px solid rgba(16, 185, 129, 0.4);
+                    border-radius: 10px;
+                    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+                    zIndex: 50;
+                    overflow: hidden;
+
+                    .blueprint-option-item {
+                        padding: 10px 14px;
+                        font-size: 0.84rem;
+                        font-weight: 500;
+                        color: #e2e8f0;
+                        background: transparent;
+                        cursor: pointer;
+                        text-align: left;
+                        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+                        &:hover {
+                            background: rgba(16, 185, 129, 0.15);
+                            color: #34d399;
+                        }
+
+                        &.active {
+                            color: #34d399;
+                            background: rgba(16, 185, 129, 0.16);
+                            font-weight: 700;
+                        }
+                    }
+                }
+            }
+
+            /* Sub-row for Target Digit and Duration side-by-side */
+            .config-sub-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+                width: 100%;
+
+                @include mobile-or-tablet-screen {
+                    gap: 8px;
+                }
+
                 .config-stepper-control {
                     display: flex;
                     align-items: center;
                     justify-content: flex-start;
-                    gap: 10px;
+                    gap: 8px;
                     width: 100%;
                     background: transparent !important;
                     border: none !important;
                     box-shadow: none !important;
-
-                    @include mobile-or-tablet-screen {
-                        gap: 8px;
-                    }
 
                     .stepper-btn {
                         background: rgba(16, 185, 129, 0.12) !important;
@@ -478,14 +557,6 @@
                     }
                 }
             }
-        }
-
-        /* Sub-row for Target Digit and Duration to sit side-by-side cleanly */
-        .config-sub-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            width: 100%;
         }
 
         .config-stake-row {
@@ -545,6 +616,114 @@
                         background: rgba(16, 185, 129, 0.12);
                         padding: 2px 6px;
                         border-radius: 6px;
+                    }
+                }
+
+                .stake-error-text {
+                    color: #fb7185;
+                    font-size: 0.72rem;
+                    fontWeight: 700;
+                    marginTop: 4px;
+                    display: block;
+                }
+            }
+        }
+
+        /* Auto-Execute & Session Risk Guard Strip */
+        .config-auto-execute-strip {
+            marginTop: 4px;
+            paddingTop: 10px;
+            borderTop: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+
+            .auto-execute-left {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+
+                .auto-execute-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 10px;
+                    borderRadius: 8px;
+                    border: 1px solid rgba(255, 255, 255, 0.18);
+                    background: rgba(255, 255, 255, 0.05);
+                    color: #cbd5e1;
+                    fontWeight: 700;
+                    fontSize: 0.75rem;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+
+                    &.active {
+                        border-color: #10b981;
+                        background: rgba(16, 185, 129, 0.2);
+                        color: #34d399;
+                        box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+                    }
+
+                    .auto-execute-dot {
+                        width: 7px;
+                        height: 7px;
+                        borderRadius: 50%;
+                        background: #64748b;
+                    }
+                    &.active .auto-execute-dot {
+                        background: #10b981;
+                        box-shadow: 0 0 8px #10b981;
+                    }
+                }
+
+                .session-pnl-text {
+                    fontSize: 0.74rem;
+                    fontWeight: 700;
+                }
+
+                .pnl-reset-btn {
+                    background: transparent;
+                    border: 1px solid rgba(255, 255, 255, 0.15);
+                    color: #94a3b8;
+                    borderRadius: 6px;
+                    padding: 2px 6px;
+                    fontSize: 0.68rem;
+                    cursor: pointer;
+                }
+            }
+
+            .auto-execute-right {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+
+                .risk-limit-label {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    fontSize: 0.72rem;
+                    color: #94a3b8;
+
+                    .risk-limit-input {
+                        width: 58px;
+                        padding: 3px 6px;
+                        borderRadius: 6px;
+                        background: rgba(15, 23, 42, 0.7);
+                        fontWeight: 700;
+                        fontSize: 0.74rem;
+
+                        &.tp-input {
+                            border: 1px solid rgba(16, 185, 129, 0.35);
+                            color: #34d399;
+                        }
+                        &.sl-input {
+                            border: 1px solid rgba(244, 63, 94, 0.35);
+                            color: #fb7185;
+                        }
                     }
                 }
             }
