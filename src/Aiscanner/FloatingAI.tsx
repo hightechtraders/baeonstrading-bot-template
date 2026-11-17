@@ -4,8 +4,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ScannerBridge } from './scannerBridge';
 import { Strategy, INITIAL_STRATEGIES } from './strategies';
-import { useScannerFeed } from './useScannerFeed'; 
-import { ScannerTickerBar } from './ScannerTickerBar'; 
+import { useScannerFeed } from './useScannerFeed';
+import { ScannerTickerBar } from './ScannerTickerBar';
 import './FloatingAI.css';
 
 export const FloatingAI: React.FC = () => {
@@ -13,15 +13,21 @@ export const FloatingAI: React.FC = () => {
 
   const [isOpen, setIsOpen] = useState(false);
   const [strategies, setStrategies] = useState<Strategy[]>(INITIAL_STRATEGIES);
-  
-  const [signalBannerText, setSignalBannerText] = useState<string>("🔍 Listening for Live R_10 Ticks...");
+  const [selectedMarketFilter, setSelectedMarketFilter] = useState<string>('ALL');
+
+  const [signalBannerText, setSignalBannerText] = useState<string>(
+    '🔍 Listening for Live Multi-Volatility Ticks...'
+  );
   const [isSignalLocked, setIsSignalLocked] = useState<boolean>(false);
   const [isSweetSpot, setIsSweetSpot] = useState<boolean>(false);
   const [isScanningPhase, setIsScanningPhase] = useState<boolean>(true);
 
   // Physics & Drag Refs
   const orbRef = useRef<HTMLDivElement>(null);
-  const posRef = useRef<{ x: number; y: number }>({ x: window.innerWidth - 80, y: window.innerHeight - 100 });
+  const posRef = useRef<{ x: number; y: number }>({
+    x: window.innerWidth - 80,
+    y: window.innerHeight - 100,
+  });
   const velocityRef = useRef<{ vx: number; vy: number }>({ vx: 0, vy: 0 });
   const lastMousePosRef = useRef<{ x: number; y: number; time: number }>({ x: 0, y: 0, time: 0 });
   const isDraggingRef = useRef<boolean>(false);
@@ -60,16 +66,16 @@ export const FloatingAI: React.FC = () => {
     stopInertia();
     isDraggingRef.current = true;
     hasMovedRef.current = false;
-    
+
     dragOffsetRef.current = {
       x: e.clientX - posRef.current.x,
-      y: e.clientY - posRef.current.y
+      y: e.clientY - posRef.current.y,
     };
 
     lastMousePosRef.current = {
       x: e.clientX,
       y: e.clientY,
-      time: performance.now()
+      time: performance.now(),
     };
 
     velocityRef.current = { vx: 0, vy: 0 };
@@ -87,14 +93,14 @@ export const FloatingAI: React.FC = () => {
     if (dt > 0) {
       const dx = e.clientX - lastMousePosRef.current.x;
       const dy = e.clientY - lastMousePosRef.current.y;
-      
+
       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
         hasMovedRef.current = true;
       }
 
       velocityRef.current = {
         vx: (dx / dt) * 16,
-        vy: (dy / dt) * 16
+        vy: (dy / dt) * 16,
       };
 
       lastMousePosRef.current = { x: e.clientX, y: e.clientY, time: now };
@@ -104,8 +110,14 @@ export const FloatingAI: React.FC = () => {
     const elementHeight = orbRef.current.offsetHeight || 60;
     const padding = 12;
 
-    const newX = Math.max(padding, Math.min(e.clientX - dragOffsetRef.current.x, window.innerWidth - elementWidth - padding));
-    const newY = Math.max(padding, Math.min(e.clientY - dragOffsetRef.current.y, window.innerHeight - elementHeight - padding));
+    const newX = Math.max(
+      padding,
+      Math.min(e.clientX - dragOffsetRef.current.x, window.innerWidth - elementWidth - padding)
+    );
+    const newY = Math.max(
+      padding,
+      Math.min(e.clientY - dragOffsetRef.current.y, window.innerHeight - elementHeight - padding)
+    );
 
     posRef.current = { x: newX, y: newY };
     orbRef.current.style.left = `${newX}px`;
@@ -187,17 +199,22 @@ export const FloatingAI: React.FC = () => {
         if (isOpenRef.current && !isScanningPhaseRef.current && !isSignalLocked) {
           const sorted = [...updated].sort((a, b) => b.confidence - a.confidence);
           const topStrat = sorted[0];
-          const isHighConviction = topStrat && topStrat.confidence >= 78 && topStrat.confidence <= 96;
+          const isHighConviction =
+            topStrat && topStrat.confidence >= 78 && topStrat.confidence <= 96;
 
           if (isHighConviction) {
             sweetSpotStreakRef.current += 1;
             if (sweetSpotStreakRef.current >= 2) {
-              setSignalBannerText(`🎯 HIGH MOMENTUM: ${topStrat.name} at ${topStrat.confidence}%! Ready to Load & Run.`);
+              const marketLabel = topStrat.market ? ` (${topStrat.market})` : '';
+              setSignalBannerText(
+                `🎯 HIGH MOMENTUM: ${topStrat.name}${marketLabel} at ${topStrat.confidence}%! Ready to Load & Run.`
+              );
               setIsSweetSpot(true);
             }
           } else {
             sweetSpotStreakRef.current = 0;
-            setSignalBannerText("✅ R_10 Momentum Scan Active");
+            const activeLeader = topStrat?.market ? ` | Leader: ${topStrat.market}` : '';
+            setSignalBannerText(`✅ Multi-Volatility Alpha Scan Active${activeLeader}`);
             setIsSweetSpot(false);
           }
         }
@@ -206,7 +223,7 @@ export const FloatingAI: React.FC = () => {
 
     const handleSignalLock = (e: CustomEvent) => {
       if (isOpenRef.current && !isScanningPhaseRef.current) {
-        setSignalBannerText(e.detail?.message || "🎯 HIGH CONFIDENCE LOCKED: Ready to Execute");
+        setSignalBannerText(e.detail?.message || '🎯 HIGH CONFIDENCE LOCKED: Ready to Execute');
         setIsSignalLocked(true);
         setIsSweetSpot(false);
       }
@@ -231,31 +248,45 @@ export const FloatingAI: React.FC = () => {
       setIsSweetSpot(false);
       setIsScanningPhase(true);
       sweetSpotStreakRef.current = 0;
-      setSignalBannerText("🔍 Calibrating R_10 Alpha Ticks...");
+      setSignalBannerText('🔍 Calibrating Multi-Volatility Alpha Ticks...');
 
       const timer = setTimeout(() => {
         setIsScanningPhase(false);
-        setSignalBannerText("✅ R_10 Momentum Scan Active");
+        setSignalBannerText('✅ Multi-Volatility Alpha Scan Active');
       }, 1500);
 
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
-  const sortedStrategies = [...strategies].sort((a, b) => b.confidence - a.confidence);
+  const availableMarkets = Array.from(
+    new Set(strategies.map(s => s.market).filter((m): m is string => Boolean(m)))
+  );
+
+  const filteredStrategies =
+    selectedMarketFilter === 'ALL'
+      ? strategies
+      : strategies.filter(s => s.market === selectedMarketFilter);
+
+  const sortedStrategies = [...filteredStrategies].sort((a, b) => b.confidence - a.confidence);
 
   const handleRunBot = (strat: Strategy) => {
     ScannerBridge.loadStrategyToWorkspace(strat);
     setIsOpen(false);
 
     setTimeout(() => {
+      const idBtn = document.getElementById('db-animation__run-button');
+      if (idBtn instanceof HTMLElement) {
+        idBtn.click();
+        return;
+      }
+
       const allButtons = Array.from(document.querySelectorAll('button'));
       const targetRunBtn = allButtons.find(b => b.textContent?.trim() === 'Run');
-      
       if (targetRunBtn instanceof HTMLElement) {
         targetRunBtn.click();
       }
-    }, 100);
+    }, 150);
   };
 
   return (
@@ -281,7 +312,7 @@ export const FloatingAI: React.FC = () => {
       `}</style>
 
       {/* Physics Wrapper: Strictly handles coordinate placement with zero animation interference */}
-      <div 
+      <div
         ref={orbRef}
         className="dancing-orb-wrapper"
         style={{
@@ -298,7 +329,7 @@ export const FloatingAI: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          overflow: 'visible'
+          overflow: 'visible',
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -306,57 +337,65 @@ export const FloatingAI: React.FC = () => {
         onClick={handleClick}
       >
         {/* Floating Container: Silk-smooth GPU-accelerated vertical motion */}
-        <div style={{
-          position: 'absolute',
-          width: '100%',
-          height: '100%',
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          animation: 'silkySlowFloat 4.5s infinite ease-in-out',
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden',
-          pointerEvents: 'none'
-        }}>
-          {/* Ring 1: Vivid Cyan Inner Pulse Ring */}
-          <div style={{
+        <div
+          style={{
             position: 'absolute',
-            inset: '-12px',
+            width: '100%',
+            height: '100%',
             borderRadius: '50%',
-            border: '2px solid rgba(0, 242, 254, 0.85)',
-            animation: 'vividPulseCyan 3s infinite cubic-bezier(0.4, 0, 0.6, 1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: 'silkySlowFloat 4.5s infinite ease-in-out',
             backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
             pointerEvents: 'none',
-            boxSizing: 'border-box'
-          }} />
+          }}
+        >
+          {/* Ring 1: Vivid Cyan Inner Pulse Ring */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: '-12px',
+              borderRadius: '50%',
+              border: '2px solid rgba(0, 242, 254, 0.85)',
+              animation: 'vividPulseCyan 3s infinite cubic-bezier(0.4, 0, 0.6, 1)',
+              backfaceVisibility: 'hidden',
+              pointerEvents: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
 
           {/* Ring 2: Pale Green Neon Mid Pulse Ring */}
-          <div style={{
-            position: 'absolute',
-            inset: '-24px',
-            borderRadius: '50%',
-            border: '2px solid rgba(152, 255, 152, 0.75)',
-            animation: 'vividPulsePaleGreen 3.6s infinite cubic-bezier(0.4, 0, 0.6, 1) 0.9s',
-            backfaceVisibility: 'hidden',
-            pointerEvents: 'none',
-            boxSizing: 'border-box'
-          }} />
+          <div
+            style={{
+              position: 'absolute',
+              inset: '-24px',
+              borderRadius: '50%',
+              border: '2px solid rgba(152, 255, 152, 0.75)',
+              animation: 'vividPulsePaleGreen 3.6s infinite cubic-bezier(0.4, 0, 0.6, 1) 0.9s',
+              backfaceVisibility: 'hidden',
+              pointerEvents: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
 
           {/* Ring 3: Outer Cyan/Green Expansion Ring */}
-          <div style={{
-            position: 'absolute',
-            inset: '-36px',
-            borderRadius: '50%',
-            border: '1.5px solid rgba(0, 255, 170, 0.5)',
-            animation: 'vividPulseOuter 4.2s infinite cubic-bezier(0.4, 0, 0.6, 1) 1.8s',
-            backfaceVisibility: 'hidden',
-            pointerEvents: 'none',
-            boxSizing: 'border-box'
-          }} />
+          <div
+            style={{
+              position: 'absolute',
+              inset: '-36px',
+              borderRadius: '50%',
+              border: '1.5px solid rgba(0, 255, 170, 0.5)',
+              animation: 'vividPulseOuter 4.2s infinite cubic-bezier(0.4, 0, 0.6, 1) 1.8s',
+              backfaceVisibility: 'hidden',
+              pointerEvents: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
 
           {/* Core Solid Circular Orb */}
-          <div 
+          <div
             className="dancing-orb-inner"
             style={{
               width: '100%',
@@ -372,12 +411,14 @@ export const FloatingAI: React.FC = () => {
               pointerEvents: 'auto',
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
-              background: 'radial-gradient(circle at 35% 35%, #34d399 0%, #00a86b 45%, #022c22 100%)',
-              boxShadow: 'inset 0 6px 12px rgba(255, 255, 255, 0.45), inset 0 -8px 14px rgba(0, 0, 0, 0.6), 0 0 35px rgba(0, 242, 254, 0.6)',
+              background:
+                'radial-gradient(circle at 35% 35%, #34d399 0%, #00a86b 45%, #022c22 100%)',
+              boxShadow:
+                'inset 0 6px 12px rgba(255, 255, 255, 0.45), inset 0 -8px 14px rgba(0, 0, 0, 0.6), 0 0 35px rgba(0, 242, 254, 0.6)',
               border: '2px solid rgba(255, 255, 255, 0.5)',
               color: '#ffffff',
               fontWeight: 800,
-              fontSize: '15px'
+              fontSize: '15px',
             }}
           >
             🤖 AI
@@ -387,17 +428,21 @@ export const FloatingAI: React.FC = () => {
 
       {isOpen && (
         <div className="ai-modal-backdrop" onClick={() => setIsOpen(false)}>
-          <div className="ai-modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="ai-modal-content" onClick={e => e.stopPropagation()}>
             <div className="ai-modal-header">
-              <h2>R-10 Institutional Alpha Engine</h2>
-              <button className="close-btn" onClick={() => setIsOpen(false)}>×</button>
+              <h2>Multi-Volatility Alpha Engine</h2>
+              <button className="close-btn" onClick={() => setIsOpen(false)}>
+                ×
+              </button>
             </div>
-            
+
             <ScannerTickerBar />
 
-            <div 
+            <div
               id="ai-signal-banner"
-              className={`signal-banner ${isSignalLocked ? 'locked' : isSweetSpot ? 'sweet-spot' : ''}`}
+              className={`signal-banner ${
+                isSignalLocked ? 'locked' : isSweetSpot ? 'sweet-spot' : ''
+              }`}
             >
               {signalBannerText}
             </div>
@@ -405,21 +450,64 @@ export const FloatingAI: React.FC = () => {
             {isScanningPhase ? (
               <div className="scanner-loading-state">
                 <div className="spinner-animation">🛰️</div>
-                <p className="loading-title">Syncing with Volatility 10 Index feed...</p>
-                <p className="loading-sub">Calculating live Bullish/Bearish quant alpha metrics.</p>
+                <p className="loading-title">Syncing with all Volatility Index feeds...</p>
+                <p className="loading-sub">
+                  Calculating live Bullish/Bearish quant alpha across all synthetic indices.
+                </p>
               </div>
             ) : (
               <>
-                <p className="scanner-instruction">Core directional alpha strategies tracking R_10. Click to load and execute.</p>
+                <p className="scanner-instruction">
+                  Live directional alpha strategies ranked across all active Volatility indices.
+                  Click to load and execute.
+                </p>
+
+                {availableMarkets.length > 1 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '6px',
+                      marginBottom: '12px',
+                    }}
+                  >
+                    {['ALL', ...availableMarkets].map(mkt => {
+                      const active = selectedMarketFilter === mkt;
+                      return (
+                        <button
+                          key={mkt}
+                          type="button"
+                          onClick={() => setSelectedMarketFilter(mkt)}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '999px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            border: active
+                              ? '1px solid #10b981'
+                              : '1px solid rgba(255, 255, 255, 0.14)',
+                            background: active
+                              ? 'rgba(16, 185, 129, 0.22)'
+                              : 'rgba(255, 255, 255, 0.04)',
+                            color: active ? '#34d399' : '#cbd5e1',
+                          }}
+                        >
+                          {mkt === 'ALL' ? 'All Volatilities' : mkt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
                 <div className="strategy-list">
                   {sortedStrategies.map((strat, idx) => {
-                    const key = strat.id || `${strat.name}-${idx}`;
+                    const key = strat.id || `${strat.name}-${strat.market}-${idx}`;
                     const isDominant = idx === 0;
 
                     return (
-                      <div 
-                        key={key} 
+                      <div
+                        key={key}
                         className={`strategy-card ${isDominant ? 'top-card' : ''}`}
                       >
                         {isDominant && (
@@ -436,14 +524,16 @@ export const FloatingAI: React.FC = () => {
                             <div className="card-tags-row">
                               <span className="market-tag">{strat.market}</span>
                               {strat.direction && (
-                                <span className={`direction-tag ${strat.direction.toLowerCase()}`}>
+                                <span
+                                  className={`direction-tag ${strat.direction.toLowerCase()}`}
+                                >
                                   {strat.direction}
                                 </span>
                               )}
                             </div>
                           </div>
-                          <span className={isDominant ? "badge-high" : "badge-medium"}>
-                            {isDominant ? "ACTIVE" : "STANDBY"}
+                          <span className={isDominant ? 'badge-high' : 'badge-medium'}>
+                            {isDominant ? 'ACTIVE' : 'STANDBY'}
                           </span>
                         </div>
 
@@ -452,8 +542,8 @@ export const FloatingAI: React.FC = () => {
                           <span>Confidence: {strat.confidence}%</span>
                         </div>
 
-                        <button 
-                          className="run-manual-btn" 
+                        <button
+                          className="run-manual-btn"
                           onClick={() => handleRunBot(strat)}
                         >
                           Load {strat.name} & Run Instantly
@@ -464,7 +554,6 @@ export const FloatingAI: React.FC = () => {
                 </div>
               </>
             )}
-
           </div>
         </div>
       )}
