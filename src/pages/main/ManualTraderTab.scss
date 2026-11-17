@@ -13,7 +13,7 @@
     position: relative;
 
     @include mobile-or-tablet-screen {
-        padding: 6px 10px 90px 10px !important;
+        padding: 6px 10px 16px 10px !important;
         height: 100% !important;
         max-height: none !important;
         overflow-y: auto !important;
@@ -30,13 +30,13 @@
         flex: 1;
         gap: 12px;
         box-sizing: border-box;
-        padding-bottom: 1rem;
+        padding-bottom: 0.5rem;
         position: relative;
         z-index: 1;
 
         @include mobile-or-tablet-screen {
-            gap: 10px;
-            padding-bottom: 16px !important;
+            gap: 8px;
+            padding-bottom: 0 !important;
         }
     }
 
@@ -152,8 +152,8 @@
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            min-height: 38px;
-            padding: 5px 10px;
+            min-height: 36px;
+            padding: 4px 10px;
         }
 
         .manual-status-content {
@@ -185,7 +185,7 @@
             overflow: hidden;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.68rem;
+                font-size: 0.64rem;
             }
         }
 
@@ -200,7 +200,7 @@
             flex-shrink: 0;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.58rem;
+                font-size: 0.54rem;
             }
         }
     }
@@ -213,7 +213,7 @@
         box-shadow: none !important;
         width: 100%;
         box-sizing: border-box;
-        margin: 4px 0;
+        margin: 2px 0;
     }
 
     .digit-stats-grid__inner {
@@ -226,7 +226,7 @@
 
         @include mobile-or-tablet-screen {
             grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-            gap: 6px 4px !important; 
+            gap: 4px 3px !important; 
         }
     }
 
@@ -247,8 +247,8 @@
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            min-height: 54px;
-            padding: 1px 0 6px 0 !important;
+            min-height: 48px;
+            padding: 1px 0 4px 0 !important;
         }
 
         &--selected {
@@ -290,8 +290,8 @@
             justify-content: center;
 
             @include mobile-or-tablet-screen {
-                width: 27px;
-                height: 27px;
+                width: 24px;
+                height: 24px;
             }
 
             svg {
@@ -320,7 +320,7 @@
                 font-variant-numeric: tabular-nums;
 
                 @include mobile-or-tablet-screen {
-                    font-size: 7px;
+                    font-size: 6px;
                 }
             }
         }
@@ -368,8 +368,8 @@
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            padding: 10px 12px;
-            gap: 12px;
+            padding: 8px 12px;
+            gap: 8px;
         }
 
         .config-grid-row {
@@ -380,8 +380,8 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
             @include mobile-or-tablet-screen {
-                gap: 10px;
-                padding-bottom: 10px;
+                gap: 8px;
+                padding-bottom: 8px;
             }
 
             .config-item {
@@ -399,7 +399,7 @@
                     margin-bottom: 4px;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.5rem;
+                        font-size: 0.46rem;
                     }
                 }
 
@@ -409,7 +409,7 @@
                     color: var(--text-prominent);
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.72rem;
+                        font-size: 0.68rem;
                     }
 
                     &.highlight-digit {
@@ -437,9 +437,17 @@
                     box-sizing: border-box;
                     text-align: left;
 
+                    @include mobile-or-tablet-screen {
+                        padding: 5px 10px;
+                    }
+
                     .config-value {
                         text-align: left;
                         flex: 1;
+
+                        @include mobile-or-tablet-screen {
+                            font-size: 0.68rem;
+                        }
                     }
 
                     .blueprint-chevron {
@@ -530,7 +538,7 @@
                         flex-shrink: 0;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.95rem;
+                            font-size: 0.9rem;
                         }
 
                         &:hover {
@@ -550,7 +558,7 @@
                         border: none !important;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.72rem;
+                            font-size: 0.68rem;
                         }
                     }
                 }
@@ -575,7 +583,7 @@
                     font-weight: 800;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.5rem;
+                        font-size: 0.46rem;
                     }
                 }
 
@@ -589,7 +597,7 @@
                     box-sizing: border-box;
 
                     @include mobile-or-tablet-screen {
-                        padding: 5px 10px;
+                        padding: 4px 8px;
                     }
 
                     .manual-trader-input {
@@ -603,7 +611,7 @@
                         font-variant-numeric: tabular-nums;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.82rem;
+                            font-size: 0.78rem;
                         }
                     }
 
@@ -628,26 +636,28 @@
         }
     }
 
-    /* Pushed-Down Purchase Buttons Action Dock with Breathing Space */
+    /* Pushed-Down Purchase Buttons Action Dock filling remaining space */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr !important;
         gap: 12px !important; 
         max-width: 800px !important; 
-        margin: 10px auto 2px auto !important;
+        margin-top: auto !important;
+        margin-bottom: 0 !important;
         width: 100%;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
-            margin: 8px auto 2px auto !important;
+            margin-top: auto !important;
+            margin-bottom: 0 !important;
             max-width: 100% !important;
         }
     }
 
     .manual-trader-btn {
         border: none;
-        padding: 11px 14px;
+        padding: 12px 14px;
         border-radius: 12px;
         color: #fff;
         font-weight: 900;
@@ -659,7 +669,7 @@
         transition: all 0.2s ease;
 
         @include mobile-or-tablet-screen {
-            padding: 12px 10px !important;
+            padding: 10px 8px !important;
         }
 
         &--over {
@@ -686,7 +696,7 @@
             opacity: 0.9;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.48rem !important;
+                font-size: 0.44rem !important;
             }
         }
 
@@ -696,7 +706,7 @@
             margin-top: 2px;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.75rem !important;
+                font-size: 0.72rem !important;
             }
         }
 
@@ -709,7 +719,7 @@
             border-radius: 4px;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.46rem !important;
+                font-size: 0.42rem !important;
                 padding: 1px 4px;
             }
         }
