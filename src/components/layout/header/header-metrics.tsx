@@ -1,7 +1,7 @@
 // ==========================================
 // FILE: src/components/layout/header/header-metrics.tsx
 // ==========================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { useStore } from '@/hooks/useStore';
 import { api_base } from '@/external/bot-skeleton/services/api/api-base';
@@ -11,15 +11,32 @@ export const HeaderMetrics = observer(() => {
     const { client, run_panel, dbot } = useStore() ?? {};
     const [isLiveActive, setIsLiveActive] = useState(false);
     const [livePnl, setLivePnl] = useState('+0.00 USD');
+    const lastMultiTickRef = useRef<number>(0);
 
     const isRunning = client?.is_running || run_panel?.is_running || dbot?.is_running || false;
 
-    // Monitor live data feed streaming status via api_base
+    // Monitor multi-volatility tick flow + WebSocket connection state (no R_10 dependency)
     useEffect(() => {
+        const handleMultiTick = () => {
+            lastMultiTickRef.current = Date.now();
+            setIsLiveActive(true);
+        };
+
+        window.addEventListener('ai-tick-received', handleMultiTick);
+        window.addEventListener('deriv_scanner_updated', handleMultiTick);
+
         const interval = setInterval(() => {
-            setIsLiveActive(api_base.isR10FeedLive());
+            const socketOpen = api_base?.api?.connection?.readyState === WebSocket.OPEN;
+            const isStreamFlowing = Date.now() - lastMultiTickRef.current < 6000;
+
+            setIsLiveActive(Boolean(socketOpen && isStreamFlowing));
         }, 1000);
-        return () => clearInterval(interval);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('ai-tick-received', handleMultiTick);
+            window.removeEventListener('deriv_scanner_updated', handleMultiTick);
+        };
     }, []);
 
     // Listen to real-time P&L updates (wins & losses) streamed directly from api_base websocket
