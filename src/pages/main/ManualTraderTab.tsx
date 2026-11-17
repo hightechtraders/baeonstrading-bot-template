@@ -107,7 +107,6 @@ export default function ManualTraderTab() {
     { name: 'Volatility 100 (1s) Index', code: '1HZ100V' },
   ];
 
-  // Initialize selectedSymbol from localStorage (defaults to Volatility 25 Index for 1-tick strategy clarity)
   const [selectedSymbol, setSelectedSymbol] = useState<string>(() => {
     return localStorage.getItem('trader_selected_symbol') || 'Volatility 25 Index';
   });
@@ -137,7 +136,6 @@ export default function ManualTraderTab() {
     return localStorage.getItem('trader_manual_stake') || '1.00';
   });
 
-  // Auto-execution & session risk controls
   const [isAutoExecute, setIsAutoExecute] = useState<boolean>(() => {
     return localStorage.getItem('trader_auto_execute') === 'true';
   });
@@ -178,7 +176,6 @@ export default function ManualTraderTab() {
     }, durationMs);
   }, []);
 
-  // Close open dropdowns when clicking or tapping anywhere outside them
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
       const target = event.target as Node;
@@ -198,7 +195,6 @@ export default function ManualTraderTab() {
     };
   }, []);
 
-  // Persist settings across tab switches
   useEffect(() => {
     localStorage.setItem('trader_target_digit', targetDigit.toString());
   }, [targetDigit]);
@@ -241,7 +237,6 @@ export default function ManualTraderTab() {
     };
   }, []);
 
-  // Listen for Deriv contract settlement (proposal_open_contract) for live Win/Loss notifications & P&L limits
   useEffect(() => {
     let socket: WebSocket | null = null;
 
@@ -329,7 +324,6 @@ export default function ManualTraderTab() {
     };
   }, [pushTradeToast, showTransientFeedback, stopLossInput, takeProfitInput]);
 
-  // Connect to real multi-volatility 1,000-tick stream & strategy engine
   const {
     digitStats,
     cursorDigit,
@@ -347,7 +341,6 @@ export default function ManualTraderTab() {
     strategyPreset
   );
 
-  // Verified 2-Step Proposal -> Buy Execution with live contract result subscription
   const executeManualOrder = useCallback(
     async (direction: 'DIGITOVER' | 'DIGITUNDER', isAutoTriggered = false) => {
       if (isExecuting || !isStakeValid) return;
@@ -360,7 +353,6 @@ export default function ManualTraderTab() {
       const sideTitle = direction === 'DIGITOVER' ? 'Over' : 'Under';
       const modeTag = isAutoTriggered ? '[AUTO] ' : '';
 
-      // Validate against symbolCode first, then selectedSymbol name
       const matchedMarket =
         markets.find(m => m.code === symbolCode) ||
         markets.find(m => m.name === selectedSymbol);
@@ -377,7 +369,6 @@ export default function ManualTraderTab() {
       setTradeFeedback(`${modeTag}Pricing ${label} ${targetDigit} on ${activeMarketCode}...`);
 
       try {
-        // Step 1: Request proposal using strictly 'underlying_symbol' (Deriv's updated schema)
         const proposalRes = await api_base.api.send({
           proposal: 1,
           amount: stakeAmount,
@@ -402,7 +393,6 @@ export default function ManualTraderTab() {
           return;
         }
 
-        // Step 2: Buy the exact proposal ID
         setTradeFeedback(`${modeTag}Executing ${label} ${targetDigit} on ${activeMarketCode}...`);
         const buyRes = await api_base.api.send({
           buy: proposalId,
@@ -415,7 +405,6 @@ export default function ManualTraderTab() {
         } else if (buyRes?.buy) {
           const contractId = Number(buyRes.buy.contract_id);
 
-          // Show "Trade opened" floating toast immediately
           pushTradeToast(
             {
               type: 'opened',
@@ -429,7 +418,6 @@ export default function ManualTraderTab() {
             `${modeTag}Trade opened: ${sideTitle} ${targetDigit} on ${activeMarketName} | Stake: ${stakeAmount.toFixed(2)} ${currency}`
           );
 
-          // Track and subscribe to proposal_open_contract so settlement Win/Loss toast fires automatically
           trackedContractsRef.current[contractId] = {
             side: sideTitle,
             marketName: activeMarketName,
@@ -471,7 +459,6 @@ export default function ManualTraderTab() {
     ]
   );
 
-  // Auto-execution watcher: fires once per distinct signal edge when armed and no contract is open
   useEffect(() => {
     if (!isAutoExecute) return;
 
@@ -529,7 +516,6 @@ export default function ManualTraderTab() {
 
   return (
     <div className="manual-trader-tab-container">
-      {/* Floating Trade Lifecycle Notifications (Trade Opened / Trade Closed P&L) */}
       {tradeToasts.length > 0 && (
         <div
           style={{
@@ -588,7 +574,6 @@ export default function ManualTraderTab() {
       )}
 
       <div className="manual-trader-wrapper">
-        {/* Compact Market Selector Dropdown Bar */}
         <div className="manual-market-dropdown-bar" ref={marketDropdownRef}>
           <div className="market-dropdown-header" onClick={() => setIsMarketDropdownOpen(!isMarketDropdownOpen)}>
             <div className="market-dropdown-title-group">
@@ -620,7 +605,6 @@ export default function ManualTraderTab() {
           )}
         </div>
 
-        {/* Live Strategy Signal & Execution Feedback Banner */}
         <div
           className="manual-status-banner"
           style={
@@ -676,7 +660,6 @@ export default function ManualTraderTab() {
           </span>
         </div>
 
-        {/* 10-Digit Dynamic Gauge Grid */}
         <div className="digit-stats-grid">
           <div className="digit-stats-grid__inner">
             {digitStats.map(item => {
@@ -709,90 +692,33 @@ export default function ManualTraderTab() {
           </div>
         </div>
 
-        {/* Unified Professional Parameter Card */}
+        {/* Unified Professional Parameter Card with Clean Row Layout */}
         <div className="manual-unified-config-card">
           <div className="config-grid-row">
-            {/* Blueprint Strategy Dropdown (Left-Aligned with Compact Chevron Spacing & Outside-Click Close) */}
+            {/* Blueprint Strategy Dropdown (Full Width) */}
             <div
               ref={blueprintDropdownRef}
-              className="config-item"
-              style={{
-                position: 'relative',
-                alignItems: 'flex-start',
-                textAlign: 'left',
-              }}
+              className="config-item config-blueprint-item"
             >
-              <span className="config-label" style={{ textAlign: 'left' }}>
-                Blueprint
-              </span>
+              <span className="config-label">Blueprint</span>
               <div
+                className="config-blueprint-selector"
                 onClick={() => setIsBlueprintDropdownOpen(prev => !prev)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-start',
-                  gap: '10px',
-                  cursor: 'pointer',
-                  padding: '6px 12px',
-                  borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.16)',
-                  width: 'fit-content',
-                  maxWidth: '100%',
-                  textAlign: 'left',
-                }}
                 title="Select trading blueprint"
               >
-                <span className="config-value" style={{ textAlign: 'left' }}>
-                  {activeBlueprint.label}
-                </span>
-                <span
-                  style={{
-                    fontSize: '1rem',
-                    lineHeight: 1,
-                    fontWeight: 900,
-                    color: '#10b981',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  {isBlueprintDropdownOpen ? '▲' : '▼'}
-                </span>
+                <span className="config-value">{activeBlueprint.label}</span>
+                <span className="blueprint-chevron">{isBlueprintDropdownOpen ? '▲' : '▼'}</span>
               </div>
 
               {isBlueprintDropdownOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    marginTop: '6px',
-                    minWidth: '245px',
-                    background: 'rgba(15, 23, 42, 0.98)',
-                    border: '1px solid rgba(16, 185, 129, 0.4)',
-                    borderRadius: '10px',
-                    boxShadow: '0 12px 28px rgba(0, 0, 0, 0.5)',
-                    zIndex: 50,
-                    overflow: 'hidden',
-                  }}
-                >
+                <div className="config-blueprint-dropdown">
                   {BLUEPRINT_OPTIONS.map(option => {
                     const isActive = option.id === strategyPreset;
                     return (
                       <div
                         key={option.id}
                         onClick={() => handleSelectBlueprint(option)}
-                        style={{
-                          padding: '10px 14px',
-                          fontSize: '0.84rem',
-                          fontWeight: isActive ? 700 : 500,
-                          color: isActive ? '#34d399' : '#e2e8f0',
-                          background: isActive ? 'rgba(16, 185, 129, 0.16)' : 'transparent',
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-                        }}
+                        className={`blueprint-option-item ${isActive ? 'active' : ''}`}
                       >
                         {option.label}
                       </div>
@@ -802,33 +728,34 @@ export default function ManualTraderTab() {
               )}
             </div>
 
-            {/* Target Digit (Selected via Digit Circles above) */}
-            <div className="config-item">
-              <span className="config-label">Target Digit</span>
-              <span className="config-value highlight-digit">{targetDigit}</span>
-            </div>
+            {/* Target Digit & Duration Side-by-Side Sub-Row */}
+            <div className="config-sub-row">
+              <div className="config-item">
+                <span className="config-label">Target Digit</span>
+                <span className="config-value highlight-digit">{targetDigit}</span>
+              </div>
 
-            {/* Duration */}
-            <div className="config-item">
-              <span className="config-label">Duration</span>
-              <div className="config-stepper-control">
-                <button
-                  className="stepper-btn"
-                  onClick={() => setContractDuration(prev => Math.max(1, prev - 1))}
-                  title="Decrease Ticks"
-                >
-                  −
-                </button>
-                <span className="config-value">
-                  {contractDuration} {contractDuration === 1 ? 'Tick' : 'Ticks'}
-                </span>
-                <button
-                  className="stepper-btn"
-                  onClick={() => setContractDuration(prev => Math.min(10, prev + 1))}
-                  title="Increase Ticks"
-                >
-                  +
-                </button>
+              <div className="config-item">
+                <span className="config-label">Duration</span>
+                <div className="config-stepper-control">
+                  <button
+                    className="stepper-btn"
+                    onClick={() => setContractDuration(prev => Math.max(1, prev - 1))}
+                    title="Decrease Ticks"
+                  >
+                    −
+                  </button>
+                  <span className="config-value">
+                    {contractDuration} {contractDuration === 1 ? 'Tick' : 'Ticks'}
+                  </span>
+                  <button
+                    className="stepper-btn"
+                    onClick={() => setContractDuration(prev => Math.min(10, prev + 1))}
+                    title="Increase Ticks"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -859,75 +786,26 @@ export default function ManualTraderTab() {
               </div>
 
               {stakeError && (
-                <span
-                  style={{
-                    color: '#fb7185',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    marginTop: '4px',
-                    display: 'block',
-                  }}
-                >
-                  ⚠️ {stakeError}
-                </span>
+                <span className="stake-error-text">⚠️ {stakeError}</span>
               )}
             </div>
           </div>
 
-          {/* Auto-Execution & Session Risk Guard Strip */}
-          <div
-            style={{
-              marginTop: '14px',
-              paddingTop: '12px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="config-auto-execute-strip">
+            <div className="auto-execute-left">
               <button
                 type="button"
                 onClick={() => setIsAutoExecute(prev => !prev)}
                 disabled={!isStakeValid && !isAutoExecute}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '8px 14px',
-                  borderRadius: '8px',
-                  border: isAutoExecute
-                    ? '1px solid #10b981'
-                    : '1px solid rgba(255, 255, 255, 0.18)',
-                  background: isAutoExecute
-                    ? 'rgba(16, 185, 129, 0.2)'
-                    : 'rgba(255, 255, 255, 0.05)',
-                  color: isAutoExecute ? '#34d399' : '#cbd5e1',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                  cursor: !isStakeValid && !isAutoExecute ? 'not-allowed' : 'pointer',
-                  boxShadow: isAutoExecute ? '0 0 14px rgba(16, 185, 129, 0.3)' : 'none',
-                  transition: 'all 0.2s ease',
-                }}
+                className={`auto-execute-btn ${isAutoExecute ? 'active' : ''}`}
               >
-                <span
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: isAutoExecute ? '#10b981' : '#64748b',
-                    boxShadow: isAutoExecute ? '0 0 8px #10b981' : 'none',
-                  }}
-                />
+                <span className="auto-execute-dot" />
                 {isAutoExecute ? 'AUTO-EXECUTE: ON' : 'AUTO-EXECUTE: OFF'}
               </button>
 
               <span
+                className="session-pnl-text"
                 style={{
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
                   color: sessionPnL > 0 ? '#34d399' : sessionPnL < 0 ? '#fb7185' : '#94a3b8',
                 }}
               >
@@ -938,15 +816,7 @@ export default function ManualTraderTab() {
                 <button
                   type="button"
                   onClick={() => setSessionPnL(0)}
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    color: '#94a3b8',
-                    borderRadius: '6px',
-                    padding: '2px 7px',
-                    fontSize: '0.7rem',
-                    cursor: 'pointer',
-                  }}
+                  className="pnl-reset-btn"
                   title="Reset session P&L counter"
                 >
                   Reset
@@ -954,49 +824,30 @@ export default function ManualTraderTab() {
               )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#94a3b8' }}>
+            <div className="auto-execute-right">
+              <label className="risk-limit-label">
                 <span>TP ({currency}):</span>
                 <input
                   type="text"
                   value={takeProfitInput}
                   onChange={e => setTakeProfitInput(e.target.value)}
-                  style={{
-                    width: '62px',
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    border: '1px solid rgba(16, 185, 129, 0.35)',
-                    background: 'rgba(15, 23, 42, 0.7)',
-                    color: '#34d399',
-                    fontWeight: 700,
-                    fontSize: '0.78rem',
-                  }}
+                  className="risk-limit-input tp-input"
                 />
               </label>
 
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#94a3b8' }}>
+              <label className="risk-limit-label">
                 <span>SL ({currency}):</span>
                 <input
                   type="text"
                   value={stopLossInput}
                   onChange={e => setStopLossInput(e.target.value)}
-                  style={{
-                    width: '62px',
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    border: '1px solid rgba(244, 63, 94, 0.35)',
-                    background: 'rgba(15, 23, 42, 0.7)',
-                    color: '#fb7185',
-                    fontWeight: 700,
-                    fontSize: '0.78rem',
-                  }}
+                  className="risk-limit-input sl-input"
                 />
               </label>
             </div>
           </div>
         </div>
 
-        {/* Well-Spaced Purchase Buttons Action Zone */}
         <div className="manual-trader-buttons-grid">
           <button
             disabled={isOverDisabled}
