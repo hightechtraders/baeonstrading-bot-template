@@ -482,7 +482,7 @@ export const FloatingAI: React.FC = () => {
               </button>
             </div>
 
-            <ScannerTickerBar />
+            <ScannerTickerBar selectedMarket={selectedMarketFilter} />
 
             <div
               id="ai-signal-banner"
