@@ -1,35 +1,73 @@
 // ==========================================
 // FILE: src/Aiscanner/ScannerTickerBar.tsx (Synced with AI Engine)
 // ==========================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
-export const ScannerTickerBar: React.FC = () => {
-    const [liveData, setLiveData] = useState<{ symbol: string; price: number; direction: string } | null>(null);
+interface ScannerTickerBarProps {
+    selectedMarket?: string;
+}
+
+interface TickerSnapshot {
+    symbol: string;
+    price: number;
+    direction: string;
+}
+
+export const ScannerTickerBar: React.FC<ScannerTickerBarProps> = ({ selectedMarket = 'ALL' }) => {
+    const [liveData, setLiveData] = useState<TickerSnapshot | null>(null);
+    const cacheBySymbolRef = useRef<Record<string, TickerSnapshot>>({});
+    const selectedMarketRef = useRef<string>(selectedMarket);
+
+    useEffect(() => {
+        selectedMarketRef.current = selectedMarket;
+
+        if (selectedMarket === 'ALL') {
+            const entries = Object.values(cacheBySymbolRef.current);
+            if (entries.length > 0) {
+                setLiveData(entries[entries.length - 1]);
+            }
+        } else {
+            const cached = cacheBySymbolRef.current[selectedMarket];
+            setLiveData(cached || null);
+        }
+    }, [selectedMarket]);
 
     useEffect(() => {
         const handleTick = (event: CustomEvent) => {
             const { assetName, quote, symbol, price, strategies } = event.detail || {};
-            const activeSymbol = assetName || symbol || 'R_10';
-            const activePrice = quote !== undefined ? quote : price;
+            const incomingSymbol = assetName || symbol;
+            const incomingPrice = quote !== undefined ? Number(quote) : Number(price);
 
-            if (activePrice !== undefined) {
-                // If the event includes evaluated strategies, grab the top strategy's direction
-                let aiDirection: string | null = null;
-                if (Array.isArray(strategies) && strategies.length > 0) {
-                    const sorted = [...strategies].sort((a, b) => b.confidence - a.confidence);
-                    if (sorted[0]?.direction) {
-                        aiDirection = sorted[0].direction; // 'UP' or 'DOWN'
-                    }
+            if (!incomingSymbol || Number.isNaN(incomingPrice)) return;
+
+            // Scope strategy direction lookup strictly to the incoming symbol
+            let aiDirection: string | null = null;
+            if (Array.isArray(strategies) && strategies.length > 0) {
+                const marketStrats = strategies
+                    .filter((s: any) => s.market === incomingSymbol || s.symbol === incomingSymbol)
+                    .sort((a: any, b: any) => b.confidence - a.confidence);
+
+                if (marketStrats[0]?.direction) {
+                    aiDirection = marketStrats[0].direction; // 'UP' or 'DOWN'
                 }
+            }
 
-                setLiveData((prev) => {
-                    const prevPrice = prev?.price || activePrice;
-                    // Fallback to tick direction if AI direction isn't in payload yet
-                    const tickDirection = activePrice >= prevPrice ? 'UP' : 'DOWN';
-                    const direction = aiDirection || prev?.direction || tickDirection;
+            const prevEntry = cacheBySymbolRef.current[incomingSymbol];
+            const prevPrice = prevEntry?.price ?? incomingPrice;
+            const tickDirection = incomingPrice >= prevPrice ? 'UP' : 'DOWN';
+            const direction = aiDirection || prevEntry?.direction || tickDirection;
 
-                    return { symbol: activeSymbol, price: activePrice, direction };
-                });
+            const snapshot: TickerSnapshot = {
+                symbol: incomingSymbol,
+                price: incomingPrice,
+                direction,
+            };
+
+            cacheBySymbolRef.current[incomingSymbol] = snapshot;
+
+            const activeFilter = selectedMarketRef.current;
+            if (activeFilter === 'ALL' || activeFilter === incomingSymbol) {
+                setLiveData(snapshot);
             }
         };
 
@@ -45,9 +83,10 @@ export const ScannerTickerBar: React.FC = () => {
     }, []);
 
     if (!liveData) {
+        const targetLabel = selectedMarket === 'ALL' ? 'multi-volatility' : selectedMarket;
         return (
             <div className="scanner-ticker-bar loading">
-                <span>🛰️ Connecting to R_10 live feed...</span>
+                <span>🛰️ Connecting to {targetLabel} live feed...</span>
             </div>
         );
     }
