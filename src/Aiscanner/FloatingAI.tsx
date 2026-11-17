@@ -523,15 +523,7 @@ export const FloatingAI: React.FC = () => {
                     : `Dedicated directional alpha strategies locked to ${selectedMarketFilter}. Click to load and execute.`}
                 </p>
 
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '6px',
-                    marginBottom: '12px',
-                    justifyContent: 'center',
-                  }}
-                >
+                <div className="volatility-pills-grid">
                   {['ALL', ...availableMarkets].map(mkt => {
                     const active = selectedMarketFilter === mkt;
                     const isAll = mkt === 'ALL';
@@ -540,25 +532,9 @@ export const FloatingAI: React.FC = () => {
                         key={mkt}
                         type="button"
                         onClick={() => setSelectedMarketFilter(mkt)}
-                        style={{
-                          flex: isAll ? '0 1 calc(36% - 6px)' : '0 1 calc(18% - 6px)',
-                          minWidth: isAll ? '120px' : '75px',
-                          textAlign: 'center',
-                          padding: '6px 10px',
-                          borderRadius: '999px',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          boxSizing: 'border-box',
-                          border: active
-                            ? '1px solid #10b981'
-                            : '1px solid rgba(255, 255, 255, 0.14)',
-                          background: active
-                            ? 'rgba(16, 185, 129, 0.22)'
-                            : 'rgba(255, 255, 255, 0.04)',
-                          color: active ? '#34d399' : '#cbd5e1',
-                          transition: 'background 0.2s ease, border-color 0.2s ease',
-                        }}
+                        className={`volatility-pill ${isAll ? 'all-volatilities' : ''} ${
+                          active ? 'active' : ''
+                        }`}
                       >
                         {isAll ? 'All Volatilities' : mkt}
                       </button>
