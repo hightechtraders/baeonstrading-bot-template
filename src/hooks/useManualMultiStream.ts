@@ -28,8 +28,9 @@ const MIN_STAKE = 0.35;
 // Global module-level cache so switching tabs or markets keeps all 1,000-tick buffers warm
 const globalTickBuffers: Record<string, number[]> = {};
 const globalPipSizes: Record<string, number> = {};
-const subscribedNonR10 = new Set<string>();
+const subscribedSymbols = new Set<string>();
 const lastTickTime: Record<string, number> = {};
+let activeSocket: WebSocket | null = null;
 let isPoolBootstrapped = false;
 
 const extractLastDigit = (quote: number, pipSize: number): number => {
@@ -44,7 +45,7 @@ const computeInstantEstimate = (stakeVal: number, winningDigits: number, currenc
   return `~+${estProfit.toFixed(2)} ${currency}`;
 };
 
-// Single global listener for Manual Trader (runs alongside useScannerFeed without conflict)
+// Single global listener for Manual Trader across all 10 volatility indices
 const handleManualSocketMessage = (event: MessageEvent) => {
   try {
     const data = JSON.parse(event.data);
@@ -61,6 +62,15 @@ const handleManualSocketMessage = (event: MessageEvent) => {
       if (!globalTickBuffers[sym]) globalTickBuffers[sym] = [];
       globalTickBuffers[sym] = [...globalTickBuffers[sym].slice(-999), digit];
       lastTickTime[sym] = Date.now();
+      subscribedSymbols.add(sym);
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('ai-tick-received', {
+            detail: { assetName: sym, quote: data.tick.quote },
+          })
+        );
+      }
     }
   } catch {
     // Ignore non-JSON messages
@@ -107,9 +117,21 @@ export function useManualMultiStream(
   const canBuyOver = isStakeValid && isOverWinnable;
   const canBuyUnder = isStakeValid && isUnderWinnable;
 
-  // 1. Bootstrap 1,000-tick buffers and non-R_10 streams without touching useScannerFeed's R_10 subscription
+  // 1. Bootstrap 1,000-tick buffers and live subscriptions across all 10 volatility indices
   useEffect(() => {
     let isMounted = true;
+
+    const ensureSocketListener = () => {
+      const socket = api_base?.api?.connection;
+      if (socket && socket !== activeSocket) {
+        if (activeSocket) {
+          activeSocket.removeEventListener('message', handleManualSocketMessage);
+        }
+        activeSocket = socket;
+        activeSocket.addEventListener('message', handleManualSocketMessage);
+        subscribedSymbols.clear();
+      }
+    };
 
     const initPool = async () => {
       while (!api_base?.api) {
@@ -117,11 +139,7 @@ export function useManualMultiStream(
         if (!isMounted) return;
       }
 
-      const socket = api_base.api.connection;
-      if (socket) {
-        socket.removeEventListener('message', handleManualSocketMessage);
-        socket.addEventListener('message', handleManualSocketMessage);
-      }
+      ensureSocketListener();
 
       if (!isPoolBootstrapped) {
         isPoolBootstrapped = true;
@@ -146,14 +164,15 @@ export function useManualMultiStream(
               }
             }
 
-            // NEVER subscribe to R_10 here (useScannerFeed already owns R_10)
-            if (sym !== 'R_10' && !subscribedNonR10.has(sym)) {
+            if (!subscribedSymbols.has(sym)) {
               await api_base.api.send({ ticks: sym, subscribe: 1 });
-              subscribedNonR10.add(sym);
+              subscribedSymbols.add(sym);
+              lastTickTime[sym] = Date.now();
             }
           } catch (err: any) {
             if (err?.error?.code === 'AlreadySubscribed') {
-              subscribedNonR10.add(sym);
+              subscribedSymbols.add(sym);
+              lastTickTime[sym] = Date.now();
             }
           }
           await new Promise(r => setTimeout(r, 250));
@@ -163,21 +182,24 @@ export function useManualMultiStream(
 
     initPool();
 
-    // UI refresh loop + auto-heal if SmartCharts resets non-R_10 streams
+    // UI refresh loop + auto-heal if SmartCharts or socket reconnect resets any stream
     const uiInterval = setInterval(async () => {
       setTickVersion(v => v + 1);
+      ensureSocketListener();
 
       const now = Date.now();
       for (const sym of ALL_MANUAL_SYMBOLS) {
-        if (sym === 'R_10') continue;
-        if (subscribedNonR10.has(sym) && lastTickTime[sym] && now - lastTickTime[sym] > 8000) {
-          subscribedNonR10.delete(sym);
+        if (subscribedSymbols.has(sym) && lastTickTime[sym] && now - lastTickTime[sym] > 8000) {
+          subscribedSymbols.delete(sym);
           try {
             await api_base.api?.send({ ticks: sym, subscribe: 1 });
-            subscribedNonR10.add(sym);
+            subscribedSymbols.add(sym);
             lastTickTime[sym] = Date.now();
-          } catch {
-            // Retry on next check
+          } catch (err: any) {
+            if (err?.error?.code === 'AlreadySubscribed') {
+              subscribedSymbols.add(sym);
+              lastTickTime[sym] = Date.now();
+            }
           }
         }
       }
