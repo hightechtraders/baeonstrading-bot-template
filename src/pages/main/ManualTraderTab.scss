@@ -355,7 +355,7 @@
         }
     }
 
-    /* Spacious & Well-Organized Unified Configuration Card with Top Spacing */
+    /* Spacious & Well-Organized Unified Configuration Card with Adjusted Spacing (Doubled) */
     .manual-unified-config-card {
         background: rgba(16, 185, 129, 0.03);
         border: 1px solid rgba(16, 185, 129, 0.2);
@@ -366,12 +366,12 @@
         gap: 14px;
         width: 100%;
         box-sizing: border-box;
-        margin-top: 10px; // Creates space below the digit circles
+        margin-top: 20px; // Doubled space below the digit circles
 
         @include mobile-or-tablet-screen {
             padding: 8px 12px;
             gap: 8px;
-            margin-top: 10px; // Creates space below the digit circles on mobile
+            margin-top: 20px; // Doubled space below the digit circles on mobile
         }
 
         .config-grid-row {
@@ -638,19 +638,19 @@
         }
     }
 
-    /* Pushed-Down Purchase Buttons Action Dock filling the remaining space */
+    /* Pushed-Down Purchase Buttons Action Dock filling the remaining space (Doubled) */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr !important;
         gap: 12px !important; 
         max-width: 800px !important; 
-        margin: 18px auto 2px auto !important; // Pushes buttons down to fill the bottom area
+        margin: 36px auto 2px auto !important; // Doubled top margin to fill the bottom area
         width: 100%;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
-            margin: 18px auto 4px auto !important; // Pushes buttons down to fill the bottom area on mobile
+            margin: 36px auto 4px auto !important; // Doubled top margin to fill the bottom area on mobile
             max-width: 100% !important;
         }
     }
