@@ -236,7 +236,7 @@
         align-items: center;
         justify-content: flex-start;
         position: relative;
-        min-height: 86px; // Increased by ~20%
+        min-height: 86px; 
         padding: 2px 1px 10px 1px !important;
         background: transparent !important;
         border: none !important;
@@ -247,7 +247,7 @@
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            min-height: 58px; // Increased by ~20%
+            min-height: 58px; 
             padding: 1px 0 4px 0 !important;
         }
 
@@ -280,8 +280,8 @@
 
         .manual-gauge-circle {
             position: relative;
-            width: 46px;   // Increased by 20% (from 38px)
-            height: 46px;  // Increased by 20% (from 38px)
+            width: 46px;   
+            height: 46px;  
             border-radius: 50%;
             border: 2px solid rgba(16, 185, 129, 0.15);
             background: transparent;
@@ -290,8 +290,8 @@
             justify-content: center;
 
             @include mobile-or-tablet-screen {
-                width: 30px;  // Increased by ~20% (from 24px)
-                height: 30px; // Increased by ~20% (from 24px)
+                width: 30px;  
+                height: 30px; 
             }
 
             svg {
@@ -314,7 +314,7 @@
                 align-items: center;
                 justify-content: center;
                 pointer-events: none;
-                font-size: 10px; // Increased text to match circle size
+                font-size: 10px; 
                 font-weight: 800;
                 color: var(--text-prominent);
                 font-variant-numeric: tabular-nums;
@@ -355,7 +355,7 @@
         }
     }
 
-    /* Spacious & Well-Organized Unified Configuration Card */
+    /* Spacious & Well-Organized Unified Configuration Card with Top Spacing */
     .manual-unified-config-card {
         background: rgba(16, 185, 129, 0.03);
         border: 1px solid rgba(16, 185, 129, 0.2);
@@ -366,10 +366,12 @@
         gap: 14px;
         width: 100%;
         box-sizing: border-box;
+        margin-top: 10px; // Creates space below the digit circles
 
         @include mobile-or-tablet-screen {
             padding: 8px 12px;
             gap: 8px;
+            margin-top: 10px; // Creates space below the digit circles on mobile
         }
 
         .config-grid-row {
@@ -636,19 +638,19 @@
         }
     }
 
-    /* Pushed-Down Purchase Buttons Action Dock with Fixed Spacing */
+    /* Pushed-Down Purchase Buttons Action Dock filling the remaining space */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr !important;
         gap: 12px !important; 
         max-width: 800px !important; 
-        margin: 16px auto 2px auto !important;
+        margin: 18px auto 2px auto !important; // Pushes buttons down to fill the bottom area
         width: 100%;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
-            margin: 12px auto 2px auto !important;
+            margin: 18px auto 4px auto !important; // Pushes buttons down to fill the bottom area on mobile
             max-width: 100% !important;
         }
     }
