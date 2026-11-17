@@ -38,7 +38,7 @@ export class ScannerBridge {
 
   private static translateSymbol(rawSymbol: string): string {
     if (!rawSymbol || typeof rawSymbol !== 'string') return 'R_10';
-    return 'R_10';
+    return rawSymbol;
   }
 
   public static recordTradeOutcome(isWin: boolean) {
@@ -46,12 +46,12 @@ export class ScannerBridge {
   }
 
   public static pushTick(assetName: string, quote: number, strategies?: any[]) {
-    if (assetName && assetName !== 'R_10') return;
+    if (!assetName) return;
 
     const tickPayload: DerivTickResponse = {
       msg_type: 'tick',
       tick: {
-        symbol: 'R_10',
+        symbol: assetName,
         quote: quote,
         epoch: Date.now(),
         id: Math.random().toString()
@@ -62,10 +62,10 @@ export class ScannerBridge {
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('ai-tick-received', {
-        detail: { assetName: 'R_10', quote, strategies: updatedStrategies }
+        detail: { assetName, quote, strategies: updatedStrategies }
       }));
       window.dispatchEvent(new CustomEvent('deriv_scanner_updated', {
-        detail: { assetName: 'R_10', quote, strategies: updatedStrategies }
+        detail: { assetName, quote, strategies: updatedStrategies }
       }));
       window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
         detail: { strategies: updatedStrategies }
@@ -73,16 +73,18 @@ export class ScannerBridge {
     }
   }
 
-  public static loadStrategyToWorkspace(strategy: any, options: any) {
+  public static loadStrategyToWorkspace(strategy: any, options?: any) {
     ScannerBridge.isScannerActive = true;
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('AI_SCANNER_SESSION_ACTIVE', 'true');
     }
 
+    const rawMarket = options?.symbol || strategy?.market || strategy?.symbol || 'R_10';
+    const strictDerivSymbol = ScannerBridge.translateSymbol(rawMarket);
     const strategyDirection = options?.contractType || strategy?.direction || strategy?.tradeType || 'rise';
 
     const payload: AIScannerPayload = {
-      symbol: 'R_10',
+      symbol: strictDerivSymbol,
       stake: options?.stake || strategy?.recommendedStake || strategy?.stake || 10,
       duration: options?.duration || strategy?.duration || 5,
       tradeType: strategyDirection,
@@ -95,8 +97,6 @@ export class ScannerBridge {
     RiskManager.configure(payload.stopLoss, payload.takeProfit);
 
     const rootStore = (window as any).derivBotAppStore;
-    const strictDerivSymbol = 'R_10';
-    
     const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
     const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
     
@@ -242,7 +242,6 @@ export class ScannerBridge {
         const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
         if (typeof submitAction === 'function') {
           Promise.resolve(submitAction.call(quickStrategy, mockFormData)).then(() => {
-            // Re-apply immediately after the asynchronous form submission settles
             applyBlockMutations();
             setTimeout(applyBlockMutations, 200);
             setTimeout(applyBlockMutations, 500);
@@ -251,7 +250,6 @@ export class ScannerBridge {
       } catch (error) {}
     }
 
-    // Baseline mutation sequence to handle rendering and post-submit overwrites
     applyBlockMutations();
     setTimeout(applyBlockMutations, 100);
     setTimeout(applyBlockMutations, 300);
