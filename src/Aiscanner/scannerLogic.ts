@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: src/Aiscanner/scannerLogic.ts (Indicator-Driven Alpha Engine)
+// FILE: src/Aiscanner/scannerLogic.ts (Multi-Volatility Indicator-Driven Alpha Engine)
 // ==========================================
 import { Strategy, INITIAL_STRATEGIES } from './strategies';
 
@@ -12,41 +12,56 @@ export interface DerivTickResponse {
         id: string;
     };
 }
-    
+
 export class ScannerLogic {
+    public static readonly SCANNER_MARKETS: string[] = [
+        'R_10',
+        '1HZ10V',
+        'R_25',
+        '1HZ25V',
+        'R_50',
+        '1HZ50V',
+        'R_75',
+        '1HZ75V',
+        'R_100',
+        '1HZ100V',
+    ];
+
     private strategies: Strategy[] = INITIAL_STRATEGIES.map(s => ({
         ...s,
-        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : 'R-10 Alpha Engine',
-        market: 'R_10',
-        confidence: s.confidence || 50
+        name: s.name && s.name !== 'Connecting to Live Deriv Feed...' ? s.name : `${s.market || 'R_10'} Alpha Engine`,
+        market: s.market || s.symbol || 'R_10',
+        symbol: s.symbol || s.market || 'R_10',
+        confidence: s.confidence || 50,
+        score: s.score || s.confidence || 50,
     }));
-    
+
     private priceBuffers: { [symbol: string]: number[] } = {};
-    
-    // Entry Stabilization Tracking
+
+    // Entry Stabilization Tracking per symbol
     private consecutiveSweetSpotTicks: { [symbol: string]: number } = {};
     private readonly REQUIRED_STABILIZATION_TICKS = 3;
 
     // Sticky persistence state
     private activeSignalStrategyId: string | null = null;
-    private readonly DISENGAGE_THRESHOLD = 82; 
+    private readonly DISENGAGE_THRESHOLD = 82;
 
     // ==========================================
     // COOLDOWN & BURST RUN CAP STATE
     // ==========================================
     private consecutiveLosses: number = 0;
-    private readonly MAX_CONSECUTIVE_LOSSES = 2; 
+    private readonly MAX_CONSECUTIVE_LOSSES = 2;
     private cooldownTicksRemaining: number = 0;
-    private readonly COOLDOWN_DURATION_TICKS = 15; 
+    private readonly COOLDOWN_DURATION_TICKS = 15;
 
     private activeRunCount: number = 0;
-    private readonly MAX_BURST_RUNS = 3; 
+    private readonly MAX_BURST_RUNS = 3;
     private isBurstActive: boolean = false;
 
-    public static readonly SCANNER_MARKETS: string[] = ['R_10'];
-
     constructor() {
-        console.log("[AI Scanner]: Technical Indicator Engine (RSI, EMA, Bollinger %B) locked to Volatility 10 Index (R_10).");
+        console.log(
+            `[AI Scanner]: Technical Indicator Engine (RSI, EMA, Bollinger %B) active across ${ScannerLogic.SCANNER_MARKETS.length} Volatility Indices.`
+        );
     }
 
     public recordTradeOutcome(isWin: boolean) {
@@ -57,7 +72,7 @@ export class ScannerLogic {
 
             if (this.activeRunCount >= this.MAX_BURST_RUNS) {
                 console.log(`🎯 Burst limit reached (${this.MAX_BURST_RUNS} runs). Pausing to reassess clean trend.`);
-                this.triggerCooldown("🎯 Burst target reached: Pausing to review market stability.");
+                this.triggerCooldown('🎯 Burst target reached: Pausing to review market stability.');
             }
         } else {
             this.consecutiveLosses += 1;
@@ -76,14 +91,22 @@ export class ScannerLogic {
         this.activeRunCount = 0;
         this.isBurstActive = false;
 
-        const stopBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent?.trim() === 'Stop');
-        if (stopBtn instanceof HTMLElement) {
-            stopBtn.click();
+        if (typeof document !== 'undefined') {
+            const stopBtn = Array.from(document.querySelectorAll('button')).find(
+                b => b.textContent?.trim() === 'Stop'
+            );
+            if (stopBtn instanceof HTMLElement) {
+                stopBtn.click();
+            }
         }
 
-        window.dispatchEvent(new CustomEvent('ai-circuit-breaker-triggered', {
-            detail: { message }
-        }));
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+                new CustomEvent('ai-circuit-breaker-triggered', {
+                    detail: { message },
+                })
+            );
+        }
     }
 
     public handleIncomingMessage(dataParsed: DerivTickResponse): Strategy[] {
@@ -102,7 +125,7 @@ export class ScannerLogic {
         const k = 2 / (period + 1);
         let ema = prices[0];
         for (let i = 1; i < prices.length; i++) {
-            ema = (prices[i] * k) + (ema * (1 - k));
+            ema = prices[i] * k + ema * (1 - k);
         }
         return ema;
     }
@@ -122,10 +145,14 @@ export class ScannerLogic {
         const avgLoss = losses / period;
         if (avgLoss === 0) return 100;
         const rs = avgGain / avgLoss;
-        return 100 - (100 / (1 + rs));
+        return 100 - 100 / (1 + rs);
     }
 
-    private calculateBollingerBandsPercentB(prices: number[], period: number = 20, multiplier: number = 2): number {
+    private calculateBollingerBandsPercentB(
+        prices: number[],
+        period: number = 20,
+        multiplier: number = 2
+    ): number {
         if (prices.length < period) return 0.5;
 
         const slice = prices.slice(-period);
@@ -133,17 +160,17 @@ export class ScannerLogic {
         const variance = slice.reduce((sum, p) => sum + Math.pow(p - sma, 2), 0) / period;
         const stDev = Math.sqrt(variance);
 
-        const upperBand = sma + (multiplier * stDev);
-        const lowerBand = sma - (multiplier * stDev);
+        const upperBand = sma + multiplier * stDev;
+        const lowerBand = sma - multiplier * stDev;
         const currentPrice = prices[prices.length - 1];
 
         const range = upperBand - lowerBand;
         return range === 0 ? 0.5 : (currentPrice - lowerBand) / range;
-    } // ✅ Properly closed calculateBollingerBandsPercentB
+    }
 
     public processLiveTick(symbol: string, price: number): Strategy[] {
-        if (symbol !== 'R_10') {
-            return this.getSoldStrategiesFallback();
+        if (!ScannerLogic.SCANNER_MARKETS.includes(symbol) || Number.isNaN(price)) {
+            return this.getSortedStrategies();
         }
 
         if (this.cooldownTicksRemaining > 0) {
@@ -158,14 +185,14 @@ export class ScannerLogic {
             this.priceBuffers[symbol] = [];
         }
         this.priceBuffers[symbol].push(price);
-        
+
         if (this.priceBuffers[symbol].length > 50) {
             this.priceBuffers[symbol].shift();
         }
 
         const prices = this.priceBuffers[symbol];
 
-        // Default neutral scores if buffer is filling up
+        // Default neutral scores while buffer warms up
         let bullishScore = 50;
         let bearishScore = 50;
 
@@ -178,49 +205,56 @@ export class ScannerLogic {
             const isAboveEMA = latestPrice >= currentEMA;
 
             // Indicator weight blending
-            const rsiFactor = (currentRSI - 50) * 0.5;       // RSI deviation from 50
-            const bBandsFactor = (percentB - 0.5) * 35;      // Bollinger %B position
-            const emaBonus = isAboveEMA ? 8 : -8;            // Trend filter bonus
+            const rsiFactor = (currentRSI - 50) * 0.5;   // RSI deviation from 50
+            const bBandsFactor = (percentB - 0.5) * 35;  // Bollinger %B position
+            const emaBonus = isAboveEMA ? 8 : -8;        // Trend filter bonus
 
             const compositeScore = 50 + rsiFactor + bBandsFactor + emaBonus;
-            
+
             bullishScore = Math.min(94, Math.max(40, Math.round(compositeScore)));
             bearishScore = Math.min(94, Math.max(40, Math.round(100 - compositeScore)));
-
-            console.log(`[Indicator Engine] RSI: ${currentRSI.toFixed(1)} | %B: ${percentB.toFixed(2)} | Bullish: ${bullishScore}% | Bearish: ${bearishScore}%`);
         }
 
-        let highestCalculatedScore = 0;
-        let topStrategyId = '';
+        // Update only strategies tied to the incoming tick's symbol
+        let symbolTopScore = 0;
+        let symbolTopId = '';
 
-        this.strategies = this.strategies.map((strat) => {
+        this.strategies = this.strategies.map(strat => {
+            if (strat.market !== symbol && strat.symbol !== symbol) {
+                return strat;
+            }
+
             const score = strat.direction === 'UP' ? bullishScore : bearishScore;
             const stratId = strat.id || strat.name;
 
-            if (score > highestCalculatedScore) {
-                highestCalculatedScore = score;
-                topStrategyId = stratId;
+            if (score > symbolTopScore) {
+                symbolTopScore = score;
+                symbolTopId = stratId;
             }
 
             return {
                 ...strat,
                 confidence: score,
-                score: score
+                score: score,
             };
         });
 
-        // Stabilization & persistence logic
+        // Per-symbol stabilization tracking
         const isStrongTrend = Math.abs(bullishScore - 50) > 20;
-        if (highestCalculatedScore >= 82 && isStrongTrend) {
+        if (symbolTopScore >= 82 && isStrongTrend) {
             this.consecutiveSweetSpotTicks[symbol] = (this.consecutiveSweetSpotTicks[symbol] || 0) + 1;
         } else {
             this.consecutiveSweetSpotTicks[symbol] = 0;
         }
 
-        const hasStabilized = (this.consecutiveSweetSpotTicks[symbol] || 0) >= this.REQUIRED_STABILIZATION_TICKS;
+        const hasStabilized =
+            (this.consecutiveSweetSpotTicks[symbol] || 0) >= this.REQUIRED_STABILIZATION_TICKS;
 
+        // Maintain sticky lock if active strategy still holds >= DISENGAGE_THRESHOLD
         if (this.activeSignalStrategyId) {
-            const currentActiveStrat = this.strategies.find(s => (s.id || s.name) === this.activeSignalStrategyId);
+            const currentActiveStrat = this.strategies.find(
+                s => (s.id || s.name) === this.activeSignalStrategyId
+            );
             if (currentActiveStrat && currentActiveStrat.confidence >= this.DISENGAGE_THRESHOLD) {
                 return this.getSortedStrategies();
             } else {
@@ -228,8 +262,9 @@ export class ScannerLogic {
             }
         }
 
-        if (!this.activeSignalStrategyId && hasStabilized && topStrategyId) {
-            this.activeSignalStrategyId = topStrategyId;
+        // Lock onto a newly stabilized high-conviction strategy if none is active
+        if (!this.activeSignalStrategyId && hasStabilized && symbolTopId) {
+            this.activeSignalStrategyId = symbolTopId;
         }
 
         return this.getSortedStrategies();
@@ -246,9 +281,5 @@ export class ScannerLogic {
             }
         }
         return [...this.strategies].sort((a, b) => b.confidence - a.confidence);
-    }
-
-    private getSoldStrategiesFallback(): Strategy[] {
-        return this.getSortedStrategies();
     }
 }
