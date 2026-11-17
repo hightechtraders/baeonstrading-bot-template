@@ -136,14 +136,6 @@ export default function ManualTraderTab() {
     return localStorage.getItem('trader_manual_stake') || '1.00';
   });
 
-  const [takeProfitInput, setTakeProfitInput] = useState<string>(() => {
-    return localStorage.getItem('trader_take_profit') || '10.00';
-  });
-  const [stopLossInput, setStopLossInput] = useState<string>(() => {
-    return localStorage.getItem('trader_stop_loss') || '10.00';
-  });
-  const [sessionPnL, setSessionPnL] = useState<number>(0);
-
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [tradeFeedback, setTradeFeedback] = useState<string | null>(null);
   const [tradeToasts, setTradeToasts] = useState<TradeToast[]>([]);
@@ -212,14 +204,6 @@ export default function ManualTraderTab() {
   }, [manualStake]);
 
   useEffect(() => {
-    localStorage.setItem('trader_take_profit', takeProfitInput);
-  }, [takeProfitInput]);
-
-  useEffect(() => {
-    localStorage.setItem('trader_stop_loss', stopLossInput);
-  }, [stopLossInput]);
-
-  useEffect(() => {
     return () => {
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     };
@@ -242,8 +226,6 @@ export default function ManualTraderTab() {
             const profit = Number(poc.profit ?? 0);
             const isWin = profit > 0 || poc.status === 'won';
             const formattedPnL = `${profit >= 0 ? '+' : ''}${profit.toFixed(2)} ${meta.currency}`;
-
-            setSessionPnL(prev => Number((prev + profit).toFixed(2)));
 
             pushTradeToast(
               {
@@ -666,7 +648,7 @@ export default function ManualTraderTab() {
             </div>
           </div>
 
-          <div className="config-stake-row">
+          <div className="config-stake-row" style={{ borderBottom: 'none', paddingBottom: 0 }}>
             <div className="config-stake-info">
               <span className="config-label">Risk Capital Allocation</span>
 
@@ -694,53 +676,6 @@ export default function ManualTraderTab() {
               {stakeError && (
                 <span className="stake-error-text">⚠️ {stakeError}</span>
               )}
-            </div>
-          </div>
-
-          {/* Session P&L & Limits Strip (Auto-Execute Removed) */}
-          <div className="config-auto-execute-strip">
-            <div className="auto-execute-left">
-              <span
-                className="session-pnl-text"
-                style={{
-                  color: sessionPnL > 0 ? '#34d399' : sessionPnL < 0 ? '#fb7185' : '#94a3b8',
-                }}
-              >
-                Session P&L: {sessionPnL >= 0 ? '+' : ''}
-                {sessionPnL.toFixed(2)} {currency}
-              </span>
-              {sessionPnL !== 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSessionPnL(0)}
-                  className="pnl-reset-btn"
-                  title="Reset session P&L counter"
-                >
-                  Reset
-                </button>
-              )}
-            </div>
-
-            <div className="auto-execute-right">
-              <label className="risk-limit-label">
-                <span>TP ({currency}):</span>
-                <input
-                  type="text"
-                  value={takeProfitInput}
-                  onChange={e => setTakeProfitInput(e.target.value)}
-                  className="risk-limit-input tp-input"
-                />
-              </label>
-
-              <label className="risk-limit-label">
-                <span>SL ({currency}):</span>
-                <input
-                  type="text"
-                  value={stopLossInput}
-                  onChange={e => setStopLossInput(e.target.value)}
-                  className="risk-limit-input sl-input"
-                />
-              </label>
             </div>
           </div>
         </div>
