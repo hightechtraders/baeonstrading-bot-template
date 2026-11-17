@@ -541,8 +541,8 @@ export const FloatingAI: React.FC = () => {
                         type="button"
                         onClick={() => setSelectedMarketFilter(mkt)}
                         style={{
-                          flex: isAll ? '1 1 100%' : '0 1 calc(18% - 6px)',
-                          minWidth: isAll ? '100%' : '75px',
+                          flex: isAll ? '0 1 calc(36% - 6px)' : '0 1 calc(18% - 6px)',
+                          minWidth: isAll ? '120px' : '75px',
                           textAlign: 'center',
                           padding: '6px 10px',
                           borderRadius: '999px',
