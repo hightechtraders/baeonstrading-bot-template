@@ -7,13 +7,13 @@
     display: flex !important;
     flex-direction: column !important;
     box-sizing: border-box !important;
-    padding: 1rem 1.5rem 1rem 1.5rem !important;
+    padding: 1rem 1.5rem 1.5rem 1.5rem !important;
     background: var(--general-main-1) !important;
     overflow-y: auto !important;
     position: relative;
 
     @include mobile-or-tablet-screen {
-        padding: 4px 8px 12px 8px !important; /* Minimal bottom padding so buttons anchor right at the bottom edge */
+        padding: 6px 10px 90px 10px !important; /* Generous bottom clearance for floating AI orb and bottom nav */
         height: 100% !important;
         max-height: none !important;
         overflow-y: auto !important;
@@ -26,16 +26,17 @@
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        justify-content: space-between; /* Forces the buttons to anchor to the bottommost edge */
+        justify-content: space-between; /* Pushes top content and action buttons apart gracefully */
         flex: 1;
-        gap: 8px;
+        gap: 12px;
         box-sizing: border-box;
-        padding-bottom: 0 !important;
+        padding-bottom: 1rem;
         position: relative;
         z-index: 1;
 
         @include mobile-or-tablet-screen {
-            gap: 4px;
+            gap: 10px;
+            padding-bottom: 16px !important;
         }
     }
 
@@ -58,7 +59,7 @@
         .market-dropdown-header {
             display: flex;
             align-items: center;
-            padding: 5px 10px;
+            padding: 6px 12px;
             cursor: pointer;
             user-select: none;
 
@@ -69,24 +70,24 @@
                 width: 100%;
 
                 .market-type-icon {
-                    font-size: 0.8rem;
+                    font-size: 0.85rem;
                 }
 
                 .market-dropdown-label {
-                    font-size: 0.75rem;
+                    font-size: 0.78rem;
                     font-weight: 700;
                     color: var(--text-general);
 
                     .banner-highlight {
                         color: #10b981;
                         font-weight: 900;
-                        font-size: 0.8rem;
+                        font-size: 0.82rem;
                         margin-left: 4px;
                     }
                 }
 
                 .market-chevron {
-                    font-size: 0.9rem;
+                    font-size: 1rem;
                     font-weight: 900;
                     color: var(--text-prominent);
                     transition: transform 0.2s ease;
@@ -142,39 +143,39 @@
     .manual-status-banner {
         background: rgba(0, 168, 107, 0.08);
         border: 1px solid rgba(0, 168, 107, 0.25);
-        padding: 5px 10px;
-        border-radius: 8px;
+        padding: 6px 12px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        min-height: 32px;
+        min-height: 36px;
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            min-height: 32px;
-            padding: 3px 8px;
+            min-height: 38px;
+            padding: 5px 10px;
         }
 
         .manual-status-content {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             flex: 1;
             padding-right: 6px;
         }
 
         .manual-status-pulse {
-            width: 6px;
-            height: 6px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
             background: #00a86b;
             display: inline-block;
-            box-shadow: 0 0 6px #00a86b;
+            box-shadow: 0 0 8px #00a86b;
             flex-shrink: 0;
         }
 
         .manual-status-text {
-            font-size: 0.74rem;
+            font-size: 0.78rem;
             font-weight: 700;
             color: var(--text-prominent);
             line-height: 1.2;
@@ -184,22 +185,22 @@
             overflow: hidden;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.62rem;
+                font-size: 0.68rem;
             }
         }
 
         .manual-status-badge {
-            font-size: 0.6rem;
+            font-size: 0.65rem;
             font-weight: 800;
             color: #00a86b;
             background: rgba(0, 168, 107, 0.15);
-            padding: 2px 4px;
+            padding: 2px 5px;
             border-radius: 4px;
             white-space: nowrap;
             flex-shrink: 0;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.5rem;
+                font-size: 0.58rem;
             }
         }
     }
@@ -212,24 +213,20 @@
         box-shadow: none !important;
         width: 100%;
         box-sizing: border-box;
-        margin: 2px 0 6px 0 !important;
-
-        @include mobile-or-tablet-screen {
-            margin: 2px 0 4px 0 !important;
-        }
+        margin: 4px 0;
     }
 
     .digit-stats-grid__inner {
         display: grid;
         grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
-        gap: 6px !important;
+        gap: 8px !important;
         width: 100%;
         align-items: center;
         justify-content: center;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-            gap: 4px 3px !important; 
+            gap: 6px 4px !important; 
         }
     }
 
@@ -239,8 +236,8 @@
         align-items: center;
         justify-content: flex-start;
         position: relative;
-        min-height: 66px; 
-        padding: 2px 1px 8px 1px !important;
+        min-height: 72px; 
+        padding: 2px 1px 10px 1px !important;
         background: transparent !important;
         border: none !important;
         border-radius: 8px;
@@ -250,8 +247,8 @@
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            min-height: 46px;
-            padding: 1px 0 4px 0 !important;
+            min-height: 54px;
+            padding: 1px 0 6px 0 !important;
         }
 
         &--selected {
@@ -274,7 +271,7 @@
         width: 100%;
 
         .manual-digit-label {
-            font-size: 9.5px;
+            font-size: 10px;
             font-weight: 800;
             margin-bottom: 1px;
             color: var(--text-general);
@@ -283,8 +280,8 @@
 
         .manual-gauge-circle {
             position: relative;
-            width: 35px;
-            height: 35px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             border: 2px solid rgba(16, 185, 129, 0.15);
             background: transparent;
@@ -293,8 +290,8 @@
             justify-content: center;
 
             @include mobile-or-tablet-screen {
-                width: 24px;
-                height: 24px;
+                width: 27px;
+                height: 27px;
             }
 
             svg {
@@ -317,13 +314,13 @@
                 align-items: center;
                 justify-content: center;
                 pointer-events: none;
-                font-size: 8.5px;
+                font-size: 9px;
                 font-weight: 800;
                 color: var(--text-prominent);
                 font-variant-numeric: tabular-nums;
 
                 @include mobile-or-tablet-screen {
-                    font-size: 6.5px;
+                    font-size: 7px;
                 }
             }
         }
@@ -338,7 +335,7 @@
         flex-direction: column;
         align-items: center;
         pointer-events: none;
-        height: 7px;
+        height: 8px;
         opacity: 0;
         visibility: hidden;
         transition: opacity 0.15s ease, visibility 0.15s ease;
@@ -351,10 +348,10 @@
 
         span {
             color: #ef4444; 
-            font-size: 7.5px;
+            font-size: 8px;
             font-weight: 900;
             line-height: 1;
-            filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.6));
+            filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6));
         }
     }
 
@@ -362,30 +359,30 @@
     .manual-unified-config-card {
         background: rgba(16, 185, 129, 0.03);
         border: 1px solid rgba(16, 185, 129, 0.2);
-        border-radius: 10px;
-        padding: 8px 12px;
+        border-radius: 12px;
+        padding: 10px 14px;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 8px;
         width: 100%;
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            padding: 4px 6px;
-            gap: 3px;
+            padding: 6px 8px;
+            gap: 6px;
         }
 
         .config-grid-row {
             display: grid;
             grid-template-columns: 0.9fr 0.7fr 1.4fr;
-            gap: 8px;
-            padding-bottom: 5px;
+            gap: 10px;
+            padding-bottom: 6px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 
             @include mobile-or-tablet-screen {
                 grid-template-columns: 0.9fr 0.7fr 1.4fr;
                 gap: 4px;
-                padding-bottom: 2px;
+                padding-bottom: 4px;
             }
 
             .config-item {
@@ -395,29 +392,29 @@
                 text-align: left;
 
                 .config-label {
-                    font-size: 0.64rem;
+                    font-size: 0.68rem;
                     text-transform: uppercase;
                     color: var(--text-general);
                     font-weight: 800;
                     margin-bottom: 2px;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.42rem;
+                        font-size: 0.46rem;
                     }
                 }
 
                 .config-value {
-                    font-size: 0.88rem;
+                    font-size: 0.92rem;
                     font-weight: 900;
                     color: var(--text-prominent);
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.6rem;
+                        font-size: 0.65rem;
                     }
 
                     &.highlight-digit {
                         color: #34d399;
-                        font-size: 0.98rem;
+                        font-size: 1.02rem;
                     }
                 }
 
@@ -445,13 +442,13 @@
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        font-size: 0.9rem;
+                        font-size: 0.95rem;
                         padding: 0 1px;
                         transition: opacity 0.2s ease, transform 0.1s ease;
                         flex-shrink: 0;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.65rem;
+                            font-size: 0.72rem;
                         }
 
                         &:hover {
@@ -466,12 +463,12 @@
 
                     .config-value {
                         white-space: nowrap;
-                        font-size: 0.88rem;
+                        font-size: 0.92rem;
                         background: transparent !important;
                         border: none !important;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.6rem;
+                            font-size: 0.65rem;
                         }
                     }
                 }
@@ -490,13 +487,13 @@
                 gap: 2px;
 
                 .config-label {
-                    font-size: 0.64rem;
+                    font-size: 0.68rem;
                     text-transform: uppercase;
                     color: var(--text-general);
                     font-weight: 800;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.42rem;
+                        font-size: 0.48rem;
                     }
                 }
 
@@ -506,34 +503,34 @@
                     background: var(--general-main-1);
                     border: 1px solid rgba(16, 185, 129, 0.3);
                     border-radius: 8px;
-                    padding: 3px 8px;
+                    padding: 4px 10px;
                     box-sizing: border-box;
 
                     @include mobile-or-tablet-screen {
-                        padding: 2px 5px;
+                        padding: 3px 6px;
                     }
 
                     .manual-trader-input {
                         background: transparent;
                         color: var(--text-prominent);
                         font-weight: 900;
-                        font-size: 0.9rem;
+                        font-size: 0.95rem;
                         border: none;
                         outline: none;
                         width: 100%;
                         font-variant-numeric: tabular-nums;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.72rem;
+                            font-size: 0.78rem;
                         }
                     }
 
                     .currency-tag {
-                        font-size: 0.58rem;
+                        font-size: 0.62rem;
                         font-weight: 900;
                         color: #10b981;
                         background: rgba(16, 185, 129, 0.12);
-                        padding: 2px 4px;
+                        padding: 2px 5px;
                         border-radius: 6px;
                     }
                 }
@@ -541,19 +538,19 @@
         }
     }
 
-    /* Restored Larger Purchase Buttons Pinned to the Bottommost Edge */
+    /* Pushed-Down Purchase Buttons Action Dock with Breathing Space */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr !important;
-        gap: 10px !important; 
+        gap: 12px !important; 
         max-width: 800px !important; 
-        margin: 8px auto 0 auto !important; 
+        margin: 10px auto 2px auto !important; /* Added top breathing margin */
         width: 100%;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
-            margin: 6px auto 0 auto !important;
+            margin: 8px auto 2px auto !important;
             max-width: 100% !important;
         }
     }
@@ -561,7 +558,7 @@
     .manual-trader-btn {
         border: none;
         padding: 11px 14px;
-        border-radius: 10px;
+        border-radius: 12px;
         color: #fff;
         font-weight: 900;
         cursor: pointer;
@@ -572,12 +569,12 @@
         transition: all 0.2s ease;
 
         @include mobile-or-tablet-screen {
-            padding: 10px 8px !important; /* Restores height and presence on mobile */
+            padding: 13px 10px !important; /* Increased button size/height on mobile */
         }
 
         &--over {
             background: #059669;
-            box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
+            box-shadow: 0 4px 16px rgba(5, 150, 105, 0.35);
 
             &:hover {
                 background: #047857;
@@ -586,7 +583,7 @@
 
         &--under {
             background: #e11d48;
-            box-shadow: 0 4px 14px rgba(225, 29, 72, 0.35);
+            box-shadow: 0 4px 16px rgba(225, 29, 72, 0.35);
 
             &:hover {
                 background: #be123c;
@@ -599,30 +596,30 @@
             opacity: 0.9;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.44rem !important;
+                font-size: 0.48rem !important; /* Slightly increased label text */
             }
         }
 
         .manual-trader-btn-main {
             font-size: 0.9rem;
             font-weight: 900;
-            margin-top: 1px;
+            margin-top: 2px;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.72rem !important;
+                font-size: 0.75rem !important; /* Slightly increased main text */
             }
         }
 
         .manual-trader-btn-payout {
-            margin-top: 1px;
+            margin-top: 2px;
             font-size: 0.55rem;
             font-weight: 700;
             background: rgba(0, 0, 0, 0.25);
-            padding: 1px 4px;
+            padding: 2px 5px;
             border-radius: 4px;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.4rem !important;
+                font-size: 0.42rem !important; /* Slightly increased payout tag text */
                 padding: 1px 4px;
             }
         }
