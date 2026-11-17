@@ -136,9 +136,6 @@ export default function ManualTraderTab() {
     return localStorage.getItem('trader_manual_stake') || '1.00';
   });
 
-  const [isAutoExecute, setIsAutoExecute] = useState<boolean>(() => {
-    return localStorage.getItem('trader_auto_execute') === 'true';
-  });
   const [takeProfitInput, setTakeProfitInput] = useState<string>(() => {
     return localStorage.getItem('trader_take_profit') || '10.00';
   });
@@ -146,7 +143,6 @@ export default function ManualTraderTab() {
     return localStorage.getItem('trader_stop_loss') || '10.00';
   });
   const [sessionPnL, setSessionPnL] = useState<number>(0);
-  const [openContractCount, setOpenContractCount] = useState<number>(0);
 
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [tradeFeedback, setTradeFeedback] = useState<string | null>(null);
@@ -158,7 +154,6 @@ export default function ManualTraderTab() {
   const trackedContractsRef = useRef<
     Record<number, { side: string; marketName: string; stake: number; currency: string }>
   >({});
-  const lastAutoSignalKeyRef = useRef<string | null>(null);
 
   const pushTradeToast = useCallback((toast: Omit<TradeToast, 'id'>, durationMs = 5500) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -217,13 +212,6 @@ export default function ManualTraderTab() {
   }, [manualStake]);
 
   useEffect(() => {
-    localStorage.setItem('trader_auto_execute', String(isAutoExecute));
-    if (!isAutoExecute) {
-      lastAutoSignalKeyRef.current = null;
-    }
-  }, [isAutoExecute]);
-
-  useEffect(() => {
     localStorage.setItem('trader_take_profit', takeProfitInput);
   }, [takeProfitInput]);
 
@@ -250,41 +238,12 @@ export default function ManualTraderTab() {
 
           if (meta && (poc.is_sold === 1 || poc.status === 'won' || poc.status === 'lost')) {
             delete trackedContractsRef.current[contractId];
-            setOpenContractCount(Object.keys(trackedContractsRef.current).length);
 
             const profit = Number(poc.profit ?? 0);
             const isWin = profit > 0 || poc.status === 'won';
             const formattedPnL = `${profit >= 0 ? '+' : ''}${profit.toFixed(2)} ${meta.currency}`;
 
-            setSessionPnL(prev => {
-              const updated = Number((prev + profit).toFixed(2));
-              const tp = parseFloat(takeProfitInput);
-              const sl = parseFloat(stopLossInput);
-
-              if (!Number.isNaN(tp) && tp > 0 && updated >= tp) {
-                setIsAutoExecute(false);
-                pushTradeToast(
-                  {
-                    type: 'won',
-                    title: 'Auto-Execution Stopped: Take Profit Hit',
-                    subtitle: `Session P&L: +${updated.toFixed(2)} ${meta.currency}`,
-                  },
-                  7000
-                );
-              } else if (!Number.isNaN(sl) && sl > 0 && updated <= -Math.abs(sl)) {
-                setIsAutoExecute(false);
-                pushTradeToast(
-                  {
-                    type: 'lost',
-                    title: 'Auto-Execution Stopped: Stop Loss Hit',
-                    subtitle: `Session P&L: ${updated.toFixed(2)} ${meta.currency}`,
-                  },
-                  7000
-                );
-              }
-
-              return updated;
-            });
+            setSessionPnL(prev => Number((prev + profit).toFixed(2)));
 
             pushTradeToast(
               {
@@ -322,7 +281,7 @@ export default function ManualTraderTab() {
       clearInterval(attach);
       if (socket) socket.removeEventListener('message', onContractMessage);
     };
-  }, [pushTradeToast, showTransientFeedback, stopLossInput, takeProfitInput]);
+  }, [pushTradeToast, showTransientFeedback]);
 
   const {
     digitStats,
@@ -342,7 +301,7 @@ export default function ManualTraderTab() {
   );
 
   const executeManualOrder = useCallback(
-    async (direction: 'DIGITOVER' | 'DIGITUNDER', isAutoTriggered = false) => {
+    async (direction: 'DIGITOVER' | 'DIGITUNDER') => {
       if (isExecuting || !isStakeValid) return;
       if (direction === 'DIGITOVER' && !canBuyOver) return;
       if (direction === 'DIGITUNDER' && !canBuyUnder) return;
@@ -351,7 +310,6 @@ export default function ManualTraderTab() {
       const currency = api_base?.account_info?.currency || 'USD';
       const label = direction === 'DIGITOVER' ? 'OVER' : 'UNDER';
       const sideTitle = direction === 'DIGITOVER' ? 'Over' : 'Under';
-      const modeTag = isAutoTriggered ? '[AUTO] ' : '';
 
       const matchedMarket =
         markets.find(m => m.code === symbolCode) ||
@@ -361,12 +319,11 @@ export default function ManualTraderTab() {
 
       if (!api_base?.api) {
         showTransientFeedback('Execution Error: Deriv WebSocket not connected.');
-        if (isAutoTriggered) setIsAutoExecute(false);
         return;
       }
 
       setIsExecuting(true);
-      setTradeFeedback(`${modeTag}Pricing ${label} ${targetDigit} on ${activeMarketCode}...`);
+      setTradeFeedback(`Pricing ${label} ${targetDigit} on ${activeMarketCode}...`);
 
       try {
         const proposalRes = await api_base.api.send({
@@ -393,7 +350,7 @@ export default function ManualTraderTab() {
           return;
         }
 
-        setTradeFeedback(`${modeTag}Executing ${label} ${targetDigit} on ${activeMarketCode}...`);
+        setTradeFeedback(`Executing ${label} ${targetDigit} on ${activeMarketCode}...`);
         const buyRes = await api_base.api.send({
           buy: proposalId,
           price: stakeAmount,
@@ -408,14 +365,14 @@ export default function ManualTraderTab() {
           pushTradeToast(
             {
               type: 'opened',
-              title: `${modeTag}Trade opened: ${sideTitle} on ${activeMarketName}`,
+              title: `Trade opened: ${sideTitle} on ${activeMarketName}`,
               subtitle: `Stake: ${stakeAmount.toFixed(2)} ${currency}`,
             },
             4000
           );
 
           showTransientFeedback(
-            `${modeTag}Trade opened: ${sideTitle} ${targetDigit} on ${activeMarketName} | Stake: ${stakeAmount.toFixed(2)} ${currency}`
+            `Trade opened: ${sideTitle} ${targetDigit} on ${activeMarketName} | Stake: ${stakeAmount.toFixed(2)} ${currency}`
           );
 
           trackedContractsRef.current[contractId] = {
@@ -424,7 +381,6 @@ export default function ManualTraderTab() {
             stake: stakeAmount,
             currency,
           };
-          setOpenContractCount(Object.keys(trackedContractsRef.current).length);
 
           api_base.api
             .send({
@@ -434,7 +390,7 @@ export default function ManualTraderTab() {
             })
             .catch(() => {});
         } else {
-          showTransientFeedback(`${modeTag}Order sent for ${label} ${targetDigit} on ${activeMarketCode}.`);
+          showTransientFeedback(`Order sent for ${label} ${targetDigit} on ${activeMarketCode}.`);
         }
       } catch (err: any) {
         const msg = err?.error?.message || err?.message || 'Order execution failed.';
@@ -459,52 +415,11 @@ export default function ManualTraderTab() {
     ]
   );
 
-  useEffect(() => {
-    if (!isAutoExecute) return;
-
-    if (!signal.isReady || !signal.recommendedSide) {
-      lastAutoSignalKeyRef.current = null;
-      return;
-    }
-
-    if (isExecuting || openContractCount > 0 || !isStakeValid) return;
-
-    const direction: 'DIGITOVER' | 'DIGITUNDER' | null =
-      signal.recommendedSide === 'OVER' && canBuyOver
-        ? 'DIGITOVER'
-        : signal.recommendedSide === 'UNDER' && canBuyUnder
-        ? 'DIGITUNDER'
-        : null;
-
-    if (!direction) return;
-
-    const signalKey = `${symbolCode}|${strategyPreset}|${targetDigit}|${direction}|${signal.headline}`;
-    if (lastAutoSignalKeyRef.current === signalKey) return;
-
-    lastAutoSignalKeyRef.current = signalKey;
-    executeManualOrder(direction, true);
-  }, [
-    canBuyOver,
-    canBuyUnder,
-    executeManualOrder,
-    isAutoExecute,
-    isExecuting,
-    isStakeValid,
-    openContractCount,
-    signal.headline,
-    signal.isReady,
-    signal.recommendedSide,
-    strategyPreset,
-    symbolCode,
-    targetDigit,
-  ]);
-
   const handleSelectBlueprint = (option: { id: StrategyPreset; label: string; defaultDigit: number }) => {
     setStrategyPreset(option.id);
     setTargetDigit(option.defaultDigit);
     setContractDuration(1);
     setIsBlueprintDropdownOpen(false);
-    lastAutoSignalKeyRef.current = null;
   };
 
   const activeBlueprint =
@@ -595,7 +510,6 @@ export default function ManualTraderTab() {
                     setSelectedSymbol(m.name);
                     setSymbolCode(m.code);
                     setIsMarketDropdownOpen(false);
-                    lastAutoSignalKeyRef.current = null;
                   }}
                 >
                   {m.name}
@@ -640,7 +554,7 @@ export default function ManualTraderTab() {
                 tradeFeedback?.includes('Rejected') ||
                 tradeFeedback?.includes(':-')
                   ? { background: '#fb7185', boxShadow: '0 0 10px #fb7185' }
-                  : signal.isReady || tradeFeedback || isAutoExecute
+                  : signal.isReady || tradeFeedback
                   ? { background: '#34d399', boxShadow: '0 0 10px #34d399' }
                   : undefined
               }
@@ -648,15 +562,7 @@ export default function ManualTraderTab() {
             <span className="manual-status-text">AI Engine: {tradeFeedback || signal.headline}</span>
           </div>
           <span className="manual-status-badge">
-            {isExecuting
-              ? 'EXECUTING...'
-              : isAutoExecute
-              ? signal.isReady
-                ? 'AUTO: FIRING'
-                : 'AUTO: ARMED'
-              : signal.isReady
-              ? 'SIGNAL READY'
-              : 'LIVE FEED'}
+            {isExecuting ? 'EXECUTING...' : signal.isReady ? 'SIGNAL READY' : 'LIVE FEED'}
           </span>
         </div>
 
@@ -791,18 +697,9 @@ export default function ManualTraderTab() {
             </div>
           </div>
 
+          {/* Session P&L & Limits Strip (Auto-Execute Removed) */}
           <div className="config-auto-execute-strip">
             <div className="auto-execute-left">
-              <button
-                type="button"
-                onClick={() => setIsAutoExecute(prev => !prev)}
-                disabled={!isStakeValid && !isAutoExecute}
-                className={`auto-execute-btn ${isAutoExecute ? 'active' : ''}`}
-              >
-                <span className="auto-execute-dot" />
-                {isAutoExecute ? 'AUTO-EXECUTE: ON' : 'AUTO-EXECUTE: OFF'}
-              </button>
-
               <span
                 className="session-pnl-text"
                 style={{
@@ -851,7 +748,7 @@ export default function ManualTraderTab() {
         <div className="manual-trader-buttons-grid">
           <button
             disabled={isOverDisabled}
-            onClick={() => executeManualOrder('DIGITOVER', false)}
+            onClick={() => executeManualOrder('DIGITOVER')}
             style={
               isOverDisabled
                 ? {
@@ -876,7 +773,7 @@ export default function ManualTraderTab() {
 
           <button
             disabled={isUnderDisabled}
-            onClick={() => executeManualOrder('DIGITUNDER', false)}
+            onClick={() => executeManualOrder('DIGITUNDER')}
             style={
               isUnderDisabled
                 ? {
