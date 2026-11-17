@@ -208,6 +208,49 @@
   font-weight: 500;
 }
 
+/* 🎛️ Sleek Volatility Selector Pills Grid */
+.volatility-pills-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+  justify-content: center;
+}
+
+.volatility-pill {
+  flex: 0 1 calc(18% - 6px);
+  min-width: 75px;
+  text-align: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: #cbd5e1;
+  transition: all 0.2s ease;
+}
+
+.volatility-pill.all-volatilities {
+  flex: 0 1 calc(36% - 6px);
+  min-width: 120px;
+}
+
+.volatility-pill:hover {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.1);
+  color: #ffffff;
+}
+
+.volatility-pill.active {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+}
+
 .scanner-loading-state {
   text-align: center;
   padding: 35px 16px;
