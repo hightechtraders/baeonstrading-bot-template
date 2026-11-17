@@ -526,30 +526,30 @@ export const FloatingAI: React.FC = () => {
                 <div
                   style={{
                     display: 'flex',
-                    flexWrap: 'nowrap',
-                    overflowX: 'auto',
+                    flexWrap: 'wrap',
                     gap: '6px',
                     marginBottom: '12px',
-                    paddingBottom: '4px',
-                    scrollbarWidth: 'none',
+                    justifyContent: 'center',
                   }}
                 >
                   {['ALL', ...availableMarkets].map(mkt => {
                     const active = selectedMarketFilter === mkt;
+                    const isAll = mkt === 'ALL';
                     return (
                       <button
                         key={mkt}
                         type="button"
                         onClick={() => setSelectedMarketFilter(mkt)}
                         style={{
-                          flex: '0 0 auto',
-                          minWidth: mkt === 'ALL' ? '110px' : '78px',
+                          flex: isAll ? '1 1 100%' : '0 1 calc(18% - 6px)',
+                          minWidth: isAll ? '100%' : '75px',
                           textAlign: 'center',
                           padding: '6px 10px',
                           borderRadius: '999px',
                           fontSize: '0.72rem',
                           fontWeight: 700,
                           cursor: 'pointer',
+                          boxSizing: 'border-box',
                           border: active
                             ? '1px solid #10b981'
                             : '1px solid rgba(255, 255, 255, 0.14)',
@@ -560,7 +560,7 @@ export const FloatingAI: React.FC = () => {
                           transition: 'background 0.2s ease, border-color 0.2s ease',
                         }}
                       >
-                        {mkt === 'ALL' ? 'All Volatilities' : mkt}
+                        {isAll ? 'All Volatilities' : mkt}
                       </button>
                     );
                   })}
