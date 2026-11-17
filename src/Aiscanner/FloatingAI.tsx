@@ -38,6 +38,7 @@ export const FloatingAI: React.FC = () => {
   const isOpenRef = useRef<boolean>(false);
   const isScanningPhaseRef = useRef<boolean>(true);
   const sweetSpotStreakRef = useRef<number>(0);
+  const selectedMarketFilterRef = useRef<string>('ALL');
 
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -46,6 +47,18 @@ export const FloatingAI: React.FC = () => {
   useEffect(() => {
     isScanningPhaseRef.current = isScanningPhase;
   }, [isScanningPhase]);
+
+  useEffect(() => {
+    selectedMarketFilterRef.current = selectedMarketFilter;
+    sweetSpotStreakRef.current = 0;
+    setIsSignalLocked(false);
+    setIsSweetSpot(false);
+    setSignalBannerText(
+      selectedMarketFilter === 'ALL'
+        ? '✅ Multi-Volatility Alpha Scan Active'
+        : `✅ ${selectedMarketFilter} Dedicated Scan Active`
+    );
+  }, [selectedMarketFilter]);
 
   // Initialize position on mount
   useEffect(() => {
@@ -193,36 +206,54 @@ export const FloatingAI: React.FC = () => {
   useEffect(() => {
     const handleStrategiesUpdated = (e: CustomEvent) => {
       const updated = e.detail?.strategies || e.detail?.updatedStrategies;
-      if (Array.isArray(updated) && updated.length > 0) {
-        setStrategies(updated);
+      if (!Array.isArray(updated) || updated.length === 0) return;
 
-        if (isOpenRef.current && !isScanningPhaseRef.current && !isSignalLocked) {
-          const sorted = [...updated].sort((a, b) => b.confidence - a.confidence);
-          const topStrat = sorted[0];
-          const isHighConviction =
-            topStrat && topStrat.confidence >= 78 && topStrat.confidence <= 96;
+      setStrategies(updated);
 
-          if (isHighConviction) {
-            sweetSpotStreakRef.current += 1;
-            if (sweetSpotStreakRef.current >= 2) {
-              const marketLabel = topStrat.market ? ` (${topStrat.market})` : '';
-              setSignalBannerText(
-                `🎯 HIGH MOMENTUM: ${topStrat.name}${marketLabel} at ${topStrat.confidence}%! Ready to Load & Run.`
+      if (isOpenRef.current && !isScanningPhaseRef.current && !isSignalLocked) {
+        const activeFilter = selectedMarketFilterRef.current;
+        const scopedStrategies =
+          activeFilter === 'ALL'
+            ? updated
+            : updated.filter(
+                (s: Strategy) => s.market === activeFilter || s.symbol === activeFilter
               );
-              setIsSweetSpot(true);
-            }
-          } else {
-            sweetSpotStreakRef.current = 0;
-            const activeLeader = topStrat?.market ? ` | Leader: ${topStrat.market}` : '';
-            setSignalBannerText(`✅ Multi-Volatility Alpha Scan Active${activeLeader}`);
-            setIsSweetSpot(false);
+
+        if (scopedStrategies.length === 0) return;
+
+        const sorted = [...scopedStrategies].sort((a, b) => b.confidence - a.confidence);
+        const topStrat = sorted[0];
+        const isHighConviction =
+          topStrat && topStrat.confidence >= 78 && topStrat.confidence <= 96;
+
+        if (isHighConviction) {
+          sweetSpotStreakRef.current += 1;
+          if (sweetSpotStreakRef.current >= 2) {
+            const marketLabel = topStrat.market ? ` (${topStrat.market})` : '';
+            setSignalBannerText(
+              `🎯 HIGH MOMENTUM: ${topStrat.name}${marketLabel} at ${topStrat.confidence}%! Ready to Load & Run.`
+            );
+            setIsSweetSpot(true);
           }
+        } else {
+          sweetSpotStreakRef.current = 0;
+          const scopeLabel =
+            activeFilter === 'ALL'
+              ? `Multi-Volatility Alpha Scan Active${topStrat?.market ? ` | Leader: ${topStrat.market}` : ''}`
+              : `${activeFilter} Dedicated Scan Active`;
+          setSignalBannerText(`✅ ${scopeLabel}`);
+          setIsSweetSpot(false);
         }
       }
     };
 
     const handleSignalLock = (e: CustomEvent) => {
       if (isOpenRef.current && !isScanningPhaseRef.current) {
+        const lockedMarket = e.detail?.market || e.detail?.symbol;
+        const activeFilter = selectedMarketFilterRef.current;
+        if (activeFilter !== 'ALL' && lockedMarket && lockedMarket !== activeFilter) {
+          return;
+        }
         setSignalBannerText(e.detail?.message || '🎯 HIGH CONFIDENCE LOCKED: Ready to Execute');
         setIsSignalLocked(true);
         setIsSweetSpot(false);
@@ -248,11 +279,20 @@ export const FloatingAI: React.FC = () => {
       setIsSweetSpot(false);
       setIsScanningPhase(true);
       sweetSpotStreakRef.current = 0;
-      setSignalBannerText('🔍 Calibrating Multi-Volatility Alpha Ticks...');
+      const activeFilter = selectedMarketFilterRef.current;
+      setSignalBannerText(
+        activeFilter === 'ALL'
+          ? '🔍 Calibrating Multi-Volatility Alpha Ticks...'
+          : `🔍 Calibrating ${activeFilter} Alpha Ticks...`
+      );
 
       const timer = setTimeout(() => {
         setIsScanningPhase(false);
-        setSignalBannerText('✅ Multi-Volatility Alpha Scan Active');
+        setSignalBannerText(
+          selectedMarketFilterRef.current === 'ALL'
+            ? '✅ Multi-Volatility Alpha Scan Active'
+            : `✅ ${selectedMarketFilterRef.current} Dedicated Scan Active`
+        );
       }, 1500);
 
       return () => clearTimeout(timer);
@@ -266,7 +306,9 @@ export const FloatingAI: React.FC = () => {
   const filteredStrategies =
     selectedMarketFilter === 'ALL'
       ? strategies
-      : strategies.filter(s => s.market === selectedMarketFilter);
+      : strategies.filter(
+          s => s.market === selectedMarketFilter || s.symbol === selectedMarketFilter
+        );
 
   const sortedStrategies = [...filteredStrategies].sort((a, b) => b.confidence - a.confidence);
 
@@ -430,7 +472,11 @@ export const FloatingAI: React.FC = () => {
         <div className="ai-modal-backdrop" onClick={() => setIsOpen(false)}>
           <div className="ai-modal-content" onClick={e => e.stopPropagation()}>
             <div className="ai-modal-header">
-              <h2>Multi-Volatility Alpha Engine</h2>
+              <h2>
+                {selectedMarketFilter === 'ALL'
+                  ? 'Multi-Volatility Alpha Engine'
+                  : `${selectedMarketFilter} Alpha Engine`}
+              </h2>
               <button className="close-btn" onClick={() => setIsOpen(false)}>
                 ×
               </button>
@@ -450,16 +496,21 @@ export const FloatingAI: React.FC = () => {
             {isScanningPhase ? (
               <div className="scanner-loading-state">
                 <div className="spinner-animation">🛰️</div>
-                <p className="loading-title">Syncing with all Volatility Index feeds...</p>
+                <p className="loading-title">
+                  {selectedMarketFilter === 'ALL'
+                    ? 'Syncing with all Volatility Index feeds...'
+                    : `Syncing with ${selectedMarketFilter} feed...`}
+                </p>
                 <p className="loading-sub">
-                  Calculating live Bullish/Bearish quant alpha across all synthetic indices.
+                  Calculating live Bullish/Bearish quant alpha across active synthetic indices.
                 </p>
               </div>
             ) : (
               <>
                 <p className="scanner-instruction">
-                  Live directional alpha strategies ranked across all active Volatility indices.
-                  Click to load and execute.
+                  {selectedMarketFilter === 'ALL'
+                    ? 'Live directional alpha strategies ranked across all active Volatility indices. Click to load and execute.'
+                    : `Dedicated directional alpha strategies locked to ${selectedMarketFilter}. Click to load and execute.`}
                 </p>
 
                 {availableMarkets.length > 1 && (
