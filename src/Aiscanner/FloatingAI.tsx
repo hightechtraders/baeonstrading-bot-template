@@ -526,9 +526,12 @@ export const FloatingAI: React.FC = () => {
                 <div
                   style={{
                     display: 'flex',
-                    flexWrap: 'wrap',
+                    flexWrap: 'nowrap',
+                    overflowX: 'auto',
                     gap: '6px',
                     marginBottom: '12px',
+                    paddingBottom: '4px',
+                    scrollbarWidth: 'none',
                   }}
                 >
                   {['ALL', ...availableMarkets].map(mkt => {
@@ -539,7 +542,10 @@ export const FloatingAI: React.FC = () => {
                         type="button"
                         onClick={() => setSelectedMarketFilter(mkt)}
                         style={{
-                          padding: '4px 10px',
+                          flex: '0 0 auto',
+                          minWidth: mkt === 'ALL' ? '110px' : '78px',
+                          textAlign: 'center',
+                          padding: '6px 10px',
                           borderRadius: '999px',
                           fontSize: '0.72rem',
                           fontWeight: 700,
@@ -551,6 +557,7 @@ export const FloatingAI: React.FC = () => {
                             ? 'rgba(16, 185, 129, 0.22)'
                             : 'rgba(255, 255, 255, 0.04)',
                           color: active ? '#34d399' : '#cbd5e1',
+                          transition: 'background 0.2s ease, border-color 0.2s ease',
                         }}
                       >
                         {mkt === 'ALL' ? 'All Volatilities' : mkt}
