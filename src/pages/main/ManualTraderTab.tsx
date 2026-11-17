@@ -1,7 +1,7 @@
 // ==========================================
 // FILE: src/pages/main/ManualTraderTab.tsx
 // ==========================================
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api_base } from '@/external/bot-skeleton/services/api/api-base';
 import { useManualMultiStream, StrategyPreset } from '../../hooks/useManualMultiStream';
 import './ManualTraderTab.scss';
@@ -137,6 +137,19 @@ export default function ManualTraderTab() {
     return localStorage.getItem('trader_manual_stake') || '1.00';
   });
 
+  // Auto-execution & session risk controls
+  const [isAutoExecute, setIsAutoExecute] = useState<boolean>(() => {
+    return localStorage.getItem('trader_auto_execute') === 'true';
+  });
+  const [takeProfitInput, setTakeProfitInput] = useState<string>(() => {
+    return localStorage.getItem('trader_take_profit') || '10.00';
+  });
+  const [stopLossInput, setStopLossInput] = useState<string>(() => {
+    return localStorage.getItem('trader_stop_loss') || '10.00';
+  });
+  const [sessionPnL, setSessionPnL] = useState<number>(0);
+  const [openContractCount, setOpenContractCount] = useState<number>(0);
+
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [tradeFeedback, setTradeFeedback] = useState<string | null>(null);
   const [tradeToasts, setTradeToasts] = useState<TradeToast[]>([]);
@@ -147,14 +160,23 @@ export default function ManualTraderTab() {
   const trackedContractsRef = useRef<
     Record<number, { side: string; marketName: string; stake: number; currency: string }>
   >({});
+  const lastAutoSignalKeyRef = useRef<string | null>(null);
 
-  const pushTradeToast = (toast: Omit<TradeToast, 'id'>, durationMs = 5500) => {
+  const pushTradeToast = useCallback((toast: Omit<TradeToast, 'id'>, durationMs = 5500) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     setTradeToasts(prev => [...prev.slice(-2), { ...toast, id }]);
     setTimeout(() => {
       setTradeToasts(prev => prev.filter(t => t.id !== id));
     }, durationMs);
-  };
+  }, []);
+
+  const showTransientFeedback = useCallback((message: string, durationMs = 5000) => {
+    setTradeFeedback(message);
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    feedbackTimerRef.current = setTimeout(() => {
+      setTradeFeedback(null);
+    }, durationMs);
+  }, []);
 
   // Close open dropdowns when clicking or tapping anywhere outside them
   useEffect(() => {
@@ -199,12 +221,27 @@ export default function ManualTraderTab() {
   }, [manualStake]);
 
   useEffect(() => {
+    localStorage.setItem('trader_auto_execute', String(isAutoExecute));
+    if (!isAutoExecute) {
+      lastAutoSignalKeyRef.current = null;
+    }
+  }, [isAutoExecute]);
+
+  useEffect(() => {
+    localStorage.setItem('trader_take_profit', takeProfitInput);
+  }, [takeProfitInput]);
+
+  useEffect(() => {
+    localStorage.setItem('trader_stop_loss', stopLossInput);
+  }, [stopLossInput]);
+
+  useEffect(() => {
     return () => {
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     };
   }, []);
 
-  // Listen for Deriv contract settlement (proposal_open_contract) for live Win/Loss notifications
+  // Listen for Deriv contract settlement (proposal_open_contract) for live Win/Loss notifications & P&L limits
   useEffect(() => {
     let socket: WebSocket | null = null;
 
@@ -218,10 +255,41 @@ export default function ManualTraderTab() {
 
           if (meta && (poc.is_sold === 1 || poc.status === 'won' || poc.status === 'lost')) {
             delete trackedContractsRef.current[contractId];
+            setOpenContractCount(Object.keys(trackedContractsRef.current).length);
 
             const profit = Number(poc.profit ?? 0);
             const isWin = profit > 0 || poc.status === 'won';
             const formattedPnL = `${profit >= 0 ? '+' : ''}${profit.toFixed(2)} ${meta.currency}`;
+
+            setSessionPnL(prev => {
+              const updated = Number((prev + profit).toFixed(2));
+              const tp = parseFloat(takeProfitInput);
+              const sl = parseFloat(stopLossInput);
+
+              if (!Number.isNaN(tp) && tp > 0 && updated >= tp) {
+                setIsAutoExecute(false);
+                pushTradeToast(
+                  {
+                    type: 'won',
+                    title: 'Auto-Execution Stopped: Take Profit Hit',
+                    subtitle: `Session P&L: +${updated.toFixed(2)} ${meta.currency}`,
+                  },
+                  7000
+                );
+              } else if (!Number.isNaN(sl) && sl > 0 && updated <= -Math.abs(sl)) {
+                setIsAutoExecute(false);
+                pushTradeToast(
+                  {
+                    type: 'lost',
+                    title: 'Auto-Execution Stopped: Stop Loss Hit',
+                    subtitle: `Session P&L: ${updated.toFixed(2)} ${meta.currency}`,
+                  },
+                  7000
+                );
+              }
+
+              return updated;
+            });
 
             pushTradeToast(
               {
@@ -259,7 +327,7 @@ export default function ManualTraderTab() {
       clearInterval(attach);
       if (socket) socket.removeEventListener('message', onContractMessage);
     };
-  }, []);
+  }, [pushTradeToast, showTransientFeedback, stopLossInput, takeProfitInput]);
 
   // Connect to real multi-volatility 1,000-tick stream & strategy engine
   const {
@@ -279,125 +347,177 @@ export default function ManualTraderTab() {
     strategyPreset
   );
 
-  const showTransientFeedback = (message: string, durationMs = 5000) => {
-    setTradeFeedback(message);
-    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
-    feedbackTimerRef.current = setTimeout(() => {
-      setTradeFeedback(null);
-    }, durationMs);
-  };
-
   // Verified 2-Step Proposal -> Buy Execution with live contract result subscription
-  const executeManualOrder = async (direction: 'DIGITOVER' | 'DIGITUNDER') => {
-    if (isExecuting || !isStakeValid) return;
-    if (direction === 'DIGITOVER' && !canBuyOver) return;
-    if (direction === 'DIGITUNDER' && !canBuyUnder) return;
+  const executeManualOrder = useCallback(
+    async (direction: 'DIGITOVER' | 'DIGITUNDER', isAutoTriggered = false) => {
+      if (isExecuting || !isStakeValid) return;
+      if (direction === 'DIGITOVER' && !canBuyOver) return;
+      if (direction === 'DIGITUNDER' && !canBuyUnder) return;
 
-    const stakeAmount = Number(Number(manualStake).toFixed(2));
-    const currency = api_base?.account_info?.currency || 'USD';
-    const label = direction === 'DIGITOVER' ? 'OVER' : 'UNDER';
-    const sideTitle = direction === 'DIGITOVER' ? 'Over' : 'Under';
+      const stakeAmount = Number(Number(manualStake).toFixed(2));
+      const currency = api_base?.account_info?.currency || 'USD';
+      const label = direction === 'DIGITOVER' ? 'OVER' : 'UNDER';
+      const sideTitle = direction === 'DIGITOVER' ? 'Over' : 'Under';
+      const modeTag = isAutoTriggered ? '[AUTO] ' : '';
 
-    // Validate against symbolCode first, then selectedSymbol name
-    const matchedMarket =
-      markets.find(m => m.code === symbolCode) ||
-      markets.find(m => m.name === selectedSymbol);
-    const activeMarketCode = matchedMarket ? matchedMarket.code : 'R_25';
-    const activeMarketName = matchedMarket ? matchedMarket.name : selectedSymbol;
+      // Validate against symbolCode first, then selectedSymbol name
+      const matchedMarket =
+        markets.find(m => m.code === symbolCode) ||
+        markets.find(m => m.name === selectedSymbol);
+      const activeMarketCode = matchedMarket ? matchedMarket.code : 'R_25';
+      const activeMarketName = matchedMarket ? matchedMarket.name : selectedSymbol;
 
-    if (!api_base?.api) {
-      showTransientFeedback('Execution Error: Deriv WebSocket not connected.');
+      if (!api_base?.api) {
+        showTransientFeedback('Execution Error: Deriv WebSocket not connected.');
+        if (isAutoTriggered) setIsAutoExecute(false);
+        return;
+      }
+
+      setIsExecuting(true);
+      setTradeFeedback(`${modeTag}Pricing ${label} ${targetDigit} on ${activeMarketCode}...`);
+
+      try {
+        // Step 1: Request proposal using strictly 'underlying_symbol' (Deriv's updated schema)
+        const proposalRes = await api_base.api.send({
+          proposal: 1,
+          amount: stakeAmount,
+          basis: 'stake',
+          contract_type: direction,
+          currency,
+          duration: Number(contractDuration),
+          duration_unit: 't',
+          underlying_symbol: activeMarketCode,
+          barrier: String(targetDigit),
+        });
+
+        if (proposalRes?.error) {
+          const details = proposalRes.error.details ? ` (${JSON.stringify(proposalRes.error.details)})` : '';
+          showTransientFeedback(`Order Rejected [${activeMarketCode}]: ${proposalRes.error.message}${details}`);
+          return;
+        }
+
+        const proposalId = proposalRes?.proposal?.id;
+        if (!proposalId) {
+          showTransientFeedback(`Execution Error [${activeMarketCode}]: No proposal ID returned.`);
+          return;
+        }
+
+        // Step 2: Buy the exact proposal ID
+        setTradeFeedback(`${modeTag}Executing ${label} ${targetDigit} on ${activeMarketCode}...`);
+        const buyRes = await api_base.api.send({
+          buy: proposalId,
+          price: stakeAmount,
+        });
+
+        if (buyRes?.error) {
+          const details = buyRes.error.details ? ` (${JSON.stringify(buyRes.error.details)})` : '';
+          showTransientFeedback(`Order Rejected [${activeMarketCode}]: ${buyRes.error.message}${details}`);
+        } else if (buyRes?.buy) {
+          const contractId = Number(buyRes.buy.contract_id);
+
+          // Show "Trade opened" floating toast immediately
+          pushTradeToast(
+            {
+              type: 'opened',
+              title: `${modeTag}Trade opened: ${sideTitle} on ${activeMarketName}`,
+              subtitle: `Stake: ${stakeAmount.toFixed(2)} ${currency}`,
+            },
+            4000
+          );
+
+          showTransientFeedback(
+            `${modeTag}Trade opened: ${sideTitle} ${targetDigit} on ${activeMarketName} | Stake: ${stakeAmount.toFixed(2)} ${currency}`
+          );
+
+          // Track and subscribe to proposal_open_contract so settlement Win/Loss toast fires automatically
+          trackedContractsRef.current[contractId] = {
+            side: sideTitle,
+            marketName: activeMarketName,
+            stake: stakeAmount,
+            currency,
+          };
+          setOpenContractCount(Object.keys(trackedContractsRef.current).length);
+
+          api_base.api
+            .send({
+              proposal_open_contract: 1,
+              contract_id: contractId,
+              subscribe: 1,
+            })
+            .catch(() => {});
+        } else {
+          showTransientFeedback(`${modeTag}Order sent for ${label} ${targetDigit} on ${activeMarketCode}.`);
+        }
+      } catch (err: any) {
+        const msg = err?.error?.message || err?.message || 'Order execution failed.';
+        const details = err?.error?.details ? ` (${JSON.stringify(err.error.details)})` : '';
+        showTransientFeedback(`Execution Error [${activeMarketCode}]: ${msg}${details}`);
+      } finally {
+        setIsExecuting(false);
+      }
+    },
+    [
+      canBuyOver,
+      canBuyUnder,
+      contractDuration,
+      isExecuting,
+      isStakeValid,
+      manualStake,
+      pushTradeToast,
+      selectedSymbol,
+      showTransientFeedback,
+      symbolCode,
+      targetDigit,
+    ]
+  );
+
+  // Auto-execution watcher: fires once per distinct signal edge when armed and no contract is open
+  useEffect(() => {
+    if (!isAutoExecute) return;
+
+    if (!signal.isReady || !signal.recommendedSide) {
+      lastAutoSignalKeyRef.current = null;
       return;
     }
 
-    setIsExecuting(true);
-    setTradeFeedback(`Pricing ${label} ${targetDigit} on ${activeMarketCode}...`);
+    if (isExecuting || openContractCount > 0 || !isStakeValid) return;
 
-    try {
-      // Step 1: Request proposal using strictly 'underlying_symbol' (Deriv's updated schema)
-      const proposalRes = await api_base.api.send({
-        proposal: 1,
-        amount: stakeAmount,
-        basis: 'stake',
-        contract_type: direction,
-        currency,
-        duration: Number(contractDuration),
-        duration_unit: 't',
-        underlying_symbol: activeMarketCode,
-        barrier: String(targetDigit),
-      });
+    const direction: 'DIGITOVER' | 'DIGITUNDER' | null =
+      signal.recommendedSide === 'OVER' && canBuyOver
+        ? 'DIGITOVER'
+        : signal.recommendedSide === 'UNDER' && canBuyUnder
+        ? 'DIGITUNDER'
+        : null;
 
-      if (proposalRes?.error) {
-        const details = proposalRes.error.details ? ` (${JSON.stringify(proposalRes.error.details)})` : '';
-        showTransientFeedback(`Order Rejected [${activeMarketCode}]: ${proposalRes.error.message}${details}`);
-        return;
-      }
+    if (!direction) return;
 
-      const proposalId = proposalRes?.proposal?.id;
-      if (!proposalId) {
-        showTransientFeedback(`Execution Error [${activeMarketCode}]: No proposal ID returned.`);
-        return;
-      }
+    const signalKey = `${symbolCode}|${strategyPreset}|${targetDigit}|${direction}|${signal.headline}`;
+    if (lastAutoSignalKeyRef.current === signalKey) return;
 
-      // Step 2: Buy the exact proposal ID
-      setTradeFeedback(`Executing ${label} ${targetDigit} on ${activeMarketCode}...`);
-      const buyRes = await api_base.api.send({
-        buy: proposalId,
-        price: stakeAmount,
-      });
-
-      if (buyRes?.error) {
-        const details = buyRes.error.details ? ` (${JSON.stringify(buyRes.error.details)})` : '';
-        showTransientFeedback(`Order Rejected [${activeMarketCode}]: ${buyRes.error.message}${details}`);
-      } else if (buyRes?.buy) {
-        const contractId = Number(buyRes.buy.contract_id);
-
-        // Show "Trade opened" floating toast immediately
-        pushTradeToast(
-          {
-            type: 'opened',
-            title: `Trade opened: ${sideTitle} on ${activeMarketName}`,
-            subtitle: `Stake: ${stakeAmount.toFixed(2)} ${currency}`,
-          },
-          4000
-        );
-
-        showTransientFeedback(
-          `Trade opened: ${sideTitle} ${targetDigit} on ${activeMarketName} | Stake: ${stakeAmount.toFixed(2)} ${currency}`
-        );
-
-        // Track and subscribe to proposal_open_contract so settlement Win/Loss toast fires automatically
-        trackedContractsRef.current[contractId] = {
-          side: sideTitle,
-          marketName: activeMarketName,
-          stake: stakeAmount,
-          currency,
-        };
-
-        api_base.api
-          .send({
-            proposal_open_contract: 1,
-            contract_id: contractId,
-            subscribe: 1,
-          })
-          .catch(() => {});
-      } else {
-        showTransientFeedback(`Order sent for ${label} ${targetDigit} on ${activeMarketCode}.`);
-      }
-    } catch (err: any) {
-      const msg = err?.error?.message || err?.message || 'Order execution failed.';
-      const details = err?.error?.details ? ` (${JSON.stringify(err.error.details)})` : '';
-      showTransientFeedback(`Execution Error [${activeMarketCode}]: ${msg}${details}`);
-    } finally {
-      setIsExecuting(false);
-    }
-  };
+    lastAutoSignalKeyRef.current = signalKey;
+    executeManualOrder(direction, true);
+  }, [
+    canBuyOver,
+    canBuyUnder,
+    executeManualOrder,
+    isAutoExecute,
+    isExecuting,
+    isStakeValid,
+    openContractCount,
+    signal.headline,
+    signal.isReady,
+    signal.recommendedSide,
+    strategyPreset,
+    symbolCode,
+    targetDigit,
+  ]);
 
   const handleSelectBlueprint = (option: { id: StrategyPreset; label: string; defaultDigit: number }) => {
     setStrategyPreset(option.id);
     setTargetDigit(option.defaultDigit);
     setContractDuration(1);
     setIsBlueprintDropdownOpen(false);
+    lastAutoSignalKeyRef.current = null;
   };
 
   const activeBlueprint =
@@ -405,6 +525,7 @@ export default function ManualTraderTab() {
 
   const isOverDisabled = !canBuyOver || isExecuting;
   const isUnderDisabled = !canBuyUnder || isExecuting;
+  const currency = api_base?.account_info?.currency || 'USD';
 
   return (
     <div className="manual-trader-tab-container">
@@ -489,6 +610,7 @@ export default function ManualTraderTab() {
                     setSelectedSymbol(m.name);
                     setSymbolCode(m.code);
                     setIsMarketDropdownOpen(false);
+                    lastAutoSignalKeyRef.current = null;
                   }}
                 >
                   {m.name}
@@ -534,7 +656,7 @@ export default function ManualTraderTab() {
                 tradeFeedback?.includes('Rejected') ||
                 tradeFeedback?.includes(':-')
                   ? { background: '#fb7185', boxShadow: '0 0 10px #fb7185' }
-                  : signal.isReady || tradeFeedback
+                  : signal.isReady || tradeFeedback || isAutoExecute
                   ? { background: '#34d399', boxShadow: '0 0 10px #34d399' }
                   : undefined
               }
@@ -542,7 +664,15 @@ export default function ManualTraderTab() {
             <span className="manual-status-text">AI Engine: {tradeFeedback || signal.headline}</span>
           </div>
           <span className="manual-status-badge">
-            {isExecuting ? 'EXECUTING...' : signal.isReady ? 'SIGNAL READY' : 'LIVE FEED'}
+            {isExecuting
+              ? 'EXECUTING...'
+              : isAutoExecute
+              ? signal.isReady
+                ? 'AUTO: FIRING'
+                : 'AUTO: ARMED'
+              : signal.isReady
+              ? 'SIGNAL READY'
+              : 'LIVE FEED'}
           </span>
         </div>
 
@@ -725,7 +855,7 @@ export default function ManualTraderTab() {
                   className="manual-trader-input"
                   placeholder="1.00"
                 />
-                <span className="currency-tag">{api_base?.account_info?.currency || 'USD'}</span>
+                <span className="currency-tag">{currency}</span>
               </div>
 
               {stakeError && (
@@ -743,13 +873,134 @@ export default function ManualTraderTab() {
               )}
             </div>
           </div>
+
+          {/* Auto-Execution & Session Risk Guard Strip */}
+          <div
+            style={{
+              marginTop: '14px',
+              paddingTop: '12px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setIsAutoExecute(prev => !prev)}
+                disabled={!isStakeValid && !isAutoExecute}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  border: isAutoExecute
+                    ? '1px solid #10b981'
+                    : '1px solid rgba(255, 255, 255, 0.18)',
+                  background: isAutoExecute
+                    ? 'rgba(16, 185, 129, 0.2)'
+                    : 'rgba(255, 255, 255, 0.05)',
+                  color: isAutoExecute ? '#34d399' : '#cbd5e1',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: !isStakeValid && !isAutoExecute ? 'not-allowed' : 'pointer',
+                  boxShadow: isAutoExecute ? '0 0 14px rgba(16, 185, 129, 0.3)' : 'none',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: isAutoExecute ? '#10b981' : '#64748b',
+                    boxShadow: isAutoExecute ? '0 0 8px #10b981' : 'none',
+                  }}
+                />
+                {isAutoExecute ? 'AUTO-EXECUTE: ON' : 'AUTO-EXECUTE: OFF'}
+              </button>
+
+              <span
+                style={{
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: sessionPnL > 0 ? '#34d399' : sessionPnL < 0 ? '#fb7185' : '#94a3b8',
+                }}
+              >
+                Session P&L: {sessionPnL >= 0 ? '+' : ''}
+                {sessionPnL.toFixed(2)} {currency}
+              </span>
+              {sessionPnL !== 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSessionPnL(0)}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#94a3b8',
+                    borderRadius: '6px',
+                    padding: '2px 7px',
+                    fontSize: '0.7rem',
+                    cursor: 'pointer',
+                  }}
+                  title="Reset session P&L counter"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#94a3b8' }}>
+                <span>TP ({currency}):</span>
+                <input
+                  type="text"
+                  value={takeProfitInput}
+                  onChange={e => setTakeProfitInput(e.target.value)}
+                  style={{
+                    width: '62px',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(16, 185, 129, 0.35)',
+                    background: 'rgba(15, 23, 42, 0.7)',
+                    color: '#34d399',
+                    fontWeight: 700,
+                    fontSize: '0.78rem',
+                  }}
+                />
+              </label>
+
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#94a3b8' }}>
+                <span>SL ({currency}):</span>
+                <input
+                  type="text"
+                  value={stopLossInput}
+                  onChange={e => setStopLossInput(e.target.value)}
+                  style={{
+                    width: '62px',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(244, 63, 94, 0.35)',
+                    background: 'rgba(15, 23, 42, 0.7)',
+                    color: '#fb7185',
+                    fontWeight: 700,
+                    fontSize: '0.78rem',
+                  }}
+                />
+              </label>
+            </div>
+          </div>
         </div>
 
         {/* Well-Spaced Purchase Buttons Action Zone */}
         <div className="manual-trader-buttons-grid">
           <button
             disabled={isOverDisabled}
-            onClick={() => executeManualOrder('DIGITOVER')}
+            onClick={() => executeManualOrder('DIGITOVER', false)}
             style={
               isOverDisabled
                 ? {
@@ -774,7 +1025,7 @@ export default function ManualTraderTab() {
 
           <button
             disabled={isUnderDisabled}
-            onClick={() => executeManualOrder('DIGITUNDER')}
+            onClick={() => executeManualOrder('DIGITUNDER', false)}
             style={
               isUnderDisabled
                 ? {
