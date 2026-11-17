@@ -1,65 +1,134 @@
 // ==========================================
-// FILE: src/Aiscanner/useScannerFeed.ts (Chart-Resilient Stream)
+// FILE: src/Aiscanner/useScannerFeed.ts (Multi-Volatility Resilient Stream)
 // ==========================================
 import { useEffect } from 'react';
 import { ScannerBridge } from './scannerBridge';
 import { api_base } from '@/external/bot-skeleton/services/api/api-base';
 
-const TARGET_SYMBOL = 'R_10';
+export const SCANNER_SYMBOLS = [
+  'R_10',
+  '1HZ10V',
+  'R_25',
+  '1HZ25V',
+  'R_50',
+  '1HZ50V',
+  'R_75',
+  '1HZ75V',
+  'R_100',
+  '1HZ100V',
+];
 
-let isInitialized = false;
+const subscribedSymbols = new Set<string>();
+const lastTickTimestamp: Record<string, number> = {};
+let activeSocketRef: WebSocket | null = null;
+let isBootstrapping = false;
 
-// Declare the message handler globally so it stays persistent across tab switches
 const handleGlobalMessage = (event: MessageEvent) => {
-    try {
-        const data = JSON.parse(event.data);
-        if (data?.msg_type === 'tick' && data?.tick?.symbol === TARGET_SYMBOL) {
-            const quote = Number(data.tick.quote);
-            if (!isNaN(quote)) {
-                ScannerBridge.pushTick(TARGET_SYMBOL, quote);
-            }
-        }
-    } catch (e) {}
+  try {
+    const data = JSON.parse(event.data);
+    if (data?.msg_type === 'tick' && data?.tick?.symbol) {
+      const sym = data.tick.symbol;
+      if (!SCANNER_SYMBOLS.includes(sym)) return;
+
+      const quote = Number(data.tick.quote);
+      if (!Number.isNaN(quote)) {
+        lastTickTimestamp[sym] = Date.now();
+        subscribedSymbols.add(sym);
+        ScannerBridge.pushTick(sym, quote);
+      }
+    }
+  } catch {
+    // Ignore non-JSON frames
+  }
 };
 
 export const useScannerFeed = () => {
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let isMounted = true;
 
-        let isMounted = true;
+    const ensureSocketListener = () => {
+      const currentSocket = api_base?.api?.connection;
+      if (currentSocket && currentSocket !== activeSocketRef) {
+        if (activeSocketRef) {
+          activeSocketRef.removeEventListener('message', handleGlobalMessage);
+        }
+        activeSocketRef = currentSocket;
+        activeSocketRef.addEventListener('message', handleGlobalMessage);
+        // Socket reconnected — allow re-subscribing
+        subscribedSymbols.clear();
+      }
+    };
 
-        const setupFeed = async () => {
-            try {
-                while (!api_base?.api) {
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    if (!isMounted) return;
-                }
+    const setupFeed = async () => {
+      while (!api_base?.api) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        if (!isMounted) return;
+      }
 
-                const currentSocket = api_base.api.connection;
-                if (currentSocket) {
-                    // Always ensure listener is attached to the active socket
-                    currentSocket.removeEventListener('message', handleGlobalMessage);
-                    currentSocket.addEventListener('message', handleGlobalMessage);
-                }
+      ensureSocketListener();
 
-                // If a global subscription hasn't been established on this session yet
-                if (!isInitialized) {
-                    console.log("[AI Scanner]: Requesting persistent tick subscription...");
-                    await api_base.api.send({
-                        ticks: TARGET_SYMBOL,
-                        subscribe: 1
-                    });
-                    isInitialized = true;
-                }
-            } catch (err) {
-                console.error("[AI Scanner]: Feed setup error:", err);
+      if (isBootstrapping) return;
+      isBootstrapping = true;
+
+      try {
+        for (const sym of SCANNER_SYMBOLS) {
+          if (!isMounted) break;
+          if (subscribedSymbols.has(sym)) continue;
+
+          try {
+            await api_base.api.send({
+              ticks: sym,
+              subscribe: 1,
+            });
+            subscribedSymbols.add(sym);
+            lastTickTimestamp[sym] = Date.now();
+          } catch (err: any) {
+            if (err?.error?.code === 'AlreadySubscribed') {
+              subscribedSymbols.add(sym);
+              lastTickTimestamp[sym] = Date.now();
+            } else {
+              console.warn(`[AI Scanner]: Failed subscribing to ${sym}:`, err?.error?.message || err);
             }
-        };
+          }
 
-        setupFeed();
+          // 250ms stagger prevents Deriv rate-limit drops
+          await new Promise(resolve => setTimeout(resolve, 250));
+        }
+      } finally {
+        isBootstrapping = false;
+      }
+    };
 
-        return () => {
-            isMounted = false;
-        };
-    }, []);
+    setupFeed();
+
+    // Watchdog: re-attach listener if socket changed & auto-heal any feed silent > 8s
+    const watchdog = setInterval(async () => {
+      if (!api_base?.api) return;
+      ensureSocketListener();
+
+      const now = Date.now();
+      for (const sym of SCANNER_SYMBOLS) {
+        const lastSeen = lastTickTimestamp[sym] || 0;
+        if (!subscribedSymbols.has(sym) || (lastSeen > 0 && now - lastSeen > 8000)) {
+          subscribedSymbols.delete(sym);
+          try {
+            await api_base.api.send({ ticks: sym, subscribe: 1 });
+            subscribedSymbols.add(sym);
+            lastTickTimestamp[sym] = Date.now();
+          } catch (err: any) {
+            if (err?.error?.code === 'AlreadySubscribed') {
+              subscribedSymbols.add(sym);
+              lastTickTimestamp[sym] = Date.now();
+            }
+          }
+        }
+      }
+    }, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(watchdog);
+    };
+  }, []);
 };
