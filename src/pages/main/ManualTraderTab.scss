@@ -7,13 +7,13 @@
     display: flex !important;
     flex-direction: column !important;
     box-sizing: border-box !important;
-    padding: 1rem 1.5rem 1.5rem 1.5rem !important;
+    padding: 1rem 1.5rem 1rem 1.5rem !important;
     background: var(--general-main-1) !important;
     overflow-y: auto !important;
     position: relative;
 
     @include mobile-or-tablet-screen {
-        padding: 4px 8px 70px 8px !important; /* Optimized bottom clearance */
+        padding: 4px 8px 12px 8px !important; /* Minimal bottom padding so buttons anchor right at the bottom edge */
         height: 100% !important;
         max-height: none !important;
         overflow-y: auto !important;
@@ -26,17 +26,16 @@
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
+        justify-content: space-between; /* Forces the buttons to anchor to the bottommost edge */
         flex: 1;
-        gap: 10px;
+        gap: 8px;
         box-sizing: border-box;
-        padding-bottom: 0.5rem;
+        padding-bottom: 0 !important;
         position: relative;
         z-index: 1;
 
         @include mobile-or-tablet-screen {
-            gap: 6px;
-            padding-bottom: 8px !important;
+            gap: 4px;
         }
     }
 
@@ -152,8 +151,8 @@
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            min-height: 34px;
-            padding: 4px 8px;
+            min-height: 32px;
+            padding: 3px 8px;
         }
 
         .manual-status-content {
@@ -185,7 +184,7 @@
             overflow: hidden;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.64rem;
+                font-size: 0.62rem;
             }
         }
 
@@ -200,7 +199,7 @@
             flex-shrink: 0;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.52rem;
+                font-size: 0.5rem;
             }
         }
     }
@@ -213,10 +212,10 @@
         box-shadow: none !important;
         width: 100%;
         box-sizing: border-box;
-        margin: 2px 0 10px 0 !important;
+        margin: 2px 0 6px 0 !important;
 
         @include mobile-or-tablet-screen {
-            margin: 2px 0 8px 0 !important;
+            margin: 2px 0 4px 0 !important;
         }
     }
 
@@ -251,7 +250,7 @@
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            min-height: 48px;
+            min-height: 46px;
             padding: 1px 0 4px 0 !important;
         }
 
@@ -372,8 +371,8 @@
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            padding: 5px 6px;
-            gap: 4px;
+            padding: 4px 6px;
+            gap: 3px;
         }
 
         .config-grid-row {
@@ -386,7 +385,7 @@
             @include mobile-or-tablet-screen {
                 grid-template-columns: 0.9fr 0.7fr 1.4fr;
                 gap: 4px;
-                padding-bottom: 3px;
+                padding-bottom: 2px;
             }
 
             .config-item {
@@ -403,7 +402,7 @@
                     margin-bottom: 2px;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.44rem;
+                        font-size: 0.42rem;
                     }
                 }
 
@@ -413,7 +412,7 @@
                     color: var(--text-prominent);
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.62rem;
+                        font-size: 0.6rem;
                     }
 
                     &.highlight-digit {
@@ -452,7 +451,7 @@
                         flex-shrink: 0;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.68rem;
+                            font-size: 0.65rem;
                         }
 
                         &:hover {
@@ -472,7 +471,7 @@
                         border: none !important;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.62rem;
+                            font-size: 0.6rem;
                         }
                     }
                 }
@@ -497,7 +496,7 @@
                     font-weight: 800;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.45rem;
+                        font-size: 0.42rem;
                     }
                 }
 
@@ -525,7 +524,7 @@
                         font-variant-numeric: tabular-nums;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.74rem;
+                            font-size: 0.72rem;
                         }
                     }
 
@@ -542,26 +541,26 @@
         }
     }
 
-    /* Compact, Perfectly Proportioned Purchase Buttons Dock */
+    /* Restored Larger Purchase Buttons Pinned to the Bottommost Edge */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr !important;
         gap: 10px !important; 
         max-width: 800px !important; 
-        margin: 12px auto 2px auto !important; 
+        margin: 8px auto 0 auto !important; 
         width: 100%;
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr 1fr !important;
-            gap: 6px !important;
-            margin: 10px auto 2px auto !important;
+            gap: 8px !important;
+            margin: 6px auto 0 auto !important;
             max-width: 100% !important;
         }
     }
 
     .manual-trader-btn {
         border: none;
-        padding: 9px 12px;
+        padding: 11px 14px;
         border-radius: 10px;
         color: #fff;
         font-weight: 900;
@@ -573,7 +572,7 @@
         transition: all 0.2s ease;
 
         @include mobile-or-tablet-screen {
-            padding: 5px 4px !important; /* Trims button height to match compact video layout */
+            padding: 10px 8px !important; /* Restores height and presence on mobile */
         }
 
         &--over {
@@ -595,36 +594,36 @@
         }
 
         .manual-trader-btn-label {
-            font-size: 0.56rem;
+            font-size: 0.6rem;
             text-transform: uppercase;
             opacity: 0.9;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.38rem !important;
+                font-size: 0.44rem !important;
             }
         }
 
         .manual-trader-btn-main {
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             font-weight: 900;
             margin-top: 1px;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.58rem !important;
+                font-size: 0.72rem !important;
             }
         }
 
         .manual-trader-btn-payout {
             margin-top: 1px;
-            font-size: 0.52rem;
+            font-size: 0.55rem;
             font-weight: 700;
             background: rgba(0, 0, 0, 0.25);
             padding: 1px 4px;
             border-radius: 4px;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.32rem !important;
-                padding: 1px 3px;
+                font-size: 0.4rem !important;
+                padding: 1px 4px;
             }
         }
     }
