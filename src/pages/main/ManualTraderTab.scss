@@ -359,15 +359,15 @@
         }
     }
 
-    /* Configuration Card with Independent Boxes for Target Digit and Duration */
+    /* Configuration Card: 3 Distinct Independent Columns for Blueprint, Target Digit, and Duration */
     .manual-unified-config-card {
         background: rgba(16, 185, 129, 0.03);
         border: 1px solid rgba(16, 185, 129, 0.2);
         border-radius: 12px;
         padding: 12px 16px;
         display: grid;
-        grid-template-columns: 1.1fr 1fr 1fr; /* 3 distinct columns: Blueprint | Target Digit | Duration */
-        gap: 12px;
+        grid-template-columns: 1.3fr 1fr 1fr; /* 3 separate independent columns */
+        gap: 14px;
         width: 100%;
         box-sizing: border-box;
         margin-top: 8px;
@@ -485,12 +485,12 @@
             }
         }
 
-        /* Target Digit and Duration now separated into their own distinct boxes */
+        /* Target Digit and Duration explicitly separated into independent styled boxes */
         .config-sub-row {
             grid-column: 2 / 4;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 14px;
             width: 100%;
             align-items: center;
 
@@ -552,7 +552,7 @@
                     white-space: nowrap;
                     font-size: 0.85rem;
                     font-weight: 900;
-                    color: var(--text-prominent);
+                    color: #34d399;
                     background: transparent !important;
                     border: none !important;
                 }
@@ -566,6 +566,9 @@
             align-items: center;
             justify-content: space-between;
             width: 100%;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding-top: 8px;
+            margin-top: 2px;
 
             .config-stake-info {
                 display: flex;
