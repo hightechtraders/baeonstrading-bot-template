@@ -582,72 +582,67 @@ export default function ManualTraderTab() {
 
         {/* Unified Professional Parameter Card matching notebook sketch exactly */}
         <div className="manual-unified-config-card">
-          <div className="config-grid-row">
-            {/* Column 1: Blueprint Strategy Dropdown */}
+          {/* Column 1: Blueprint Strategy Dropdown */}
+          <div ref={blueprintDropdownRef} className="config-item config-blueprint-item">
+            <span className="config-label">Blueprint</span>
             <div
-              ref={blueprintDropdownRef}
-              className="config-item config-blueprint-item"
+              className="config-blueprint-selector"
+              onClick={() => setIsBlueprintDropdownOpen(prev => !prev)}
+              title="Select trading blueprint"
             >
-              <span className="config-label">Blueprint</span>
-              <div
-                className="config-blueprint-selector"
-                onClick={() => setIsBlueprintDropdownOpen(prev => !prev)}
-                title="Select trading blueprint"
+              <span className="config-value">{activeBlueprint.label}</span>
+              <span className="blueprint-chevron">{isBlueprintDropdownOpen ? '▲' : '▼'}</span>
+            </div>
+
+            {isBlueprintDropdownOpen && (
+              <div className="config-blueprint-dropdown">
+                {BLUEPRINT_OPTIONS.map(option => {
+                  const isActive = option.id === strategyPreset;
+                  return (
+                    <div
+                      key={option.id}
+                      onClick={() => handleSelectBlueprint(option)}
+                      className={`blueprint-option-item ${isActive ? 'active' : ''}`}
+                    >
+                      {option.label}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Column 2: Target Digit */}
+          <div className="config-item">
+            <span className="config-label">Target Digit</span>
+            <span className="config-value highlight-digit">{targetDigit}</span>
+          </div>
+
+          {/* Column 3: Duration Stepper */}
+          <div className="config-item">
+            <span className="config-label">Duration</span>
+            <div className="config-stepper-control">
+              <button
+                className="stepper-btn"
+                onClick={() => setContractDuration(prev => Math.max(1, prev - 1))}
+                title="Decrease Ticks"
               >
-                <span className="config-value">{activeBlueprint.label}</span>
-                <span className="blueprint-chevron">{isBlueprintDropdownOpen ? '▲' : '▼'}</span>
-              </div>
-
-              {isBlueprintDropdownOpen && (
-                <div className="config-blueprint-dropdown">
-                  {BLUEPRINT_OPTIONS.map(option => {
-                    const isActive = option.id === strategyPreset;
-                    return (
-                      <div
-                        key={option.id}
-                        onClick={() => handleSelectBlueprint(option)}
-                        className={`blueprint-option-item ${isActive ? 'active' : ''}`}
-                      >
-                        {option.label}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Column 2: Target Digit */}
-            <div className="config-item">
-              <span className="config-label">Target Digit</span>
-              <span className="config-value highlight-digit">{targetDigit}</span>
-            </div>
-
-            {/* Column 3: Duration Stepper */}
-            <div className="config-item">
-              <span className="config-label">Duration</span>
-              <div className="config-stepper-control">
-                <button
-                  className="stepper-btn"
-                  onClick={() => setContractDuration(prev => Math.max(1, prev - 1))}
-                  title="Decrease Ticks"
-                >
-                  −
-                </button>
-                <span className="config-value">
-                  {contractDuration} {contractDuration === 1 ? 'Tick' : 'Ticks'}
-                </span>
-                <button
-                  className="stepper-btn"
-                  onClick={() => setContractDuration(prev => Math.min(10, prev + 1))}
-                  title="Increase Ticks"
-                >
-                  +
-                </button>
-              </div>
+                −
+              </button>
+              <span className="config-value">
+                {contractDuration} {contractDuration === 1 ? 'Tick' : 'Ticks'}
+              </span>
+              <button
+                className="stepper-btn"
+                onClick={() => setContractDuration(prev => Math.min(10, prev + 1))}
+                title="Increase Ticks"
+              >
+                +
+              </button>
             </div>
           </div>
 
-          {/* Row 2: Risk Capital Allocation spanning full width below */}
+          {/* Row 2: Risk Capital Allocation spanning full width across columns */}
           <div className="config-stake-row">
             <div className="config-stake-info">
               <span className="config-label">Risk Capital Allocation</span>
