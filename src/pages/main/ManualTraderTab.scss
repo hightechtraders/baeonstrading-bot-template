@@ -364,13 +364,13 @@
         background: rgba(16, 185, 129, 0.03);
         border: 1px solid rgba(16, 185, 129, 0.2);
         border-radius: 12px;
-        padding: 11px 14px; /* Reduced by 20% from 14px 18px */
+        padding: 11px 14px;
         display: flex;
         flex-direction: column;
-        gap: 11px; /* Reduced by 20% from 14px */
+        gap: 11px;
         width: 100%;
         box-sizing: border-box;
-        margin-top: 24px;
+        margin-top: 10px; /* Set to 10px distance from digits circles on desktop */
 
         @include mobile-or-tablet-screen {
             padding: 12px 18px;
@@ -642,7 +642,7 @@
         }
     }
 
-    /* Pushed-Down Purchase Buttons Action Dock (Desktop margin-top reduced by 8px from 36px to 28px) */
+    /* Pushed-Down Purchase Buttons Action Dock */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr !important;
