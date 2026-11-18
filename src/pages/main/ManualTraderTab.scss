@@ -665,7 +665,7 @@
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
-            margin: -24px auto 4px auto !important; /* Mobile-only: distance from config card = 32px */
+            margin: -16px auto 4px auto !important; /* Mobile-only: distance from config card = 24px */
             max-width: 100% !important;
         }
     }
