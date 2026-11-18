@@ -205,7 +205,7 @@
         }
     }
 
-    /* Transparent Digit Stats Grid (Increased +20% for larger circles) */
+    /* Transparent Digit Stats Grid */
     .digit-stats-grid {
         background: transparent !important;
         border: none !important;
@@ -247,7 +247,7 @@
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            min-height: 58px; 
+            min-height: 64px; /* Slightly adjusted to accommodate 15% larger circles */
             padding: 1px 0 4px 0 !important;
         }
 
@@ -276,6 +276,10 @@
             margin-bottom: 2px;
             color: var(--text-general);
             font-variant-numeric: tabular-nums;
+
+            @include mobile-or-tablet-screen {
+                font-size: 9.5px; /* Scaled up label size by 15% */
+            }
         }
 
         .manual-gauge-circle {
@@ -290,8 +294,8 @@
             justify-content: center;
 
             @include mobile-or-tablet-screen {
-                width: 30px;  
-                height: 30px; 
+                width: 34.5px; /* Increased by 15% from 30px */
+                height: 34.5px; /* Increased by 15% from 30px */
             }
 
             svg {
@@ -320,7 +324,7 @@
                 font-variant-numeric: tabular-nums;
 
                 @include mobile-or-tablet-screen {
-                    font-size: 7.5px;
+                    font-size: 8.6px; /* Increased by 15% from 7.5px */
                 }
             }
         }
@@ -355,7 +359,7 @@
         }
     }
 
-    /* Spacious & Well-Organized Unified Configuration Card */
+    /* Spacious & Well-Organized Unified Configuration Card (Increased size by 25%) */
     .manual-unified-config-card {
         background: rgba(16, 185, 129, 0.03);
         border: 1px solid rgba(16, 185, 129, 0.2);
@@ -369,9 +373,9 @@
         margin-top: 10px; /* Desktop margin stays at 10px */
 
         @include mobile-or-tablet-screen {
-            padding: 8px 12px;
-            gap: 8px;
-            margin-top: 40px; /* Reduced mobile distance from digit circles to 40px */
+            padding: 10px 15px; /* Increased by 25% from 8px 12px */
+            gap: 10px; /* Increased by 25% from 8px */
+            margin-top: 40px; /* Maintains your 40px distance from digit circles */
         }
 
         .config-grid-row {
@@ -382,8 +386,8 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
             @include mobile-or-tablet-screen {
-                gap: 8px;
-                padding-bottom: 8px;
+                gap: 10px; /* Increased by 25% from 8px */
+                padding-bottom: 10px; /* Increased by 25% from 8px */
             }
 
             .config-item {
@@ -401,7 +405,7 @@
                     margin-bottom: 4px;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.46rem;
+                        font-size: 0.57rem; /* Increased by 25% from 0.46rem */
                     }
                 }
 
@@ -411,7 +415,7 @@
                     color: var(--text-prominent);
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.68rem;
+                        font-size: 0.85rem; /* Increased by 25% from 0.68rem */
                     }
 
                     &.highlight-digit {
@@ -440,7 +444,7 @@
                     text-align: left;
 
                     @include mobile-or-tablet-screen {
-                        padding: 5px 10px;
+                        padding: 6px 12px; /* Increased by ~25% from 5px 10px */
                     }
 
                     .config-value {
@@ -448,7 +452,7 @@
                         flex: 1;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.68rem;
+                            font-size: 0.85rem; /* Increased by 25% from 0.68rem */
                         }
                     }
 
@@ -509,7 +513,7 @@
                 width: 100%;
 
                 @include mobile-or-tablet-screen {
-                    gap: 8px;
+                    gap: 10px; /* Increased by 25% from 8px */
                 }
 
                 .config-stepper-control {
@@ -540,7 +544,7 @@
                         flex-shrink: 0;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.9rem;
+                            font-size: 1.1rem; /* Increased by 25% from 0.9rem */
                         }
 
                         &:hover {
@@ -560,7 +564,7 @@
                         border: none !important;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.68rem;
+                            font-size: 0.85rem; /* Increased by 25% from 0.68rem */
                         }
                     }
                 }
@@ -585,7 +589,7 @@
                     font-weight: 800;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.46rem;
+                        font-size: 0.57rem; /* Increased by 25% from 0.46rem */
                     }
                 }
 
@@ -599,7 +603,7 @@
                     box-sizing: border-box;
 
                     @include mobile-or-tablet-screen {
-                        padding: 4px 8px;
+                        padding: 5px 10px; /* Increased by ~25% from 4px 8px */
                     }
 
                     .manual-trader-input {
@@ -613,7 +617,7 @@
                         font-variant-numeric: tabular-nums;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.78rem;
+                            font-size: 0.97rem; /* Increased by 25% from 0.78rem */
                         }
                     }
 
@@ -650,7 +654,7 @@
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
-            margin: 50px auto 4px auto !important; /* Updated mobile distance from card to 50px */
+            margin: 50px auto 4px auto !important; /* Maintains 50px distance from card */
             max-width: 100% !important;
         }
     }
