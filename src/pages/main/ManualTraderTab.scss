@@ -359,35 +359,41 @@
         }
     }
 
-    /* Configuration Card (Dimensions reduced by another 20% on desktop, margin-top set to 8px) */
+    /* Professionally Aligned 3-Column Desktop Grid Configuration Card */
     .manual-unified-config-card {
         background: rgba(16, 185, 129, 0.03);
         border: 1px solid rgba(16, 185, 129, 0.2);
         border-radius: 12px;
-        padding: 9px 11px; /* Further reduced dimensions by 20% */
-        display: flex;
-        flex-direction: column;
-        gap: 9px; /* Further reduced gap by 20% */
+        padding: 12px 16px;
+        display: grid;
+        grid-template-columns: 1.2fr 1.2fr 1fr; /* 3 balanced columns for desktop */
+        gap: 12px 16px;
         width: 100%;
         box-sizing: border-box;
-        margin-top: 8px; /* Reduced distance to digit circles to 8px on desktop */
+        margin-top: 8px;
+        align-items: center;
 
         @include mobile-or-tablet-screen {
-            padding: 12px 18px;
+            display: flex;
+            flex-direction: column;
+            padding: 12px 14px;
             gap: 12px;
             margin-top: 16px;
         }
 
+        /* Blueprint selector takes Column 1 on desktop */
         .config-grid-row {
+            grid-column: 1 / 2;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            gap: 6px;
+            padding-bottom: 0;
+            border-bottom: none;
+            width: 100%;
 
             @include mobile-or-tablet-screen {
-                gap: 12px;
-                padding-bottom: 12px;
+                grid-column: 1 / -1;
+                gap: 8px;
             }
 
             .config-item {
@@ -398,29 +404,21 @@
                 width: 100%;
 
                 .config-label {
-                    font-size: 0.65rem;
+                    font-size: 0.62rem;
                     text-transform: uppercase;
                     color: var(--text-general);
                     font-weight: 800;
-                    margin-bottom: 3px;
-
-                    @include mobile-or-tablet-screen {
-                        font-size: 0.64rem;
-                    }
+                    margin-bottom: 2px;
                 }
 
                 .config-value {
-                    font-size: 0.88rem;
+                    font-size: 0.85rem;
                     font-weight: 900;
                     color: var(--text-prominent);
 
-                    @include mobile-or-tablet-screen {
-                        font-size: 0.95rem;
-                    }
-
                     &.highlight-digit {
                         color: #34d399;
-                        font-size: 0.98rem;
+                        font-size: 0.95rem;
                     }
                 }
             }
@@ -435,36 +433,25 @@
                     align-items: center;
                     justify-content: space-between;
                     cursor: pointer;
-                    padding: 6px 10px;
+                    padding: 7px 10px;
                     border-radius: 8px;
-                    background: rgba(255, 255, 255, 0.06);
-                    border: 1px solid rgba(255, 255, 255, 0.16);
+                    background: rgba(255, 255, 255, 0.05);
+                    border: 1px solid rgba(16, 185, 129, 0.25);
                     width: 100%;
                     box-sizing: border-box;
                     text-align: left;
 
-                    @include mobile-or-tablet-screen {
-                        padding: 7px 14px;
-                    }
-
                     .config-value {
                         text-align: left;
                         flex: 1;
-
-                        @include mobile-or-tablet-screen {
-                            font-size: 0.95rem;
-                        }
+                        font-size: 0.82rem;
                     }
 
                     .blueprint-chevron {
                         font-size: 0.85rem;
-                        line-height: 1;
                         font-weight: 900;
                         color: #10b981;
-                        display: inline-flex;
-                        align-items: center;
-                        flex-shrink: 0;
-                        margin-left: 8px;
+                        margin-left: 6px;
                     }
                 }
 
@@ -504,86 +491,101 @@
                     }
                 }
             }
+        }
 
-            /* Sub-row for Target Digit and Duration side-by-side */
-            .config-sub-row {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
+        /* Sub-row for Target Digit and Duration takes Column 2 on desktop */
+        .config-sub-row {
+            grid-column: 2 / 3;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.12);
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(16, 185, 129, 0.15);
+            align-items: center;
+
+            @include mobile-or-tablet-screen {
+                grid-column: 1 / -1;
+                background: transparent;
+                padding: 0;
+                border: none;
+            }
+
+            .config-stepper-control {
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+                gap: 6px;
                 width: 100%;
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
 
-                @include mobile-or-tablet-screen {
-                    gap: 12px;
-                }
-
-                .config-stepper-control {
-                    display: flex;
-                    align-items: center;
-                    justify-content: flex-start;
-                    gap: 8px;
-                    width: 100%;
+                .stepper-btn {
                     background: transparent !important;
                     border: none !important;
                     box-shadow: none !important;
+                    color: #34d399;
+                    font-weight: 900;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1rem;
+                    padding: 0 2px;
+                    transition: opacity 0.2s ease, transform 0.1s ease;
 
-                    .stepper-btn {
-                        background: transparent !important;
-                        border: none !important;
-                        box-shadow: none !important;
-                        color: #34d399;
-                        font-weight: 900;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 1.05rem;
-                        width: auto;
-                        height: auto;
-                        padding: 0 4px;
-                        transition: opacity 0.2s ease, transform 0.1s ease;
-                        flex-shrink: 0;
-
-                        @include mobile-or-tablet-screen {
-                            font-size: 1.25rem;
-                        }
-
-                        &:hover {
-                            opacity: 0.75;
-                            color: #10b981;
-                        }
-
-                        &:active {
-                            transform: scale(0.9);
-                        }
+                    &:hover {
+                        opacity: 0.75;
+                        color: #10b981;
                     }
 
-                    .config-value {
-                        white-space: nowrap;
-                        font-size: 0.88rem;
-                        background: transparent !important;
-                        border: none !important;
-
-                        @include mobile-or-tablet-screen {
-                            font-size: 0.95rem;
-                        }
+                    &:active {
+                        transform: scale(0.9);
                     }
+                }
+
+                .config-value {
+                    white-space: nowrap;
+                    font-size: 0.85rem;
+                    background: transparent !important;
+                    border: none !important;
                 }
             }
         }
 
+        /* Stake Row takes Column 3 on desktop */
         .config-stake-row {
+            grid-column: 3 / 4;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            width: 100%;
+
+            @include mobile-or-tablet-screen {
+                grid-column: 1 / -1;
+            }
 
             .config-stake-info {
                 display: flex;
                 flex-direction: column;
                 width: 100%;
                 gap: 3px;
+                background: rgba(0, 0, 0, 0.12);
+                padding: 6px 10px;
+                border-radius: 8px;
+                border: 1px solid rgba(16, 185, 129, 0.15);
+
+                @include mobile-or-tablet-screen {
+                    background: transparent;
+                    padding: 0;
+                    border: none;
+                }
 
                 .config-label {
-                    font-size: 0.65rem;
+                    font-size: 0.62rem;
                     text-transform: uppercase;
                     color: var(--text-general);
                     font-weight: 800;
@@ -598,8 +600,8 @@
                     align-items: center;
                     background: var(--general-main-1);
                     border: 1px solid rgba(16, 185, 129, 0.3);
-                    border-radius: 8px;
-                    padding: 5px 10px;
+                    border-radius: 6px;
+                    padding: 4px 8px;
                     box-sizing: border-box;
 
                     @include mobile-or-tablet-screen {
@@ -610,7 +612,7 @@
                         background: transparent;
                         color: var(--text-prominent);
                         font-weight: 900;
-                        font-size: 0.9rem;
+                        font-size: 0.85rem;
                         border: none;
                         outline: none;
                         width: 100%;
@@ -622,20 +624,20 @@
                     }
 
                     .currency-tag {
-                        font-size: 0.6rem;
+                        font-size: 0.58rem;
                         font-weight: 900;
                         color: #10b981;
                         background: rgba(16, 185, 129, 0.12);
-                        padding: 2px 6px;
-                        border-radius: 6px;
+                        padding: 2px 5px;
+                        border-radius: 4px;
                     }
                 }
 
                 .stake-error-text {
                     color: #fb7185;
-                    font-size: 0.7rem;
+                    font-size: 0.68rem;
                     font-weight: 700;
-                    margin-top: 3px;
+                    margin-top: 2px;
                     display: block;
                 }
             }
@@ -648,7 +650,7 @@
         grid-template-columns: 1fr 1fr !important;
         gap: 12px !important; 
         max-width: 800px !important; 
-        margin: 5px auto 2px auto !important; /* Reduced distance to purchase buttons to 5px on desktop */
+        margin: 5px auto 2px auto !important; 
         width: 100%;
 
         @include mobile-or-tablet-screen {
