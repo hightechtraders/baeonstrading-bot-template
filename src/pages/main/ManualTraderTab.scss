@@ -378,7 +378,7 @@
             grid-template-columns: 1.3fr 1fr 1fr !important;
             padding: 17px 14px !important;
             gap: 15px !important;
-            margin-top: 15px !important;
+            margin-top: 24px !important; /* Mobile-only: increased distance from digit circles by 9px (15px + 9px) */
             margin-bottom: 0 !important;
         }
 
@@ -665,7 +665,7 @@
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
-            margin: -4.5px auto 4px auto !important; /* Mobile-only: increased distance to 12.5px */
+            margin: -4.5px auto 4px auto !important;
             max-width: 100% !important;
         }
     }
