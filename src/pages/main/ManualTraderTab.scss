@@ -375,7 +375,7 @@
         @include mobile-or-tablet-screen {
             padding: 12px 18px; /* Increased by 40% from base mobile padding */
             gap: 12px; /* Increased by 40% from base mobile gap */
-            margin-top: 40px; /* Maintains your 40px distance from digit circles */
+            margin-top: 30px; /* Updated distance from digit circles to 30px */
         }
 
         .config-grid-row {
