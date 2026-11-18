@@ -359,28 +359,28 @@
         }
     }
 
-    /* Configuration Card: Clean 3-Column Top Row for Desktop & Mobile */
+    /* Configuration Card matching notebook sketch exactly */
     .manual-unified-config-card {
         background: rgba(16, 185, 129, 0.03);
         border: 1px solid rgba(16, 185, 129, 0.2);
         border-radius: 12px;
         padding: 12px 16px;
         display: grid;
-        grid-template-columns: 1.3fr 1fr 1fr; /* 3 clean independent columns for Blueprint, Target Digit, and Duration */
-        gap: 14px;
+        grid-template-columns: 1.3fr 1fr 1fr; /* 3 direct columns on top: Blueprint | Target Digit | Duration */
+        gap: 16px;
         width: 100%;
         box-sizing: border-box;
         margin-top: 8px;
         align-items: center;
 
         @include mobile-or-tablet-screen {
-            grid-template-columns: 1fr 1fr 1fr !important; /* Maintains the exact 3-column layout on mobile too */
+            grid-template-columns: 1.2fr 1fr 1fr !important; /* Maintains 3 clean columns on mobile */
             padding: 10px 8px;
             gap: 8px;
             margin-top: 12px;
         }
 
-        /* Blueprint selector (Column 1) */
+        /* Blueprint selector (Direct Item in Column 1) */
         .config-grid-row {
             grid-column: 1 / 2;
             display: flex;
@@ -442,7 +442,7 @@
                         text-overflow: ellipsis;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.65rem;
+                            font-size: 0.62rem;
                         }
                     }
 
@@ -453,7 +453,7 @@
                         margin-left: 8px;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.7rem;
+                            font-size: 0.65rem;
                             margin-left: 4px;
                         }
                     }
@@ -497,18 +497,10 @@
             }
         }
 
-        /* Target Digit and Duration separated into distinct individual columns (Columns 2 and 3) */
+        /* Target Digit (Column 2) and Duration (Column 3) placed directly as grid columns */
         .config-sub-row {
             grid-column: 2 / 4;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-            width: 100%;
-            align-items: center;
-
-            @include mobile-or-tablet-screen {
-                display: contents; /* Allows individual items to flow directly into the grid columns */
-            }
+            display: contents; /* Unlocks children to flow directly into columns 2 and 3 of the parent grid */
 
             .config-stepper-control {
                 display: flex;
@@ -555,7 +547,7 @@
                     transition: opacity 0.2s ease;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.8rem;
+                        font-size: 0.75rem;
                     }
 
                     &:hover {
@@ -573,13 +565,13 @@
                     border: none !important;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.7rem;
+                        font-size: 0.68rem;
                     }
                 }
             }
         }
 
-        /* Risk Capital Allocation / Stake Row (Spans Full Width on Row 2) */
+        /* Risk Capital Allocation / Stake Row (Spans full width on Row 2 below) */
         .config-stake-row {
             grid-column: 1 / -1;
             display: flex;
@@ -587,7 +579,7 @@
             justify-content: space-between;
             width: 100%;
             border-top: 1px solid rgba(255, 255, 255, 0.06);
-            padding-top: 8px;
+            padding-top: 10px;
             margin-top: 2px;
 
             .config-stake-info {
@@ -595,10 +587,9 @@
                 flex-direction: column;
                 width: 100%;
                 gap: 3px;
-                background: rgba(0, 0, 0, 0.12);
-                padding: 6px 12px;
-                border-radius: 8px;
-                border: 1px solid rgba(16, 185, 129, 0.15);
+                background: transparent;
+                padding: 0;
+                border: none;
 
                 .config-label {
                     font-size: 0.62rem;
