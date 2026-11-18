@@ -366,7 +366,7 @@
         border-radius: 12px;
         padding: 12px 16px;
         display: grid;
-        grid-template-columns: 1.3fr 1fr 1fr; /* 3 direct columns on top: Blueprint | Target Digit | Duration */
+        grid-template-columns: 1.5fr 1fr 1fr; /* 3 direct columns for Blueprint, Target Digit, and Duration */
         gap: 16px;
         width: 100%;
         box-sizing: border-box;
@@ -374,204 +374,179 @@
         align-items: center;
 
         @include mobile-or-tablet-screen {
-            grid-template-columns: 1.2fr 1fr 1fr !important; /* Maintains 3 clean columns on mobile */
+            grid-template-columns: 1.3fr 1fr 1fr !important;
             padding: 10px 8px;
             gap: 8px;
             margin-top: 12px;
         }
 
-        /* Blueprint selector (Direct Item in Column 1) */
-        .config-grid-row {
-            grid-column: 1 / 2;
+        /* Generic config item styling for top-row elements */
+        .config-item {
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            padding-bottom: 0;
-            border-bottom: none;
+            align-items: flex-start;
+            text-align: left;
             width: 100%;
 
-            .config-item {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                text-align: left;
-                width: 100%;
+            .config-label {
+                font-size: 0.62rem;
+                text-transform: uppercase;
+                color: var(--text-general);
+                font-weight: 800;
+                margin-bottom: 2px;
 
-                .config-label {
-                    font-size: 0.62rem;
-                    text-transform: uppercase;
-                    color: var(--text-general);
-                    font-weight: 800;
-                    margin-bottom: 2px;
-
-                    @include mobile-or-tablet-screen {
-                        font-size: 0.5rem;
-                    }
+                @include mobile-or-tablet-screen {
+                    font-size: 0.5rem;
                 }
             }
 
-            .config-blueprint-item {
-                position: relative;
-                width: 100%;
+            .config-value {
+                font-size: 0.85rem;
+                font-weight: 900;
+                color: var(--text-prominent);
 
-                .config-blueprint-selector {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    cursor: pointer;
-                    padding: 7px 12px;
-                    border-radius: 8px;
-                    background: rgba(255, 255, 255, 0.05);
-                    border: 1px solid rgba(16, 185, 129, 0.25);
-                    width: 100%;
-                    box-sizing: border-box;
-                    text-align: left;
-
-                    @include mobile-or-tablet-screen {
-                        padding: 5px 6px;
-                    }
-
-                    .config-value {
-                        text-align: left;
-                        flex: 1;
-                        font-size: 0.85rem;
-                        font-weight: 900;
-                        color: var(--text-prominent);
-                        white-space: nowrap;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-
-                        @include mobile-or-tablet-screen {
-                            font-size: 0.62rem;
-                        }
-                    }
-
-                    .blueprint-chevron {
-                        font-size: 0.85rem;
-                        font-weight: 900;
-                        color: #10b981;
-                        margin-left: 8px;
-
-                        @include mobile-or-tablet-screen {
-                            font-size: 0.65rem;
-                            margin-left: 4px;
-                        }
-                    }
+                @include mobile-or-tablet-screen {
+                    font-size: 0.7rem;
                 }
 
-                .config-blueprint-dropdown {
-                    position: absolute;
-                    top: 100%;
-                    left: 0;
-                    right: 0;
-                    margin-top: 6px;
-                    background: rgba(15, 23, 42, 0.98);
-                    border: 1px solid rgba(16, 185, 129, 0.4);
-                    border-radius: 10px;
-                    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
-                    z-index: 50;
-                    overflow: hidden;
-
-                    .blueprint-option-item {
-                        padding: 10px 14px;
-                        font-size: 0.84rem;
-                        font-weight: 500;
-                        color: #e2e8f0;
-                        background: transparent;
-                        cursor: pointer;
-                        text-align: left;
-                        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-
-                        &:hover {
-                            background: rgba(16, 185, 129, 0.15);
-                            color: #34d399;
-                        }
-
-                        &.active {
-                            color: #34d399;
-                            background: rgba(16, 185, 129, 0.16);
-                            font-weight: 700;
-                        }
-                    }
-                }
-            }
-        }
-
-        /* Target Digit (Column 2) and Duration (Column 3) placed directly as grid columns */
-        .config-sub-row {
-            grid-column: 2 / 4;
-            display: contents; /* Unlocks children to flow directly into columns 2 and 3 of the parent grid */
-
-            .config-stepper-control {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                justify-content: center;
-                gap: 3px;
-                width: 100%;
-                background: transparent !important;
-                border: none !important;
-                box-shadow: none !important;
-                padding: 0;
-
-                .config-label {
-                    font-size: 0.62rem;
-                    text-transform: uppercase;
-                    color: var(--text-general);
-                    font-weight: 800;
-
-                    @include mobile-or-tablet-screen {
-                        font-size: 0.5rem;
-                    }
-                }
-
-                .stepper-row, & > div {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    width: 100%;
-                }
-
-                .stepper-btn {
-                    background: transparent !important;
-                    border: none !important;
-                    box-shadow: none !important;
+                &.highlight-digit {
                     color: #34d399;
-                    font-weight: 900;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 1rem;
-                    padding: 0 2px;
-                    transition: opacity 0.2s ease;
+                    font-size: 0.95rem;
 
                     @include mobile-or-tablet-screen {
                         font-size: 0.75rem;
                     }
+                }
+            }
+        }
 
-                    &:hover {
-                        opacity: 0.75;
-                        color: #10b981;
-                    }
+        /* Blueprint selector styling */
+        .config-blueprint-item {
+            position: relative;
+            width: 100%;
+
+            .config-blueprint-selector {
+                display: inline-flex;
+                align-items: center;
+                justify-content: space-between;
+                cursor: pointer;
+                padding: 7px 12px;
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(16, 185, 129, 0.25);
+                width: 100%;
+                box-sizing: border-box;
+
+                @include mobile-or-tablet-screen {
+                    padding: 5px 6px;
                 }
 
                 .config-value {
+                    text-align: left;
+                    flex: 1;
                     white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                .blueprint-chevron {
                     font-size: 0.85rem;
                     font-weight: 900;
-                    color: #34d399;
-                    background: transparent !important;
-                    border: none !important;
+                    color: #10b981;
+                    margin-left: 8px;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.68rem;
+                        font-size: 0.65rem;
+                        margin-left: 4px;
+                    }
+                }
+            }
+
+            .config-blueprint-dropdown {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                margin-top: 6px;
+                background: rgba(15, 23, 42, 0.98);
+                border: 1px solid rgba(16, 185, 129, 0.4);
+                border-radius: 10px;
+                box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+                z-index: 50;
+                overflow: hidden;
+
+                .blueprint-option-item {
+                    padding: 10px 14px;
+                    font-size: 0.84rem;
+                    font-weight: 500;
+                    color: #e2e8f0;
+                    background: transparent;
+                    cursor: pointer;
+                    text-align: left;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+                    &:hover {
+                        background: rgba(16, 185, 129, 0.15);
+                        color: #34d399;
+                    }
+
+                    &.active {
+                        color: #34d399;
+                        background: rgba(16, 185, 129, 0.16);
+                        font-weight: 700;
                     }
                 }
             }
         }
 
-        /* Risk Capital Allocation / Stake Row (Spans full width on Row 2 below) */
+        /* Duration Stepper Control */
+        .config-stepper-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0;
+
+            .stepper-btn {
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                color: #34d399;
+                font-weight: 900;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1rem;
+                padding: 0 2px;
+                transition: opacity 0.2s ease;
+
+                @include mobile-or-tablet-screen {
+                    font-size: 0.75rem;
+                }
+
+                &:hover {
+                    opacity: 0.75;
+                    color: #10b981;
+                }
+            }
+
+            .config-value {
+                white-space: nowrap;
+                font-size: 0.85rem;
+                font-weight: 900;
+                color: #34d399;
+
+                @include mobile-or-tablet-screen {
+                    font-size: 0.68rem;
+                }
+            }
+        }
+
+        /* Risk Capital Allocation / Stake Row (Spans full width across all 3 grid columns on row 2) */
         .config-stake-row {
             grid-column: 1 / -1;
             display: flex;
