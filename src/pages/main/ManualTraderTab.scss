@@ -359,18 +359,18 @@
         }
     }
 
-    /* Configuration Card (Dimensions reduced by 20% on desktop) */
+    /* Configuration Card (Dimensions reduced by another 20% on desktop, margin-top set to 8px) */
     .manual-unified-config-card {
         background: rgba(16, 185, 129, 0.03);
         border: 1px solid rgba(16, 185, 129, 0.2);
         border-radius: 12px;
-        padding: 11px 14px;
+        padding: 9px 11px; /* Further reduced dimensions by 20% */
         display: flex;
         flex-direction: column;
-        gap: 11px;
+        gap: 9px; /* Further reduced gap by 20% */
         width: 100%;
         box-sizing: border-box;
-        margin-top: 10px; /* Set to 10px distance from digits circles on desktop */
+        margin-top: 8px; /* Reduced distance to digit circles to 8px on desktop */
 
         @include mobile-or-tablet-screen {
             padding: 12px 18px;
@@ -381,8 +381,8 @@
         .config-grid-row {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            padding-bottom: 12px;
+            gap: 10px;
+            padding-bottom: 10px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
             @include mobile-or-tablet-screen {
@@ -398,11 +398,11 @@
                 width: 100%;
 
                 .config-label {
-                    font-size: 0.68rem;
+                    font-size: 0.65rem;
                     text-transform: uppercase;
                     color: var(--text-general);
                     font-weight: 800;
-                    margin-bottom: 4px;
+                    margin-bottom: 3px;
 
                     @include mobile-or-tablet-screen {
                         font-size: 0.64rem;
@@ -410,7 +410,7 @@
                 }
 
                 .config-value {
-                    font-size: 0.92rem;
+                    font-size: 0.88rem;
                     font-weight: 900;
                     color: var(--text-prominent);
 
@@ -420,7 +420,7 @@
 
                     &.highlight-digit {
                         color: #34d399;
-                        font-size: 1.02rem;
+                        font-size: 0.98rem;
                     }
                 }
             }
@@ -435,7 +435,7 @@
                     align-items: center;
                     justify-content: space-between;
                     cursor: pointer;
-                    padding: 8px 12px;
+                    padding: 6px 10px;
                     border-radius: 8px;
                     background: rgba(255, 255, 255, 0.06);
                     border: 1px solid rgba(255, 255, 255, 0.16);
@@ -457,7 +457,7 @@
                     }
 
                     .blueprint-chevron {
-                        font-size: 0.9rem;
+                        font-size: 0.85rem;
                         line-height: 1;
                         font-weight: 900;
                         color: #10b981;
@@ -509,7 +509,7 @@
             .config-sub-row {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
-                gap: 12px;
+                gap: 10px;
                 width: 100%;
 
                 @include mobile-or-tablet-screen {
@@ -536,7 +536,7 @@
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        font-size: 1.1rem;
+                        font-size: 1.05rem;
                         width: auto;
                         height: auto;
                         padding: 0 4px;
@@ -559,7 +559,7 @@
 
                     .config-value {
                         white-space: nowrap;
-                        font-size: 0.92rem;
+                        font-size: 0.88rem;
                         background: transparent !important;
                         border: none !important;
 
@@ -580,10 +580,10 @@
                 display: flex;
                 flex-direction: column;
                 width: 100%;
-                gap: 4px;
+                gap: 3px;
 
                 .config-label {
-                    font-size: 0.68rem;
+                    font-size: 0.65rem;
                     text-transform: uppercase;
                     color: var(--text-general);
                     font-weight: 800;
@@ -599,7 +599,7 @@
                     background: var(--general-main-1);
                     border: 1px solid rgba(16, 185, 129, 0.3);
                     border-radius: 8px;
-                    padding: 6px 12px;
+                    padding: 5px 10px;
                     box-sizing: border-box;
 
                     @include mobile-or-tablet-screen {
@@ -610,7 +610,7 @@
                         background: transparent;
                         color: var(--text-prominent);
                         font-weight: 900;
-                        font-size: 0.95rem;
+                        font-size: 0.9rem;
                         border: none;
                         outline: none;
                         width: 100%;
@@ -622,7 +622,7 @@
                     }
 
                     .currency-tag {
-                        font-size: 0.62rem;
+                        font-size: 0.6rem;
                         font-weight: 900;
                         color: #10b981;
                         background: rgba(16, 185, 129, 0.12);
@@ -633,22 +633,22 @@
 
                 .stake-error-text {
                     color: #fb7185;
-                    font-size: 0.72rem;
+                    font-size: 0.7rem;
                     font-weight: 700;
-                    margin-top: 4px;
+                    margin-top: 3px;
                     display: block;
                 }
             }
         }
     }
 
-    /* Pushed-Down Purchase Buttons Action Dock */
+    /* Purchase Buttons Action Dock (Desktop distance reduced to 5px) */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr !important;
         gap: 12px !important; 
         max-width: 800px !important; 
-        margin: 28px auto 2px auto !important; 
+        margin: 5px auto 2px auto !important; /* Reduced distance to purchase buttons to 5px on desktop */
         width: 100%;
 
         @include mobile-or-tablet-screen {
