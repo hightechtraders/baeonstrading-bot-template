@@ -370,12 +370,12 @@
         gap: 14px;
         width: 100%;
         box-sizing: border-box;
-        margin-top: 32px; /* Updated desktop distance to 32px from digit circles */
+        margin-top: 24px; /* Updated desktop distance to 24px from digit circles */
 
         @include mobile-or-tablet-screen {
             padding: 12px 18px; /* Increased by 40% from base mobile padding */
             gap: 12px; /* Increased by 40% from base mobile gap */
-            margin-top: 16px; /* Updated mobile distance to 16px from digit circles */
+            margin-top: 16px; /* Mobile distance remains unchanged at 16px */
         }
 
         .config-grid-row {
