@@ -377,7 +377,7 @@
             grid-template-columns: 1.3fr 1fr 1fr !important;
             padding: 10px 8px;
             gap: 8px;
-            margin-top: 12px;
+            margin-top: 20px; /* Increased card distance from digit circles on mobile */
         }
 
         /* Generic config item styling for top-row elements */
@@ -387,6 +387,13 @@
             align-items: flex-start;
             text-align: left;
             width: 100%;
+
+            /* Center Target Digit cleanly on both desktop and mobile */
+            &:nth-child(2) {
+                align-items: center;
+                text-align: center;
+                justify-self: center;
+            }
 
             .config-label {
                 font-size: 0.62rem;
@@ -638,7 +645,7 @@
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
-            margin: 18px auto 4px auto !important; 
+            margin: 36px auto 4px auto !important; /* Doubled top margin from 18px to 36px on mobile */
             max-width: 100% !important;
         }
     }
