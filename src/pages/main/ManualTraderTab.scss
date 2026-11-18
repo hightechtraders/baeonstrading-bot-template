@@ -35,6 +35,7 @@
         z-index: 1;
 
         @include mobile-or-tablet-screen {
+            justify-content: flex-start !important; /* Mobile-only: prevents viewport height from stretching the 5px gap */
             gap: 8px;
             padding-bottom: 0 !important;
         }
@@ -247,7 +248,7 @@
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            min-height: 70px; /* Scaled to accommodate 10% larger circle */
+            min-height: 70px;
             padding: 2px 0 6px 0 !important;
         }
 
@@ -294,8 +295,8 @@
             justify-content: center;
 
             @include mobile-or-tablet-screen {
-                width: 40px;  /* Increased by ~10% from 36px on mobile */
-                height: 40px; /* Increased by ~10% from 36px on mobile */
+                width: 40px;
+                height: 40px;
             }
 
             svg {
@@ -366,7 +367,7 @@
         border-radius: 12px;
         padding: 12px 16px;
         display: grid;
-        grid-template-columns: 1.5fr 1fr 1fr; /* 3 direct columns for Blueprint, Target Digit, and Duration */
+        grid-template-columns: 1.5fr 1fr 1fr;
         gap: 16px;
         width: 100%;
         box-sizing: border-box;
@@ -375,9 +376,10 @@
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1.3fr 1fr 1fr !important;
-            padding: 17px 14px !important; /* Increased by ~20% on mobile */
-            gap: 15px !important;           /* Increased by ~20% on mobile */
+            padding: 17px 14px !important;
+            gap: 15px !important;
             margin-top: 20px;
+            margin-bottom: 0 !important;
         }
 
         /* Generic config item styling for top-row elements */
@@ -663,7 +665,7 @@
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
-            margin: 36px auto 4px auto !important;
+            margin: -3px auto 4px auto !important; /* Mobile-only: 8px wrapper gap - 3px = exact 5px distance */
             max-width: 100% !important;
         }
     }
