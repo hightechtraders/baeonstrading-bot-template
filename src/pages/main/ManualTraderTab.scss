@@ -359,14 +359,14 @@
         }
     }
 
-    /* Configuration Card: 3 Distinct Independent Columns for Blueprint, Target Digit, and Duration */
+    /* Configuration Card: Clean 3-Column Top Row for Desktop & Mobile */
     .manual-unified-config-card {
         background: rgba(16, 185, 129, 0.03);
         border: 1px solid rgba(16, 185, 129, 0.2);
         border-radius: 12px;
         padding: 12px 16px;
         display: grid;
-        grid-template-columns: 1.3fr 1fr 1fr; /* 3 separate independent columns */
+        grid-template-columns: 1.3fr 1fr 1fr; /* 3 clean independent columns for Blueprint, Target Digit, and Duration */
         gap: 14px;
         width: 100%;
         box-sizing: border-box;
@@ -374,11 +374,10 @@
         align-items: center;
 
         @include mobile-or-tablet-screen {
-            display: flex;
-            flex-direction: column;
-            padding: 12px 14px;
-            gap: 10px;
-            margin-top: 16px;
+            grid-template-columns: 1fr 1fr 1fr !important; /* Maintains the exact 3-column layout on mobile too */
+            padding: 10px 8px;
+            gap: 8px;
+            margin-top: 12px;
         }
 
         /* Blueprint selector (Column 1) */
@@ -390,10 +389,6 @@
             padding-bottom: 0;
             border-bottom: none;
             width: 100%;
-
-            @include mobile-or-tablet-screen {
-                grid-column: 1 / -1;
-            }
 
             .config-item {
                 display: flex;
@@ -408,6 +403,10 @@
                     color: var(--text-general);
                     font-weight: 800;
                     margin-bottom: 2px;
+
+                    @include mobile-or-tablet-screen {
+                        font-size: 0.5rem;
+                    }
                 }
             }
 
@@ -428,6 +427,10 @@
                     box-sizing: border-box;
                     text-align: left;
 
+                    @include mobile-or-tablet-screen {
+                        padding: 5px 6px;
+                    }
+
                     .config-value {
                         text-align: left;
                         flex: 1;
@@ -437,6 +440,10 @@
                         white-space: nowrap;
                         overflow: hidden;
                         text-overflow: ellipsis;
+
+                        @include mobile-or-tablet-screen {
+                            font-size: 0.65rem;
+                        }
                     }
 
                     .blueprint-chevron {
@@ -444,6 +451,11 @@
                         font-weight: 900;
                         color: #10b981;
                         margin-left: 8px;
+
+                        @include mobile-or-tablet-screen {
+                            font-size: 0.7rem;
+                            margin-left: 4px;
+                        }
                     }
                 }
 
@@ -485,7 +497,7 @@
             }
         }
 
-        /* Target Digit and Duration explicitly separated into independent styled boxes */
+        /* Target Digit and Duration separated into distinct individual columns (Columns 2 and 3) */
         .config-sub-row {
             grid-column: 2 / 4;
             display: grid;
@@ -495,10 +507,7 @@
             align-items: center;
 
             @include mobile-or-tablet-screen {
-                grid-column: 1 / -1;
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
+                display: contents; /* Allows individual items to flow directly into the grid columns */
             }
 
             .config-stepper-control {
@@ -508,17 +517,20 @@
                 justify-content: center;
                 gap: 3px;
                 width: 100%;
-                background: rgba(0, 0, 0, 0.12) !important;
-                border: 1px solid rgba(16, 185, 129, 0.15) !important;
-                border-radius: 8px;
-                padding: 6px 12px;
-                box-sizing: border-box;
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0;
 
                 .config-label {
                     font-size: 0.62rem;
                     text-transform: uppercase;
                     color: var(--text-general);
                     font-weight: 800;
+
+                    @include mobile-or-tablet-screen {
+                        font-size: 0.5rem;
+                    }
                 }
 
                 .stepper-row, & > div {
@@ -542,6 +554,10 @@
                     padding: 0 2px;
                     transition: opacity 0.2s ease;
 
+                    @include mobile-or-tablet-screen {
+                        font-size: 0.8rem;
+                    }
+
                     &:hover {
                         opacity: 0.75;
                         color: #10b981;
@@ -555,6 +571,10 @@
                     color: #34d399;
                     background: transparent !important;
                     border: none !important;
+
+                    @include mobile-or-tablet-screen {
+                        font-size: 0.7rem;
+                    }
                 }
             }
         }
@@ -585,6 +605,10 @@
                     text-transform: uppercase;
                     color: var(--text-general);
                     font-weight: 800;
+
+                    @include mobile-or-tablet-screen {
+                        font-size: 0.52rem;
+                    }
                 }
 
                 .config-input-wrapper {
@@ -597,7 +621,7 @@
                     box-sizing: border-box;
 
                     @include mobile-or-tablet-screen {
-                        padding: 6px 12px;
+                        padding: 4px 8px;
                     }
 
                     .manual-trader-input {
@@ -611,7 +635,7 @@
                         font-variant-numeric: tabular-nums;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 1.1rem;
+                            font-size: 0.85rem;
                         }
                     }
 
@@ -636,7 +660,7 @@
         }
     }
 
-    /* Purchase Buttons Action Dock (Desktop distance reduced to 5px) */
+    /* Purchase Buttons Action Dock */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr !important;
