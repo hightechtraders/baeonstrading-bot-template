@@ -371,7 +371,7 @@
         @include mobile-or-tablet-screen {
             padding: 8px 12px;
             gap: 8px;
-            margin-top: 50px; /* Mobile margin updated to exactly 50px */
+            margin-top: 40px; /* Reduced mobile distance from digit circles to 40px */
         }
 
         .config-grid-row {
@@ -638,7 +638,7 @@
         }
     }
 
-    /* Pushed-Down Purchase Buttons Action Dock (Doubled mobile spacing from card above) */
+    /* Pushed-Down Purchase Buttons Action Dock */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr !important;
@@ -650,7 +650,7 @@
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
-            margin: 72px auto 4px auto !important; 
+            margin: 50px auto 4px auto !important; /* Updated mobile distance from card to 50px */
             max-width: 100% !important;
         }
     }
