@@ -359,23 +359,23 @@
         }
     }
 
-    /* Spacious & Well-Organized Unified Configuration Card (Increased size by 40%) */
+    /* Configuration Card (Dimensions reduced by 20% on desktop) */
     .manual-unified-config-card {
         background: rgba(16, 185, 129, 0.03);
         border: 1px solid rgba(16, 185, 129, 0.2);
         border-radius: 12px;
-        padding: 14px 18px;
+        padding: 11px 14px; /* Reduced by 20% from 14px 18px */
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 11px; /* Reduced by 20% from 14px */
         width: 100%;
         box-sizing: border-box;
-        margin-top: 24px; /* Updated desktop distance to 24px from digit circles */
+        margin-top: 24px;
 
         @include mobile-or-tablet-screen {
-            padding: 12px 18px; /* Increased by 40% from base mobile padding */
-            gap: 12px; /* Increased by 40% from base mobile gap */
-            margin-top: 16px; /* Mobile distance remains unchanged at 16px */
+            padding: 12px 18px;
+            gap: 12px;
+            margin-top: 16px;
         }
 
         .config-grid-row {
@@ -386,8 +386,8 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
             @include mobile-or-tablet-screen {
-                gap: 12px; /* Increased by 40% */
-                padding-bottom: 12px; /* Increased by 40% */
+                gap: 12px;
+                padding-bottom: 12px;
             }
 
             .config-item {
@@ -405,7 +405,7 @@
                     margin-bottom: 4px;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.64rem; /* Increased by 40% from 0.46rem */
+                        font-size: 0.64rem;
                     }
                 }
 
@@ -415,7 +415,7 @@
                     color: var(--text-prominent);
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.95rem; /* Increased by 40% from 0.68rem */
+                        font-size: 0.95rem;
                     }
 
                     &.highlight-digit {
@@ -444,7 +444,7 @@
                     text-align: left;
 
                     @include mobile-or-tablet-screen {
-                        padding: 7px 14px; /* Increased by 40% */
+                        padding: 7px 14px;
                     }
 
                     .config-value {
@@ -452,7 +452,7 @@
                         flex: 1;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.95rem; /* Increased by 40% */
+                            font-size: 0.95rem;
                         }
                     }
 
@@ -513,7 +513,7 @@
                 width: 100%;
 
                 @include mobile-or-tablet-screen {
-                    gap: 12px; /* Increased by 40% */
+                    gap: 12px;
                 }
 
                 .config-stepper-control {
@@ -544,7 +544,7 @@
                         flex-shrink: 0;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 1.25rem; /* Increased by 40% */
+                            font-size: 1.25rem;
                         }
 
                         &:hover {
@@ -564,7 +564,7 @@
                         border: none !important;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.95rem; /* Increased by 40% */
+                            font-size: 0.95rem;
                         }
                     }
                 }
@@ -589,7 +589,7 @@
                     font-weight: 800;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.64rem; /* Increased by 40% */
+                        font-size: 0.64rem;
                     }
                 }
 
@@ -603,7 +603,7 @@
                     box-sizing: border-box;
 
                     @include mobile-or-tablet-screen {
-                        padding: 6px 12px; /* Increased by 40% */
+                        padding: 6px 12px;
                     }
 
                     .manual-trader-input {
@@ -617,7 +617,7 @@
                         font-variant-numeric: tabular-nums;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 1.1rem; /* Increased by 40% */
+                            font-size: 1.1rem;
                         }
                     }
 
@@ -642,13 +642,13 @@
         }
     }
 
-    /* Pushed-Down Purchase Buttons Action Dock */
+    /* Pushed-Down Purchase Buttons Action Dock (Desktop margin-top reduced by 8px from 36px to 28px) */
     .manual-trader-buttons-grid {
         display: grid;
         grid-template-columns: 1fr 1fr !important;
         gap: 12px !important; 
         max-width: 800px !important; 
-        margin: 36px auto 2px auto !important; 
+        margin: 28px auto 2px auto !important; 
         width: 100%;
 
         @include mobile-or-tablet-screen {
