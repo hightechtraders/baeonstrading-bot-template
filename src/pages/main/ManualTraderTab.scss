@@ -359,15 +359,15 @@
         }
     }
 
-    /* Professionally Aligned 3-Column Desktop Grid Configuration Card */
+    /* Configuration Card with Independent Boxes for Target Digit and Duration */
     .manual-unified-config-card {
         background: rgba(16, 185, 129, 0.03);
         border: 1px solid rgba(16, 185, 129, 0.2);
         border-radius: 12px;
         padding: 12px 16px;
         display: grid;
-        grid-template-columns: 1.2fr 1.2fr 1fr; /* 3 balanced columns for desktop */
-        gap: 12px 16px;
+        grid-template-columns: 1.1fr 1fr 1fr; /* 3 distinct columns: Blueprint | Target Digit | Duration */
+        gap: 12px;
         width: 100%;
         box-sizing: border-box;
         margin-top: 8px;
@@ -377,23 +377,22 @@
             display: flex;
             flex-direction: column;
             padding: 12px 14px;
-            gap: 12px;
+            gap: 10px;
             margin-top: 16px;
         }
 
-        /* Blueprint selector takes Column 1 on desktop */
+        /* Blueprint selector (Column 1) */
         .config-grid-row {
             grid-column: 1 / 2;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
             padding-bottom: 0;
             border-bottom: none;
             width: 100%;
 
             @include mobile-or-tablet-screen {
                 grid-column: 1 / -1;
-                gap: 8px;
             }
 
             .config-item {
@@ -410,20 +409,8 @@
                     font-weight: 800;
                     margin-bottom: 2px;
                 }
-
-                .config-value {
-                    font-size: 0.85rem;
-                    font-weight: 900;
-                    color: var(--text-prominent);
-
-                    &.highlight-digit {
-                        color: #34d399;
-                        font-size: 0.95rem;
-                    }
-                }
             }
 
-            /* Blueprint item styling */
             .config-blueprint-item {
                 position: relative;
                 width: 100%;
@@ -433,7 +420,7 @@
                     align-items: center;
                     justify-content: space-between;
                     cursor: pointer;
-                    padding: 7px 10px;
+                    padding: 7px 12px;
                     border-radius: 8px;
                     background: rgba(255, 255, 255, 0.05);
                     border: 1px solid rgba(16, 185, 129, 0.25);
@@ -444,14 +431,19 @@
                     .config-value {
                         text-align: left;
                         flex: 1;
-                        font-size: 0.82rem;
+                        font-size: 0.85rem;
+                        font-weight: 900;
+                        color: var(--text-prominent);
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
                     }
 
                     .blueprint-chevron {
                         font-size: 0.85rem;
                         font-weight: 900;
                         color: #10b981;
-                        margin-left: 6px;
+                        margin-left: 8px;
                     }
                 }
 
@@ -493,35 +485,48 @@
             }
         }
 
-        /* Sub-row for Target Digit and Duration takes Column 2 on desktop */
+        /* Target Digit and Duration now separated into their own distinct boxes */
         .config-sub-row {
-            grid-column: 2 / 3;
+            grid-column: 2 / 4;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 12px;
             width: 100%;
-            background: rgba(0, 0, 0, 0.12);
-            padding: 6px 10px;
-            border-radius: 8px;
-            border: 1px solid rgba(16, 185, 129, 0.15);
             align-items: center;
 
             @include mobile-or-tablet-screen {
                 grid-column: 1 / -1;
-                background: transparent;
-                padding: 0;
-                border: none;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
             }
 
             .config-stepper-control {
                 display: flex;
-                align-items: center;
-                justify-content: flex-start;
-                gap: 6px;
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: center;
+                gap: 3px;
                 width: 100%;
-                background: transparent !important;
-                border: none !important;
-                box-shadow: none !important;
+                background: rgba(0, 0, 0, 0.12) !important;
+                border: 1px solid rgba(16, 185, 129, 0.15) !important;
+                border-radius: 8px;
+                padding: 6px 12px;
+                box-sizing: border-box;
+
+                .config-label {
+                    font-size: 0.62rem;
+                    text-transform: uppercase;
+                    color: var(--text-general);
+                    font-weight: 800;
+                }
+
+                .stepper-row, & > div {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    width: 100%;
+                }
 
                 .stepper-btn {
                     background: transparent !important;
@@ -535,38 +540,32 @@
                     justify-content: center;
                     font-size: 1rem;
                     padding: 0 2px;
-                    transition: opacity 0.2s ease, transform 0.1s ease;
+                    transition: opacity 0.2s ease;
 
                     &:hover {
                         opacity: 0.75;
                         color: #10b981;
-                    }
-
-                    &:active {
-                        transform: scale(0.9);
                     }
                 }
 
                 .config-value {
                     white-space: nowrap;
                     font-size: 0.85rem;
+                    font-weight: 900;
+                    color: var(--text-prominent);
                     background: transparent !important;
                     border: none !important;
                 }
             }
         }
 
-        /* Stake Row takes Column 3 on desktop */
+        /* Risk Capital Allocation / Stake Row (Spans Full Width on Row 2) */
         .config-stake-row {
-            grid-column: 3 / 4;
+            grid-column: 1 / -1;
             display: flex;
             align-items: center;
             justify-content: space-between;
             width: 100%;
-
-            @include mobile-or-tablet-screen {
-                grid-column: 1 / -1;
-            }
 
             .config-stake-info {
                 display: flex;
@@ -574,25 +573,15 @@
                 width: 100%;
                 gap: 3px;
                 background: rgba(0, 0, 0, 0.12);
-                padding: 6px 10px;
+                padding: 6px 12px;
                 border-radius: 8px;
                 border: 1px solid rgba(16, 185, 129, 0.15);
-
-                @include mobile-or-tablet-screen {
-                    background: transparent;
-                    padding: 0;
-                    border: none;
-                }
 
                 .config-label {
                     font-size: 0.62rem;
                     text-transform: uppercase;
                     color: var(--text-general);
                     font-weight: 800;
-
-                    @include mobile-or-tablet-screen {
-                        font-size: 0.64rem;
-                    }
                 }
 
                 .config-input-wrapper {
@@ -601,7 +590,7 @@
                     background: var(--general-main-1);
                     border: 1px solid rgba(16, 185, 129, 0.3);
                     border-radius: 6px;
-                    padding: 4px 8px;
+                    padding: 4px 10px;
                     box-sizing: border-box;
 
                     @include mobile-or-tablet-screen {
@@ -612,7 +601,7 @@
                         background: transparent;
                         color: var(--text-prominent);
                         font-weight: 900;
-                        font-size: 0.85rem;
+                        font-size: 0.88rem;
                         border: none;
                         outline: none;
                         width: 100%;
