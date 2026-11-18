@@ -580,10 +580,10 @@ export default function ManualTraderTab() {
           </div>
         </div>
 
-        {/* Unified Professional Parameter Card with Clean Row Layout */}
+        {/* Unified Professional Parameter Card matching notebook sketch exactly */}
         <div className="manual-unified-config-card">
           <div className="config-grid-row">
-            {/* Blueprint Strategy Dropdown (Full Width) */}
+            {/* Column 1: Blueprint Strategy Dropdown */}
             <div
               ref={blueprintDropdownRef}
               className="config-item config-blueprint-item"
@@ -616,39 +616,39 @@ export default function ManualTraderTab() {
               )}
             </div>
 
-            {/* Target Digit & Duration Side-by-Side Sub-Row */}
-            <div className="config-sub-row">
-              <div className="config-item">
-                <span className="config-label">Target Digit</span>
-                <span className="config-value highlight-digit">{targetDigit}</span>
-              </div>
+            {/* Column 2: Target Digit */}
+            <div className="config-item">
+              <span className="config-label">Target Digit</span>
+              <span className="config-value highlight-digit">{targetDigit}</span>
+            </div>
 
-              <div className="config-item">
-                <span className="config-label">Duration</span>
-                <div className="config-stepper-control">
-                  <button
-                    className="stepper-btn"
-                    onClick={() => setContractDuration(prev => Math.max(1, prev - 1))}
-                    title="Decrease Ticks"
-                  >
-                    −
-                  </button>
-                  <span className="config-value">
-                    {contractDuration} {contractDuration === 1 ? 'Tick' : 'Ticks'}
-                  </span>
-                  <button
-                    className="stepper-btn"
-                    onClick={() => setContractDuration(prev => Math.min(10, prev + 1))}
-                    title="Increase Ticks"
-                  >
-                    +
-                  </button>
-                </div>
+            {/* Column 3: Duration Stepper */}
+            <div className="config-item">
+              <span className="config-label">Duration</span>
+              <div className="config-stepper-control">
+                <button
+                  className="stepper-btn"
+                  onClick={() => setContractDuration(prev => Math.max(1, prev - 1))}
+                  title="Decrease Ticks"
+                >
+                  −
+                </button>
+                <span className="config-value">
+                  {contractDuration} {contractDuration === 1 ? 'Tick' : 'Ticks'}
+                </span>
+                <button
+                  className="stepper-btn"
+                  onClick={() => setContractDuration(prev => Math.min(10, prev + 1))}
+                  title="Increase Ticks"
+                >
+                  +
+                </button>
               </div>
             </div>
           </div>
 
-          <div className="config-stake-row" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+          {/* Row 2: Risk Capital Allocation spanning full width below */}
+          <div className="config-stake-row">
             <div className="config-stake-info">
               <span className="config-label">Risk Capital Allocation</span>
 
