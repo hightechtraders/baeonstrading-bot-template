@@ -13,10 +13,10 @@
     position: relative;
 
     @include mobile-or-tablet-screen {
-        padding: 6px 10px 16px 10px !important;
-        height: 100% !important;
-        max-height: none !important;
-        overflow-y: auto !important;
+        padding: 4px 8px 8px 8px !important;
+        height: 100dvh !important; /* EXCLUSIVE MOBILE FIX: Locks height to exact mobile viewport */
+        max-height: 100dvh !important;
+        overflow: hidden !important; /* EXCLUSIVE MOBILE FIX: Prevents outer page scrolling */
         -webkit-overflow-scrolling: touch;
     }
 
@@ -35,8 +35,11 @@
         z-index: 1;
 
         @include mobile-or-tablet-screen {
-            gap: 8px;
+            height: 100% !important;
+            justify-content: space-evenly !important; /* EXCLUSIVE MOBILE FIX: Distributes components cleanly across screen */
+            gap: 4px !important;
             padding-bottom: 0 !important;
+            overflow: hidden !important;
         }
     }
 
@@ -152,8 +155,8 @@
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            min-height: 36px;
-            padding: 4px 10px;
+            min-height: 32px;
+            padding: 3px 8px;
         }
 
         .manual-status-content {
@@ -185,7 +188,7 @@
             overflow: hidden;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.64rem;
+                font-size: 0.6rem;
             }
         }
 
@@ -200,7 +203,7 @@
             flex-shrink: 0;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.54rem;
+                font-size: 0.5rem;
             }
         }
     }
@@ -214,6 +217,10 @@
         width: 100%;
         box-sizing: border-box;
         margin: 2px 0;
+
+        @include mobile-or-tablet-screen {
+            margin: 0 !important;
+        }
     }
 
     .digit-stats-grid__inner {
@@ -226,7 +233,7 @@
 
         @include mobile-or-tablet-screen {
             grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-            gap: 6px 4px !important; 
+            gap: 4px 2px !important; 
         }
     }
 
@@ -247,8 +254,8 @@
         box-sizing: border-box;
 
         @include mobile-or-tablet-screen {
-            min-height: 64px; 
-            padding: 1px 0 4px 0 !important;
+            min-height: 56px; 
+            padding: 1px 0 2px 0 !important;
         }
 
         &--selected {
@@ -278,7 +285,8 @@
             font-variant-numeric: tabular-nums;
 
             @include mobile-or-tablet-screen {
-                font-size: 9.5px;
+                font-size: 8.5px;
+                margin-bottom: 1px;
             }
         }
 
@@ -294,8 +302,8 @@
             justify-content: center;
 
             @include mobile-or-tablet-screen {
-                width: 34.5px; 
-                height: 34.5px; 
+                width: 30px; 
+                height: 30px; 
             }
 
             svg {
@@ -324,7 +332,7 @@
                 font-variant-numeric: tabular-nums;
 
                 @include mobile-or-tablet-screen {
-                    font-size: 8.6px;
+                    font-size: 7.5px;
                 }
             }
         }
@@ -375,9 +383,9 @@
 
         @include mobile-or-tablet-screen {
             grid-template-columns: 1.3fr 1fr 1fr !important;
-            padding: 10px 8px;
-            gap: 8px;
-            margin-top: 20px; /* Increased card distance from digit circles on mobile */
+            padding: 8px 8px !important;
+            gap: 6px;
+            margin-top: 4px !important; /* EXCLUSIVE MOBILE FIX: Tightened margin to fit full screen view */
         }
 
         /* Generic config item styling for top-row elements */
@@ -403,7 +411,7 @@
                 margin-bottom: 2px;
 
                 @include mobile-or-tablet-screen {
-                    font-size: 0.5rem;
+                    font-size: 0.45rem;
                 }
             }
 
@@ -413,7 +421,7 @@
                 color: var(--text-prominent);
 
                 @include mobile-or-tablet-screen {
-                    font-size: 0.7rem;
+                    font-size: 0.62rem;
                 }
 
                 &.highlight-digit {
@@ -421,7 +429,7 @@
                     font-size: 0.95rem;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.75rem;
+                        font-size: 0.7rem;
                     }
                 }
             }
@@ -445,7 +453,7 @@
                 box-sizing: border-box;
 
                 @include mobile-or-tablet-screen {
-                    padding: 5px 6px;
+                    padding: 4px 6px;
                 }
 
                 .config-value {
@@ -463,7 +471,7 @@
                     margin-left: 8px;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.65rem;
+                        font-size: 0.55rem;
                         margin-left: 4px;
                     }
                 }
@@ -532,7 +540,7 @@
                 transition: opacity 0.2s ease;
 
                 @include mobile-or-tablet-screen {
-                    font-size: 0.75rem;
+                    font-size: 0.65rem;
                 }
 
                 &:hover {
@@ -548,7 +556,7 @@
                 color: #34d399;
 
                 @include mobile-or-tablet-screen {
-                    font-size: 0.68rem;
+                    font-size: 0.62rem;
                 }
             }
         }
@@ -561,8 +569,12 @@
             justify-content: space-between;
             width: 100%;
             border-top: 1px solid rgba(255, 255, 255, 0.06);
-            padding-top: 10px;
+            padding-top: 8px;
             margin-top: 2px;
+
+            @include mobile-or-tablet-screen {
+                padding-top: 6px;
+            }
 
             .config-stake-info {
                 display: flex;
@@ -580,7 +592,7 @@
                     font-weight: 800;
 
                     @include mobile-or-tablet-screen {
-                        font-size: 0.52rem;
+                        font-size: 0.45rem;
                     }
                 }
 
@@ -594,7 +606,7 @@
                     box-sizing: border-box;
 
                     @include mobile-or-tablet-screen {
-                        padding: 4px 8px;
+                        padding: 3px 6px;
                     }
 
                     .manual-trader-input {
@@ -608,7 +620,7 @@
                         font-variant-numeric: tabular-nums;
 
                         @include mobile-or-tablet-screen {
-                            font-size: 0.85rem;
+                            font-size: 0.75rem;
                         }
                     }
 
@@ -619,6 +631,11 @@
                         background: rgba(16, 185, 129, 0.12);
                         padding: 2px 5px;
                         border-radius: 4px;
+
+                        @include mobile-or-tablet-screen {
+                            font-size: 0.5rem;
+                            padding: 1px 4px;
+                        }
                     }
                 }
 
@@ -628,6 +645,10 @@
                     font-weight: 700;
                     margin-top: 2px;
                     display: block;
+
+                    @include mobile-or-tablet-screen {
+                        font-size: 0.55rem;
+                    }
                 }
             }
         }
@@ -645,7 +666,7 @@
         @include mobile-or-tablet-screen {
             grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
-            margin: 36px auto 4px auto !important; /* Doubled top margin from 18px to 36px on mobile */
+            margin: 4px auto 0 auto !important; /* EXCLUSIVE MOBILE FIX: Compacted margin for single-screen view */
             max-width: 100% !important;
         }
     }
@@ -664,7 +685,7 @@
         transition: all 0.2s ease;
 
         @include mobile-or-tablet-screen {
-            padding: 10px 8px !important;
+            padding: 8px 6px !important;
         }
 
         &--over {
@@ -691,7 +712,7 @@
             opacity: 0.9;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.44rem !important;
+                font-size: 0.4rem !important;
             }
         }
 
@@ -701,7 +722,7 @@
             margin-top: 2px;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.72rem !important;
+                font-size: 0.65rem !important;
             }
         }
 
@@ -714,8 +735,8 @@
             border-radius: 4px;
 
             @include mobile-or-tablet-screen {
-                font-size: 0.42rem !important;
-                padding: 1px 4px;
+                font-size: 0.38rem !important;
+                padding: 1px 3px;
             }
         }
     }
