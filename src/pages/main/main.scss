@@ -204,12 +204,11 @@
                 @include mobile-or-tablet-screen {
                     width: 100%;
                     height: auto !important; 
-                    min-height: 0 !important;
-                    max-height: calc(100dvh - 12rem) !important;
-                    overflow-y: auto !important; 
-                    overflow-x: hidden !important;
-                    -webkit-overflow-scrolling: touch;
-                    padding-bottom: 12rem; // Ample clearance for mobile footer/nav bars
+                    min-height: auto !important;
+                    max-height: none !important;
+                    overflow: visible !important;
+                    overflow-y: visible !important; 
+                    padding-bottom: 0;
 
                     &--no-result {
                         @include flex-center;
@@ -923,12 +922,12 @@ joyride-content {
 
     @include mobile-or-tablet-screen {
         padding: 0.8rem; 
-        padding-bottom: 18rem; 
+        padding-bottom: 5.5rem; 
         height: auto !important;
-        min-height: auto !important;
-        max-height: none !important;
-        overflow: visible !important;
-        overflow-y: visible !important;
+        min-height: 0 !important;
+        max-height: calc(100dvh - 13rem) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
     }
 }
 
