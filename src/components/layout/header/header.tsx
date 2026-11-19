@@ -210,7 +210,8 @@ const AppHeader = observer(() => {
                     {isDesktop ? <MenuItems /> : renderAccountSection('left')}
                 </Wrapper>
 
-                <HeaderMetrics />
+                {/* Integrated Metrics filling the middle space on Desktop */}
+                {isDesktop && <HeaderMetrics />}
 
                 <Wrapper variant='right'>{renderAccountSection('right')}</Wrapper>
             </Header>
