@@ -205,10 +205,11 @@
                     width: 100%;
                     height: auto !important; 
                     min-height: auto !important;
+                    max-height: none !important;
                     overflow: visible !important;
                     overflow-y: visible !important; 
                     -webkit-overflow-scrolling: touch;
-                    padding-bottom: 16rem; // Ample clearance for mobile footer/nav bars
+                    padding-bottom: 18rem; // Ample clearance for mobile footer/nav bars
 
                     &--no-result {
                         @include flex-center;
@@ -922,9 +923,11 @@ joyride-content {
 
     @include mobile-or-tablet-screen {
         padding: 0.8rem; 
-        padding-bottom: 16rem; 
+        padding-bottom: 18rem; 
         height: auto !important;
         min-height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
         overflow-y: visible !important;
     }
 }
