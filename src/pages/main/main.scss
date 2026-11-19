@@ -164,6 +164,7 @@
                     overflow-y: hidden;
                     white-space: nowrap;
                     -webkit-overflow-scrolling: touch;
+                    -webkit-tap-highlight-color: transparent;
                     box-sizing: border-box;
                     padding: 0.6rem 0.8rem;
                     border-radius: 0;
@@ -267,6 +268,8 @@
                     max-width: none !important;
                     padding: 0 1rem;
                     white-space: nowrap;
+                    -webkit-tap-highlight-color: transparent;
+                    user-select: none;
                 }
 
                 &:not(.dc-tabs__active) {
@@ -277,14 +280,16 @@
                         opacity: 0.8;
                     }
 
-                    &:hover {
-                        color: #00a86b !important;
-                        background: rgba(0, 168, 107, 0.12) !important;
-                        border-radius: 0.8rem;
+                    @media (hover: hover) and (pointer: fine) {
+                        &:hover {
+                            color: #00a86b !important;
+                            background: rgba(0, 168, 107, 0.12) !important;
+                            border-radius: 0.8rem;
 
-                        svg {
-                            fill: #00a86b !important;
-                            opacity: 1;
+                            svg {
+                                fill: #00a86b !important;
+                                opacity: 1;
+                            }
                         }
                     }
                 }
