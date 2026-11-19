@@ -13,7 +13,7 @@ import MobileWrapper from '@/components/shared_ui/mobile-wrapper';
 import Tabs from '@/components/shared_ui/tabs/tabs';
 import TradeTypeConfirmationModal from '@/components/trade-type-confirmation-modal';
 import TradingViewModal from '@/components/trading-view-chart/trading-view-modal';
-import { DBOT_TABS, TAB_IDS } from '@/constants/bot-contents';
+import { DBOT_TABS } from '@/constants/bot-contents';
 import { api_base, updateWorkspaceName } from '@/external/bot-skeleton';
 import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observables/connection-status-stream';
 import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
@@ -427,41 +427,47 @@ const AppWrapper = observer(() => {
     }, [dashboard_strategies, active_tab]);
 
     const centerTabInContainer = React.useCallback((tab_index: number, behavior: ScrollBehavior = 'smooth') => {
-        const el_id = TAB_IDS[tab_index];
-        if (!el_id) return;
+        const scrollToCenter = () => {
+            const container = document.querySelector('.dc-tabs__list') as HTMLElement | null;
+            if (!container) return;
 
-        const el_tab = document.getElementById(el_id);
-        const container = el_tab?.parentElement as HTMLElement | null;
+            const tabItems = Array.from(container.querySelectorAll('.dc-tabs__item')) as HTMLElement[];
+            const el_tab =
+                tabItems[tab_index] || (container.querySelector('.dc-tabs__active') as HTMLElement | null);
 
-        if (el_tab && container) {
-            requestAnimationFrame(() => {
-                const containerRect = container.getBoundingClientRect();
-                const tabRect = el_tab.getBoundingClientRect();
-                const tabCenterOffset = tabRect.left - containerRect.left + tabRect.width / 2;
-                const targetScrollLeft = container.scrollLeft + tabCenterOffset - containerRect.width / 2;
+            if (!el_tab) return;
 
-                container.scrollTo({
-                    left: Math.max(0, targetScrollLeft),
-                    behavior,
-                });
+            const containerRect = container.getBoundingClientRect();
+            const tabRect = el_tab.getBoundingClientRect();
+            const tabCenterInList = tabRect.left - containerRect.left + tabRect.width / 2;
+            const desiredScrollLeft = container.scrollLeft + tabCenterInList - containerRect.width / 2;
+            const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+            const clampedScrollLeft = Math.max(0, Math.min(desiredScrollLeft, maxScrollLeft));
+
+            container.scrollTo({
+                left: clampedScrollLeft,
+                behavior,
             });
-        }
+        };
+
+        requestAnimationFrame(() => {
+            setTimeout(scrollToCenter, 30);
+        });
     }, []);
 
     const handleTabChange = React.useCallback(
         (tab_index: number) => {
             setActiveTab(tab_index);
-            centerTabInContainer(tab_index, 'smooth');
+            if (!isDesktop) {
+                centerTabInContainer(tab_index, 'smooth');
+            }
         },
-        [centerTabInContainer, setActiveTab]
+        [centerTabInContainer, isDesktop, setActiveTab]
     );
 
     useEffect(() => {
         if (!isDesktop) {
-            const timer = setTimeout(() => {
-                centerTabInContainer(active_tab, 'smooth');
-            }, 40);
-            return () => clearTimeout(timer);
+            centerTabInContainer(active_tab, 'smooth');
         }
     }, [active_tab, centerTabInContainer, isDesktop]);
 
