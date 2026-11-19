@@ -16,7 +16,7 @@ import HeaderMetrics from './header-metrics';
 import MenuItems from './menu-items';
 import MobileMenu from './mobile-menu';
 import './header.scss';
- 
+
 const AppHeader = observer(() => {
     const { isDesktop } = useDevice();
     const { isAuthorizing, activeLoginid, setIsAuthorizing, authData } = useApiBase();
@@ -210,8 +210,7 @@ const AppHeader = observer(() => {
                     {isDesktop ? <MenuItems /> : renderAccountSection('left')}
                 </Wrapper>
 
-                {/* Integrated Metrics filling the middle space on Desktop */}
-                {isDesktop && <HeaderMetrics />}
+                <HeaderMetrics />
 
                 <Wrapper variant='right'>{renderAccountSection('right')}</Wrapper>
             </Header>
