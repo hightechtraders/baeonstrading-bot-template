@@ -426,36 +426,44 @@ const AppWrapper = observer(() => {
         };
     }, [dashboard_strategies, active_tab]);
 
+    const centerTabInContainer = React.useCallback((tab_index: number, behavior: ScrollBehavior = 'smooth') => {
+        const el_id = TAB_IDS[tab_index];
+        if (!el_id) return;
+
+        const el_tab = document.getElementById(el_id);
+        const container = el_tab?.parentElement as HTMLElement | null;
+
+        if (el_tab && container) {
+            requestAnimationFrame(() => {
+                const containerRect = container.getBoundingClientRect();
+                const tabRect = el_tab.getBoundingClientRect();
+                const tabCenterOffset = tabRect.left - containerRect.left + tabRect.width / 2;
+                const targetScrollLeft = container.scrollLeft + tabCenterOffset - containerRect.width / 2;
+
+                container.scrollTo({
+                    left: Math.max(0, targetScrollLeft),
+                    behavior,
+                });
+            });
+        }
+    }, []);
+
     const handleTabChange = React.useCallback(
         (tab_index: number) => {
             setActiveTab(tab_index);
-
-            // Bulletproof container-aware smooth centering for mobile & desktop
-            const el_id = TAB_IDS[tab_index];
-            if (el_id) {
-                const el_tab = document.getElementById(el_id);
-                const container = el_tab?.parentElement; // The scrollable __list container
-
-                if (el_tab && container) {
-                    setTimeout(() => {
-                        const containerWidth = container.clientWidth;
-                        const tabLeft = el_tab.offsetLeft;
-                        const tabWidth = el_tab.clientWidth;
-                        
-                        // Calculate precise scroll left target to center the tab perfectly
-                        const targetScrollLeft = tabLeft - (containerWidth / 2) + (tabWidth / 2);
-
-                        container.scrollTo({
-                            left: Math.max(0, targetScrollLeft),
-                            behavior: 'smooth'
-                        });
-                    }, 10);
-                }
-            }
+            centerTabInContainer(tab_index, 'smooth');
         },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [active_tab]
+        [centerTabInContainer, setActiveTab]
     );
+
+    useEffect(() => {
+        if (!isDesktop) {
+            const timer = setTimeout(() => {
+                centerTabInContainer(active_tab, 'smooth');
+            }, 40);
+            return () => clearTimeout(timer);
+        }
+    }, [active_tab, centerTabInContainer, isDesktop]);
 
     const handleLoginGeneration = async () => {
         const oauthUrl = await generateOAuthURL();
