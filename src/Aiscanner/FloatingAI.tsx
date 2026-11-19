@@ -343,23 +343,19 @@ export const FloatingAI: React.FC = () => {
 
   return (
     <div className="floating-ai-container">
-      {/* GPU-accelerated smooth animations: Pure up-and-down floating motion with pulsing rings */}
+      {/* GPU-accelerated smooth animations: Gentle float with soft pulsing rings */}
       <style>{`
-        @keyframes vividPulseCyan {
-          0% { transform: scale3d(1, 1, 1); opacity: 0.9; }
-          100% { transform: scale3d(1.8, 1.8, 1); opacity: 0; }
+        @keyframes softPulseCyan {
+          0% { transform: scale3d(1, 1, 1); opacity: 0.45; }
+          100% { transform: scale3d(1.38, 1.38, 1); opacity: 0; }
         }
-        @keyframes vividPulsePaleGreen {
-          0% { transform: scale3d(1, 1, 1); opacity: 0.85; }
-          100% { transform: scale3d(2.1, 2.1, 1); opacity: 0; }
-        }
-        @keyframes vividPulseOuter {
-          0% { transform: scale3d(1, 1, 1); opacity: 0.7; }
-          100% { transform: scale3d(2.5, 2.5, 1); opacity: 0; }
+        @keyframes softPulseGreen {
+          0% { transform: scale3d(1, 1, 1); opacity: 0.35; }
+          100% { transform: scale3d(1.55, 1.55, 1); opacity: 0; }
         }
         @keyframes silkySlowFloat {
           0%, 100% { transform: translate3d(0, 0px, 0); }
-          50% { transform: translate3d(0, -9px, 0); }
+          50% { transform: translate3d(0, -6px, 0); }
         }
       `}</style>
 
@@ -398,48 +394,36 @@ export const FloatingAI: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            animation: 'silkySlowFloat 4.5s infinite ease-in-out',
+            animation: 'silkySlowFloat 5s infinite ease-in-out',
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
             pointerEvents: 'none',
           }}
         >
-          {/* Ring 1: Vivid Cyan Inner Pulse Ring */}
+          {/* Ring 1: Soft Cyan Pulse Ring */}
           <div
+            className="orb-pulse-ring orb-pulse-ring--primary"
             style={{
               position: 'absolute',
-              inset: '-12px',
+              inset: '-8px',
               borderRadius: '50%',
-              border: '2px solid rgba(0, 242, 254, 0.85)',
-              animation: 'vividPulseCyan 3s infinite cubic-bezier(0.4, 0, 0.6, 1)',
+              border: '1.5px solid rgba(0, 242, 254, 0.45)',
+              animation: 'softPulseCyan 3.4s infinite cubic-bezier(0.4, 0, 0.6, 1)',
               backfaceVisibility: 'hidden',
               pointerEvents: 'none',
               boxSizing: 'border-box',
             }}
           />
 
-          {/* Ring 2: Pale Green Neon Mid Pulse Ring */}
+          {/* Ring 2: Soft Emerald Pulse Ring */}
           <div
+            className="orb-pulse-ring orb-pulse-ring--secondary"
             style={{
               position: 'absolute',
-              inset: '-24px',
+              inset: '-16px',
               borderRadius: '50%',
-              border: '2px solid rgba(152, 255, 152, 0.75)',
-              animation: 'vividPulsePaleGreen 3.6s infinite cubic-bezier(0.4, 0, 0.6, 1) 0.9s',
-              backfaceVisibility: 'hidden',
-              pointerEvents: 'none',
-              boxSizing: 'border-box',
-            }}
-          />
-
-          {/* Ring 3: Outer Cyan/Green Expansion Ring */}
-          <div
-            style={{
-              position: 'absolute',
-              inset: '-36px',
-              borderRadius: '50%',
-              border: '1.5px solid rgba(0, 255, 170, 0.5)',
-              animation: 'vividPulseOuter 4.2s infinite cubic-bezier(0.4, 0, 0.6, 1) 1.8s',
+              border: '1.5px solid rgba(52, 211, 153, 0.35)',
+              animation: 'softPulseGreen 4.2s infinite cubic-bezier(0.4, 0, 0.6, 1) 1.1s',
               backfaceVisibility: 'hidden',
               pointerEvents: 'none',
               boxSizing: 'border-box',
@@ -466,7 +450,7 @@ export const FloatingAI: React.FC = () => {
               background:
                 'radial-gradient(circle at 35% 35%, #34d399 0%, #00a86b 45%, #022c22 100%)',
               boxShadow:
-                'inset 0 6px 12px rgba(255, 255, 255, 0.45), inset 0 -8px 14px rgba(0, 0, 0, 0.6), 0 0 35px rgba(0, 242, 254, 0.6)',
+                'inset 0 6px 12px rgba(255, 255, 255, 0.45), inset 0 -8px 14px rgba(0, 0, 0, 0.6), 0 0 24px rgba(0, 168, 107, 0.45)',
               border: '2px solid rgba(255, 255, 255, 0.5)',
               color: '#ffffff',
               fontWeight: 800,
