@@ -431,7 +431,7 @@ const AppWrapper = observer(() => {
             const container = document.querySelector('.dc-tabs__list') as HTMLElement | null;
             if (!container) return;
 
-            // Keep Dashboard (index 0) anchored in its starting position on the left
+            // Keep Dashboard (starting tab at index 0) in its starting position
             if (tab_index === 0) {
                 container.scrollTo({
                     left: 0,
@@ -446,18 +446,10 @@ const AppWrapper = observer(() => {
 
             if (!el_tab) return;
 
-            const firstTab = tabItems[0] as HTMLElement | undefined;
-            const stickyOffset = firstTab ? firstTab.getBoundingClientRect().width : 0;
-
             const containerRect = container.getBoundingClientRect();
             const tabRect = el_tab.getBoundingClientRect();
-
-            // Center within the visible scrollable region to the right of the pinned Dashboard tab
-            const visibleScrollableWidth = Math.max(1, containerRect.width - stickyOffset);
             const tabCenterInList = tabRect.left - containerRect.left + tabRect.width / 2;
-            const desiredScrollLeft =
-                container.scrollLeft + tabCenterInList - (stickyOffset + visibleScrollableWidth / 2);
-
+            const desiredScrollLeft = container.scrollLeft + tabCenterInList - containerRect.width / 2;
             const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
             const clampedScrollLeft = Math.max(0, Math.min(desiredScrollLeft, maxScrollLeft));
 
