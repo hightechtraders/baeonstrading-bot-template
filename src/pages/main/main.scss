@@ -110,6 +110,11 @@
                 left: 0;
                 display: block !important;
                 visibility: visible !important;
+
+                @include mobile-or-tablet-screen {
+                    display: none !important;
+                    visibility: hidden !important;
+                }
             }
 
             // Active tab indicator highlight
@@ -121,6 +126,13 @@
 
                 svg {
                     fill: #00a86b !important;
+                }
+
+                @include mobile-or-tablet-screen {
+                    position: relative;
+                    border-bottom: 3px solid #00a86b !important;
+                    border-bottom-left-radius: 2px;
+                    border-bottom-right-radius: 2px;
                 }
             }
 
@@ -152,8 +164,9 @@
                     overflow-y: hidden;
                     white-space: nowrap;
                     -webkit-overflow-scrolling: touch;
+                    scroll-snap-type: x proximity;
                     box-sizing: border-box;
-                    padding: 0.6rem 1rem;
+                    padding: 0.6rem calc(50% - 60px);
                     border-radius: 0;
                     border-left: none;
                     border-right: none;
