@@ -427,15 +427,16 @@ const AppWrapper = observer(() => {
     }, [dashboard_strategies, active_tab]);
 
     const centerTabInContainer = React.useCallback((tab_index: number, behavior: ScrollBehavior = 'smooth') => {
-        const scrollToCenter = () => {
+        const scrollToPosition = (overrideBehavior?: ScrollBehavior) => {
             const container = document.querySelector('.dc-tabs__list') as HTMLElement | null;
             if (!container) return;
 
-            // Keep Dashboard (starting tab at index 0) in its starting position
+            // Keep Dashboard (index 0) in its starting position and override any internal Tabs auto-centering
             if (tab_index === 0) {
+                container.scrollLeft = 0;
                 container.scrollTo({
                     left: 0,
-                    behavior,
+                    behavior: overrideBehavior ?? behavior,
                 });
                 return;
             }
@@ -455,12 +456,15 @@ const AppWrapper = observer(() => {
 
             container.scrollTo({
                 left: clampedScrollLeft,
-                behavior,
+                behavior: overrideBehavior ?? behavior,
             });
         };
 
         requestAnimationFrame(() => {
-            setTimeout(scrollToCenter, 30);
+            setTimeout(() => scrollToPosition(), 30);
+            if (tab_index === 0) {
+                setTimeout(() => scrollToPosition('auto'), 200);
+            }
         });
     }, []);
 
