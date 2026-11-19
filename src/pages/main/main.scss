@@ -267,14 +267,6 @@
                     max-width: none !important;
                     padding: 0 1rem;
                     white-space: nowrap;
-
-                    &:first-child {
-                        position: sticky;
-                        left: 0;
-                        z-index: 3;
-                        background: var(--general-section-1) !important;
-                        box-shadow: 4px 0 10px rgba(0, 0, 0, 0.14) !important;
-                    }
                 }
 
                 &:not(.dc-tabs__active) {
