@@ -68,10 +68,8 @@
         white-space: nowrap;
         transition: border-color 0.2s ease;
 
-        @media (hover: hover) and (pointer: fine) {
-            &:hover {
-                border-color: var(--text-less-prominent);
-            }
+        &:hover {
+            border-color: var(--text-less-prominent);
         }
     }
 
@@ -79,7 +77,6 @@
         border-radius: 50%;
         height: 1rem;
         width: 1rem;
-        flex-shrink: 0;
 
         &--running {
             background-color: var(--status-success);
@@ -125,41 +122,6 @@
 
         &--prominent {
             color: var(--text-prominent);
-        }
-    }
-
-    @include mobile-or-tablet-screen {
-        display: flex !important;
-        flex: 0 1 auto;
-        gap: 4px;
-        padding: 0 4px;
-        margin: 0 auto;
-
-        &__item {
-            gap: 4px;
-            padding: 3px 6px;
-            border-radius: 12px;
-
-            /* Keep the live status dot and API dot, hide verbose text labels on narrow screens */
-            &:first-child .header-metrics__value,
-            &:last-child .header-metrics__label {
-                display: none;
-            }
-        }
-
-        &__dot {
-            height: 0.7rem;
-            width: 0.7rem;
-        }
-
-        /* Hide "P&L:" prefix so "+0.00 USD" fits cleanly */
-        &__label {
-            display: none;
-        }
-
-        &__value {
-            font-size: 1.05rem;
-            font-weight: 700;
         }
     }
 }
