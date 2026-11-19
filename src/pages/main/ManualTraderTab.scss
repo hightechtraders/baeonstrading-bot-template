@@ -127,10 +127,13 @@
                 white-space: nowrap;
                 transition: background 0.2s ease;
                 border: none !important;
+                -webkit-tap-highlight-color: transparent;
 
-                &:hover {
-                    background: rgba(16, 185, 129, 0.15);
-                    color: #10b981;
+                @media (hover: hover) and (pointer: fine) {
+                    &:hover {
+                        background: rgba(16, 185, 129, 0.15);
+                        color: #10b981;
+                    }
                 }
 
                 &.active {
