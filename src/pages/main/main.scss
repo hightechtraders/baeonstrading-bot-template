@@ -11,7 +11,7 @@
         right: auto;
     }
 }
-  
+
 .tabs-shadow {
     position: absolute;
     top: 8px;
@@ -101,7 +101,7 @@
 
             // Active tab indicator underline color & accurate positioning fix
             &__active-line {
-                background-color: #00a86b !important; 
+                background-color: #00a86b !important;
                 transition: transform 0.25s ease, width 0.25s ease;
                 height: 0.35rem !important;
                 border-radius: 0.2rem;
@@ -120,7 +120,7 @@
             // Active tab indicator highlight
             &__active {
                 background: rgba(0, 168, 107, 0.15) !important;
-                color: #00a86b !important; 
+                color: #00a86b !important;
                 font-weight: 700;
                 border-radius: 0.8rem;
 
@@ -138,13 +138,13 @@
 
             // Unified pale green background container set to flat 72% width
             &__list {
-                background: rgba(0, 168, 107, 0.06); 
-                border: 1.5px solid rgba(0, 168, 107, 0.25); 
+                background: rgba(0, 168, 107, 0.06);
+                border: 1.5px solid rgba(0, 168, 107, 0.25);
                 display: flex;
-                justify-content: space-between; 
+                justify-content: space-between;
                 align-items: center;
-                gap: 1rem; 
-                width: 68%; 
+                gap: 1rem;
+                width: 68%;
                 max-width: 100%;
                 border-radius: 1.2rem;
                 padding: 0.4rem 1.2rem;
@@ -157,7 +157,7 @@
                     display: flex;
                     justify-content: flex-start;
                     align-items: center;
-                    gap: 0.8rem; 
+                    gap: 0.8rem;
                     width: 100%;
                     max-width: 100vw;
                     overflow-x: auto !important;
@@ -172,7 +172,7 @@
                     border-right: none;
 
                     &::-webkit-scrollbar {
-                        display: none; 
+                        display: none;
                     }
                 }
 
@@ -198,16 +198,16 @@
             &__content {
                 background: var(--general-main-1);
                 flex: 1;
-                overflow-y: auto !important; 
+                overflow-y: auto !important;
                 box-sizing: border-box;
 
                 @include mobile-or-tablet-screen {
                     width: 100%;
-                    height: auto !important; 
+                    height: auto !important;
                     min-height: auto !important;
                     max-height: none !important;
                     overflow: visible !important;
-                    overflow-y: visible !important; 
+                    overflow-y: visible !important;
                     padding-bottom: 0;
 
                     &--no-result {
@@ -251,8 +251,8 @@
                 border-radius: 0.8rem;
                 height: 3.8rem;
                 padding: 0 1rem;
-                flex: 1; 
-                max-width: 16rem; 
+                flex: 1;
+                max-width: 16rem;
                 text-align: center;
                 white-space: nowrap;
                 background: transparent !important;
@@ -263,7 +263,7 @@
                 @include flex-center;
 
                 @include mobile-or-tablet-screen {
-                    flex: 0 0 auto !important; 
+                    flex: 0 0 auto !important;
                     width: auto !important;
                     max-width: none !important;
                     padding: 0 1rem;
@@ -909,20 +909,21 @@ joyride-content {
 
 .free-bots-container {
     padding: 1.6rem;
+    padding-bottom: 4.5rem;
     width: 100%;
     max-width: 1400px;
     margin: 0 auto;
     min-height: 100%;
     background: var(--general-main-1);
-    box-sizing: border-box; 
-    overflow-y: visible !important; 
-    overflow-x: hidden !important; 
+    box-sizing: border-box;
+    overflow-y: visible !important;
+    overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
 
     @include mobile-or-tablet-screen {
-        padding: 0.8rem; 
-        padding-bottom: 5.5rem; 
+        padding: 0.8rem;
+        padding-bottom: 5.5rem;
         height: auto !important;
         min-height: 0 !important;
         max-height: calc(100dvh - 13rem) !important;
@@ -931,40 +932,58 @@ joyride-content {
     }
 }
 
+.free-bots-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.2rem;
+    margin-bottom: 1.6rem;
+    padding: 1rem 1.4rem;
+    background: var(--general-section-1);
+    border: 1.5px solid rgba(0, 168, 107, 0.3);
+    border-radius: 1rem;
+}
+
 .free-bots-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
     gap: 1.2rem;
     width: 100%;
     box-sizing: border-box;
 
     @include mobile-or-tablet-screen {
-        grid-template-columns: 1fr; 
+        grid-template-columns: 1fr;
     }
 }
 
 .free-bots-card {
-    background: var(--general-section-1); 
-    border: 1.5px solid rgba(0, 168, 107, 0.35); 
+    background: var(--general-section-1);
+    border: 1.5px solid rgba(0, 168, 107, 0.35);
     border-radius: 1.2rem;
     padding: 1.4rem;
     box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.06);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 1.2rem;
-    box-sizing: border-box; 
+    gap: 1.1rem;
+    box-sizing: border-box;
     width: 100%;
     max-width: 100%;
-    word-break: break-word; 
+    word-break: break-word;
     overflow: hidden;
     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-    will-change: transform; 
+    will-change: transform;
 
     &:hover {
         transform: translateY(-2px);
-        border-color: #00a86b; 
+        border-color: #00a86b;
         box-shadow: 0 0.6rem 1.6rem rgba(0, 168, 107, 0.15);
+    }
+
+    &--active {
+        border-color: #22d3ee;
+        box-shadow: 0 0 1.4rem rgba(34, 211, 238, 0.22);
     }
 
     .free-bots-header {
@@ -984,8 +1003,8 @@ joyride-content {
         .confidence-badge {
             font-size: 1.1rem;
             font-weight: 700;
-            color: #00a86b; 
-            background: rgba(0, 168, 107, 0.1); 
+            color: #00a86b;
+            background: rgba(0, 168, 107, 0.1);
             padding: 0.3rem 0.8rem;
             border-radius: 0.6rem;
         }
@@ -994,23 +1013,15 @@ joyride-content {
     .free-bots-body {
         display: flex;
         flex-direction: column;
-        gap: 0.6rem;
+        gap: 0.7rem;
         width: 100%;
 
         .strategy-title {
             font-size: 1.5rem;
             font-weight: 700;
-            color: var(--text-prominent); 
+            color: var(--text-prominent);
             margin: 0;
             line-height: 1.3;
-            word-wrap: break-word;
-        }
-
-        .strategy-description {
-            font-size: 1.25rem;
-            color: var(--text-general);
-            line-height: 1.4;
-            margin: 0.2rem 0;
             word-wrap: break-word;
         }
 
@@ -1020,22 +1031,11 @@ joyride-content {
             flex-wrap: wrap;
             font-size: 1.2rem;
             color: var(--text-less-prominent);
-            gap: 0.4rem;
+            gap: 0.5rem;
 
             .dot-separator {
                 opacity: 0.4;
-                margin: 0 0.4rem;
-            }
-
-            .direction-badge {
-                font-weight: 700;
-
-                &.up {
-                    color: #00a86b;
-                }
-                &.down {
-                    color: #e11d48;
-                }
+                margin: 0 0.2rem;
             }
         }
     }
@@ -1043,8 +1043,8 @@ joyride-content {
     .free-bots-btn {
         width: 100%;
         height: 3.8rem;
-        background: #00a86b; 
-        color: #ffffff; 
+        background: #00a86b;
+        color: #ffffff;
         border: 1px solid rgba(0, 168, 107, 0.3);
         border-radius: 0.8rem;
         font-size: 1.3rem;
@@ -1064,6 +1064,16 @@ joyride-content {
         &:active {
             transform: scale(0.98);
         }
+
+        &--active {
+            background: #ff3366;
+            border-color: rgba(255, 51, 102, 0.4);
+
+            &:hover {
+                background: #e11d48;
+                border-color: #ff3366;
+            }
+        }
     }
 }
 
@@ -1073,12 +1083,6 @@ joyride-content {
     color: var(--text-general);
     width: 100%;
     box-sizing: border-box;
-
-    p {
-        margin-bottom: 1rem;
-        font-size: 1.3rem;
-        word-wrap: break-word;
-    }
 
     .rescan-btn {
         margin-top: 1rem;
@@ -1091,7 +1095,7 @@ joyride-content {
 /* =========================================================
    COPY TRADING & FREE BOTS PROFESSIONAL THEME & CONTRAST FIX
    ========================================================= */
-#id-copy-trading, 
+#id-copy-trading,
 .free-bots-container {
     h3 {
         font-size: 1.8rem !important;
@@ -1104,29 +1108,25 @@ joyride-content {
         font-size: 1rem !important;
     }
 
-    span, label {
+    span,
+    label {
         color: var(--text-prominent);
         opacity: 1 !important;
     }
 
-    .strategy-description, 
-    .free-bots-body p {
-        font-size: 1.25rem !important;
-        color: var(--text-prominent) !important;
-        opacity: 0.95 !important;
-    }
-
     .market-name {
-        font-size: 1.2rem !important;
+        font-size: 1.15rem !important;
         font-weight: 600;
         opacity: 1 !important;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.6rem;
         border: 1.5px solid rgba(0, 168, 107, 0.3) !important;
         background: rgba(0, 168, 107, 0.08) !important;
         color: var(--text-prominent) !important;
     }
 
     .confidence-badge {
-        font-size: 1.2rem !important;
+        font-size: 1.15rem !important;
         font-weight: 600;
         opacity: 1 !important;
     }
@@ -1154,12 +1154,16 @@ joyride-content {
             box-shadow: 0 0 0 2px rgba(0, 168, 107, 0.2) !important;
         }
     }
+
+    select {
+        cursor: pointer !important;
+    }
 }
 
 /* ==========================================
    FIX GLOBAL STAKE MULTIPLIER RANGE TRACK & THUMB LAYOUT (80% WIDTH & CENTERED)
    ========================================== */
-input[type="range"] {
+input[type='range'] {
     -webkit-appearance: none !important;
     appearance: none !important;
     display: block !important;
