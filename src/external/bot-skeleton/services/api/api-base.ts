@@ -31,6 +31,16 @@ type SubscriptionPromise = Promise<{
     subscription: CurrentSubscription;
 }>;
 
+export type SettledTradeRecord = {
+    contract_id: number;
+    symbol: string;
+    contract_type: string;
+    buy_price: number;
+    profit: number;
+    currency: string;
+    settled_at: number;
+};
+
 type TApiBaseApi = {
     connection: {
         readyState: keyof typeof socket_state;
@@ -66,13 +76,95 @@ class APIBase {
     active_symbols_promise: Promise<any[] | undefined> | null = null;
     common_store: CommonStore | undefined;
     reconnection_attempts: number = 0;
-    
+
     // Tracking timestamp for active R_10 live feed ticks
     last_r10_tick_timestamp: number = 0;
+
+    // Cumulative session P&L tracking
+    session_pnl: number = 0;
+    session_currency: string = 'USD';
+    session_trades: SettledTradeRecord[] = [];
+    settled_contract_ids: Set<number> = new Set();
 
     private readonly ACTIVE_SYMBOLS_TIMEOUT_MS = 10000;
     private readonly ENRICHMENT_TIMEOUT_MS = 10000;
     private readonly MAX_RECONNECTION_ATTEMPTS = 5;
+
+    private getSessionStorageKey(loginid: string): string {
+        return `deriv_session_trades_${loginid}`;
+    }
+
+    private loadSessionPnl(loginid: string, currency = 'USD') {
+        this.session_currency = currency;
+        this.session_trades = [];
+        this.settled_contract_ids.clear();
+        this.session_pnl = 0;
+
+        if (!loginid) {
+            this.emitPnlUpdate(0, currency, true);
+            return;
+        }
+
+        try {
+            const raw = sessionStorage.getItem(this.getSessionStorageKey(loginid));
+            if (raw) {
+                const parsed: SettledTradeRecord[] = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    this.session_trades = parsed;
+                    parsed.forEach(trade => {
+                        if (trade.contract_id) {
+                            this.settled_contract_ids.add(Number(trade.contract_id));
+                        }
+                        this.session_pnl += Number(trade.profit || 0);
+                    });
+                }
+            }
+        } catch (error) {
+            console.warn('[APIBase] Failed to restore session trades:', error);
+        }
+
+        this.emitPnlUpdate(this.session_pnl, currency, true);
+    }
+
+    private saveSessionPnl(loginid: string) {
+        if (!loginid) return;
+        try {
+            sessionStorage.setItem(this.getSessionStorageKey(loginid), JSON.stringify(this.session_trades));
+        } catch (error) {
+            console.warn('[APIBase] Failed to persist session trades:', error);
+        }
+    }
+
+    resetSessionPnl(currency = this.session_currency || 'USD') {
+        this.session_pnl = 0;
+        this.session_trades = [];
+        this.settled_contract_ids.clear();
+
+        if (this.account_id) {
+            try {
+                sessionStorage.removeItem(this.getSessionStorageKey(this.account_id));
+            } catch {
+                // Ignore storage errors
+            }
+        }
+
+        this.emitPnlUpdate(0, currency, true);
+    }
+
+    private emitPnlUpdate(totalPnl: number, currency: string, isSold: boolean) {
+        const formattedPnl = `${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)} ${currency}`;
+        window.dispatchEvent(
+            new CustomEvent('deriv_pnl_update', {
+                detail: {
+                    pnl: formattedPnl,
+                    rawPnl: totalPnl,
+                    currency,
+                    isSold,
+                    tradeCount: this.session_trades.length,
+                },
+            })
+        );
+    }
 
     unsubscribeAllSubscriptions = () => {
         this.current_auth_subscriptions?.forEach(subscription_promise => {
@@ -170,7 +262,7 @@ class APIBase {
             this.api?.connection.addEventListener('open', this.onsocketopen.bind(this));
             this.api?.connection.addEventListener('close', this.onsocketclose.bind(this));
 
-            // [AI] - Direct Native WebSocket Interceptor for Ticks & P&L
+            // [AI] - Direct Native WebSocket Interceptor for Ticks & Cumulative Session P&L
             if (this.api && this.api.connection) {
                 const originalOnMessage = this.api.connection.onmessage;
                 this.api.connection.onmessage = (event: MessageEvent) => {
@@ -183,21 +275,34 @@ class APIBase {
                     try {
                         const data = JSON.parse(event.data);
 
-                        // Capture proposal open contract stream for real-time P&L (Wins & Losses)
+                        // Capture proposal open contract stream for cumulative session P&L (Wins & Losses)
                         if (data && data.msg_type === 'proposal_open_contract' && data.proposal_open_contract) {
                             const contract = data.proposal_open_contract;
+                            const contractId = Number(contract.contract_id);
+                            const isSold = Boolean(contract.is_sold || (contract.status && contract.status !== 'open'));
                             const profit = Number(contract.profit || 0);
-                            const currency = contract.currency || 'USD';
-                            const formattedPnl = `${profit >= 0 ? '+' : ''}${profit.toFixed(2)} ${currency}`;
+                            const currency = contract.currency || this.session_currency || 'USD';
 
-                            window.dispatchEvent(
-                                new CustomEvent('deriv_pnl_update', {
-                                    detail: {
-                                        pnl: formattedPnl,
-                                        isSold: Boolean(contract.is_sold),
-                                    },
-                                })
-                            );
+                            if (isSold && contractId && !this.settled_contract_ids.has(contractId)) {
+                                this.settled_contract_ids.add(contractId);
+                                this.session_pnl += profit;
+
+                                this.session_trades.push({
+                                    contract_id: contractId,
+                                    symbol: contract.underlying || contract.symbol || '',
+                                    contract_type: contract.contract_type || '',
+                                    buy_price: Number(contract.buy_price || 0),
+                                    profit,
+                                    currency,
+                                    settled_at: Date.now(),
+                                });
+
+                                this.saveSessionPnl(this.account_id);
+                            }
+
+                            const openUnrealized = !isSold ? profit : 0;
+                            const displayTotal = this.session_pnl + openUnrealized;
+                            this.emitPnlUpdate(displayTotal, currency, isSold);
                         }
 
                         if (data && data.msg_type === 'tick' && data.tick) {
@@ -301,6 +406,7 @@ class APIBase {
     async authorizeAndSubscribe() {
         if (!this.api) return;
 
+        const previousAccountId = this.account_id;
         this.account_id = getAccountId() || '';
         setIsAuthorizing(true);
 
@@ -317,20 +423,28 @@ class APIBase {
                 return { ...error, localizedMessage: errorMessage };
             }
 
+            const resolvedLoginId = balance?.loginid || this.account_id;
+            const resolvedCurrency = balance?.currency || 'USD';
+            this.account_id = resolvedLoginId;
+
+            if (resolvedLoginId !== previousAccountId || this.settled_contract_ids.size === 0) {
+                this.loadSessionPnl(resolvedLoginId, resolvedCurrency);
+            }
+
             this.account_info = {
                 balance: balance?.balance,
-                currency: balance?.currency,
-                loginid: balance?.loginid,
+                currency: resolvedCurrency,
+                loginid: resolvedLoginId,
             };
-            this.token = balance?.loginid;
+            this.token = resolvedLoginId;
 
-            const account_type = getAccountType(balance?.loginid);
-            const currentAccount = balance?.loginid
+            const account_type = getAccountType(resolvedLoginId);
+            const currentAccount = resolvedLoginId
                 ? {
                       balance: balance.balance,
-                      currency: balance.currency || 'USD',
+                      currency: resolvedCurrency,
                       is_virtual: account_type === 'real' ? 0 : 1,
-                      loginid: balance.loginid,
+                      loginid: resolvedLoginId,
                   }
                 : null;
 
@@ -352,14 +466,13 @@ class APIBase {
             setAccountList(accountList);
             setAuthData({
                 balance: balance?.balance,
-                currency: balance?.currency,
-                loginid: balance?.loginid,
+                currency: resolvedCurrency,
+                loginid: resolvedLoginId,
                 is_virtual: account_type === 'real' ? 0 : 1,
                 account_list: accountList,
             });
 
-            const loginid = balance?.loginid || '';
-            const isDemo = isDemoAccount(loginid);
+            const isDemo = isDemoAccount(resolvedLoginId);
 
             if (isDemo) {
                 localStorage.setItem('account_type', 'demo');
@@ -370,16 +483,16 @@ class APIBase {
             globalObserver.emit('api.authorize', {
                 account_list: accountList,
                 current_account: {
-                    loginid: balance?.loginid,
-                    currency: balance?.currency || 'USD',
+                    loginid: resolvedLoginId,
+                    currency: resolvedCurrency,
                     is_virtual: account_type === 'real' ? 0 : 1,
                     balance: typeof balance?.balance === 'number' ? balance.balance : undefined,
                 },
             });
 
             const currentClientStore = globalObserver.getState('client.store');
-            if (currentClientStore && balance?.loginid) {
-                currentClientStore.setWebSocketLoginId(balance.loginid);
+            if (currentClientStore && resolvedLoginId) {
+                currentClientStore.setWebSocketLoginId(resolvedLoginId);
             }
 
             setIsAuthorized(true);
@@ -387,8 +500,8 @@ class APIBase {
             localStorage.setItem('client_account_details', JSON.stringify(accountList));
             localStorage.setItem('client.country', balance?.country);
 
-            if (balance?.loginid) {
-                localStorage.setItem('active_loginid', balance.loginid);
+            if (resolvedLoginId) {
+                localStorage.setItem('active_loginid', resolvedLoginId);
             }
 
             if (this.has_active_symbols) {
