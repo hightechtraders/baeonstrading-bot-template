@@ -19,7 +19,6 @@ import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observab
 import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
-import { ScannerBridge } from '../../Aiscanner/scannerBridge';
 import {
     disableUrlParameterApplication,
     enableUrlParameterApplication,
@@ -51,6 +50,19 @@ import ManualTraderTab from './ManualTraderTab'; // <--- IMPORTED HERE
 import './main.scss';
 
 const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
+
+const VOLATILITY_OPTIONS = [
+    { value: 'R_10', label: 'Volatility 10' },
+    { value: '1HZ10V', label: 'Volatility 10 (1s)' },
+    { value: 'R_25', label: 'Volatility 25' },
+    { value: '1HZ25V', label: 'Volatility 25 (1s)' },
+    { value: 'R_50', label: 'Volatility 50' },
+    { value: '1HZ50V', label: 'Volatility 50 (1s)' },
+    { value: 'R_75', label: 'Volatility 75' },
+    { value: '1HZ75V', label: 'Volatility 75 (1s)' },
+    { value: 'R_100', label: 'Volatility 100' },
+    { value: '1HZ100V', label: 'Volatility 100 (1s)' },
+];
 
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
@@ -90,88 +102,55 @@ const AppWrapper = observer(() => {
     const [left_tab_shadow, setLeftTabShadow] = useState<boolean>(false);
     const [right_tab_shadow, setRightTabShadow] = useState<boolean>(false);
 
-    // Free bots card visibility state & 7 integrated working strategies
+    // Free bots UI state (volatility-agnostic)
     const [is_card_visible, setIsCardVisible] = useState<boolean>(true);
+    const [selected_free_bot_market, setSelectedFreeBotMarket] = useState<string>('R_10');
+    const [active_free_bot_id, setActiveFreeBotId] = useState<string | null>(null);
     const [working_strategies] = useState([
         {
             id: 'strat_1',
             strategyName: 'EMA Crossover Breakpoint',
-            description: 'Identifies trend momentum shifts by tracking fast and slow exponential moving average intersections.',
-            marketName: 'Volatility 50 (1s) Index',
-            symbol: '1HZ50V',
             contractType: 'PUT',
-            direction: 'DOWN',
             confidence: '84%',
-            status: 'HIGH',
         },
         {
             id: 'strat_2',
             strategyName: 'Bollinger Band Squeeze',
-            description: 'Capitalizes on low-volatility consolidation periods anticipating strong breakout directional moves.',
-            marketName: 'Volatility 100 (1s) Index',
-            symbol: '1HZ100V',
             contractType: 'CALL',
-            direction: 'UP',
             confidence: '79%',
-            status: 'HIGH',
         },
         {
             id: 'strat_3',
             strategyName: 'Only Ups / Only Downs Momentum',
-            description: 'Rides continuous multi-tick unidirectional trends with automated safety filters.',
-            marketName: 'Volatility 100 Index',
-            symbol: '1HZ100V',
             contractType: 'CALL',
-            direction: 'UP',
             confidence: '91%',
-            status: 'HIGH',
         },
         {
             id: 'strat_4',
-            strategyName: 'Over 2, Recovery Over 7',
-            description: 'Digit-based probabilistic trading targeting high-probability boundary exits with recovery scaling.',
-            marketName: 'Volatility 75 Index',
-            symbol: '1HZ75V',
+            strategyName: 'Over 2, Recovery Under 7',
             contractType: 'DIGITOVER',
             barrier: '2',
-            direction: 'DIGIT',
             confidence: '88%',
-            status: 'HIGH',
         },
         {
             id: 'strat_5',
             strategyName: 'Even Botter Strategy',
-            description: 'Analyzes statistical parity of last digits to execute high-frequency even/odd contracts.',
-            marketName: 'Volatility 10 Index',
-            symbol: 'R_10',
             contractType: 'EVEN',
-            direction: 'EVEN',
             confidence: '82%',
-            status: 'MED',
         },
         {
             id: 'strat_6',
             strategyName: 'Over 1, Recovery Under 7',
-            description: 'Digit prediction strategy designed to capture frequent tick fluctuations safely.',
-            marketName: 'Volatility 25 Index',
-            symbol: 'R_25',
             contractType: 'DIGITOVER',
             barrier: '1',
-            direction: 'DIGIT',
             confidence: '85%',
-            status: 'HIGH',
         },
         {
             id: 'strat_7',
             strategyName: 'Rise and Fall Copier',
-            description: 'Mirrors high-frequency price action swings across synthetic volatility streams.',
-            marketName: 'Volatility 50 Index',
-            symbol: 'R_50',
             contractType: 'CALL',
-            direction: 'CALL/PUT',
             confidence: '90%',
-            status: 'HIGH',
-        }
+        },
     ]);
 
     // Copy Trading Hub State & Mock Datasets
@@ -224,7 +203,7 @@ const AppWrapper = observer(() => {
             allocation: '$10.00 / trade',
             pnl: '+14.50 USD',
             status: 'Active',
-        }
+        },
     ]);
 
     const [trade_history] = useState([
@@ -546,49 +525,87 @@ const AppWrapper = observer(() => {
                                 id='id-tutorials'
                             >
                                 <div className='free-bots-container'>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            flexWrap: 'wrap',
+                                            gap: '12px',
+                                            marginBottom: '18px',
+                                        }}
+                                    >
+                                        <label
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '10px',
+                                                fontSize: '0.9rem',
+                                                fontWeight: 600,
+                                                color: 'var(--text-prominent)',
+                                            }}
+                                        >
+                                            <span>Market</span>
+                                            <select
+                                                value={selected_free_bot_market}
+                                                onChange={e => setSelectedFreeBotMarket(e.target.value)}
+                                                style={{
+                                                    padding: '8px 12px',
+                                                    borderRadius: '8px',
+                                                    background: 'var(--general-section-1)',
+                                                    color: 'var(--text-prominent)',
+                                                    border: '1px solid rgba(0, 168, 107, 0.4)',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                {VOLATILITY_OPTIONS.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>
+                                                        {opt.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
+                                    </div>
+
                                     {is_card_visible ? (
                                         <div className='free-bots-grid'>
-                                            {working_strategies.map((bot, index) => (
-                                                <div className='free-bots-card' key={bot.id}>
-                                                    <div className='free-bots-header'>
-                                                        <span className='strategy-tag'>STRATEGY #{index + 1}</span>
-                                                        <span className='confidence-badge'>CONFIDENCE {bot.confidence}</span>
-                                                    </div>
-
-                                                    <div className='free-bots-body'>
-                                                        <h4 className='strategy-title'>{bot.strategyName}</h4>
-                                                        <p className='strategy-description'>{bot.description}</p>
-                                                        <div className='strategy-details'>
-                                                            <span className='market-name'>{bot.marketName}</span>
-                                                            <span className='dot-separator'>•</span>
-                                                            <span className={`direction-badge ${bot.direction === 'UP' ? 'up' : 'down'}`}>
-                                                                {bot.direction}
-                                                            </span>
+                                            {working_strategies.map((bot, index) => {
+                                                const isSelected = active_free_bot_id === bot.id;
+                                                return (
+                                                    <div className='free-bots-card' key={bot.id}>
+                                                        <div className='free-bots-header'>
+                                                            <span className='strategy-tag'>STRATEGY #{index + 1}</span>
+                                                            <span className='confidence-badge'>CONFIDENCE {bot.confidence}</span>
                                                         </div>
-                                                    </div>
 
-                                                    <button 
-                                                        onClick={() => {
-                                                            ScannerBridge.executeDirectTrade(bot, {
-                                                                symbol: bot.symbol,
-                                                                contractType: bot.contractType,
-                                                                barrier: bot.barrier,
-                                                                stake: 0.35,
-                                                                duration: 5,
-                                                                durationUnit: 't'
-                                                            });
-                                                        }}
-                                                        className='free-bots-btn'
-                                                    >
-                                                        Run Free Bot
-                                                    </button>
-                                                </div>
-                                            ))}
+                                                        <div className='free-bots-body'>
+                                                            <h4 className='strategy-title'>{bot.strategyName}</h4>
+                                                            <div className='strategy-details'>
+                                                                <span className='market-name'>{bot.contractType}</span>
+                                                                {bot.barrier && (
+                                                                    <>
+                                                                        <span className='dot-separator'>•</span>
+                                                                        <span>Barrier {bot.barrier}</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        <button
+                                                            type='button'
+                                                            onClick={() => setActiveFreeBotId(isSelected ? null : bot.id)}
+                                                            className='free-bots-btn'
+                                                        >
+                                                            {isSelected ? 'Stop Free Bot' : 'Run Free Bot'}
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     ) : (
                                         <div className='free-bots-closed-state'>
-                                            <p>Strategy cards hidden.</p>
-                                            <button 
+                                            <button
+                                                type='button'
                                                 onClick={() => setIsCardVisible(true)}
                                                 className='free-bots-btn rescan-btn'
                                             >
