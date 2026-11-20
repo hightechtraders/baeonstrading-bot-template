@@ -57,6 +57,12 @@ export const HeaderMetrics = observer(() => {
     // Fall back to client store status if available, otherwise use live websocket P&L
     const todayPnl = client?.status?.today_pnl || client?.today_pnl || livePnl;
     const isProfitable = !String(todayPnl).startsWith('-');
+    const hasNonZeroPnl = !String(todayPnl).startsWith('+0.00') && !String(todayPnl).startsWith('0.00');
+
+    const handleResetPnl = () => {
+        const currency = client?.currency || api_base.session_currency || 'USD';
+        api_base.resetSessionPnl(currency);
+    };
 
     return (
         <div className="header-metrics">
@@ -72,6 +78,26 @@ export const HeaderMetrics = observer(() => {
                 <span className={`header-metrics__value ${isProfitable ? 'header-metrics__value--success' : 'header-metrics__value--danger'}`}>
                     {todayPnl}
                 </span>
+                {hasNonZeroPnl && (
+                    <button
+                        type="button"
+                        onClick={handleResetPnl}
+                        title="Reset Session P&L"
+                        style={{
+                            marginLeft: '6px',
+                            background: 'transparent',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            borderRadius: '4px',
+                            color: 'inherit',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            padding: '1px 5px',
+                            opacity: 0.85,
+                        }}
+                    >
+                        ↺
+                    </button>
+                )}
             </div>
 
             <div className="header-metrics__item">
