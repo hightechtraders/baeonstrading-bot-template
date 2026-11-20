@@ -7,16 +7,16 @@ import { ScannerLogic, DerivTickResponse } from './scannerLogic';
 export interface AIScannerPayload {
   stake: number;
   duration: number;
-  symbol: string;          
-  tradeType?: string;      
-  durationUnit?: string;   
+  symbol: string;
+  tradeType?: string;
+  durationUnit?: string;
   stopLoss?: number;
   takeProfit?: number;
   recoveryStep?: number;
 }
 
 export class ScannerBridge {
-  private static isScannerActive: boolean = false; 
+  private static isScannerActive: boolean = false;
   private static scannerLogicInstance = new ScannerLogic();
 
   static {
@@ -54,22 +54,68 @@ export class ScannerBridge {
         symbol: assetName,
         quote: quote,
         epoch: Date.now(),
-        id: Math.random().toString()
-      }
+        id: Math.random().toString(),
+      },
     };
 
     const updatedStrategies = ScannerBridge.scannerLogicInstance.handleIncomingMessage(tickPayload);
 
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('ai-tick-received', {
-        detail: { assetName, quote, strategies: updatedStrategies }
-      }));
-      window.dispatchEvent(new CustomEvent('deriv_scanner_updated', {
-        detail: { assetName, quote, strategies: updatedStrategies }
-      }));
-      window.dispatchEvent(new CustomEvent('ai-strategies-updated', {
-        detail: { strategies: updatedStrategies }
-      }));
+      window.dispatchEvent(
+        new CustomEvent('ai-tick-received', {
+          detail: { assetName, quote, strategies: updatedStrategies },
+        })
+      );
+      window.dispatchEvent(
+        new CustomEvent('deriv_scanner_updated', {
+          detail: { assetName, quote, strategies: updatedStrategies },
+        })
+      );
+      window.dispatchEvent(
+        new CustomEvent('ai-strategies-updated', {
+          detail: { strategies: updatedStrategies },
+        })
+      );
+    }
+  }
+
+  public static loadXmlToWorkspace(xmlString: string, selectedSymbol?: string): boolean {
+    if (!xmlString || typeof window === 'undefined') return false;
+
+    const Blockly = (window as any).Blockly;
+    const workspace = Blockly?.derivWorkspace || Blockly?.mainWorkspace;
+
+    if (!workspace || !Blockly?.Xml) {
+      console.warn('[ScannerBridge] Blockly workspace not ready.');
+      return false;
+    }
+
+    try {
+      const strictSymbol = selectedSymbol ? ScannerBridge.translateSymbol(selectedSymbol) : null;
+      const xmlDom = Blockly.Xml.textToDom(xmlString);
+
+      if (strictSymbol) {
+        const fields = xmlDom.getElementsByTagName('field');
+        for (let i = 0; i < fields.length; i++) {
+          if (fields[i].getAttribute('name') === 'SYMBOL_LIST') {
+            fields[i].textContent = strictSymbol;
+          }
+        }
+      }
+
+      if (typeof Blockly.Xml.clearWorkspaceAndLoadFromXml === 'function') {
+        Blockly.Xml.clearWorkspaceAndLoadFromXml(xmlDom, workspace);
+      } else {
+        workspace.clear();
+        Blockly.Xml.domToWorkspace(xmlDom, workspace);
+      }
+
+      workspace.cleanUp?.();
+      workspace.render?.();
+      return true;
+    } catch (error) {
+      console.error('[ScannerBridge] Failed to load XML strategy to workspace:', error);
+      return false;
     }
   }
 
@@ -91,7 +137,7 @@ export class ScannerBridge {
       durationUnit: options?.durationUnit || 't',
       stopLoss: options?.stopLoss || strategy?.stopLoss || 150,
       takeProfit: options?.takeProfit || strategy?.takeProfit || 100,
-      recoveryStep: options?.recoveryStep || strategy?.recoveryStep || 3
+      recoveryStep: options?.recoveryStep || strategy?.recoveryStep || 3,
     };
 
     RiskManager.configure(payload.stopLoss, payload.takeProfit);
@@ -99,10 +145,10 @@ export class ScannerBridge {
     const rootStore = (window as any).derivBotAppStore;
     const rawTradeType = (payload.tradeType || 'rise').toLowerCase();
     const isFall = rawTradeType.includes('down') || rawTradeType.includes('put') || rawTradeType.includes('fall');
-    
+
     const storeContractType = isFall ? 'PUT' : 'CALL';
     const storeType = isFall ? 'fall' : 'rise';
-    
+
     const martingaleMultiplier = 1.4;
     const recoveryStep = payload.recoveryStep;
 
@@ -124,7 +170,9 @@ export class ScannerBridge {
                 const symbolField = block.getField('SYMBOL_LIST');
                 if (symbolField && symbolField.getValue() !== strictDerivSymbol) {
                   if (symbolField.menuGenerator_ && Array.isArray(symbolField.menuGenerator_)) {
-                    const exists = symbolField.menuGenerator_.some((opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol);
+                    const exists = symbolField.menuGenerator_.some(
+                      (opt: any) => opt[1] === strictDerivSymbol || opt[0] === strictDerivSymbol
+                    );
                     if (!exists) {
                       symbolField.menuGenerator_.push([strictDerivSymbol, strictDerivSymbol]);
                     }
@@ -135,7 +183,11 @@ export class ScannerBridge {
               }
 
               // 2. Force duration and duration unit updates on trade definition blocks
-              if (block.type === 'trade_definition' || block.type === 'trade_definition_duration' || block.type?.includes('duration')) {
+              if (
+                block.type === 'trade_definition' ||
+                block.type === 'trade_definition_duration' ||
+                block.type?.includes('duration')
+              ) {
                 const durationFields = ['DURATION', 'BARRIEROFFSET', 'DURATION_VALUE'];
                 durationFields.forEach(fieldName => {
                   const field = block.getField(fieldName);
@@ -160,20 +212,38 @@ export class ScannerBridge {
               }
 
               // 3. Force contract type / purchase block updates
-              if (block.type === 'purchase' || block.type?.includes('purchase') || block.type === 'trade_definition_purchase') {
+              if (
+                block.type === 'purchase' ||
+                block.type?.includes('purchase') ||
+                block.type === 'trade_definition_purchase'
+              ) {
                 const fieldNames = ['PURCHASE_LIST', 'PURCHASE_TYPE', 'PURCHASE_CONDITIONS_LIST', 'CONTRACT_TYPE'];
                 fieldNames.forEach(name => {
                   const field = block.getField(name);
                   if (field && typeof field.setValue === 'function') {
                     const options = typeof field.getOptions === 'function' ? field.getOptions() : [];
-                    
+
                     const targetMatch = options.find((opt: any) => {
                       const label = String(opt[0] || '').toLowerCase();
                       const val = String(opt[1] || '').toLowerCase();
                       if (isFall) {
-                        return label.includes('fall') || label.includes('put') || label.includes('lower') || val.includes('fall') || val.includes('put') || val.includes('lower');
+                        return (
+                          label.includes('fall') ||
+                          label.includes('put') ||
+                          label.includes('lower') ||
+                          val.includes('fall') ||
+                          val.includes('put') ||
+                          val.includes('lower')
+                        );
                       } else {
-                        return label.includes('rise') || label.includes('call') || label.includes('higher') || val.includes('rise') || val.includes('call') || val.includes('higher');
+                        return (
+                          label.includes('rise') ||
+                          label.includes('call') ||
+                          label.includes('higher') ||
+                          val.includes('rise') ||
+                          val.includes('call') ||
+                          val.includes('higher')
+                        );
                       }
                     });
 
@@ -211,7 +281,7 @@ export class ScannerBridge {
           quickStrategy.setValue('type', storeType);
           quickStrategy.setValue('size', martingaleMultiplier);
           quickStrategy.setValue('recovery_step', recoveryStep);
-          
+
           if (payload.stopLoss !== undefined) {
             quickStrategy.setValue('loss', payload.stopLoss);
             quickStrategy.setValue('stop_loss', payload.stopLoss);
@@ -221,10 +291,10 @@ export class ScannerBridge {
             quickStrategy.setValue('take_profit', payload.takeProfit);
           }
         }
-        
+
         const mockFormData = {
-          symbol: strictDerivSymbol, 
-          durationtype: payload.durationUnit || 't', 
+          symbol: strictDerivSymbol,
+          durationtype: payload.durationUnit || 't',
           duration: payload.duration,
           stake: payload.stake,
           amount: payload.stake,
@@ -236,16 +306,18 @@ export class ScannerBridge {
           loss: payload.stopLoss,
           stop_loss: payload.stopLoss,
           profit: payload.takeProfit,
-          take_profit: payload.takeProfit
+          take_profit: payload.takeProfit,
         };
 
         const submitAction = quickStrategy.onSubmit || quickStrategy.createStrategy;
         if (typeof submitAction === 'function') {
-          Promise.resolve(submitAction.call(quickStrategy, mockFormData)).then(() => {
-            applyBlockMutations();
-            setTimeout(applyBlockMutations, 200);
-            setTimeout(applyBlockMutations, 500);
-          }).catch(() => {});
+          Promise.resolve(submitAction.call(quickStrategy, mockFormData))
+            .then(() => {
+              applyBlockMutations();
+              setTimeout(applyBlockMutations, 200);
+              setTimeout(applyBlockMutations, 500);
+            })
+            .catch(() => {});
         }
       } catch (error) {}
     }
