@@ -13,6 +13,7 @@ import TradeAnimation from '@/components/trade-animation';
 import Transactions from '@/components/transactions';
 import { DBOT_TABS } from '@/constants/bot-contents';
 import { popover_zindex } from '@/constants/z-indexes';
+import { api_base } from '@/external/bot-skeleton/services/api/api-base';
 import { useStore } from '@/hooks/useStore';
 import { Localize, localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
@@ -281,6 +282,11 @@ const RunPanel = observer(() => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    const handleClearStatClick = React.useCallback(() => {
+        onClearStatClick();
+        api_base.resetSessionPnl(currency || 'USD');
+    }, [onClearStatClick, currency]);
+
     const content = (
         <DrawerContent
             active_index={active_index}
@@ -299,14 +305,16 @@ const RunPanel = observer(() => {
         />
     );
 
-    const footer = <DrawerFooter is_clear_stat_disabled={is_clear_stat_disabled} onClearStatClick={onClearStatClick} />;
+    const footer = (
+        <DrawerFooter is_clear_stat_disabled={is_clear_stat_disabled} onClearStatClick={handleClearStatClick} />
+    );
 
     const header = (
         <DrawerHeader
             is_clear_stat_disabled={is_clear_stat_disabled}
             is_mobile={!isDesktop}
             is_drawer_open={is_drawer_open}
-            onClearStatClick={onClearStatClick}
+            onClearStatClick={handleClearStatClick}
         />
     );
 
