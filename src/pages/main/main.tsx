@@ -19,6 +19,7 @@ import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observab
 import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
+import { ScannerBridge } from '../../Aiscanner/scannerBridge';
 import {
     disableUrlParameterApplication,
     enableUrlParameterApplication,
@@ -64,6 +65,15 @@ const VOLATILITY_OPTIONS = [
     { value: '1HZ100V', label: 'Volatility 100 (1s)' },
 ];
 
+type TFreeBotStrategy = {
+    id: string;
+    strategyName: string;
+    contractType: string;
+    confidence: string;
+    barrier?: string;
+    xml?: string;
+};
+
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
     const { dashboard, load_modal, run_panel, quick_strategy, summary_card, blockly_store } = useStore();
@@ -102,11 +112,16 @@ const AppWrapper = observer(() => {
     const [left_tab_shadow, setLeftTabShadow] = useState<boolean>(false);
     const [right_tab_shadow, setRightTabShadow] = useState<boolean>(false);
 
-    // Free bots UI state (volatility-agnostic)
+    // Free bots UI & workspace loader state (volatility-agnostic)
     const [is_card_visible, setIsCardVisible] = useState<boolean>(true);
     const [selected_free_bot_market, setSelectedFreeBotMarket] = useState<string>('R_10');
     const [active_free_bot_id, setActiveFreeBotId] = useState<string | null>(null);
-    const [working_strategies] = useState([
+    const [pending_free_bot_load, setPendingFreeBotLoad] = useState<{
+        id: string;
+        xml: string;
+        symbol: string;
+    } | null>(null);
+    const [working_strategies] = useState<TFreeBotStrategy[]>([
         {
             id: 'strat_1',
             strategyName: 'EMA Crossover Breakpoint',
@@ -354,6 +369,44 @@ const AppWrapper = observer(() => {
     }, [active_tab, is_loading]);
 
     React.useEffect(() => {
+        if (!pending_free_bot_load || active_tab !== BOT_BUILDER || is_loading) return;
+
+        let attempts = 0;
+        const maxAttempts = 15;
+        let timerId: ReturnType<typeof setTimeout> | null = null;
+
+        const tryInject = () => {
+            const loaded = ScannerBridge.loadXmlToWorkspace(
+                pending_free_bot_load.xml,
+                pending_free_bot_load.symbol
+            );
+            if (loaded) {
+                setActiveFreeBotId(pending_free_bot_load.id);
+                setPendingFreeBotLoad(null);
+                return;
+            }
+            attempts += 1;
+            if (attempts < maxAttempts) {
+                timerId = setTimeout(tryInject, 250);
+            } else {
+                setPendingFreeBotLoad(null);
+            }
+        };
+
+        timerId = setTimeout(tryInject, 150);
+
+        return () => {
+            if (timerId) clearTimeout(timerId);
+        };
+    }, [pending_free_bot_load, active_tab, is_loading]);
+
+    React.useEffect(() => {
+        if (active_tab !== BOT_BUILDER && !pending_free_bot_load) {
+            setActiveFreeBotId(null);
+        }
+    }, [active_tab, pending_free_bot_load]);
+
+    React.useEffect(() => {
         updateTabShadowsHeight();
 
         if (is_open) {
@@ -472,6 +525,27 @@ const AppWrapper = observer(() => {
         }
     };
 
+    const handleRunFreeBot = (bot: TFreeBotStrategy) => {
+        if (bot.xml) {
+            const loadedImmediately = ScannerBridge.loadXmlToWorkspace(bot.xml, selected_free_bot_market);
+            if (loadedImmediately) {
+                setActiveFreeBotId(bot.id);
+                setActiveTab(BOT_BUILDER);
+            } else {
+                setPendingFreeBotLoad({
+                    id: bot.id,
+                    xml: bot.xml,
+                    symbol: selected_free_bot_market,
+                });
+                setActiveTab(BOT_BUILDER);
+            }
+            return;
+        }
+
+        setActiveFreeBotId(prev => (prev === bot.id ? null : bot.id));
+        setActiveTab(BOT_BUILDER);
+    };
+
     return (
         <React.Fragment>
             <div className='main'>
@@ -525,16 +599,7 @@ const AppWrapper = observer(() => {
                                 id='id-tutorials'
                             >
                                 <div className='free-bots-container'>
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            flexWrap: 'wrap',
-                                            gap: '12px',
-                                            marginBottom: '18px',
-                                        }}
-                                    >
+                                    <div className='free-bots-toolbar'>
                                         <label
                                             style={{
                                                 display: 'flex',
@@ -572,7 +637,12 @@ const AppWrapper = observer(() => {
                                             {working_strategies.map((bot, index) => {
                                                 const isSelected = active_free_bot_id === bot.id;
                                                 return (
-                                                    <div className='free-bots-card' key={bot.id}>
+                                                    <div
+                                                        className={classNames('free-bots-card', {
+                                                            'free-bots-card--active': isSelected,
+                                                        })}
+                                                        key={bot.id}
+                                                    >
                                                         <div className='free-bots-header'>
                                                             <span className='strategy-tag'>STRATEGY #{index + 1}</span>
                                                             <span className='confidence-badge'>CONFIDENCE {bot.confidence}</span>
@@ -593,10 +663,12 @@ const AppWrapper = observer(() => {
 
                                                         <button
                                                             type='button'
-                                                            onClick={() => setActiveFreeBotId(isSelected ? null : bot.id)}
-                                                            className='free-bots-btn'
+                                                            onClick={() => handleRunFreeBot(bot)}
+                                                            className={classNames('free-bots-btn', {
+                                                                'free-bots-btn--active': isSelected,
+                                                            })}
                                                         >
-                                                            {isSelected ? 'Stop Free Bot' : 'Run Free Bot'}
+                                                            {isSelected ? 'Loaded in Builder' : 'Run Free Bot'}
                                                         </button>
                                                     </div>
                                                 );
