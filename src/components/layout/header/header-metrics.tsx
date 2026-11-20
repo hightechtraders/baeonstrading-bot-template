@@ -49,6 +49,12 @@ export const HeaderMetrics = observer(() => {
         };
 
         window.addEventListener('deriv_pnl_update', handlePnlUpdate);
+
+        // Sync immediately on mount in case api_base already restored session trades
+        const initialPnl = Number(api_base?.session_pnl || 0);
+        const initialCurrency = api_base?.session_currency || 'USD';
+        setLivePnl(`${initialPnl >= 0 ? '+' : ''}${initialPnl.toFixed(2)} ${initialCurrency}`);
+
         return () => {
             window.removeEventListener('deriv_pnl_update', handlePnlUpdate);
         };
@@ -83,17 +89,7 @@ export const HeaderMetrics = observer(() => {
                         type="button"
                         onClick={handleResetPnl}
                         title="Reset Session P&L"
-                        style={{
-                            marginLeft: '6px',
-                            background: 'transparent',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            borderRadius: '4px',
-                            color: 'inherit',
-                            cursor: 'pointer',
-                            fontSize: '11px',
-                            padding: '1px 5px',
-                            opacity: 0.85,
-                        }}
+                        className="header-metrics__reset-btn"
                     >
                         ↺
                     </button>
