@@ -13,6 +13,13 @@ const MobileMenu = observer(({ onLogout: _onLogout }: TMobileMenuProps) => {
     const { ui } = useStore() ?? {};
 
     const [isDark, setIsDark] = useState<boolean>(() => {
+        try {
+            const saved = localStorage.getItem('theme');
+            if (saved === 'light') return false;
+            if (saved === 'dark') return true;
+        } catch {
+            // Ignore storage errors in restricted contexts
+        }
         if (typeof ui?.is_dark_mode_on === 'boolean') return ui.is_dark_mode_on;
         if (typeof document !== 'undefined') {
             return document.body.classList.contains('theme--dark');
@@ -21,10 +28,14 @@ const MobileMenu = observer(({ onLogout: _onLogout }: TMobileMenuProps) => {
     });
 
     useEffect(() => {
-        if (typeof ui?.is_dark_mode_on === 'boolean') {
-            setIsDark(ui.is_dark_mode_on);
+        if (typeof ui?.setDarkMode === 'function' && ui.is_dark_mode_on !== isDark) {
+            ui.setDarkMode(isDark);
         }
-    }, [ui?.is_dark_mode_on]);
+        if (typeof document !== 'undefined') {
+            document.body.classList.toggle('theme--dark', isDark);
+            document.body.classList.toggle('theme--light', !isDark);
+        }
+    }, [isDark, ui]);
 
     const handleToggleTheme = () => {
         const nextDark = !isDark;
@@ -72,15 +83,15 @@ const MobileMenu = observer(({ onLogout: _onLogout }: TMobileMenuProps) => {
                 }}
             >
                 {isDark ? (
-                    /* Sun icon when in Dark Mode (click for Light Mode) */
+                    /* Moon icon when Dark Mode is active */
+                    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                        <path d='M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z' />
+                    </svg>
+                ) : (
+                    /* Sun icon when Light Mode is active */
                     <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
                         <circle cx='12' cy='12' r='4' />
                         <path d='M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41' />
-                    </svg>
-                ) : (
-                    /* Moon icon when in Light Mode (click for Dark Mode) */
-                    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                        <path d='M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z' />
                     </svg>
                 )}
             </button>
