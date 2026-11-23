@@ -280,35 +280,38 @@ class APIBase {
                             const balData = data.balance;
                             const nextBalance = Number(balData.balance);
                             const nextCurrency = balData.currency || this.session_currency || 'USD';
-                            const nextLoginId = balData.loginid || this.account_id;
+                            const nextLoginId = balData.loginid || '';
 
-                            if (!Number.isNaN(nextBalance)) {
-                                this.account_info = {
-                                    ...this.account_info,
-                                    balance: nextBalance,
-                                    currency: nextCurrency,
-                                    loginid: nextLoginId,
-                                };
-
+                            if (!Number.isNaN(nextBalance) && nextLoginId) {
                                 const currentClientStore = globalObserver.getState('client.store') as any;
-                                if (currentClientStore) {
-                                    if (typeof currentClientStore.setBalance === 'function') {
-                                        currentClientStore.setBalance(nextBalance.toFixed(2));
-                                    } else if ('balance' in currentClientStore) {
-                                        currentClientStore.balance = nextBalance.toFixed(2);
-                                    }
 
-                                    if (currentClientStore.all_accounts_balance?.accounts?.[nextLoginId]) {
-                                        currentClientStore.all_accounts_balance = {
-                                            ...currentClientStore.all_accounts_balance,
-                                            accounts: {
-                                                ...currentClientStore.all_accounts_balance.accounts,
-                                                [nextLoginId]: {
-                                                    ...currentClientStore.all_accounts_balance.accounts[nextLoginId],
-                                                    balance: nextBalance,
-                                                },
+                                if (currentClientStore?.all_accounts_balance?.accounts?.[nextLoginId]) {
+                                    currentClientStore.all_accounts_balance = {
+                                        ...currentClientStore.all_accounts_balance,
+                                        accounts: {
+                                            ...currentClientStore.all_accounts_balance.accounts,
+                                            [nextLoginId]: {
+                                                ...currentClientStore.all_accounts_balance.accounts[nextLoginId],
+                                                balance: nextBalance,
                                             },
-                                        };
+                                        },
+                                    };
+                                }
+
+                                if (this.account_id && nextLoginId === this.account_id) {
+                                    this.account_info = {
+                                        ...this.account_info,
+                                        balance: nextBalance,
+                                        currency: nextCurrency,
+                                        loginid: nextLoginId,
+                                    };
+
+                                    if (currentClientStore) {
+                                        if (typeof currentClientStore.setBalance === 'function') {
+                                            currentClientStore.setBalance(nextBalance.toFixed(2));
+                                        } else if ('balance' in currentClientStore) {
+                                            currentClientStore.balance = nextBalance.toFixed(2);
+                                        }
                                     }
                                 }
                             }
