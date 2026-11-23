@@ -220,17 +220,22 @@ export default function ManualTraderTab() {
           const contractId = Number(poc.contract_id);
           const meta = trackedContractsRef.current[contractId];
 
-          if (meta && (poc.is_sold === 1 || poc.status === 'won' || poc.status === 'lost')) {
+          const isSettled =
+            Number(poc.is_sold) === 1 ||
+            Boolean(poc.is_expired) ||
+            Boolean(poc.is_settleable);
+
+          if (meta && isSettled) {
             delete trackedContractsRef.current[contractId];
 
             const profit = Number(poc.profit ?? 0);
-            const isWin = profit > 0 || poc.status === 'won';
+            const isWin = profit > 0;
             const formattedPnL = `${profit >= 0 ? '+' : ''}${profit.toFixed(2)} ${meta.currency}`;
 
             pushTradeToast(
               {
                 type: isWin ? 'won' : 'lost',
-                title: `Trade closed: ${meta.side} on ${meta.marketName}`,
+                title: `Trade ${isWin ? 'won' : 'lost'}: ${meta.side} on ${meta.marketName}`,
                 subtitle: `Total profit/loss: ${formattedPnL}`,
               },
               6500
@@ -240,6 +245,8 @@ export default function ManualTraderTab() {
               `Trade Closed (${meta.side} ${meta.marketName}) | Total profit/loss: ${formattedPnL}`,
               6000
             );
+
+            api_base.api?.send({ balance: 1 }).catch(() => {});
 
             if (poc.subscription?.id) {
               api_base.api?.send({ forget: poc.subscription.id }).catch(() => {});
