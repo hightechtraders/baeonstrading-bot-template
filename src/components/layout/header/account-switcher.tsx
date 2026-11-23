@@ -71,7 +71,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
     const showChevron = !isSingleAccount && !is_bot_running;
 
     return (
-        <div className='acc-info__wrapper' ref={wrapperRef} style={{ marginRight: '8px' }}>
+        <div className='acc-info__wrapper' ref={wrapperRef} style={{ marginRight: '14px' }}>
             <AccountInfoWrapper>
                 <div
                     data-testid='dt_acc_info'
@@ -91,13 +91,13 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                             toggleDropdown();
                         }
                     }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '5px', paddingRight: '4px' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '4px', paddingRight: '2px' }}
                 >
                     {/* Main Account Badge with Clean Styled Background */}
                     <div
                         style={{
-                            width: '30px',
-                            height: '30px',
+                            width: '28px',
+                            height: '28px',
                             borderRadius: '50%',
                             overflow: 'hidden',
                             display: 'flex',
@@ -105,7 +105,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                             justifyContent: 'center',
                             flexShrink: 0,
                             backgroundColor: isVirtual ? '#fef3c7' : '#f3e8ff',
-                            fontSize: isVirtual ? '15px' : '10px',
+                            fontSize: isVirtual ? '14px' : '9.5px',
                             fontWeight: 'bold',
                             color: '#6022bd',
                         }}
@@ -116,19 +116,30 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                     {/* Content Stack */}
                     <div
                         className='acc-info__content'
-                        style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '2px' }}
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start',
+                            justifyContent: 'center',
+                            textAlign: 'left',
+                            gap: '1px',
+                        }}
                     >
-                        <div className='acc-info__account-type-header'>
+                        <div
+                            className='acc-info__account-type-header'
+                            style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}
+                        >
                             <Text
                                 as='p'
                                 size='xs'
                                 className='acc-info__account-type'
                                 style={{
-                                    fontSize: '9px',
+                                    fontSize: '8.5px',
                                     fontWeight: 700,
-                                    letterSpacing: '0.06em',
+                                    letterSpacing: '0.05em',
                                     lineHeight: 1,
                                     margin: 0,
+                                    textAlign: 'left',
                                 }}
                             >
                                 {isVirtual ? (
@@ -145,7 +156,14 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                     className={classNames('acc-info__balance', {
                                         'acc-info__balance--no-currency': !currency && !isVirtual,
                                     })}
-                                    style={{ fontWeight: 700, fontSize: '11.5px', lineHeight: 1.15, margin: 0, whiteSpace: 'nowrap' }}
+                                    style={{
+                                        fontWeight: 700,
+                                        fontSize: '10.5px',
+                                        lineHeight: 1.15,
+                                        margin: 0,
+                                        whiteSpace: 'nowrap',
+                                        textAlign: 'left',
+                                    }}
                                 >
                                     {!currency ? (
                                         <Localize i18n_default_text='No currency assigned' />
@@ -163,7 +181,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                             className={classNames('acc-info__select-arrow', {
                                 'acc-info__select-arrow--invert': isOpen,
                             })}
-                            style={{ marginLeft: '3px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                            style={{ marginLeft: '4px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
                         >
                             <svg width='10' height='10' viewBox='0 0 12 12' fill='none'>
                                 <path
