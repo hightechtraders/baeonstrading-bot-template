@@ -115,26 +115,34 @@
         height: 100%;
         justify-content: center;
         position: relative;
-        margin-right: 0;
+        margin-right: 12px;
         user-select: none;
         -webkit-touch-callout: none;
         -webkit-tap-highlight-color: transparent;
+
+        @include mobile-screen {
+            margin-right: 14px !important;
+        }
     }
 
     &__content {
         display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 10px;
-        width: 100%;
+        flex-direction: column;
+        align-items: flex-start !important;
+        justify-content: center;
+        gap: 1px;
+        width: auto;
         margin-inline-start: 0;
+        text-align: left !important;
     }
 
     &__account-type-header {
         display: flex;
         align-items: center;
+        justify-content: flex-start !important;
+        width: 100%;
         gap: 0.4rem;
-        margin-bottom: 0.2rem;
+        margin-bottom: 0;
     }
 
     /* Target ONLY real accounts here, leaving virtual accounts untouched */
@@ -143,9 +151,10 @@
 
         line-height: 1;
         margin: 0;
-        font-size: 1rem;
+        font-size: 8.5px !important;
         color: #10b981 !important;
         font-weight: 700;
+        text-align: left !important;
         text-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
     }
 
@@ -160,16 +169,18 @@
     &__balance-section {
         display: flex;
         align-items: center;
+        justify-content: flex-start !important;
     }
 
     &__balance {
         @include typeface(--paragraph-left-bold-black);
 
-        line-height: 1.2;
+        line-height: 1.15;
         pointer-events: none;
         margin: 0;
-        font-size: 1.2rem;
+        font-size: 1.15rem;
         color: var(--text-prominent);
+        text-align: left !important;
 
         &--no-currency {
             @include typeface(--small-left-normal-grey);
@@ -209,7 +220,8 @@
     &__select-arrow {
         display: flex;
         align-items: center;
-        margin-left: auto;
+        margin-left: 4px !important;
+        padding-right: 2px;
         transform: rotate(0);
         transform-origin: 50% 50%;
         transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
@@ -234,11 +246,12 @@
     }
 
     @include mobile-screen {
-        padding: 0 1rem;
-        margin-right: -0.8rem;
+        padding: 0 4px !important;
+        margin-right: 0 !important;
+        gap: 4px !important;
 
         &__balance {
-            font-size: 1.2rem;
+            font-size: 10.5px !important;
 
             &--no-currency {
                 white-space: nowrap;
