@@ -131,14 +131,22 @@
         padding: 4px 0;
 
         .logo-area {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 10px;
             font-weight: 800;
             font-size: 1.1rem;
+            line-height: 1;
             letter-spacing: 0.4px;
 
+            > * {
+                display: inline-flex;
+                align-items: center;
+                flex-shrink: 0;
+            }
+
             .brand-name {
+                line-height: 1.1;
                 background: linear-gradient(90deg, #f8fafc, #94a3b8);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
