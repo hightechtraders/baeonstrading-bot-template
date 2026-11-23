@@ -12,6 +12,21 @@
         flex-shrink: 0;
         line-height: 1;
         color: #00a86b;
+        -webkit-tap-highlight-color: transparent !important;
+        -webkit-touch-callout: none;
+        user-select: none;
+        outline: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+
+        &:hover,
+        &:focus,
+        &:focus-visible,
+        &:active {
+            outline: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+        }
 
         @include mobile-or-tablet-screen {
             padding-inline-start: 0.3rem;
@@ -26,6 +41,7 @@
             width: auto;
             stroke: currentColor;
             color: #00ff99;
+            pointer-events: none;
 
             @include mobile-or-tablet-screen {
                 height: 26px !important;
