@@ -299,8 +299,12 @@
 }
 
 @keyframes auth-spinner-rotate {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ==========================================
@@ -379,5 +383,86 @@
     100% {
         transform: scale(0.95);
         box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+/* ==========================================
+   HEADER LOGO ALIGNMENT & MOBILE FIT FIX
+   ========================================== */
+.app-header {
+    display: flex;
+    align-items: center;
+
+    [class*='wrapper'] {
+        display: flex;
+        align-items: center;
+    }
+
+    /* Keep logo vertically centered with nav items & right-side controls */
+    a[href='/'],
+    .app-logo,
+    .brand-logo {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        margin: 0 12px 0 4px !important;
+        padding: 0 !important;
+        width: auto !important;
+        min-width: 0 !important;
+        height: 100% !important;
+        line-height: 1 !important;
+
+        svg,
+        img {
+            display: block !important;
+            height: 28px !important;
+            width: auto !important;
+            max-width: none !important;
+        }
+    }
+
+    &--mobile {
+        padding-inline: 8px !important;
+
+        [class*='wrapper'] {
+            gap: 4px !important;
+            min-width: 0;
+        }
+
+        a[href='/'],
+        .app-logo,
+        .brand-logo {
+            margin: 0 4px 0 2px !important;
+
+            svg,
+            img {
+                height: 22px !important;
+            }
+        }
+
+        .auth-actions {
+            padding-block: 4px !important;
+
+            button {
+                margin-inline-end: 0 !important;
+                padding: 5px 10px !important;
+                font-size: 1.2rem !important;
+                white-space: nowrap;
+            }
+        }
+
+        .deriv-account-switcher__button {
+            padding-inline: 4px !important;
+        }
+
+        .deriv-account-switcher__balance {
+            padding-inline-end: 4px !important;
+            font-size: 1.2rem !important;
+        }
+
+        .deriv-account-switcher__icon {
+            margin-right: 4px !important;
+        }
     }
 }
