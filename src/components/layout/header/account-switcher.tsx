@@ -71,7 +71,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
     const showChevron = !isSingleAccount && !is_bot_running;
 
     return (
-        <div className='acc-info__wrapper' ref={wrapperRef} style={{ marginRight: '16px' }}>
+        <div className='acc-info__wrapper' ref={wrapperRef} style={{ marginRight: '8px' }}>
             <AccountInfoWrapper>
                 <div
                     data-testid='dt_acc_info'
@@ -91,34 +91,50 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                             toggleDropdown();
                         }
                     }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingRight: '8px' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '5px', paddingRight: '4px' }}
                 >
                     {/* Main Account Badge with Clean Styled Background */}
-                    <div style={{
-                        width: '34px',
-                        height: '34px',
-                        borderRadius: '50%',
-                        overflow: 'hidden',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        backgroundColor: isVirtual ? '#fef3c7' : '#f3e8ff', // Amber tint for demo, Lavender for real USD
-                        fontSize: isVirtual ? '16px' : '11px',
-                        fontWeight: 'bold',
-                        color: '#6022bd'
-                    }}>
+                    <div
+                        style={{
+                            width: '30px',
+                            height: '30px',
+                            borderRadius: '50%',
+                            overflow: 'hidden',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            backgroundColor: isVirtual ? '#fef3c7' : '#f3e8ff',
+                            fontSize: isVirtual ? '15px' : '10px',
+                            fontWeight: 'bold',
+                            color: '#6022bd',
+                        }}
+                    >
                         {isVirtual ? '🧪' : 'USD'}
                     </div>
 
                     {/* Content Stack */}
-                    <div className='acc-info__content' style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div
+                        className='acc-info__content'
+                        style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '2px' }}
+                    >
                         <div className='acc-info__account-type-header'>
-                            <Text as='p' size='xs' className='acc-info__account-type' style={{ fontSize: '10px', lineHeight: 1 }}>
+                            <Text
+                                as='p'
+                                size='xs'
+                                className='acc-info__account-type'
+                                style={{
+                                    fontSize: '9px',
+                                    fontWeight: 700,
+                                    letterSpacing: '0.06em',
+                                    lineHeight: 1,
+                                    margin: 0,
+                                }}
+                            >
                                 {isVirtual ? (
-                                    <Localize i18n_default_text='Demo account' />
+                                    <Localize i18n_default_text='DEMO' />
                                 ) : (
-                                    <Localize i18n_default_text='Real account' />
+                                    <Localize i18n_default_text='REAL' />
                                 )}
                             </Text>
                         </div>
@@ -129,7 +145,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                     className={classNames('acc-info__balance', {
                                         'acc-info__balance--no-currency': !currency && !isVirtual,
                                     })}
-                                    style={{ fontWeight: 700, fontSize: '12px', lineHeight: 1.2, margin: 0, whiteSpace: 'nowrap' }}
+                                    style={{ fontWeight: 700, fontSize: '11.5px', lineHeight: 1.15, margin: 0, whiteSpace: 'nowrap' }}
                                 >
                                     {!currency ? (
                                         <Localize i18n_default_text='No currency assigned' />
@@ -147,7 +163,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                             className={classNames('acc-info__select-arrow', {
                                 'acc-info__select-arrow--invert': isOpen,
                             })}
-                            style={{ marginLeft: '8px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                            style={{ marginLeft: '3px', display: 'flex', alignItems: 'center', flexShrink: 0 }}
                         >
                             <svg width='10' height='10' viewBox='0 0 12 12' fill='none'>
                                 <path
@@ -183,24 +199,37 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                                     handleAccountSelect(account.loginid);
                                 }
                             }}
-                            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px' }}
                         >
                             {/* Dropdown Badge with Clean Styled Background */}
-                            <div style={{
-                                width: '28px', height: '28px', borderRadius: '50%', overflow: 'hidden',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: '0', 
-                                fontSize: account.isVirtual ? '14px' : '10px', fontWeight: 'bold', 
-                                backgroundColor: account.isVirtual ? '#fef3c7' : '#f3e8ff', 
-                                color: '#6022bd'
-                            }}>
+                            <div
+                                style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    borderRadius: '50%',
+                                    overflow: 'hidden',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                    fontSize: account.isVirtual ? '14px' : '10px',
+                                    fontWeight: 'bold',
+                                    backgroundColor: account.isVirtual ? '#fef3c7' : '#f3e8ff',
+                                    color: '#6022bd',
+                                }}
+                            >
                                 {account.isVirtual ? '🧪' : 'USD'}
                             </div>
                             <div className='acc-dropdown__account-type-and-balance'>
-                                <Text size='xxxs' className='acc-dropdown__account-type' style={{ fontSize: '9px' }}>
+                                <Text
+                                    size='xxxs'
+                                    className='acc-dropdown__account-type'
+                                    style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em' }}
+                                >
                                     {account.isVirtual ? (
-                                        <Localize i18n_default_text='Demo account' />
+                                        <Localize i18n_default_text='DEMO' />
                                     ) : (
-                                        <Localize i18n_default_text='Real account' />
+                                        <Localize i18n_default_text='REAL' />
                                     )}
                                 </Text>
                                 <Text size='xs' weight='bold' className='acc-dropdown__balance'>
