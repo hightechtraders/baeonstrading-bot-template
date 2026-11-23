@@ -2,6 +2,7 @@
 // FILE: src/components/LandingPage.tsx
 // ==========================================
 import React, { useState, useEffect } from 'react';
+import { BrandLogo } from './layout/app-logo/BrandLogo';
 import { LiveChartBackground } from './LiveChartBackground';
 import './LandingPage.scss';
 
@@ -163,7 +164,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
 
             <header className="landing-header">
                 <div className="logo-area">
-                    <span className="logo-badge">TS</span>
+                    <BrandLogo width={34} height={34} fill="#00a86b" />
                     <span className="brand-name">TraderScore.pro</span>
                 </div>
                 <div className="header-actions">
