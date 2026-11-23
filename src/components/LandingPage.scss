@@ -133,20 +133,10 @@
         .logo-area {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             font-weight: 800;
             font-size: 1.1rem;
-            letter-spacing: 0.8px;
-
-            .logo-badge {
-                background: linear-gradient(135deg, #06b6d4, #10b981);
-                color: #030712;
-                padding: 4px 8px;
-                border-radius: 6px;
-                font-size: 0.8rem;
-                font-family: monospace;
-                box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
-            }
+            letter-spacing: 0.4px;
 
             .brand-name {
                 background: linear-gradient(90deg, #f8fafc, #94a3b8);
