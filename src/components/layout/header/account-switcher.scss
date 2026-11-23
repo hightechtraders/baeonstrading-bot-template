@@ -795,6 +795,13 @@
         }
     }
 
+    &__account--virtual {
+        .acc-dropdown__account-type {
+            color: $color-yellow !important;
+            text-shadow: none !important;
+        }
+    }
+
     &__balance {
         color: var(--text-prominent, #111827);
         line-height: 1.2;
