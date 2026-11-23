@@ -262,7 +262,7 @@ class APIBase {
             this.api?.connection.addEventListener('open', this.onsocketopen.bind(this));
             this.api?.connection.addEventListener('close', this.onsocketclose.bind(this));
 
-            // [AI] - Direct Native WebSocket Interceptor for Ticks & Cumulative Session P&L
+            // [AI] - Direct Native WebSocket Interceptor for Ticks, Balance & Cumulative Session P&L
             if (this.api && this.api.connection) {
                 const originalOnMessage = this.api.connection.onmessage;
                 this.api.connection.onmessage = (event: MessageEvent) => {
@@ -275,12 +275,51 @@ class APIBase {
                     try {
                         const data = JSON.parse(event.data);
 
+                        // Sync live balance updates directly into account_info and client.store
+                        if (data && data.msg_type === 'balance' && data.balance) {
+                            const balData = data.balance;
+                            const nextBalance = Number(balData.balance);
+                            const nextCurrency = balData.currency || this.session_currency || 'USD';
+                            const nextLoginId = balData.loginid || this.account_id;
+
+                            if (!Number.isNaN(nextBalance)) {
+                                this.account_info = {
+                                    ...this.account_info,
+                                    balance: nextBalance,
+                                    currency: nextCurrency,
+                                    loginid: nextLoginId,
+                                };
+
+                                const currentClientStore = globalObserver.getState('client.store') as any;
+                                if (currentClientStore) {
+                                    if (typeof currentClientStore.setBalance === 'function') {
+                                        currentClientStore.setBalance(nextBalance.toFixed(2));
+                                    } else if ('balance' in currentClientStore) {
+                                        currentClientStore.balance = nextBalance.toFixed(2);
+                                    }
+
+                                    if (currentClientStore.all_accounts_balance?.accounts?.[nextLoginId]) {
+                                        currentClientStore.all_accounts_balance = {
+                                            ...currentClientStore.all_accounts_balance,
+                                            accounts: {
+                                                ...currentClientStore.all_accounts_balance.accounts,
+                                                [nextLoginId]: {
+                                                    ...currentClientStore.all_accounts_balance.accounts[nextLoginId],
+                                                    balance: nextBalance,
+                                                },
+                                            },
+                                        };
+                                    }
+                                }
+                            }
+                        }
+
                         // Capture proposal open contract stream for cumulative session P&L (Wins & Losses)
                         if (data && data.msg_type === 'proposal_open_contract' && data.proposal_open_contract) {
                             const contract = data.proposal_open_contract;
                             const contractId = Number(contract.contract_id);
-                            const isSold = Boolean(contract.is_sold || (contract.status && contract.status !== 'open'));
-                            const profit = Number(contract.profit || 0);
+                            const isSold = Number(contract.is_sold) === 1;
+                            const profit = Number(contract.profit ?? 0);
                             const currency = contract.currency || this.session_currency || 'USD';
 
                             if (isSold && contractId && !this.settled_contract_ids.has(contractId)) {
