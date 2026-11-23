@@ -398,7 +398,16 @@
         align-items: center;
     }
 
+    .mobile-menu {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        margin-inline-end: 0.4rem;
+    }
+
     /* Keep logo vertically centered with nav items & right-side controls */
+    &__logo,
     a[href='/'],
     .app-logo,
     .brand-logo {
@@ -406,8 +415,8 @@
         align-items: center !important;
         justify-content: center !important;
         flex-shrink: 0 !important;
-        margin: 0 12px 0 4px !important;
-        padding: 0 !important;
+        margin: 0 !important;
+        padding-inline: 0.8rem !important;
         width: auto !important;
         min-width: 0 !important;
         height: 100% !important;
@@ -416,28 +425,33 @@
         svg,
         img {
             display: block !important;
-            height: 28px !important;
+            height: 24px !important;
             width: auto !important;
             max-width: none !important;
         }
     }
 
-    &--mobile {
-        padding-inline: 8px !important;
+    @include mobile-or-tablet-screen {
+        padding-inline: 6px !important;
 
         [class*='wrapper'] {
             gap: 4px !important;
             min-width: 0;
         }
 
+        .mobile-menu {
+            margin-inline-end: 0.2rem;
+        }
+
+        &__logo,
         a[href='/'],
         .app-logo,
         .brand-logo {
-            margin: 0 4px 0 2px !important;
+            padding-inline: 0.25rem !important;
 
             svg,
             img {
-                height: 22px !important;
+                height: 18px !important;
             }
         }
 
