@@ -5,9 +5,18 @@
         height: 32px;
         display: flex;
         align-items: center;
+        color: #00a86b;
+
+        svg {
+            stroke: currentColor;
+            color: #00ff99;
+        }
 
         &-text {
             margin-left: 8px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #f8fafc;
         }
     }
 }
