@@ -387,7 +387,7 @@
 }
 
 /* ==========================================
-   HEADER LOGO ALIGNMENT & MOBILE FIT FIX
+   PERFECT HEADER ALIGNMENT & MOBILE SPACING
    ========================================== */
 .app-header {
     display: flex;
@@ -398,15 +398,14 @@
         align-items: center;
     }
 
-    .mobile-menu {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        margin-inline-end: 0.4rem;
+    .mobile-menu,
+    .mobile-menu__toggle {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
     }
 
-    /* Keep logo vertically centered with nav items & right-side controls */
     &__logo,
     a[href='/'],
     .app-logo,
@@ -432,22 +431,36 @@
     }
 
     @include mobile-or-tablet-screen {
-        padding-inline: 6px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding-inline: 8px 10px !important;
+        gap: 4px !important;
 
         [class*='wrapper'] {
+            display: inline-flex !important;
+            align-items: center !important;
             gap: 4px !important;
-            min-width: 0;
+            min-width: 0 !important;
         }
 
-        .mobile-menu {
-            margin-inline-end: 0.2rem;
+        .mobile-menu,
+        .mobile-menu__toggle {
+            width: 28px !important;
+            height: 28px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            background: transparent !important;
         }
 
         &__logo,
         a[href='/'],
         .app-logo,
         .brand-logo {
-            padding-inline: 0.25rem !important;
+            height: 20px !important;
+            padding-inline: 3px !important;
+            margin: 0 !important;
 
             svg,
             img {
@@ -455,28 +468,40 @@
             }
         }
 
+        .deriv-account-switcher__button {
+            display: inline-flex !important;
+            align-items: center !important;
+            margin: 0 !important;
+            padding-inline: 4px !important;
+        }
+
+        .deriv-account-switcher__icon {
+            display: inline-flex !important;
+            align-items: center !important;
+            align-self: center !important;
+            margin: 0 5px 0 0 !important;
+        }
+
+        .deriv-account-switcher__balance {
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            padding: 0 6px 0 0 !important;
+            font-size: 1.15rem !important;
+            line-height: 1.15 !important;
+        }
+
         .auth-actions {
-            padding-block: 4px !important;
+            padding-block: 0 !important;
+            margin-inline-end: 0 !important;
+            flex-shrink: 0 !important;
 
             button {
                 margin-inline-end: 0 !important;
                 padding: 5px 10px !important;
-                font-size: 1.2rem !important;
-                white-space: nowrap;
+                font-size: 1.15rem !important;
+                white-space: nowrap !important;
             }
-        }
-
-        .deriv-account-switcher__button {
-            padding-inline: 4px !important;
-        }
-
-        .deriv-account-switcher__balance {
-            padding-inline-end: 4px !important;
-            font-size: 1.2rem !important;
-        }
-
-        .deriv-account-switcher__icon {
-            margin-right: 4px !important;
         }
     }
 }
