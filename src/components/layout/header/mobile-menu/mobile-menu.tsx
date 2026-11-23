@@ -1,135 +1,91 @@
-// Updated to use brand configuration for mobile menu elements visibility
-// Controls language settings and theme toggle via brand.config.json
-import { useState } from 'react';
-import brandConfig from '@/../brand.config.json';
-import useModalManager from '@/hooks/useModalManager';
-// [AI] Import useStore to check if menu has items
+import { useEffect, useState } from 'react';
+import { observer } from 'mobx-react-lite';
 import { useStore } from '@/hooks/useStore';
-// [/AI]
-import { getActiveTabUrl } from '@/utils/getActiveTabUrl';
-import { FILTERED_LANGUAGES } from '@/utils/languages';
-import { useTranslations } from '@deriv-com/translations';
-import { Drawer, MobileLanguagesDrawer, useDevice } from '@deriv-com/ui';
-import NetworkStatus from './../../footer/NetworkStatus';
-import ServerTime from './../../footer/ServerTime';
-import BackButton from './back-button';
-import MenuContent from './menu-content';
-import MenuHeader from './menu-header';
-import ReportsSubmenu from './reports-submenu';
-import ToggleButton from './toggle-button';
-// [AI] Import hook to check if menu has items
-import useMobileMenuConfig from './use-mobile-menu-config';
-// [/AI]
+import { useDevice } from '@deriv-com/ui';
 import './mobile-menu.scss';
 
 type TMobileMenuProps = {
     onLogout?: () => void;
 };
 
-const MobileMenu = ({ onLogout }: TMobileMenuProps) => {
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-    const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
-    const { currentLang = 'EN', localize, switchLanguage } = useTranslations();
-    const { hideModal, isModalOpenFor, showModal } = useModalManager();
+const MobileMenu = observer(({ onLogout: _onLogout }: TMobileMenuProps) => {
     const { isDesktop } = useDevice();
-    // [AI] Get client from store to check menu items
-    const { client } = useStore() ?? {};
-    // [/AI]
+    const { ui } = useStore() ?? {};
 
-    // Get mobile menu configuration from brand.config.json
-    const enableLanguageSettings = brandConfig.platform.footer?.enable_language_settings ?? true;
-    const enableThemeToggle = brandConfig.platform.footer?.enable_theme_toggle ?? true;
+    const [isDark, setIsDark] = useState<boolean>(() => {
+        if (typeof ui?.is_dark_mode_on === 'boolean') return ui.is_dark_mode_on;
+        if (typeof document !== 'undefined') {
+            return document.body.classList.contains('theme--dark');
+        }
+        return true;
+    });
 
-    // Check if menu has any items to determine if mobile menu should be shown
-    const { hasMenuItems } = useMobileMenuConfig(client, onLogout, enableThemeToggle);
+    useEffect(() => {
+        if (typeof ui?.is_dark_mode_on === 'boolean') {
+            setIsDark(ui.is_dark_mode_on);
+        }
+    }, [ui?.is_dark_mode_on]);
 
-    const openDrawer = () => setIsDrawerOpen(true);
-    const closeDrawer = () => {
-        setIsDrawerOpen(false);
-        setActiveSubmenu(null);
+    const handleToggleTheme = () => {
+        const nextDark = !isDark;
+        setIsDark(nextDark);
+
+        if (typeof ui?.setDarkMode === 'function') {
+            ui.setDarkMode(nextDark);
+        }
+
+        if (typeof document !== 'undefined') {
+            document.body.classList.toggle('theme--dark', nextDark);
+            document.body.classList.toggle('theme--light', !nextDark);
+        }
+
+        try {
+            localStorage.setItem('theme', nextDark ? 'dark' : 'light');
+        } catch {
+            // Ignore storage errors in restricted contexts
+        }
     };
 
-    const openSubmenu = (submenu: string) => setActiveSubmenu(submenu);
-    const closeSubmenu = () => setActiveSubmenu(null);
-    const openLanguageSetting = () => showModal('MobileLanguagesDrawer');
-    const isLanguageSettingVisible = Boolean(isModalOpenFor('MobileLanguagesDrawer'));
-
+    // Remove this line if you also want the theme toggle visible on desktop beside the logo
     if (isDesktop) return null;
-    // [AI] Hide mobile menu if there are no menu items to display
-    if (!hasMenuItems) return null;
-    // [/AI]
+
     return (
         <div className='mobile-menu'>
-            <div className='mobile-menu__toggle'>
-                <ToggleButton onClick={openDrawer} />
-            </div>
-
-            <Drawer isOpen={isDrawerOpen} onCloseDrawer={closeDrawer} width='29.5rem'>
-                <Drawer.Header onCloseDrawer={closeDrawer}>
-                    {/* [AI] Conditionally render language settings in header based on brand config */}
-                    <MenuHeader
-                        hideLanguageSetting={!enableLanguageSettings || isLanguageSettingVisible}
-                        openLanguageSetting={openLanguageSetting}
-                    />
-                    {/* [/AI] */}
-                </Drawer.Header>
-
-                <Drawer.Content>
-                    {/* [AI] Conditionally render language drawer based on brand config */}
-                    {enableLanguageSettings && isLanguageSettingVisible ? (
-                        <>
-                            <div className='mobile-menu__back-btn'>
-                                <BackButton buttonText={localize('Language')} onClick={hideModal} />
-                            </div>
-
-                            <MobileLanguagesDrawer
-                                isOpen
-                                languages={FILTERED_LANGUAGES}
-                                onClose={hideModal}
-                                onLanguageSwitch={code => {
-                                    try {
-                                        switchLanguage(code);
-                                        hideModal();
-                                        // Page reload is necessary because Blockly is outside React lifecycle
-                                        // and won't re-render with new language without full page refresh
-                                        // Use replace() to navigate to the active tab URL which will reload the page
-                                        window.location.replace(getActiveTabUrl());
-                                    } catch (error) {
-                                        console.error('Failed to switch language:', error);
-                                        hideModal();
-                                    }
-                                }}
-                                selectedLanguage={currentLang}
-                                wrapperClassName='mobile-menu__language-drawer'
-                            />
-                        </>
-                    ) : activeSubmenu === 'reports' ? (
-                        <>
-                            <div className='mobile-menu__back-btn'>
-                                <BackButton buttonText={localize('Reports')} onClick={closeSubmenu} />
-                            </div>
-                            <ReportsSubmenu />
-                        </>
-                    ) : (
-                        <MenuContent
-                            enableThemeToggle={enableThemeToggle}
-                            onOpenSubmenu={openSubmenu}
-                            onLogout={() => {
-                                closeDrawer();
-                                onLogout?.();
-                            }}
-                        />
-                    )}
-                    {/* [/AI] */}
-                </Drawer.Content>
-
-                <Drawer.Footer className='mobile-menu__footer'>
-                    <ServerTime />
-                    <NetworkStatus />
-                </Drawer.Footer>
-            </Drawer>
+            <button
+                type='button'
+                className='mobile-menu__toggle'
+                onClick={handleToggleTheme}
+                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '32px',
+                    height: '32px',
+                    padding: 0,
+                    borderRadius: '8px',
+                    border: '1px solid rgba(0, 168, 107, 0.35)',
+                    background: isDark ? 'rgba(0, 168, 107, 0.14)' : 'rgba(15, 23, 42, 0.06)',
+                    color: isDark ? '#00ff99' : '#00a86b',
+                    cursor: 'pointer',
+                }}
+            >
+                {isDark ? (
+                    /* Sun icon when in Dark Mode (click for Light Mode) */
+                    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                        <circle cx='12' cy='12' r='4' />
+                        <path d='M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41' />
+                    </svg>
+                ) : (
+                    /* Moon icon when in Light Mode (click for Dark Mode) */
+                    <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                        <path d='M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z' />
+                    </svg>
+                )}
+            </button>
         </div>
     );
-};
+});
 
 export default MobileMenu;
