@@ -295,16 +295,17 @@ export function useManualMultiStream(
     };
   }, [activeSymbol, targetDigit, duration, parsedStake, isStakeValid, isOverWinnable, isUnderWinnable, currency]);
 
-  // 3. Compute 1,000-tick digit distribution for active market
-  const buffer = globalTickBuffers[activeSymbol] || [];
+  // 3. Compute 100-tick digit distribution (matching the video's 100-tick analyzer)
+  const fullBuffer = globalTickBuffers[activeSymbol] || [];
+  const analysisBuffer = fullBuffer.slice(-100);
   const counts = new Array(10).fill(0);
-  buffer.forEach(d => {
+  analysisBuffer.forEach(d => {
     if (d >= 0 && d <= 9) counts[d]++;
   });
-  const total = buffer.length || 1;
+  const total = analysisBuffer.length || 1;
   const percentages = counts.map(c => Number(((c / total) * 100).toFixed(1)));
-  const cursorDigit = buffer.length > 0 ? buffer[buffer.length - 1] : 0;
-  const recentDigits = buffer.slice(-5);
+  const cursorDigit = fullBuffer.length > 0 ? fullBuffer[fullBuffer.length - 1] : 0;
+  const recentDigits = fullBuffer.slice(-5);
 
   let maxPct = -1;
   let minPct = 999;
@@ -329,68 +330,84 @@ export function useManualMultiStream(
     return { digit, percent, trend };
   });
 
-  // 4. Evaluate real strategy entry rules
+  // 4. Evaluate strategy entry rules matching the video logic
   const evaluateSignal = (): StrategySignal => {
     const pct = (d: number) => percentages[d] ?? 10;
-    const isCursorOnRedRing = cursorDigit === lowIdx;
+    const [prev, curr] = recentDigits.slice(-2);
 
     if (preset === 'OVER_2_UNDER_7_RED_CURSOR') {
+      // UNDER 7: Digits 7, 8, 9 must all be <= 10%, then trigger on 2 hits in [7, 8, 9]
       if (targetDigit === 7) {
-        const highZoneValid = pct(7) > 10 && pct(8) > 10 && pct(9) > 10;
-        if (!highZoneValid) {
+        const highZoneCold = pct(7) <= 10 && pct(8) <= 10 && pct(9) <= 10;
+        if (!highZoneCold) {
           return {
             isReady: false,
             recommendedSide: null,
-            headline: `Filter Blocked: Digits 7 (${pct(7)}%), 8 (${pct(8)}%), 9 (${pct(9)}%) must all be >10%`,
-            subtext: 'Wait or switch Volatility index',
+            headline: `Filter Blocked: Digits 7 (${pct(7)}%), 8 (${pct(8)}%), 9 (${pct(9)}%) must all be <= 10%`,
+            subtext: 'Switch to a Volatility index where 7, 8, 9 are <= 10%',
           };
         }
-        if (isCursorOnRedRing) {
+
+        const twoUpperHits =
+          prev !== undefined &&
+          curr !== undefined &&
+          [7, 8, 9].includes(prev) &&
+          [7, 8, 9].includes(curr);
+
+        if (twoUpperHits) {
           return {
             isReady: true,
             recommendedSide: 'UNDER',
-            headline: `EXECUTE UNDER 7 NOW! Cursor hit Red Digit ${lowIdx} (${percentages[lowIdx]}%)`,
-            subtext: '7, 8, 9 > 10% + Red Ring Triggered',
+            headline: `EXECUTE UNDER 7 NOW! Upper digits hit twice (${prev} -> ${curr})`,
+            subtext: '7, 8, 9 <= 10% + 2-hit trigger confirmed',
           };
         }
+
         return {
           isReady: false,
           recommendedSide: 'UNDER',
-          headline: `Armed for UNDER 7 (7,8,9 > 10%). Waiting for cursor on Red Digit ${lowIdx}...`,
-          subtext: 'Watch cursor',
+          headline: `Armed for UNDER 7 (7,8,9 <= 10%). Waiting for 2 hits in [7, 8, 9] (Last: ${prev ?? '-'} -> ${curr ?? '-'})`,
+          subtext: `7: ${pct(7)}% | 8: ${pct(8)}% | 9: ${pct(9)}%`,
         };
       }
 
+      // OVER 2: Digits 0, 1, 2 must all be <= 10%, then trigger on 2 hits in [0, 1, 2]
       if (targetDigit === 2) {
-        const lowZoneValid = pct(0) > 10 && pct(1) > 10 && pct(2) > 10;
-        if (!lowZoneValid) {
+        const lowZoneCold = pct(0) <= 10 && pct(1) <= 10 && pct(2) <= 10;
+        if (!lowZoneCold) {
           return {
             isReady: false,
             recommendedSide: null,
-            headline: `Filter Blocked: Digits 0 (${pct(0)}%), 1 (${pct(1)}%), 2 (${pct(2)}%) must all be >10%`,
-            subtext: 'Wait or switch Volatility index',
+            headline: `Filter Blocked: Digits 0 (${pct(0)}%), 1 (${pct(1)}%), 2 (${pct(2)}%) must all be <= 10%`,
+            subtext: 'Switch to a Volatility index where 0, 1, 2 are <= 10%',
           };
         }
-        if (isCursorOnRedRing) {
+
+        const twoLowerHits =
+          prev !== undefined &&
+          curr !== undefined &&
+          [0, 1, 2].includes(prev) &&
+          [0, 1, 2].includes(curr);
+
+        if (twoLowerHits) {
           return {
             isReady: true,
             recommendedSide: 'OVER',
-            headline: `EXECUTE OVER 2 NOW! Cursor hit Red Digit ${lowIdx} (${percentages[lowIdx]}%)`,
-            subtext: '0, 1, 2 > 10% + Red Ring Triggered',
+            headline: `EXECUTE OVER 2 NOW! Lower digits hit twice (${prev} -> ${curr})`,
+            subtext: '0, 1, 2 <= 10% + 2-hit trigger confirmed',
           };
         }
+
         return {
           isReady: false,
           recommendedSide: 'OVER',
-          headline: `Armed for OVER 2 (0,1,2 > 10%). Waiting for cursor on Red Digit ${lowIdx}...`,
-          subtext: 'Watch cursor',
+          headline: `Armed for OVER 2 (0,1,2 <= 10%). Waiting for 2 hits in [0, 1, 2] (Last: ${prev ?? '-'} -> ${curr ?? '-'})`,
+          subtext: `0: ${pct(0)}% | 1: ${pct(1)}% | 2: ${pct(2)}%`,
         };
       }
     }
 
     if (preset === 'OVER_3_UNDER_6_CONSECUTIVE') {
-      const [prev, curr] = recentDigits.slice(-2);
-
       if (targetDigit === 3 && prev !== undefined && curr !== undefined) {
         const twoLowInRow = [0, 1, 2].includes(prev) && [0, 1, 2].includes(curr);
         const lowDigitsCold = pct(0) < 10 && pct(1) < 10;
@@ -435,7 +452,7 @@ export function useManualMultiStream(
     return {
       isReady: false,
       recommendedSide: null,
-      headline: `Live 1,000-tick stream active on ${activeSymbol} (Last digits: ${recentDigits.join(' -> ')})`,
+      headline: `Live 100-tick stream active on ${activeSymbol} (Last digits: ${recentDigits.join(' -> ')})`,
       subtext: 'Select Digit 2, 3, 6, or 7 for preset triggers',
     };
   };
