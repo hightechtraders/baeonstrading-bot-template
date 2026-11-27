@@ -330,94 +330,125 @@ export function useManualMultiStream(
     return { digit, percent, trend };
   });
 
-  // 4. Evaluate strategy entry rules matching the video logic
+  // 4. Evaluate strategy entry rules with simultaneous opposite-side detection
   const evaluateSignal = (): StrategySignal => {
     const pct = (d: number) => percentages[d] ?? 10;
     const [prev, curr] = recentDigits.slice(-2);
 
-    if (preset === 'OVER_2_UNDER_7_RED_CURSOR') {
-      // UNDER 7: Digits 7, 8, 9 must all be <= 10%, then trigger on 2 hits in [7, 8, 9]
+    if (preset === 'OVER_2_UNDER_7_RED_CURSOR' && (targetDigit === 7 || targetDigit === 2)) {
+      const highZoneCold = pct(7) <= 10 && pct(8) <= 10 && pct(9) <= 10;
+      const lowZoneCold = pct(0) <= 10 && pct(1) <= 10 && pct(2) <= 10;
+
+      const twoUpperHits =
+        prev !== undefined &&
+        curr !== undefined &&
+        [7, 8, 9].includes(prev) &&
+        [7, 8, 9].includes(curr);
+
+      const twoLowerHits =
+        prev !== undefined &&
+        curr !== undefined &&
+        [0, 1, 2].includes(prev) &&
+        [0, 1, 2].includes(curr);
+
+      // Active targetDigit === 7 (UNDER 7)
       if (targetDigit === 7) {
-        const highZoneCold = pct(7) <= 10 && pct(8) <= 10 && pct(9) <= 10;
-        if (!highZoneCold) {
+        if (highZoneCold) {
+          if (twoUpperHits) {
+            return {
+              isReady: true,
+              recommendedSide: 'UNDER',
+              headline: `EXECUTE UNDER 7 NOW! Upper digits hit twice (${prev} -> ${curr})`,
+              subtext: '7, 8, 9 <= 10% + 2-hit trigger confirmed',
+            };
+          }
           return {
             isReady: false,
-            recommendedSide: null,
-            headline: `Filter Blocked: Digits 7 (${pct(7)}%), 8 (${pct(8)}%), 9 (${pct(9)}%) must all be <= 10%`,
-            subtext: 'Switch to a Volatility index where 7, 8, 9 are <= 10%',
+            recommendedSide: 'UNDER',
+            headline: `Armed for UNDER 7 (7,8,9 <= 10%). Waiting for 2 hits in [7, 8, 9] (Last: ${prev ?? '-'} -> ${curr ?? '-'})`,
+            subtext: `7: ${pct(7)}% | 8: ${pct(8)}% | 9: ${pct(9)}%`,
           };
         }
 
-        const twoUpperHits =
-          prev !== undefined &&
-          curr !== undefined &&
-          [7, 8, 9].includes(prev) &&
-          [7, 8, 9].includes(curr);
-
-        if (twoUpperHits) {
+        // Under 7 is blocked, check if Over 2 is open on this index
+        if (lowZoneCold) {
           return {
-            isReady: true,
-            recommendedSide: 'UNDER',
-            headline: `EXECUTE UNDER 7 NOW! Upper digits hit twice (${prev} -> ${curr})`,
-            subtext: '7, 8, 9 <= 10% + 2-hit trigger confirmed',
+            isReady: false,
+            recommendedSide: 'OVER',
+            headline: `UNDER 7 Blocked, but OVER 2 is Open! Click Digit 2 to arm`,
+            subtext: `0: ${pct(0)}% | 1: ${pct(1)}% | 2: ${pct(2)}%`,
           };
         }
 
         return {
           isReady: false,
-          recommendedSide: 'UNDER',
-          headline: `Armed for UNDER 7 (7,8,9 <= 10%). Waiting for 2 hits in [7, 8, 9] (Last: ${prev ?? '-'} -> ${curr ?? '-'})`,
-          subtext: `7: ${pct(7)}% | 8: ${pct(8)}% | 9: ${pct(9)}%`,
+          recommendedSide: null,
+          headline: `Both Sides Blocked (7,8,9: ${pct(7)}/${pct(8)}/${pct(9)}% | 0,1,2: ${pct(0)}/${pct(1)}/${pct(2)}%)`,
+          subtext: 'Switch to another Volatility index',
         };
       }
 
-      // OVER 2: Digits 0, 1, 2 must all be <= 10%, then trigger on 2 hits in [0, 1, 2]
+      // Active targetDigit === 2 (OVER 2)
       if (targetDigit === 2) {
-        const lowZoneCold = pct(0) <= 10 && pct(1) <= 10 && pct(2) <= 10;
-        if (!lowZoneCold) {
+        if (lowZoneCold) {
+          if (twoLowerHits) {
+            return {
+              isReady: true,
+              recommendedSide: 'OVER',
+              headline: `EXECUTE OVER 2 NOW! Lower digits hit twice (${prev} -> ${curr})`,
+              subtext: '0, 1, 2 <= 10% + 2-hit trigger confirmed',
+            };
+          }
           return {
             isReady: false,
-            recommendedSide: null,
-            headline: `Filter Blocked: Digits 0 (${pct(0)}%), 1 (${pct(1)}%), 2 (${pct(2)}%) must all be <= 10%`,
-            subtext: 'Switch to a Volatility index where 0, 1, 2 are <= 10%',
+            recommendedSide: 'OVER',
+            headline: `Armed for OVER 2 (0,1,2 <= 10%). Waiting for 2 hits in [0, 1, 2] (Last: ${prev ?? '-'} -> ${curr ?? '-'})`,
+            subtext: `0: ${pct(0)}% | 1: ${pct(1)}% | 2: ${pct(2)}%`,
           };
         }
 
-        const twoLowerHits =
-          prev !== undefined &&
-          curr !== undefined &&
-          [0, 1, 2].includes(prev) &&
-          [0, 1, 2].includes(curr);
-
-        if (twoLowerHits) {
+        // Over 2 is blocked, check if Under 7 is open on this index
+        if (highZoneCold) {
           return {
-            isReady: true,
-            recommendedSide: 'OVER',
-            headline: `EXECUTE OVER 2 NOW! Lower digits hit twice (${prev} -> ${curr})`,
-            subtext: '0, 1, 2 <= 10% + 2-hit trigger confirmed',
+            isReady: false,
+            recommendedSide: 'UNDER',
+            headline: `OVER 2 Blocked, but UNDER 7 is Open! Click Digit 7 to arm`,
+            subtext: `7: ${pct(7)}% | 8: ${pct(8)}% | 9: ${pct(9)}%`,
           };
         }
 
         return {
           isReady: false,
-          recommendedSide: 'OVER',
-          headline: `Armed for OVER 2 (0,1,2 <= 10%). Waiting for 2 hits in [0, 1, 2] (Last: ${prev ?? '-'} -> ${curr ?? '-'})`,
-          subtext: `0: ${pct(0)}% | 1: ${pct(1)}% | 2: ${pct(2)}%`,
+          recommendedSide: null,
+          headline: `Both Sides Blocked (0,1,2: ${pct(0)}/${pct(1)}/${pct(2)}% | 7,8,9: ${pct(7)}/${pct(8)}/${pct(9)}%)`,
+          subtext: 'Switch to another Volatility index',
         };
       }
     }
 
-    if (preset === 'OVER_3_UNDER_6_CONSECUTIVE') {
-      if (targetDigit === 3 && prev !== undefined && curr !== undefined) {
-        const twoLowInRow = [0, 1, 2].includes(prev) && [0, 1, 2].includes(curr);
-        const lowDigitsCold = pct(0) < 10 && pct(1) < 10;
+    if (preset === 'OVER_3_UNDER_6_CONSECUTIVE' && (targetDigit === 3 || targetDigit === 6)) {
+      const twoLowInRow =
+        prev !== undefined && curr !== undefined && [0, 1, 2].includes(prev) && [0, 1, 2].includes(curr);
+      const twoHighInRow =
+        prev !== undefined && curr !== undefined && [7, 8, 9].includes(prev) && [7, 8, 9].includes(curr);
+      const lowDigitsCold = pct(0) < 10 && pct(1) < 10;
+      const highDigitsCold = pct(8) < 10 && pct(9) < 10;
 
+      if (targetDigit === 3) {
         if (twoLowInRow && lowDigitsCold) {
           return {
             isReady: true,
             recommendedSide: 'OVER',
             headline: `EXECUTE OVER 3 NOW! 2 consecutive low digits (${prev} -> ${curr}) detected`,
             subtext: 'Snap-back setup active',
+          };
+        }
+        if (!lowDigitsCold && highDigitsCold) {
+          return {
+            isReady: false,
+            recommendedSide: 'UNDER',
+            headline: `Over 3 Cold Filter Blocked, but UNDER 6 is Open! Click Digit 6 to arm`,
+            subtext: `8: ${pct(8)}% | 9: ${pct(9)}%`,
           };
         }
         return {
@@ -428,16 +459,21 @@ export function useManualMultiStream(
         };
       }
 
-      if (targetDigit === 6 && prev !== undefined && curr !== undefined) {
-        const twoHighInRow = [7, 8, 9].includes(prev) && [7, 8, 9].includes(curr);
-        const highDigitsCold = pct(8) < 10 && pct(9) < 10;
-
+      if (targetDigit === 6) {
         if (twoHighInRow && highDigitsCold) {
           return {
             isReady: true,
             recommendedSide: 'UNDER',
             headline: `EXECUTE UNDER 6 NOW! 2 consecutive high digits (${prev} -> ${curr}) detected`,
             subtext: 'Snap-back setup active',
+          };
+        }
+        if (!highDigitsCold && lowDigitsCold) {
+          return {
+            isReady: false,
+            recommendedSide: 'OVER',
+            headline: `Under 6 Cold Filter Blocked, but OVER 3 is Open! Click Digit 3 to arm`,
+            subtext: `0: ${pct(0)}% | 1: ${pct(1)}%`,
           };
         }
         return {
