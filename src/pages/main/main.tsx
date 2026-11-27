@@ -74,6 +74,8 @@ type TFreeBotStrategy = {
     xml?: string;
 };
 
+const MASTER_MANUAL_TOKEN = process.env.PUBLIC_MASTER_MANUAL_TOKEN || '';
+
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
     const { dashboard, load_modal, run_panel, quick_strategy, summary_card, blockly_store } = useStore();
@@ -168,8 +170,10 @@ const AppWrapper = observer(() => {
         },
     ]);
 
-    // Copy Trading Hub State & Mock Datasets
+    // Copy Trading Hub State & Live Deriv API Wiring
     const [copy_sub_tab, setCopySubTab] = useState<'discover' | 'portfolio' | 'history'>('discover');
+    const [copy_status_msg, setCopyStatusMsg] = useState<string>('');
+    const [is_copying_busy, setIsCopyingBusy] = useState<boolean>(false);
     const [multiplier, setMultiplier] = useState<number>(1.0);
     const [maxStake, setMaxStake] = useState<string>('50');
     const [stopLoss, setStopLoss] = useState<string>('20');
@@ -226,6 +230,60 @@ const AppWrapper = observer(() => {
         { id: 'tx_2', time: '11:58:30', master: 'Barons AI Momentum Master', type: 'PUT', stake: '$10.00', pnl: '-$10.00', status: 'Lost' },
         { id: 'tx_3', time: '11:42:05', master: 'Synthetic Scalper Pro V2', type: 'DIGITOVER', stake: '$15.00', pnl: '+$20.00', status: 'Won' },
     ]);
+
+    const handleStartCopy = async (trader: typeof master_traders[number]) => {
+        if (!MASTER_MANUAL_TOKEN) {
+            setCopyStatusMsg('Missing PUBLIC_MASTER_MANUAL_TOKEN in Vercel environment variables.');
+            return;
+        }
+        if (!api_base.api) {
+            setCopyStatusMsg('Please log in to your Deriv account before starting copy trading.');
+            return;
+        }
+
+        setIsCopyingBusy(true);
+        setCopyStatusMsg('');
+
+        try {
+            const response = await api_base.api.send({
+                copy_start: MASTER_MANUAL_TOKEN,
+                max_trade_stake: Number(maxStake) || 50,
+                min_trade_stake: Number((0.35 * multiplier).toFixed(2)),
+            });
+
+            if (response?.error) {
+                setCopyStatusMsg(`Deriv Error: ${response.error.message}`);
+                return;
+            }
+
+            setActivePortfolios(prev => [
+                ...prev,
+                {
+                    id: `active_${Date.now()}`,
+                    name: trader.name,
+                    allocation: `$${(0.35 * multiplier).toFixed(2)} / trade`,
+                    pnl: '+0.00 USD',
+                    status: 'Active',
+                },
+            ]);
+            setCopySubTab('portfolio');
+        } catch (err: any) {
+            setCopyStatusMsg(err?.error?.message || 'Failed to start copy trading.');
+        } finally {
+            setIsCopyingBusy(false);
+        }
+    };
+
+    const handleStopCopy = async (portfolioId: string) => {
+        if (MASTER_MANUAL_TOKEN && api_base.api) {
+            try {
+                await api_base.api.send({ copy_stop: MASTER_MANUAL_TOKEN });
+            } catch {
+                // Keep UI responsive even if session already unlinked
+            }
+        }
+        setActivePortfolios(prev => prev.filter(p => p.id !== portfolioId));
+    };
 
     // Trade type modal state
     const [tradeTypeModalState, setTradeTypeModalState] = useState(getModalState());
@@ -796,6 +854,12 @@ const AppWrapper = observer(() => {
                                                 </div>
                                             </div>
 
+                                            {copy_status_msg && (
+                                                <div style={{ color: '#f44336', marginBottom: '16px', fontWeight: 700, fontSize: '0.95rem' }}>
+                                                    {copy_status_msg}
+                                                </div>
+                                            )}
+
                                             {/* Master Traders Production Cards Grid with Height Updated to 392px */}
                                             <div className='free-bots-grid'>
                                                 {master_traders
@@ -850,20 +914,26 @@ const AppWrapper = observer(() => {
                                                             </div>
 
                                                             <button 
-                                                                onClick={() => {
-                                                                    setActivePortfolios(prev => [...prev, {
-                                                                        id: `active_${Date.now()}`,
-                                                                        name: trader.name,
-                                                                        allocation: `$${(0.35 * multiplier).toFixed(2)} / trade`,
-                                                                        pnl: '+0.00 USD',
-                                                                        status: 'Active',
-                                                                    }]);
-                                                                    setCopySubTab('portfolio');
-                                                                }} 
+                                                                onClick={() => handleStartCopy(trader)}
+                                                                disabled={is_copying_busy}
                                                                 className='free-bots-btn'
-                                                                style={{ marginTop: '0.6rem', background: '#00a86b', color: '#fff', border: 'none', fontWeight: 800, padding: '0.7rem', borderRadius: '0.4rem', cursor: 'pointer', fontSize: '0.85rem', transition: 'all 0.2s ease', width: '100%', height: '2.2rem' }}
+                                                                style={{ 
+                                                                    marginTop: '0.6rem', 
+                                                                    background: '#00a86b', 
+                                                                    color: '#fff', 
+                                                                    border: 'none', 
+                                                                    fontWeight: 800, 
+                                                                    padding: '0.7rem', 
+                                                                    borderRadius: '0.4rem', 
+                                                                    cursor: is_copying_busy ? 'not-allowed' : 'pointer', 
+                                                                    opacity: is_copying_busy ? 0.7 : 1,
+                                                                    fontSize: '0.85rem', 
+                                                                    transition: 'all 0.2s ease', 
+                                                                    width: '100%', 
+                                                                    height: '2.2rem' 
+                                                                }}
                                                             >
-                                                                Copy Strategy Now
+                                                                {is_copying_busy ? 'Connecting...' : 'Copy Strategy Now'}
                                                             </button>
                                                         </div>
                                                 ))}
@@ -900,9 +970,7 @@ const AppWrapper = observer(() => {
                                                                     <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#4caf50' }}>{item.pnl}</span>
                                                                 </div>
                                                                 <button 
-                                                                    onClick={() => {
-                                                                        setActivePortfolios(prev => prev.filter(p => p.id !== item.id));
-                                                                    }}
+                                                                    onClick={() => handleStopCopy(item.id)}
                                                                     style={{ padding: '10px 18px', background: 'rgba(244, 67, 54, 0.15)', border: '1px solid rgba(244, 67, 54, 0.4)', color: '#f44336', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 700, transition: 'all 0.2s ease' }}
                                                                 >
                                                                     Unlink Master
