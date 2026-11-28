@@ -76,6 +76,59 @@ type TFreeBotStrategy = {
 
 const MASTER_MANUAL_TOKEN = process.env.PUBLIC_MASTER_MANUAL_TOKEN || '';
 
+// Helper to send raw JSON requests directly to Deriv WebSocket (bypasses @deriv/deriv-api wrapper)
+const sendRawDerivRequest = (payload: Record<string, any>, requireReal = false): Promise<any> => {
+    return new Promise((resolve, reject) => {
+        const activeLoginId = localStorage.getItem('active_loginid') || '';
+        const clientAccounts = JSON.parse(localStorage.getItem('client.accounts') || '{}');
+        const activeToken = clientAccounts[activeLoginId]?.token || localStorage.getItem('authToken') || '';
+        const appId = localStorage.getItem('config.app_id') || '1089';
+
+        if (!activeToken) {
+            reject(new Error('Could not find active account token. Please log in to your Deriv account.'));
+            return;
+        }
+
+        if (requireReal && activeLoginId.startsWith('VRTC')) {
+            reject(new Error('Demo account detected. Switch to your REAL (CR...) account first.'));
+            return;
+        }
+
+        const ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${appId}`);
+
+        ws.onopen = () => {
+            ws.send(JSON.stringify({ authorize: activeToken }));
+        };
+
+        ws.onmessage = event => {
+            const data = JSON.parse(event.data);
+
+            if (data.error) {
+                ws.close();
+                reject(new Error(`Deriv Error (${data.error.code}): ${data.error.message}`));
+                return;
+            }
+
+            if (data.msg_type === 'authorize') {
+                if (requireReal && data.authorize?.is_virtual === 1) {
+                    ws.close();
+                    reject(new Error('Demo account detected. Switch to your REAL (CR...) account first.'));
+                    return;
+                }
+                ws.send(JSON.stringify(payload));
+                return;
+            }
+
+            ws.close();
+            resolve(data);
+        };
+
+        ws.onerror = () => {
+            reject(new Error('Direct WebSocket connection failed.'));
+        };
+    });
+};
+
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
     const { dashboard, load_modal, run_panel, quick_strategy, summary_card, blockly_store } = useStore();
@@ -238,28 +291,17 @@ const AppWrapper = observer(() => {
             setCopyStatusMsg('Missing PUBLIC_MASTER_MANUAL_TOKEN in Vercel environment variables.');
             return;
         }
-        if (!api_base.api) {
-            setIsCopySuccess(false);
-            setCopyStatusMsg('Please log in to your Deriv account before starting copy trading.');
-            return;
-        }
 
         setIsCopyingBusy(true);
         setCopyStatusMsg('');
         setIsCopySuccess(false);
 
         try {
-            const response = await api_base.api.send({
+            await sendRawDerivRequest({
                 copy_start: MASTER_MANUAL_TOKEN,
                 max_trade_stake: Number(maxStake) || 50,
                 min_trade_stake: Number((0.35 * multiplier).toFixed(2)),
             });
-
-            if (response?.error) {
-                setIsCopySuccess(false);
-                setCopyStatusMsg(`Deriv Error: ${response.error.message}`);
-                return;
-            }
 
             setActivePortfolios(prev => [
                 ...prev,
@@ -274,16 +316,16 @@ const AppWrapper = observer(() => {
             setCopySubTab('portfolio');
         } catch (err: any) {
             setIsCopySuccess(false);
-            setCopyStatusMsg(err?.error?.message || 'Failed to start copy trading.');
+            setCopyStatusMsg(err?.message || 'Failed to start copy trading.');
         } finally {
             setIsCopyingBusy(false);
         }
     };
 
     const handleStopCopy = async (portfolioId: string) => {
-        if (MASTER_MANUAL_TOKEN && api_base.api) {
+        if (MASTER_MANUAL_TOKEN) {
             try {
-                await api_base.api.send({ copy_stop: MASTER_MANUAL_TOKEN });
+                await sendRawDerivRequest({ copy_stop: MASTER_MANUAL_TOKEN });
             } catch {
                 // Keep UI responsive even if session already unlinked
             }
@@ -291,35 +333,26 @@ const AppWrapper = observer(() => {
         setActivePortfolios(prev => prev.filter(p => p.id !== portfolioId));
     };
 
-    // TEMPORARY: Enable allow_copiers on the currently active REAL account
+    // TEMPORARY: Enable allow_copiers on the currently active REAL account via direct WebSocket
     const handleEnableCopiers = async () => {
-        if (!api_base.api) {
-            setIsCopySuccess(false);
-            setCopyStatusMsg('Please log in to your REAL Deriv account first.');
-            return;
-        }
-
         setIsCopyingBusy(true);
         setCopyStatusMsg('');
         setIsCopySuccess(false);
 
         try {
-            const response = await api_base.api.send({
-                set_settings: 1,
-                allow_copiers: 1,
-            });
-
-            if (response?.error) {
-                setIsCopySuccess(false);
-                setCopyStatusMsg(`Deriv Error (${response.error.code}): ${response.error.message}`);
-                return;
-            }
+            await sendRawDerivRequest(
+                {
+                    set_settings: 1,
+                    allow_copiers: 1,
+                },
+                true
+            );
 
             setIsCopySuccess(true);
             setCopyStatusMsg('SUCCESS: allow_copiers is now enabled (1) on your Real account! You can now remove this temporary button.');
         } catch (err: any) {
             setIsCopySuccess(false);
-            setCopyStatusMsg(err?.error?.message || 'Failed to enable copiers. Ensure you are on a Real account with admin scope.');
+            setCopyStatusMsg(err?.message || 'Failed to enable copiers. Ensure you are on a Real account with admin scope.');
         } finally {
             setIsCopyingBusy(false);
         }
