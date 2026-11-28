@@ -173,6 +173,7 @@ const AppWrapper = observer(() => {
     // Copy Trading Hub State & Live Deriv API Wiring
     const [copy_sub_tab, setCopySubTab] = useState<'discover' | 'portfolio' | 'history'>('discover');
     const [copy_status_msg, setCopyStatusMsg] = useState<string>('');
+    const [is_copy_success, setIsCopySuccess] = useState<boolean>(false);
     const [is_copying_busy, setIsCopyingBusy] = useState<boolean>(false);
     const [multiplier, setMultiplier] = useState<number>(1.0);
     const [maxStake, setMaxStake] = useState<string>('50');
@@ -233,16 +234,19 @@ const AppWrapper = observer(() => {
 
     const handleStartCopy = async (trader: typeof master_traders[number]) => {
         if (!MASTER_MANUAL_TOKEN) {
+            setIsCopySuccess(false);
             setCopyStatusMsg('Missing PUBLIC_MASTER_MANUAL_TOKEN in Vercel environment variables.');
             return;
         }
         if (!api_base.api) {
+            setIsCopySuccess(false);
             setCopyStatusMsg('Please log in to your Deriv account before starting copy trading.');
             return;
         }
 
         setIsCopyingBusy(true);
         setCopyStatusMsg('');
+        setIsCopySuccess(false);
 
         try {
             const response = await api_base.api.send({
@@ -252,6 +256,7 @@ const AppWrapper = observer(() => {
             });
 
             if (response?.error) {
+                setIsCopySuccess(false);
                 setCopyStatusMsg(`Deriv Error: ${response.error.message}`);
                 return;
             }
@@ -268,6 +273,7 @@ const AppWrapper = observer(() => {
             ]);
             setCopySubTab('portfolio');
         } catch (err: any) {
+            setIsCopySuccess(false);
             setCopyStatusMsg(err?.error?.message || 'Failed to start copy trading.');
         } finally {
             setIsCopyingBusy(false);
@@ -283,6 +289,40 @@ const AppWrapper = observer(() => {
             }
         }
         setActivePortfolios(prev => prev.filter(p => p.id !== portfolioId));
+    };
+
+    // TEMPORARY: Enable allow_copiers on the currently active REAL account
+    const handleEnableCopiers = async () => {
+        if (!api_base.api) {
+            setIsCopySuccess(false);
+            setCopyStatusMsg('Please log in to your REAL Deriv account first.');
+            return;
+        }
+
+        setIsCopyingBusy(true);
+        setCopyStatusMsg('');
+        setIsCopySuccess(false);
+
+        try {
+            const response = await api_base.api.send({
+                set_settings: 1,
+                allow_copiers: 1,
+            });
+
+            if (response?.error) {
+                setIsCopySuccess(false);
+                setCopyStatusMsg(`Deriv Error (${response.error.code}): ${response.error.message}`);
+                return;
+            }
+
+            setIsCopySuccess(true);
+            setCopyStatusMsg('SUCCESS: allow_copiers is now enabled (1) on your Real account! You can now remove this temporary button.');
+        } catch (err: any) {
+            setIsCopySuccess(false);
+            setCopyStatusMsg(err?.error?.message || 'Failed to enable copiers. Ensure you are on a Real account with admin scope.');
+        } finally {
+            setIsCopyingBusy(false);
+        }
     };
 
     // Trade type modal state
@@ -789,26 +829,46 @@ const AppWrapper = observer(() => {
                                             </p>
                                         </div>
 
-                                        {/* Professional Sub-Navigation Tabs */}
-                                        <div style={{ display: 'flex', gap: '8px', background: 'rgba(0, 168, 107, 0.08)', padding: '6px', borderRadius: '12px', border: '1px solid rgba(0, 168, 107, 0.2)' }}>
-                                            <button 
-                                                onClick={() => setCopySubTab('discover')}
-                                                style={{ padding: '10px 18px', background: copy_sub_tab === 'discover' ? '#00a86b' : 'transparent', border: 'none', color: copy_sub_tab === 'discover' ? '#fff' : 'var(--text-prominent)', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', transition: 'all 0.2s ease' }}
+                                        {/* Professional Sub-Navigation Tabs + Temporary Enable Copiers Button */}
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                            <button
+                                                type='button'
+                                                onClick={handleEnableCopiers}
+                                                disabled={is_copying_busy}
+                                                style={{
+                                                    padding: '10px 16px',
+                                                    background: is_copy_success ? '#10b981' : '#f59e0b',
+                                                    color: '#000',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: is_copying_busy ? 'wait' : 'pointer',
+                                                    fontWeight: 800,
+                                                    fontSize: '0.85rem',
+                                                }}
                                             >
-                                                Discover Masters
+                                                {is_copying_busy ? 'Enabling...' : is_copy_success ? '✓ Copiers Enabled' : 'TEMP: Enable Copiers'}
                                             </button>
-                                            <button 
-                                                onClick={() => setCopySubTab('portfolio')}
-                                                style={{ padding: '10px 18px', background: copy_sub_tab === 'portfolio' ? '#00a86b' : 'transparent', border: 'none', color: copy_sub_tab === 'portfolio' ? '#fff' : 'var(--text-prominent)', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', transition: 'all 0.2s ease' }}
-                                            >
-                                                Active Portfolios ({active_portfolios.length})
-                                            </button>
-                                            <button 
-                                                onClick={() => setCopySubTab('history')}
-                                                style={{ padding: '10px 18px', background: copy_sub_tab === 'history' ? '#00a86b' : 'transparent', border: 'none', color: copy_sub_tab === 'history' ? '#fff' : 'var(--text-prominent)', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', transition: 'all 0.2s ease' }}
-                                            >
-                                                Trade Audit Log
-                                            </button>
+
+                                            <div style={{ display: 'flex', gap: '8px', background: 'rgba(0, 168, 107, 0.08)', padding: '6px', borderRadius: '12px', border: '1px solid rgba(0, 168, 107, 0.2)' }}>
+                                                <button 
+                                                    onClick={() => setCopySubTab('discover')}
+                                                    style={{ padding: '10px 18px', background: copy_sub_tab === 'discover' ? '#00a86b' : 'transparent', border: 'none', color: copy_sub_tab === 'discover' ? '#fff' : 'var(--text-prominent)', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', transition: 'all 0.2s ease' }}
+                                                >
+                                                    Discover Masters
+                                                </button>
+                                                <button 
+                                                    onClick={() => setCopySubTab('portfolio')}
+                                                    style={{ padding: '10px 18px', background: copy_sub_tab === 'portfolio' ? '#00a86b' : 'transparent', border: 'none', color: copy_sub_tab === 'portfolio' ? '#fff' : 'var(--text-prominent)', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', transition: 'all 0.2s ease' }}
+                                                >
+                                                    Active Portfolios ({active_portfolios.length})
+                                                </button>
+                                                <button 
+                                                    onClick={() => setCopySubTab('history')}
+                                                    style={{ padding: '10px 18px', background: copy_sub_tab === 'history' ? '#00a86b' : 'transparent', border: 'none', color: copy_sub_tab === 'history' ? '#fff' : 'var(--text-prominent)', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', transition: 'all 0.2s ease' }}
+                                                >
+                                                    Trade Audit Log
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -855,7 +915,7 @@ const AppWrapper = observer(() => {
                                             </div>
 
                                             {copy_status_msg && (
-                                                <div style={{ color: '#f44336', marginBottom: '16px', fontWeight: 700, fontSize: '0.95rem' }}>
+                                                <div style={{ color: is_copy_success ? '#10b981' : '#f44336', marginBottom: '16px', fontWeight: 700, fontSize: '0.95rem' }}>
                                                     {copy_status_msg}
                                                 </div>
                                             )}
