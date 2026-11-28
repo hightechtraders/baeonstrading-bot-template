@@ -77,15 +77,76 @@ type TFreeBotStrategy = {
 const MASTER_MANUAL_TOKEN = process.env.PUBLIC_MASTER_MANUAL_TOKEN || '';
 
 // Helper to send raw JSON requests directly to Deriv WebSocket (bypasses @deriv/deriv-api wrapper)
-const sendRawDerivRequest = (payload: Record<string, any>, requireReal = false): Promise<any> => {
+const sendRawDerivRequest = (
+    payload: Record<string, any>,
+    requireReal = false,
+    overrideToken?: string
+): Promise<any> => {
     return new Promise((resolve, reject) => {
-        const activeLoginId = localStorage.getItem('active_loginid') || '';
-        const clientAccounts = JSON.parse(localStorage.getItem('client.accounts') || '{}');
-        const activeToken = clientAccounts[activeLoginId]?.token || localStorage.getItem('authToken') || '';
-        const appId = localStorage.getItem('config.app_id') || '1089';
+        const readStorage = (key: string) =>
+            sessionStorage.getItem(key) || localStorage.getItem(key) || '';
+
+        let activeLoginId = (api_base as any)?.account_info?.loginid || readStorage('active_loginid');
+        let activeToken =
+            overrideToken?.trim() ||
+            (api_base as any)?.token ||
+            readStorage('authToken') ||
+            readStorage('auth_token');
 
         if (!activeToken) {
-            reject(new Error('Could not find active account token. Please log in to your Deriv account.'));
+            try {
+                const accounts = JSON.parse(readStorage('client.accounts') || '{}');
+                if (activeLoginId && accounts[activeLoginId]?.token) {
+                    activeToken = accounts[activeLoginId].token;
+                } else {
+                    const entries = Object.entries(accounts) as [string, any][];
+                    const match = requireReal
+                        ? entries.find(([id, acc]) => !id.startsWith('VRTC') && acc?.token)
+                        : entries.find(([, acc]) => acc?.token);
+                    if (match) {
+                        activeLoginId = match[0];
+                        activeToken = match[1].token;
+                    }
+                }
+            } catch {
+                // Ignore JSON parse errors
+            }
+        }
+
+        // Last-resort scan across all sessionStorage & localStorage keys for any Deriv token
+        if (!activeToken) {
+            for (const store of [sessionStorage, localStorage]) {
+                for (let i = 0; i < store.length; i++) {
+                    const val = store.getItem(store.key(i) || '') || '';
+                    if (val.includes('"token"')) {
+                        try {
+                            const parsed = JSON.parse(val);
+                            const found = Object.entries(parsed).find(
+                                ([k, v]: [string, any]) =>
+                                    (!requireReal || !k.startsWith('VRTC')) && v?.token
+                            ) as [string, any] | undefined;
+                            if (found) {
+                                activeLoginId = found[0];
+                                activeToken = found[1].token;
+                                break;
+                            }
+                        } catch {
+                            // Continue scanning
+                        }
+                    }
+                }
+                if (activeToken) break;
+            }
+        }
+
+        const appId = readStorage('config.app_id') || '1089';
+
+        if (!activeToken) {
+            reject(
+                new Error(
+                    'Token not found in browser storage. Paste your temporary Real Admin API token in the box next to the button and click Enable Copiers.'
+                )
+            );
             return;
         }
 
@@ -228,6 +289,7 @@ const AppWrapper = observer(() => {
     const [copy_status_msg, setCopyStatusMsg] = useState<string>('');
     const [is_copy_success, setIsCopySuccess] = useState<boolean>(false);
     const [is_copying_busy, setIsCopyingBusy] = useState<boolean>(false);
+    const [temp_admin_token, setTempAdminToken] = useState<string>('');
     const [multiplier, setMultiplier] = useState<number>(1.0);
     const [maxStake, setMaxStake] = useState<string>('50');
     const [stopLoss, setStopLoss] = useState<string>('20');
@@ -345,10 +407,12 @@ const AppWrapper = observer(() => {
                     set_settings: 1,
                     allow_copiers: 1,
                 },
-                true
+                true,
+                temp_admin_token
             );
 
             setIsCopySuccess(true);
+            setTempAdminToken('');
             setCopyStatusMsg('SUCCESS: allow_copiers is now enabled (1) on your Real account! You can now remove this temporary button.');
         } catch (err: any) {
             setIsCopySuccess(false);
@@ -862,8 +926,23 @@ const AppWrapper = observer(() => {
                                             </p>
                                         </div>
 
-                                        {/* Professional Sub-Navigation Tabs + Temporary Enable Copiers Button */}
+                                        {/* Professional Sub-Navigation Tabs + Temporary Enable Copiers Control */}
                                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                            <input
+                                                type='password'
+                                                placeholder='Optional: Temp Admin Token'
+                                                value={temp_admin_token}
+                                                onChange={e => setTempAdminToken(e.target.value)}
+                                                style={{
+                                                    padding: '9px 12px',
+                                                    background: 'var(--general-main-1)',
+                                                    border: '1px solid rgba(245, 158, 11, 0.5)',
+                                                    color: 'var(--text-prominent)',
+                                                    borderRadius: '8px',
+                                                    fontSize: '0.85rem',
+                                                    width: '190px',
+                                                }}
+                                            />
                                             <button
                                                 type='button'
                                                 onClick={handleEnableCopiers}
