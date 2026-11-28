@@ -76,88 +76,46 @@ type TFreeBotStrategy = {
 
 const MASTER_MANUAL_TOKEN = process.env.PUBLIC_MASTER_MANUAL_TOKEN || '';
 
-// Helper to send raw JSON requests directly to Deriv WebSocket (bypasses @deriv/deriv-api wrapper)
+// Helper to send raw JSON requests over the active, authenticated Deriv WebSocket connection
 const sendRawDerivRequest = async (
     payload: Record<string, any>,
     requireReal = false,
     overrideToken?: string
 ): Promise<any> => {
     const cleanOverride = overrideToken?.trim();
+    const apiInstance = (api_base as any)?.api;
 
-    // 1. If no override token is pasted, use the app's existing live WebSocket connection directly
-    if (!cleanOverride && (api_base as any)?.api?.send) {
-        const loginId = (api_base as any)?.account_info?.loginid || '';
+    if (apiInstance?.send) {
+        const loginId =
+            (api_base as any)?.account_info?.loginid ||
+            sessionStorage.getItem('active_loginid') ||
+            localStorage.getItem('active_loginid') ||
+            '';
+
         if (requireReal && loginId.startsWith('VRTC')) {
             throw new Error('Demo account detected. Switch to your REAL (CR...) account first.');
         }
 
-        const res = await (api_base as any).api.send(payload);
+        if (cleanOverride) {
+            const authRes = await apiInstance.send({ authorize: cleanOverride });
+            if (authRes?.error) {
+                throw new Error(
+                    `Authorize Error (${authRes.error.code}): ${authRes.error.message}`
+                );
+            }
+            if (requireReal && authRes?.authorize?.is_virtual === 1) {
+                throw new Error('Demo account detected. Switch to your REAL (CR...) account first.');
+            }
+        }
+
+        const res = await apiInstance.send(payload);
         if (res?.error) {
             throw new Error(`Deriv Error (${res.error.code}): ${res.error.message}`);
         }
         return res;
     }
 
-    // 2. If a temporary Admin token IS pasted, use a short-lived socket with your real app_id
-    const appId =
-        localStorage.getItem('config.app_id') ||
-        sessionStorage.getItem('config.app_id') ||
-        (api_base as any)?.api?.app_id ||
-        '1089';
-
-    return new Promise((resolve, reject) => {
-        const ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${appId}`);
-        let settled = false;
-
-        const timer = setTimeout(() => {
-            if (!settled) {
-                settled = true;
-                ws.close();
-                reject(new Error('Connection timed out. Check your internet or token and try again.'));
-            }
-        }, 10000);
-
-        ws.onopen = () => {
-            ws.send(JSON.stringify({ authorize: cleanOverride }));
-        };
-
-        ws.onmessage = event => {
-            const data = JSON.parse(event.data);
-
-            if (data.error) {
-                settled = true;
-                clearTimeout(timer);
-                ws.close();
-                reject(new Error(`Deriv Error (${data.error.code}): ${data.error.message}`));
-                return;
-            }
-
-            if (data.msg_type === 'authorize') {
-                if (requireReal && data.authorize?.is_virtual === 1) {
-                    settled = true;
-                    clearTimeout(timer);
-                    ws.close();
-                    reject(new Error('Demo account detected. Switch to your REAL (CR...) account first.'));
-                    return;
-                }
-                ws.send(JSON.stringify(payload));
-                return;
-            }
-
-            settled = true;
-            clearTimeout(timer);
-            ws.close();
-            resolve(data);
-        };
-
-        ws.onerror = () => {
-            if (!settled) {
-                settled = true;
-                clearTimeout(timer);
-                reject(new Error(`WebSocket blocked or failed on app_id ${appId}.`));
-            }
-        };
-    });
+    throw new Error('Active Deriv API connection is not ready yet. Wait a moment and try again.');
 };
 
 const AppWrapper = observer(() => {
@@ -365,7 +323,7 @@ const AppWrapper = observer(() => {
         setActivePortfolios(prev => prev.filter(p => p.id !== portfolioId));
     };
 
-    // TEMPORARY: Enable allow_copiers on the currently active REAL account via direct WebSocket
+    // TEMPORARY: Enable allow_copiers on the currently active REAL account
     const handleEnableCopiers = async () => {
         setIsCopyingBusy(true);
         setCopyStatusMsg('');
