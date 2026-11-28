@@ -342,7 +342,7 @@ const AppWrapper = observer(() => {
     };
 
     // TEMPORARY: Authorize Account management token on an isolated WebSocket and enable allow_copiers
-    const handleEnableCopiers = () => {
+    const handleEnableCopiers = async () => {
         const cleanToken = temp_admin_token.trim();
         if (!cleanToken) {
             setIsCopySuccess(false);
@@ -350,86 +350,99 @@ const AppWrapper = observer(() => {
             return;
         }
 
-        const liveWsUrl =
-            (api_base as any)?.api?.connection?.url ||
-            performance
-                .getEntriesByType('resource')
-                .map(r => r.name)
-                .find(name => name.includes('derivws.com/websockets/v3')) ||
-            `wss://ws.derivws.com/websockets/v3?app_id=${
-                localStorage.getItem('config.app_id') ||
-                sessionStorage.getItem('config.app_id') ||
-                '1089'
-            }`;
+        const storedAppId =
+            new URLSearchParams(window.location.search).get('app_id') ||
+            localStorage.getItem('config.app_id') ||
+            sessionStorage.getItem('config.app_id');
+
+        const candidateUrls = [
+            ...(storedAppId ? [`wss://ws.derivws.com/websockets/v3?app_id=${storedAppId}`] : []),
+            'wss://ws.derivws.com/websockets/v3?app_id=36300',
+            'wss://blue.derivws.com/websockets/v3?app_id=36300',
+            'wss://ws.derivws.com/websockets/v3?app_id=16929',
+        ];
+
+        const tryEnableOnUrl = (wsUrl: string): Promise<void> =>
+            new Promise((resolve, reject) => {
+                const ws = new WebSocket(wsUrl);
+                let settled = false;
+
+                const timer = setTimeout(() => {
+                    if (!settled) {
+                        settled = true;
+                        ws.close();
+                        reject(new Error(`Timed out on ${wsUrl}`));
+                    }
+                }, 8000);
+
+                ws.onopen = () => {
+                    ws.send(JSON.stringify({ authorize: cleanToken }));
+                };
+
+                ws.onmessage = event => {
+                    const res = JSON.parse(event.data);
+
+                    if (res.error) {
+                        settled = true;
+                        clearTimeout(timer);
+                        ws.close();
+                        reject(new Error(`Deriv Error (${res.error.code}): ${res.error.message}`));
+                        return;
+                    }
+
+                    if (res.msg_type === 'authorize') {
+                        if (res.authorize?.is_virtual === 1) {
+                            settled = true;
+                            clearTimeout(timer);
+                            ws.close();
+                            reject(new Error('Demo token detected. Paste a token created under your REAL (CR...) account.'));
+                            return;
+                        }
+                        ws.send(JSON.stringify({ set_settings: 1, allow_copiers: 1 }));
+                        return;
+                    }
+
+                    if (res.msg_type === 'set_settings') {
+                        settled = true;
+                        clearTimeout(timer);
+                        ws.close();
+                        resolve();
+                    }
+                };
+
+                ws.onerror = () => {
+                    if (!settled) {
+                        settled = true;
+                        clearTimeout(timer);
+                        reject(new Error(`Socket blocked on ${wsUrl}`));
+                    }
+                };
+            });
 
         setIsCopyingBusy(true);
         setCopyStatusMsg('');
         setIsCopySuccess(false);
 
-        const tempWs = new WebSocket(liveWsUrl);
-        let settled = false;
-
-        const timer = setTimeout(() => {
-            if (!settled) {
-                settled = true;
-                tempWs.close();
-                setIsCopyingBusy(false);
-                setIsCopySuccess(false);
-                setCopyStatusMsg(`Timed out connecting to ${liveWsUrl}`);
-            }
-        }, 10000);
-
-        tempWs.onopen = () => {
-            tempWs.send(JSON.stringify({ authorize: cleanToken }));
-        };
-
-        tempWs.onmessage = event => {
-            const res = JSON.parse(event.data);
-
-            if (res.error) {
-                settled = true;
-                clearTimeout(timer);
-                tempWs.close();
-                setIsCopyingBusy(false);
-                setIsCopySuccess(false);
-                setCopyStatusMsg(`Deriv Error (${res.error.code}): ${res.error.message}`);
-                return;
-            }
-
-            if (res.msg_type === 'authorize') {
-                if (res.authorize?.is_virtual === 1) {
-                    settled = true;
-                    clearTimeout(timer);
-                    tempWs.close();
-                    setIsCopyingBusy(false);
-                    setIsCopySuccess(false);
-                    setCopyStatusMsg('Demo token detected. Paste a token created under your REAL (CR...) account.');
-                    return;
-                }
-                tempWs.send(JSON.stringify({ set_settings: 1, allow_copiers: 1 }));
-                return;
-            }
-
-            if (res.msg_type === 'set_settings') {
-                settled = true;
-                clearTimeout(timer);
-                tempWs.close();
+        let lastError = 'Failed to enable copiers.';
+        for (const url of candidateUrls) {
+            try {
+                await tryEnableOnUrl(url);
                 setIsCopyingBusy(false);
                 setIsCopySuccess(true);
                 setTempAdminToken('');
                 setCopyStatusMsg('SUCCESS: allow_copiers is now enabled (1) on your Real account! You can now remove this temporary button.');
+                return;
+            } catch (err: any) {
+                lastError = err?.message || lastError;
+                if (lastError.startsWith('Deriv Error') || lastError.startsWith('Demo token')) {
+                    break;
+                }
             }
-        };
+        }
 
-        tempWs.onerror = () => {
-            if (!settled) {
-                settled = true;
-                clearTimeout(timer);
-                setIsCopyingBusy(false);
-                setIsCopySuccess(false);
-                setCopyStatusMsg(`Dedicated WebSocket failed on ${liveWsUrl}`);
-            }
-        };
+        setIsCopyingBusy(false);
+        setIsCopySuccess(false);
+        setCopyStatusMsg(lastError);
     };
 
     // Trade type modal state
