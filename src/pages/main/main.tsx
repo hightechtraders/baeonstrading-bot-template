@@ -76,6 +76,20 @@ type TFreeBotStrategy = {
 
 const MASTER_MANUAL_TOKEN = process.env.PUBLIC_MASTER_MANUAL_TOKEN || '';
 
+const extractDerivErrorMessage = (err: any, fallback: string): string => {
+    if (!err) return fallback;
+    if (typeof err === 'string') return err;
+    if (err?.error?.message) {
+        return `Deriv Error (${err.error.code || 'API'}): ${err.error.message}`;
+    }
+    if (err?.message) return err.message;
+    try {
+        return JSON.stringify(err);
+    } catch {
+        return fallback;
+    }
+};
+
 // Helper to send raw JSON requests over the active, authenticated Deriv WebSocket connection
 const sendRawDerivRequest = async (
     payload: Record<string, any>,
@@ -96,23 +110,27 @@ const sendRawDerivRequest = async (
             throw new Error('Demo account detected. Switch to your REAL (CR...) account first.');
         }
 
-        if (cleanOverride) {
-            const authRes = await apiInstance.send({ authorize: cleanOverride });
-            if (authRes?.error) {
-                throw new Error(
-                    `Authorize Error (${authRes.error.code}): ${authRes.error.message}`
-                );
+        try {
+            if (cleanOverride) {
+                const authRes = await apiInstance.send({ authorize: cleanOverride });
+                if (authRes?.error) {
+                    throw new Error(
+                        `Authorize Error (${authRes.error.code}): ${authRes.error.message}`
+                    );
+                }
+                if (requireReal && authRes?.authorize?.is_virtual === 1) {
+                    throw new Error('Demo account detected. Switch to your REAL (CR...) account first.');
+                }
             }
-            if (requireReal && authRes?.authorize?.is_virtual === 1) {
-                throw new Error('Demo account detected. Switch to your REAL (CR...) account first.');
-            }
-        }
 
-        const res = await apiInstance.send(payload);
-        if (res?.error) {
-            throw new Error(`Deriv Error (${res.error.code}): ${res.error.message}`);
+            const res = await apiInstance.send(payload);
+            if (res?.error) {
+                throw new Error(`Deriv Error (${res.error.code}): ${res.error.message}`);
+            }
+            return res;
+        } catch (err: any) {
+            throw new Error(extractDerivErrorMessage(err, 'Deriv API request failed.'));
         }
-        return res;
     }
 
     throw new Error('Active Deriv API connection is not ready yet. Wait a moment and try again.');
@@ -306,7 +324,7 @@ const AppWrapper = observer(() => {
             setCopySubTab('portfolio');
         } catch (err: any) {
             setIsCopySuccess(false);
-            setCopyStatusMsg(err?.message || 'Failed to start copy trading.');
+            setCopyStatusMsg(extractDerivErrorMessage(err, 'Failed to start copy trading.'));
         } finally {
             setIsCopyingBusy(false);
         }
@@ -323,31 +341,95 @@ const AppWrapper = observer(() => {
         setActivePortfolios(prev => prev.filter(p => p.id !== portfolioId));
     };
 
-    // TEMPORARY: Enable allow_copiers on the currently active REAL account
-    const handleEnableCopiers = async () => {
+    // TEMPORARY: Authorize Account management token on an isolated WebSocket and enable allow_copiers
+    const handleEnableCopiers = () => {
+        const cleanToken = temp_admin_token.trim();
+        if (!cleanToken) {
+            setIsCopySuccess(false);
+            setCopyStatusMsg('Paste your Account management token into the box first.');
+            return;
+        }
+
+        const liveWsUrl =
+            (api_base as any)?.api?.connection?.url ||
+            performance
+                .getEntriesByType('resource')
+                .map(r => r.name)
+                .find(name => name.includes('derivws.com/websockets/v3')) ||
+            `wss://ws.derivws.com/websockets/v3?app_id=${
+                localStorage.getItem('config.app_id') ||
+                sessionStorage.getItem('config.app_id') ||
+                '1089'
+            }`;
+
         setIsCopyingBusy(true);
         setCopyStatusMsg('');
         setIsCopySuccess(false);
 
-        try {
-            await sendRawDerivRequest(
-                {
-                    set_settings: 1,
-                    allow_copiers: 1,
-                },
-                true,
-                temp_admin_token
-            );
+        const tempWs = new WebSocket(liveWsUrl);
+        let settled = false;
 
-            setIsCopySuccess(true);
-            setTempAdminToken('');
-            setCopyStatusMsg('SUCCESS: allow_copiers is now enabled (1) on your Real account! You can now remove this temporary button.');
-        } catch (err: any) {
-            setIsCopySuccess(false);
-            setCopyStatusMsg(err?.message || 'Failed to enable copiers. Ensure you are on a Real account with admin scope.');
-        } finally {
-            setIsCopyingBusy(false);
-        }
+        const timer = setTimeout(() => {
+            if (!settled) {
+                settled = true;
+                tempWs.close();
+                setIsCopyingBusy(false);
+                setIsCopySuccess(false);
+                setCopyStatusMsg(`Timed out connecting to ${liveWsUrl}`);
+            }
+        }, 10000);
+
+        tempWs.onopen = () => {
+            tempWs.send(JSON.stringify({ authorize: cleanToken }));
+        };
+
+        tempWs.onmessage = event => {
+            const res = JSON.parse(event.data);
+
+            if (res.error) {
+                settled = true;
+                clearTimeout(timer);
+                tempWs.close();
+                setIsCopyingBusy(false);
+                setIsCopySuccess(false);
+                setCopyStatusMsg(`Deriv Error (${res.error.code}): ${res.error.message}`);
+                return;
+            }
+
+            if (res.msg_type === 'authorize') {
+                if (res.authorize?.is_virtual === 1) {
+                    settled = true;
+                    clearTimeout(timer);
+                    tempWs.close();
+                    setIsCopyingBusy(false);
+                    setIsCopySuccess(false);
+                    setCopyStatusMsg('Demo token detected. Paste a token created under your REAL (CR...) account.');
+                    return;
+                }
+                tempWs.send(JSON.stringify({ set_settings: 1, allow_copiers: 1 }));
+                return;
+            }
+
+            if (res.msg_type === 'set_settings') {
+                settled = true;
+                clearTimeout(timer);
+                tempWs.close();
+                setIsCopyingBusy(false);
+                setIsCopySuccess(true);
+                setTempAdminToken('');
+                setCopyStatusMsg('SUCCESS: allow_copiers is now enabled (1) on your Real account! You can now remove this temporary button.');
+            }
+        };
+
+        tempWs.onerror = () => {
+            if (!settled) {
+                settled = true;
+                clearTimeout(timer);
+                setIsCopyingBusy(false);
+                setIsCopySuccess(false);
+                setCopyStatusMsg(`Dedicated WebSocket failed on ${liveWsUrl}`);
+            }
+        };
     };
 
     // Trade type modal state
