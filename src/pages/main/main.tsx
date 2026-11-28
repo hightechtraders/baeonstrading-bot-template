@@ -77,94 +77,56 @@ type TFreeBotStrategy = {
 const MASTER_MANUAL_TOKEN = process.env.PUBLIC_MASTER_MANUAL_TOKEN || '';
 
 // Helper to send raw JSON requests directly to Deriv WebSocket (bypasses @deriv/deriv-api wrapper)
-const sendRawDerivRequest = (
+const sendRawDerivRequest = async (
     payload: Record<string, any>,
     requireReal = false,
     overrideToken?: string
 ): Promise<any> => {
+    const cleanOverride = overrideToken?.trim();
+
+    // 1. If no override token is pasted, use the app's existing live WebSocket connection directly
+    if (!cleanOverride && (api_base as any)?.api?.send) {
+        const loginId = (api_base as any)?.account_info?.loginid || '';
+        if (requireReal && loginId.startsWith('VRTC')) {
+            throw new Error('Demo account detected. Switch to your REAL (CR...) account first.');
+        }
+
+        const res = await (api_base as any).api.send(payload);
+        if (res?.error) {
+            throw new Error(`Deriv Error (${res.error.code}): ${res.error.message}`);
+        }
+        return res;
+    }
+
+    // 2. If a temporary Admin token IS pasted, use a short-lived socket with your real app_id
+    const appId =
+        localStorage.getItem('config.app_id') ||
+        sessionStorage.getItem('config.app_id') ||
+        (api_base as any)?.api?.app_id ||
+        '1089';
+
     return new Promise((resolve, reject) => {
-        const readStorage = (key: string) =>
-            sessionStorage.getItem(key) || localStorage.getItem(key) || '';
-
-        let activeLoginId = (api_base as any)?.account_info?.loginid || readStorage('active_loginid');
-        let activeToken =
-            overrideToken?.trim() ||
-            (api_base as any)?.token ||
-            readStorage('authToken') ||
-            readStorage('auth_token');
-
-        if (!activeToken) {
-            try {
-                const accounts = JSON.parse(readStorage('client.accounts') || '{}');
-                if (activeLoginId && accounts[activeLoginId]?.token) {
-                    activeToken = accounts[activeLoginId].token;
-                } else {
-                    const entries = Object.entries(accounts) as [string, any][];
-                    const match = requireReal
-                        ? entries.find(([id, acc]) => !id.startsWith('VRTC') && acc?.token)
-                        : entries.find(([, acc]) => acc?.token);
-                    if (match) {
-                        activeLoginId = match[0];
-                        activeToken = match[1].token;
-                    }
-                }
-            } catch {
-                // Ignore JSON parse errors
-            }
-        }
-
-        // Last-resort scan across all sessionStorage & localStorage keys for any Deriv token
-        if (!activeToken) {
-            for (const store of [sessionStorage, localStorage]) {
-                for (let i = 0; i < store.length; i++) {
-                    const val = store.getItem(store.key(i) || '') || '';
-                    if (val.includes('"token"')) {
-                        try {
-                            const parsed = JSON.parse(val);
-                            const found = Object.entries(parsed).find(
-                                ([k, v]: [string, any]) =>
-                                    (!requireReal || !k.startsWith('VRTC')) && v?.token
-                            ) as [string, any] | undefined;
-                            if (found) {
-                                activeLoginId = found[0];
-                                activeToken = found[1].token;
-                                break;
-                            }
-                        } catch {
-                            // Continue scanning
-                        }
-                    }
-                }
-                if (activeToken) break;
-            }
-        }
-
-        const appId = readStorage('config.app_id') || '1089';
-
-        if (!activeToken) {
-            reject(
-                new Error(
-                    'Token not found in browser storage. Paste your temporary Real Admin API token in the box next to the button and click Enable Copiers.'
-                )
-            );
-            return;
-        }
-
-        if (requireReal && activeLoginId.startsWith('VRTC')) {
-            reject(new Error('Demo account detected. Switch to your REAL (CR...) account first.'));
-            return;
-        }
-
         const ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${appId}`);
+        let settled = false;
+
+        const timer = setTimeout(() => {
+            if (!settled) {
+                settled = true;
+                ws.close();
+                reject(new Error('Connection timed out. Check your internet or token and try again.'));
+            }
+        }, 10000);
 
         ws.onopen = () => {
-            ws.send(JSON.stringify({ authorize: activeToken }));
+            ws.send(JSON.stringify({ authorize: cleanOverride }));
         };
 
         ws.onmessage = event => {
             const data = JSON.parse(event.data);
 
             if (data.error) {
+                settled = true;
+                clearTimeout(timer);
                 ws.close();
                 reject(new Error(`Deriv Error (${data.error.code}): ${data.error.message}`));
                 return;
@@ -172,6 +134,8 @@ const sendRawDerivRequest = (
 
             if (data.msg_type === 'authorize') {
                 if (requireReal && data.authorize?.is_virtual === 1) {
+                    settled = true;
+                    clearTimeout(timer);
                     ws.close();
                     reject(new Error('Demo account detected. Switch to your REAL (CR...) account first.'));
                     return;
@@ -180,12 +144,18 @@ const sendRawDerivRequest = (
                 return;
             }
 
+            settled = true;
+            clearTimeout(timer);
             ws.close();
             resolve(data);
         };
 
         ws.onerror = () => {
-            reject(new Error('Direct WebSocket connection failed.'));
+            if (!settled) {
+                settled = true;
+                clearTimeout(timer);
+                reject(new Error(`WebSocket blocked or failed on app_id ${appId}.`));
+            }
         };
     });
 };
